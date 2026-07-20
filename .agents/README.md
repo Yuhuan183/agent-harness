@@ -14,6 +14,7 @@
 | 路徑 | 職責 |
 |---|---|
 | `skills/headroom-protocol/` | 共用 skill 本體（含 Codex 端 `agents/openai.yaml`）；`.claude/skills` 與 `.codex/skills` 各以 symlink 引用 |
+| `skills/speak-human-tw/` | 共用 skill 本體：繁中去 AI 味改寫（蒸餾自上游，見其 `ATTRIBUTION.md`）；同以 symlink 雙端引用 |
 | `skills/INSTALLED.txt` | 第三方安裝 skill 清單（lark 全套等）；只記錄不複製本體 |
 | `.skill-lock.json` | 第三方 skill 版本鎖 |
 | `docs/headroom-runtime.md` | Headroom runtime 的跨 agent 架構與操作邊界（Claude 與 Codex 流量共用同一 proxy，故置於此、不各留一份） |
