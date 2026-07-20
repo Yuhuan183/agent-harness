@@ -1,6 +1,5 @@
 name = "verifier"
 description = "Fresh-context, read-only adversarial verification for security or high-impact boundaries, non-mechanical integration claims, adversarial state behavior, conflicting evidence, or explicit independent review. Do not use for routine low-risk work."
-model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 
 developer_instructions = """

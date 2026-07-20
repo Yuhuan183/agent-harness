@@ -9,8 +9,8 @@
 | 路徑 | 職責 |
 |---|---|
 | `CLAUDE.md` | Claude Code 執行契約；僅主 agent 使用的精簡協調規則（~600 tokens） |
-| `agents/` | 九個自足的 Claude leaf roles；不讀取主 agent 協調文件 |
-| `skills/` | 依需求載入的工作流；`baton-dispatch`、`provider-routing` 為自有，`headroom-protocol` symlink 至 `../.agents/skills/` |
+| `agents/` | 七個自足的 Claude leaf roles（effort 兩階：機械角色鎖 low、思考角色跟隨主 session，上限 high）；不讀取主 agent 協調文件；各有 Codex 對應版於 `../.codex/agents/` |
+| `skills/` | 依需求載入的工作流；`baton-dispatch`、`provider-routing` 為自有，`headroom-protocol`、`speak-human-tw` symlink 至 `../.agents/skills/` |
 | `settings.json` | Hooks、最小唯讀 allowlist、plugins 與介面設定；不指定主模型、effort 或 fallback |
 | `examples/headroom-mcp.merge.json` | 可攜的 MCP 宣告片段；手動 merge 進本機 `mcp_servers.json`（後者含機器路徑，不入庫） |
 | `hooks/`, `scripts/`, `sh/` | 監控、用量診斷、執行版本防護與 statusline |
@@ -28,7 +28,7 @@ fallback、role routing 與 verifier 觸發條件全部收斂在 `skills/provide
 
 ## 初始設定
 
-1. `plan-verifier` 與 `security-reviewer[-xhigh]` 需要 Claude Code 2.1.207 以上版本。
+1. `plan-verifier` 與 `security-reviewer` 需要 Claude Code 2.1.207 以上版本。
 2. 新機器僅在 `$HOME/.claude` 不存在時直接套用；若已存在，先備份再合併（`sync.sh` 自動備份），不得取代憑證或本機狀態。
 3. Headroom 生命週期與升級流程見 `../.agents/docs/headroom-runtime.md`；base URL 為 machine-local，不得寫進 tracked `settings.json`。
 4. `rtk` 需另行安裝（macOS：`brew install rtk`）；未安裝時 hook 採 fail-open。

@@ -10,7 +10,7 @@ import sys
 
 
 MINIMUM = (2, 1, 207)
-RESTRICTED_ROLES = "plan-verifier/security-reviewer[-xhigh]"
+RESTRICTED_ROLES = "plan-verifier/security-reviewer"
 
 
 def parse_version(raw):

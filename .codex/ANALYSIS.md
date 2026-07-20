@@ -4,11 +4,11 @@
 
 The bundle carries only Codex/ChatGPT contracts: outcome-first communication, minimal scope, verified completion, direct-first dispatch, main-task judgment, approved-scope boundaries, and risk-triggered independent verification.
 
-Codex receives a global contract, native GPT leaf agents, one read-only verifier, and `max_depth = 1`; ChatGPT receives response preferences only.
+Codex receives a global contract, seven custom leaf agents mirroring the Claude roles, and `max_depth = 1`; ChatGPT receives response preferences only.
 
 ## Source and ownership
 
-- Reviewed source: current harness contract as of 2026-07-17, including Pilotfish v1.2.1 `80b5d1f`, Baton scope fix `0ab4d2e`, and finished-task result collection.
+- Reviewed source: current harness contract as of 2026-07-17, including Baton scope fix `0ab4d2e` and finished-task result collection.
 - This directory is deployment source, not automatic deployment.
 - Git is the cross-machine source of truth. GPT model/effort, auth, MCP/plugin paths, and credentials remain machine state.
 
@@ -16,7 +16,7 @@ Codex receives a global contract, native GPT leaf agents, one read-only verifier
 |---|---|---|
 | Working agreement | `codex/AGENTS.md` | `chatgpt/custom-instructions.md` |
 | Main-only orchestration | `codex/AGENTS.md` main-task section | Not ported |
-| Leaf execution | Native GPT agents; custom verifier only | Not available |
+| Leaf execution | Seven custom leaf agents (`agents/*.toml`) | Not available |
 | Optional compression | `codex/skills/headroom-protocol` | Not ported |
 | GPT model/effort | Machine config or task selector | Product selector |
 

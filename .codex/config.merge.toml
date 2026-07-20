@@ -9,3 +9,27 @@ interrupt_message = true
 [agents.verifier]
 description = "Fresh-context adversarial verification for explicit high-risk triggers."
 config_file = "./agents/verifier.toml"
+
+[agents.explore]
+description = "Broad read-only search; conclusions with file:line evidence."
+config_file = "./agents/explore.toml"
+
+[agents.mech-executor]
+description = "Mechanical implementation from a complete spec."
+config_file = "./agents/mech-executor.toml"
+
+[agents.executor]
+description = "Judgment-heavy implementation within an approved scope."
+config_file = "./agents/executor.toml"
+
+[agents.plan-verifier]
+description = "Read-only Plan challenge; returns READY or REVISE."
+config_file = "./agents/plan-verifier.toml"
+
+[agents.security-reviewer]
+description = "Read-only pre-approval security review."
+config_file = "./agents/security-reviewer.toml"
+
+[agents.security-executor]
+description = "Implementation of an approved security contract."
+config_file = "./agents/security-executor.toml"

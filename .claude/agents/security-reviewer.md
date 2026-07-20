@@ -2,7 +2,6 @@
 name: security-reviewer
 description: Claude Opus/high read-only security review before approval. Use after GPT H fails or when the user selects Claude. Cover trust boundaries, auth, secrets, crypto, validation, dependencies, and concrete abuse paths without implementing.
 model: opus
-effort: high
 tools: Read, Glob, Grep, WebSearch, WebFetch
 ---
 

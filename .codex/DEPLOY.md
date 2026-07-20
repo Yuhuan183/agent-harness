@@ -18,9 +18,9 @@ Deployment writes outside the repository. Keep approval enabled; never use a san
 2. Back up every changed target under `$CODEX_HOME/backups/<timestamp>/`. Never copy credentials, tokens, sessions, or secrets into the repo or output.
 3. Install `codex/AGENTS.md`. Diff an existing non-empty file; preserve unrelated guidance and stop on material conflict. Check higher-precedence `AGENTS.override.md`.
 4. Merge `codex/config.merge.toml`; never replace `config.toml`. Preserve GPT model/effort, auth, MCP, plugins, desktop, project trust, hooks, notifications, and unrelated keys.
-5. Install `codex/agents/verifier.toml` and `codex/skills/headroom-protocol/`; back up same-name conflicts.
+5. Install every `codex/agents/*.toml` and `codex/skills/`; back up same-name conflicts.
 6. Do not add or change Headroom routing, base URL, MCP, hook, or lifecycle state.
-7. Verify `AGENTS.md` sections occur once; require source/target equality for verifier and skill; parse TOML; assert `max_threads = 4`, `max_depth = 1`, and verifier `config_file = "./agents/verifier.toml"`.
+7. Verify `AGENTS.md` sections occur once; require source/target equality for every agent file and skill; parse TOML; assert `max_threads = 4`, `max_depth = 1`, and each agent's `config_file = "./agents/<name>.toml"`.
 8. Run `codex --strict-config --version`.
 9. Start a new read-only task and confirm outcome-first output, direct-first routing, main/leaf separation, and model-selection ownership. Spawn a verifier smoke test only with explicit user authorization.
 10. Report outcome, backup path, checks, conflicts/risks, and restart requirement.
