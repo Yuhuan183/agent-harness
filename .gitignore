@@ -1,0 +1,10 @@
+backups/
+.DS_Store
+
+# Machine state — never commit (portable equivalents are tracked; see docs/setup.md, .codex/DEPLOY.md)
+.claude/mcp_servers.json
+.codex/config.toml
+
+# Python bytecode
+__pycache__/
+*.pyc

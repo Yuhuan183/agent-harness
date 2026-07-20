@@ -1,0 +1,277 @@
+{
+  "version": 3,
+  "skills": {
+    "lark-approval": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-approval/SKILL.md",
+      "skillFolderHash": "1eda11c863977a7adb7a880455f34943f95320f9",
+      "installedAt": "2026-05-18T10:06:37.046Z",
+      "updatedAt": "2026-07-03T08:51:12.017Z"
+    },
+    "lark-attendance": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-attendance/SKILL.md",
+      "skillFolderHash": "4702032975fb1a4c50aa16a82cbb6db1e14c371c",
+      "installedAt": "2026-05-18T10:06:37.047Z",
+      "updatedAt": "2026-07-03T08:51:12.020Z"
+    },
+    "lark-base": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-base/SKILL.md",
+      "skillFolderHash": "e8321fecb13c46e80a84357dbfa11b536c557ac6",
+      "installedAt": "2026-05-18T10:06:37.047Z",
+      "updatedAt": "2026-07-03T08:51:12.021Z"
+    },
+    "lark-calendar": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-calendar/SKILL.md",
+      "skillFolderHash": "92fdf773bdad9c112550122ea96eef3403d75114",
+      "installedAt": "2026-05-18T10:06:37.047Z",
+      "updatedAt": "2026-07-03T08:51:12.021Z"
+    },
+    "lark-contact": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-contact/SKILL.md",
+      "skillFolderHash": "9862b9b3d0745b14b1dd2e84c44e114b4d728602",
+      "installedAt": "2026-05-18T10:06:37.048Z",
+      "updatedAt": "2026-07-03T08:51:12.022Z"
+    },
+    "lark-doc": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-doc/SKILL.md",
+      "skillFolderHash": "d1a98e49c0cd7a5784922c0e0ce086a032798e8a",
+      "installedAt": "2026-05-18T10:06:37.048Z",
+      "updatedAt": "2026-07-03T08:51:12.022Z"
+    },
+    "lark-drive": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-drive/SKILL.md",
+      "skillFolderHash": "7474b90761b6b2770ee38376c96901762538f5f7",
+      "installedAt": "2026-05-18T10:06:37.048Z",
+      "updatedAt": "2026-07-03T08:51:12.023Z"
+    },
+    "lark-event": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-event/SKILL.md",
+      "skillFolderHash": "a1d8d221bf2ac9df3caca274facb496571ddb92d",
+      "installedAt": "2026-05-18T10:06:37.048Z",
+      "updatedAt": "2026-07-03T08:51:12.023Z"
+    },
+    "lark-im": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-im/SKILL.md",
+      "skillFolderHash": "3340a46a553722786267e27fa9ceaf0a24afc5f8",
+      "installedAt": "2026-05-18T10:06:37.048Z",
+      "updatedAt": "2026-07-03T08:51:12.024Z"
+    },
+    "lark-mail": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-mail/SKILL.md",
+      "skillFolderHash": "9de9718cdc1c374c41973dd2cf63588ec41033dd",
+      "installedAt": "2026-05-18T10:06:37.048Z",
+      "updatedAt": "2026-07-03T08:51:12.024Z"
+    },
+    "lark-markdown": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-markdown/SKILL.md",
+      "skillFolderHash": "7416059957fb5dc9d185ce750ad3715a7c59a68b",
+      "installedAt": "2026-05-18T10:06:37.049Z",
+      "updatedAt": "2026-07-03T08:51:12.025Z"
+    },
+    "lark-minutes": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-minutes/SKILL.md",
+      "skillFolderHash": "3c157bfa751669596c8c481d67062454efc868aa",
+      "installedAt": "2026-05-18T10:06:37.049Z",
+      "updatedAt": "2026-07-03T08:51:12.025Z"
+    },
+    "lark-okr": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-okr/SKILL.md",
+      "skillFolderHash": "7b4fc0a8f3c82d447b56021dc835fd8a0be92e29",
+      "installedAt": "2026-05-18T10:06:37.049Z",
+      "updatedAt": "2026-07-03T08:51:12.026Z"
+    },
+    "lark-openapi-explorer": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-openapi-explorer/SKILL.md",
+      "skillFolderHash": "b403a77f10cf342a01792241a3e77231842c438c",
+      "installedAt": "2026-05-18T10:06:37.049Z",
+      "updatedAt": "2026-07-03T08:51:12.026Z"
+    },
+    "lark-shared": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-shared/SKILL.md",
+      "skillFolderHash": "83e7b5a44d737d923a4a7a5c91353b74d10c277c",
+      "installedAt": "2026-05-18T10:06:37.049Z",
+      "updatedAt": "2026-07-03T08:51:12.027Z"
+    },
+    "lark-sheets": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-sheets/SKILL.md",
+      "skillFolderHash": "1c0f90bb81e013c0eedeaef7d9174898182f5ab7",
+      "installedAt": "2026-05-18T10:06:37.049Z",
+      "updatedAt": "2026-07-03T08:51:12.027Z"
+    },
+    "lark-skill-maker": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-skill-maker/SKILL.md",
+      "skillFolderHash": "f1f0673f26a0b5d2b6cf12454dd47253587f181e",
+      "installedAt": "2026-05-18T10:06:37.049Z",
+      "updatedAt": "2026-07-03T08:51:12.027Z"
+    },
+    "lark-slides": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-slides/SKILL.md",
+      "skillFolderHash": "a3c6e73a55e92720252430319a6455424b7ebc60",
+      "installedAt": "2026-05-18T10:06:37.050Z",
+      "updatedAt": "2026-07-03T08:51:12.028Z"
+    },
+    "lark-task": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-task/SKILL.md",
+      "skillFolderHash": "52ec1ad6790944cbc628eb7678e6150ec5172799",
+      "installedAt": "2026-05-18T10:06:37.050Z",
+      "updatedAt": "2026-07-03T08:51:12.028Z"
+    },
+    "lark-vc": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-vc/SKILL.md",
+      "skillFolderHash": "2f4c42d71cbc06be76e44d73f7a0fdfc016c1d80",
+      "installedAt": "2026-05-18T10:06:37.050Z",
+      "updatedAt": "2026-07-03T08:51:12.028Z"
+    },
+    "lark-vc-agent": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-vc-agent/SKILL.md",
+      "skillFolderHash": "d8a917773f609e081f9bc83fb5d383399c022a32",
+      "installedAt": "2026-05-18T10:06:37.050Z",
+      "updatedAt": "2026-07-03T08:51:12.029Z"
+    },
+    "lark-whiteboard": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-whiteboard/SKILL.md",
+      "skillFolderHash": "0be623706f9b909068eb12ffffcace66e363074e",
+      "installedAt": "2026-05-18T10:06:37.050Z",
+      "updatedAt": "2026-07-03T08:51:12.029Z"
+    },
+    "lark-wiki": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-wiki/SKILL.md",
+      "skillFolderHash": "191b7f8df780d7c07e90de211f553bb1b4b3c489",
+      "installedAt": "2026-05-18T10:06:37.051Z",
+      "updatedAt": "2026-07-03T08:51:12.030Z"
+    },
+    "lark-workflow-meeting-summary": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-workflow-meeting-summary/SKILL.md",
+      "skillFolderHash": "9fb61830ccd65c88620ee42799f4e98341039fe5",
+      "installedAt": "2026-05-18T10:06:37.051Z",
+      "updatedAt": "2026-07-03T08:51:12.030Z"
+    },
+    "lark-workflow-standup-report": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-workflow-standup-report/SKILL.md",
+      "skillFolderHash": "6525c6f1b0be0c0ae2d2c1bf6ef67ecbd64269e0",
+      "installedAt": "2026-05-18T10:06:37.051Z",
+      "updatedAt": "2026-07-03T08:51:12.030Z"
+    },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/vercel-labs/skills.git",
+      "skillPath": "skills/find-skills/SKILL.md",
+      "skillFolderHash": "3013fdeb8a11b10b1eb795ec3ae8bfca38f7c26d",
+      "installedAt": "2026-05-29T07:18:01.397Z",
+      "updatedAt": "2026-05-29T07:18:01.397Z"
+    },
+    "lark-apps": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-apps/SKILL.md",
+      "skillFolderHash": "4b87c02265df5a44fe4bdfa61d04578713b4c3ed",
+      "installedAt": "2026-07-03T08:51:12.019Z",
+      "updatedAt": "2026-07-03T08:51:12.019Z"
+    },
+    "lark-note": {
+      "source": "larksuite/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/larksuite/cli.git",
+      "skillPath": "skills/lark-note/SKILL.md",
+      "skillFolderHash": "d66d28987e0f0211e09cb0613837169bc8c5de3c",
+      "installedAt": "2026-07-03T08:51:12.026Z",
+      "updatedAt": "2026-07-03T08:51:12.026Z"
+    }
+  },
+  "dismissed": {
+    "findSkillsPrompt": true
+  },
+  "lastSelectedAgents": [
+    "amp",
+    "antigravity",
+    "cline",
+    "codex",
+    "cursor",
+    "deepagents",
+    "dexto",
+    "firebender",
+    "gemini-cli",
+    "github-copilot",
+    "kimi-cli",
+    "opencode",
+    "warp",
+    "zed",
+    "claude-code"
+  ]
+}

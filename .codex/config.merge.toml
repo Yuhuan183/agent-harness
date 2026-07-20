@@ -1,0 +1,11 @@
+# Merge this table into ~/.codex/config.toml. Do not replace the existing file:
+# GPT model/effort, MCP, plugin, desktop, and project trust settings are machine state.
+
+[agents]
+max_threads = 4
+max_depth = 1
+interrupt_message = true
+
+[agents.verifier]
+description = "Fresh-context adversarial verification for explicit high-risk triggers."
+config_file = "./agents/verifier.toml"

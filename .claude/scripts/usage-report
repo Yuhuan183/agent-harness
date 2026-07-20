@@ -1,0 +1,218 @@
+#!/usr/bin/env python3
+"""Aggregate Claude transcript usage metadata without reading message content."""
+
+from __future__ import annotations
+
+import argparse
+import json
+from collections import Counter, defaultdict, deque
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+
+FIELDS = (
+    "input_tokens",
+    "output_tokens",
+    "cache_creation_input_tokens",
+    "cache_read_input_tokens",
+)
+
+
+@dataclass(frozen=True)
+class UsageEvent:
+    timestamp: datetime
+    source: str
+    model: str
+    path: str
+    usage: dict[str, int]
+
+
+def parse_time(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+
+
+def classify(path: Path) -> str:
+    text = str(path)
+    if "claude-mem-observer-sessions" in text:
+        return "observer"
+    if "subagents" in path.parts:
+        return "subagent"
+    return "main"
+
+
+def load_events(root: Path, cutoff: datetime) -> list[UsageEvent]:
+    events: list[UsageEvent] = []
+    for path in root.rglob("*.jsonl"):
+        source = classify(path)
+        try:
+            lines = path.open(encoding="utf-8")
+        except OSError:
+            continue
+        with lines:
+            for line in lines:
+                try:
+                    record = json.loads(line)
+                    if record.get("type") != "assistant":
+                        continue
+                    message = record.get("message") or {}
+                    usage = message.get("usage")
+                    model = message.get("model") or "unknown"
+                    if not isinstance(usage, dict) or model == "<synthetic>":
+                        continue
+                    timestamp = parse_time(record["timestamp"])
+                except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+                    continue
+                if timestamp < cutoff:
+                    continue
+                events.append(
+                    UsageEvent(
+                        timestamp=timestamp,
+                        source=source,
+                        model=model,
+                        path=str(path),
+                        usage={field: int(usage.get(field) or 0) for field in FIELDS},
+                    )
+                )
+    return sorted(events, key=lambda event: event.timestamp)
+
+
+def aggregate(events: list[UsageEvent]) -> dict[str, dict[str, dict[str, int]]]:
+    result: dict[str, dict[str, dict[str, int]]] = defaultdict(dict)
+    buckets: dict[tuple[str, str], Counter[str]] = defaultdict(Counter)
+    sessions: dict[tuple[str, str], set[str]] = defaultdict(set)
+    for event in events:
+        key = (event.source, event.model)
+        buckets[key]["turns"] += 1
+        buckets[key].update(event.usage)
+        sessions[key].add(event.path)
+    for (source, model), values in sorted(buckets.items()):
+        result[source][model] = {
+            "sessions": len(sessions[(source, model)]),
+            **{key: values[key] for key in ("turns", *FIELDS)},
+        }
+    return dict(result)
+
+
+def aggregate_sessions(events: list[UsageEvent]) -> list[dict[str, object]]:
+    sessions: dict[str, dict[str, object]] = {}
+    for event in events:
+        path = Path(event.path)
+        entry = sessions.setdefault(
+            path.stem,
+            {"session": path.stem, "project": path.parent.name, "source": event.source,
+             "turns": 0, "models": Counter(), **{field: 0 for field in FIELDS}},
+        )
+        entry["turns"] += 1
+        entry["models"][event.model] += 1
+        for field in FIELDS:
+            entry[field] += event.usage[field]
+    rows = sorted(sessions.values(), key=lambda row: -row["cache_read_input_tokens"])
+    for row in rows:
+        row["models"] = dict(row["models"].most_common())
+    return rows
+
+
+def peak_window(events: list[UsageEvent], hours: float) -> dict[str, object]:
+    if not events:
+        return {}
+    window: deque[UsageEvent] = deque()
+    best: list[UsageEvent] = []
+    span = timedelta(hours=hours)
+    for event in events:
+        window.append(event)
+        while window and event.timestamp - window[0].timestamp > span:
+            window.popleft()
+        if len(window) > len(best):
+            best = list(window)
+    models = Counter(event.model for event in best)
+    sources = Counter(event.source for event in best)
+    tokens = Counter()
+    for event in best:
+        tokens.update(event.usage)
+    return {
+        "start": best[0].timestamp.isoformat(),
+        "end": best[-1].timestamp.isoformat(),
+        "turns": len(best),
+        "sources": dict(sorted(sources.items())),
+        "models": dict(models.most_common()),
+        **{field: tokens[field] for field in FIELDS},
+    }
+
+
+def format_number(value: int) -> str:
+    for suffix, size in (("B", 1_000_000_000), ("M", 1_000_000), ("K", 1_000)):
+        if value >= size:
+            return f"{value / size:.1f}{suffix}"
+    return str(value)
+
+
+def print_text(report: dict[str, object]) -> None:
+    print(f"usage report — last {report['days']}d (assistant usage metadata only)")
+    print("source    model                              sessions turns   input  output  cache-new cache-read")
+    for source, models in report["by_source_model"].items():
+        for model, values in models.items():
+            print(
+                f"{source:9s} {model:34.34s} {values['sessions']:8d} {values['turns']:5d} "
+                f"{format_number(values['input_tokens']):>7s} "
+                f"{format_number(values['output_tokens']):>7s} "
+                f"{format_number(values['cache_creation_input_tokens']):>9s} "
+                f"{format_number(values['cache_read_input_tokens']):>10s}"
+            )
+    peak = report["peak_rolling_window"]
+    if peak:
+        print(f"peak rolling {report['window_hours']:g}h by turn count: {peak['turns']} turns")
+        print(f"  {peak['start']} → {peak['end']}")
+        print(f"  sources={peak['sources']} models={peak['models']}")
+    print("note: transcript tokens are diagnostic signals, not Anthropic subscription-quota units.")
+
+
+def print_sessions(report: dict[str, object], top: int) -> None:
+    rows = report["by_session"]
+    print(f"usage by session — last {report['days']}d, top {top} by cache-read")
+    print("session    project                              src   turns  output cache-read cache-new models")
+    for row in rows[:top]:
+        models = ",".join(f"{model}:{count}" for model, count in list(row["models"].items())[:3])
+        print(
+            f"{row['session'][:8]:8.8s}   {row['project'][-36:]:36.36s} {row['source']:5.5s} "
+            f"{row['turns']:5d} "
+            f"{format_number(row['output_tokens']):>7s} "
+            f"{format_number(row['cache_read_input_tokens']):>10s} "
+            f"{format_number(row['cache_creation_input_tokens']):>9s} {models}"
+        )
+    print(f"sessions with usage: {len(rows)}")
+    print("note: transcript tokens are diagnostic signals, not Anthropic subscription-quota units.")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--days", type=float, default=7)
+    parser.add_argument("--window-hours", type=float, default=5)
+    parser.add_argument("--root", type=Path, default=Path("~/.claude/projects").expanduser())
+    parser.add_argument("--now", help=argparse.SUPPRESS)
+    parser.add_argument("--by-session", action="store_true", help="drill into per-session totals ranked by cache-read")
+    parser.add_argument("--top", type=int, default=20, help="rows to show in --by-session text output")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args()
+    now = parse_time(args.now) if args.now else datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=args.days)
+    events = load_events(args.root, cutoff)
+    report = {
+        "generated_at": now.isoformat(),
+        "days": args.days,
+        "window_hours": args.window_hours,
+        "by_source_model": aggregate(events),
+        "peak_rolling_window": peak_window(events, args.window_hours),
+    }
+    if args.by_session:
+        report["by_session"] = aggregate_sessions(events)
+    if args.json:
+        print(json.dumps(report, indent=2, sort_keys=True))
+    elif args.by_session:
+        print_sessions(report, args.top)
+    else:
+        print_text(report)
+
+
+if __name__ == "__main__":
+    main()

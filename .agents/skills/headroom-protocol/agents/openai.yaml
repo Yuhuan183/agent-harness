@@ -1,0 +1,4 @@
+interface:
+  display_name: "Headroom Protocol"
+  short_description: "Compress large tool outputs while preserving exact sources"
+  default_prompt: "Use $headroom-protocol to compress a large read-only tool result and retrieve exact details only when needed."
