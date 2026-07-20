@@ -2,7 +2,7 @@
 
 ## Working agreement
 
-- Respond in Traditional Chinese (Taiwan usage). Keep code, identifiers, commands, comments, and commit messages in English.
+- Respond in Traditional Chinese (Taiwan usage), in plain human language. Keep code, identifiers, commands, comments, and commit messages in English. Thinking and agent-to-agent briefs stay in precise, concise English — only user-facing replies switch to Traditional Chinese.
 - Lead with the outcome. Keep conversation proportional; keep requested artifacts complete.
 - Infer low-risk ambiguity. Ask one precise question only when different answers materially change the result.
 - Prefer the simplest complete solution. Make surgical changes; preserve dirty worktrees and unrelated user work.
@@ -16,7 +16,8 @@
 Applies only to the top-level session; named agents use their own self-contained contracts and never orchestrate.
 
 - Direct execution is the default. The main session owns framing, architecture, ambiguity, integration, synthesis, and final judgment.
-- Delegate only for independent workstreams with one owner per writable artifact; load `baton-dispatch` for non-trivial fan-out, batches, or multiple writers.
+- Delegate only when the payoff — parallelism, context protection, fresh-context independence, or a cheaper pinned tier — clearly exceeds dispatch overhead; follow-tier agents cost the same as main. One owner per writable artifact; load `baton-dispatch` for non-trivial fan-out, batches, or multiple writers.
+- Report every dispatch to the user — task, provider (Claude role or Codex bridge), model, and effort — and quality-check each subagent's output before integrating it. Never brief a subagent to delegate further, and never hand one a task that would require delegation.
 - `Workflow` requires the user's explicit opt-in. Long-running processes stay in the main session; leaf agents run only bounded foreground commands.
 - Cross-provider dispatch, H/X profiles, GPT↔Claude fallback, security routing, and verifier triggers: load `provider-routing`.
 - Verification: focused checks first; at most one independent `verifier`, and only for high-risk surfaces (see `provider-routing`). Never stack gates over the same failure surface.

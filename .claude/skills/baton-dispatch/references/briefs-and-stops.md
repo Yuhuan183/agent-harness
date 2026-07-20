@@ -18,7 +18,7 @@ Do not ask an agent to rediscover settled conclusions. For independent verificat
 
 ## Ownership
 
-For each workstream, list required reads, allowed writes, forbidden writes, secondary writes, and integration owner. Shared schemas, registries, indexes, generated output, config, and lockfiles need one owner or pre-fan-out convergence.
+For each workstream, list required reads, allowed writes, forbidden writes, secondary writes, and integration owner. Shared schemas, registries, indexes, generated output, config, and lockfiles need one owner or pre-fan-out convergence. An isolated worktree's changes are lost unless the integration owner harvests them on completion.
 
 ## Stop guide
 

@@ -7,6 +7,17 @@ description: Choose direct work, one agent, bounded parallel agents, a user-auth
 
 Apply the resident dispatch brake, then choose the smallest reliable shape. This is a local distillation of cablate/baton v0.1.1 plus scope fix `0ab4d2e`.
 
+## Cost test (run before every dispatch)
+
+A follow-tier agent runs at the main session's model and effort — delegation saves no compute, and briefing, context reconstruction, collection, and quality-check are pure overhead. Delegate only when at least one payoff clearly exceeds that overhead:
+
+1. **Parallelism** — two or more genuinely independent workstreams where wall-clock matters.
+2. **Context protection** — bulky reads or noisy output would pollute the main window that later judgment still needs.
+3. **Fresh-context independence** — the value *is* the separate context (`verifier`, `plan-verifier`, `security-reviewer`).
+4. **Cheaper tier** — a pinned low role (`Explore`, `mech-executor`) genuinely covers the task.
+
+A single sequential task with none of these stays in main. When the payoff is marginal or uncertain, work directly — a wrong direct call costs one task; habitual marginal dispatch taxes every task.
+
 ## Routing guide
 
 | Shape | Use |
@@ -30,5 +41,9 @@ Never map request bullets directly to agents.
 6. Preserve partial evidence when stopping or changing shape.
 
 The approved Plan or release slice is a hard boundary. Agents may report adjacent opportunities but must stop before adding a domain, table, API, service, deployment responsibility, or materially larger file/schema surface.
+
+## Result collection
+
+A finished agent's final response is its deliverable — the harness returns it on completion. Collect it from the finished task; never relaunch or ask a read-only recon agent (`Explore`, `plan-verifier`, `security-reviewer`) to relay, restate, or report back a result it already produced. Use the resume channel only for genuinely new or redirected work. Treat a single load-bearing recon fact as an unverified input: sanity-check or re-run it in main, since the `verifier` gate covers executor output, not reconnaissance.
 
 Read [references/briefs-and-stops.md](references/briefs-and-stops.md) only when writing a brief, ownership map, or batch stop rule.

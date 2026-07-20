@@ -8,14 +8,15 @@ description: Cross-provider and role routing for the main session — H/X model 
 ## Model profiles
 
 - The user owns the main-session model and effort through the session selector; tracked settings pin neither. Never switch silently.
-- Reference profiles: **H** = Fable/low or Opus/high; **X** = Fable/medium or Opus/xhigh.
+- Reference profiles: **H** = Fable/low or Opus/high; **X** = Fable/medium or Opus/high. Effort is capped at high everywhere; no role or bridge call uses xhigh.
+- Role effort has two tiers. **Pinned** (`Explore`, `mech-executor`): frontmatter locks effort low — mechanical work whose thinking already happened in main. **Follow** (`executor`, `plan-verifier`, `verifier`, `security-reviewer`, `security-executor`): frontmatter omits effort and inherits the main session's effort — roles with genuine autonomous-thinking needs, so challenge depth stays symmetric with the work it checks.
 
 ## Cross-provider fallback
 
-- Fallback is one cross-provider hop measured from the task's origin. Claude-origin H/X → GPT-5.6 Sol high/xhigh, then stop. GPT-origin → the selected Claude H/X profile, then stop. A fallback provider cannot route back.
+- Fallback is one cross-provider hop measured from the task's origin. Claude-origin → GPT-5.6 Sol/high, then stop. GPT-origin → the selected Claude profile, then stop. A fallback provider cannot route back.
 - Provider fallback is only for provider/runtime unavailability after one bounded retry, persistent in-scope refusal, or two changed attempts with no new evidence. Test failure, missing evidence, approval blocks, and useful diagnostics are NOT provider failures.
 - A handoff contains outcome, authorized scope, evidence, attempts, exact failure, artifact paths, prohibitions, and acceptance checks — not a raw transcript.
-- GPT bridge calls use `codex:codex-rescue` with explicit `--model gpt-5.6-sol --effort high|xhigh`. Read-only work must explicitly prohibit writes (the bridge is write-capable by default).
+- GPT bridge calls use `codex:codex-rescue` with explicit `--model gpt-5.6-sol` and `--effort` matching the tier: low for pinned roles, the main session's effort (capped at high) for follow roles. Read-only work must explicitly prohibit writes (the bridge is write-capable by default).
 - Before high-complexity/high-intensity dispatch, or materially uncertain provider choice, ask once: `Dispatch GPT + Claude`, `Dispatch GPT`, `Dispatch Claude`. Put the contextual recommendation first, mark it `(Recommended)`, and name H or X.
 - Dual-provider review may use independent read-only perspectives. Dual-provider implementation has one writer; the other provider verifies after integration — never two writers on the same artifacts.
 
@@ -28,10 +29,17 @@ description: Cross-provider and role routing for the main session — H/X model 
 | `executor` | Isolation or preserved main context repays reconstruction cost |
 | `plan-verifier` | A material Plan warrants fresh Opus/high challenge |
 | `verifier` | A completed claim matches an independent-verifier trigger (below) |
-| GPT security bridge | Primary security review or approved implementation at Sol/high; X requires the user gate |
+| GPT security bridge | Primary security review or approved implementation at Sol/high |
 | `security-reviewer` / `security-executor` | Claude Opus fallback or explicit Claude choice |
 
-Named Claude roles own model and effort in frontmatter; omit invocation-level `model`. Security remains GPT-primary: review is read-only; implementation starts only from an approved contract. GPT failure falls once to the matching Claude Opus role, never Fable. In dual-provider implementation GPT writes and the Claude main session verifies at the selected H/X profile.
+Named Claude roles own model and effort in frontmatter; omit invocation-level `model`. Security remains GPT-primary: review is read-only; implementation starts only from an approved contract. GPT failure falls once to the matching Claude Opus role, never Fable. In dual-provider implementation GPT writes and the Claude main session verifies at the selected profile.
+
+## Dispatch reporting and provider experience
+
+- Report every dispatch to the user before or as it launches: task, provider (Claude role or Codex bridge), model, and effort. Codex bridge dispatches are reported the same way as Claude roles.
+- Each leaf role has a Codex counterpart (`~/.codex/agents/<role>.toml`), invoked from Claude through the `codex:codex-rescue` bridge: prepend that file's `developer_instructions` as the role contract in the brief, pass `--effort` per the tier above, and for read-only roles instruct a read-only run and prohibit writes. Standalone Codex sessions use the same files natively as custom agents.
+- Choose per dispatch between the Claude role and its Codex twin. There is no fixed provider per role — steer by accumulated experience: `telemetry/delegation.jsonl`, observed quality, and cost. Record surprises so later dispatches learn from them.
+- The main session quality-checks every subagent deliverable against the brief before integration; a weak deliverable is corrected in main or re-briefed, never silently merged.
 
 ## Independent-verifier triggers
 

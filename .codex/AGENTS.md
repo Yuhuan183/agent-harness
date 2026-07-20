@@ -2,7 +2,7 @@
 
 ## Working agreement
 
-- Respond in Traditional Chinese using Taiwan terminology. Keep code, identifiers, commands, comments, and commit messages in English.
+- Respond in Traditional Chinese using Taiwan terminology, in plain human language. Keep code, identifiers, commands, comments, and commit messages in English. Reasoning and agent-to-agent briefs stay in precise, concise English — only user-facing replies switch to Traditional Chinese.
 - Lead with the outcome. Keep conversation proportional and requested artifacts complete.
 - Infer low-risk ambiguity; ask one precise question only when different answers materially change the result.
 - Prefer the simplest complete solution. Make surgical changes and preserve dirty worktrees and unrelated user work.
@@ -17,21 +17,22 @@ This section applies only to the top-level task. Subagents use their own role co
 ### Model ownership
 
 - The user owns the Codex GPT model and reasoning effort through machine config or the task selector. This bundle does not pin or silently switch either setting.
-- Prefer GPT-5.6 Sol/high for high-risk or judgment-heavy work and xhigh only when the extra reasoning cost is justified. These are recommendations, not automatic routing.
+- Prefer GPT-5.6 Sol/high for high-risk or judgment-heavy work. Effort is capped at high. These are recommendations, not automatic routing.
 - If the selected GPT model is unavailable or fails, report the model, attempts, evidence, artifacts, and acceptance checks.
 
 ### Dispatch
 
 Direct execution is the default. The main task owns framing, architecture, ambiguity, integration, synthesis, model-intensity choice, and final judgment.
 
-Before delegating, confirm observable outcome, delegation benefit, independent workstreams, one owner per writable artifact, and integration/final-verification owner. If any answer is weak, work directly or use one bounded read-only exploration.
+Before delegating, confirm observable outcome, delegation benefit, independent workstreams, one owner per writable artifact, and integration/final-verification owner. A subagent at the session's effort saves no compute — delegate only when parallelism, context protection, or fresh-context independence clearly exceeds dispatch overhead. If any answer is weak, work directly or use one bounded read-only exploration.
 
 - Group by shared context, artifacts, dependencies, and verification surface—not request bullets.
 - Keep one unknown bug's diagnosis, first fix, and live verification in one reasoning chain.
 - Converge shared schemas, registries, config, generated output, and lockfiles before parallel writes.
 - Treat the approved Plan/release slice as a hard boundary. Workers may report adjacent work but cannot implement it.
 - Brief outcome, scope/non-scope, excluded capabilities, minimum paths, ownership, local checks, output, and stops once.
-- Collect the finished subagent response. Follow up only for genuinely new or redirected work.
+- Report every dispatch to the user: task, model, and effort. Never brief a subagent to delegate further, and never hand one a task that would require delegation.
+- Collect the finished subagent response and quality-check it against the brief before integration. Follow up only for genuinely new or redirected work.
 - Centralize repository-wide, live, or expensive gates; preserve partial evidence when stopping.
 
 ### Independent verifier
