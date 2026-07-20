@@ -33,6 +33,7 @@ log "== agent-harness sync (apply=$APPLY) =="
 # --- .agents：共用 skill 本體與跨 agent 知識先到位（symlink 目標） ---
 sync_path ".agents/skills/headroom-protocol" "$HOME/.agents/skills/headroom-protocol"
 sync_path ".agents/skills/speak-human-tw"    "$HOME/.agents/skills/speak-human-tw"
+sync_path ".agents/skills/experience-ledger" "$HOME/.agents/skills/experience-ledger"
 sync_path ".agents/.skill-lock.json"         "$HOME/.agents/.skill-lock.json"
 sync_path ".agents/docs"                      "$HOME/.agents/docs"
 sync_path ".agents/README.md"                 "$HOME/.agents/README.md"
@@ -45,7 +46,7 @@ done
 log "note: .claude/mcp_servers.json 為機器狀態（含本機路徑），不自動覆蓋；新增 headroom MCP 時手動 merge .claude/examples/headroom-mcp.merge.json。"
 sync_path ".claude/plans/orchestration-plan.md" "$HOME/.claude/plans/orchestration-plan.md"
 # 自有 skills（逐個列，避免動到全域其他已安裝 skill 與 lark symlinks）
-for s in baton-dispatch provider-routing headroom-protocol speak-human-tw; do
+for s in baton-dispatch provider-routing headroom-protocol speak-human-tw experience-ledger; do
   sync_path ".claude/skills/$s" "$HOME/.claude/skills/$s"
 done
 
@@ -55,12 +56,14 @@ for p in AGENTS.md README.md ANALYSIS.md DEPLOY.md prompts agents; do
 done
 sync_path ".codex/skills/headroom-protocol" "$HOME/.codex/skills/headroom-protocol"
 sync_path ".codex/skills/speak-human-tw"    "$HOME/.codex/skills/speak-human-tw"
+sync_path ".codex/skills/experience-ledger"  "$HOME/.codex/skills/experience-ledger"
 log "note: .codex/config.merge.toml 需手動 merge 進 ~/.codex/config.toml（見 DEPLOY.md），不自動覆蓋。"
 
 # --- 驗證 ---
 if [[ $APPLY -eq 1 ]]; then
   for l in "$HOME/.claude/skills/headroom-protocol" "$HOME/.codex/skills/headroom-protocol" \
-           "$HOME/.claude/skills/speak-human-tw" "$HOME/.codex/skills/speak-human-tw"; do
+           "$HOME/.claude/skills/speak-human-tw" "$HOME/.codex/skills/speak-human-tw" \
+           "$HOME/.claude/skills/experience-ledger" "$HOME/.codex/skills/experience-ledger"; do
     [[ -f "$l/SKILL.md" ]] || { log "ERROR: $l 未能解析到 SKILL.md"; exit 1; }
   done
   log "backup: $BACKUP"

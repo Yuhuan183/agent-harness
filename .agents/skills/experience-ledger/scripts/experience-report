@@ -1,0 +1,159 @@
+#!/usr/bin/env python3
+"""Standardized dispatch-experience metrics per role x provider.
+
+Reads ~/.agents/telemetry/experience.jsonl (override: AGENT_EXPERIENCE_LEDGER).
+Indicators: n, AR (accepted), CR (corrected), RB (rebriefed), FR (failed),
+QS (mean quality). Decision hints follow the rule in references/metrics.md:
+prefer a provider only at n >= min-samples AND an AR lead >= 10 points;
+under-sampled providers get an explore hint. Quality judgments are
+main-session subjective — treat hints as directional, not verdicts.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from collections import defaultdict
+from datetime import datetime, timedelta, timezone
+
+
+def parse_ts(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def load(path: str, since: datetime) -> list[dict]:
+    records = []
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                    if parse_ts(rec["ts"]) >= since:
+                        records.append(rec)
+                except (json.JSONDecodeError, KeyError, ValueError):
+                    continue  # skip malformed lines; ledger is append-only best-effort
+    except FileNotFoundError:
+        pass
+    return records
+
+
+def summarize(records: list[dict]) -> dict:
+    groups: dict[tuple[str, str], dict] = defaultdict(
+        lambda: {"n": 0, "accepted": 0, "corrected": 0, "rebriefed": 0,
+                 "failed": 0, "quality": [], "tokens_out": [], "secs": []}
+    )
+    for rec in records:
+        g = groups[(rec.get("role", "?"), rec.get("provider", "?"))]
+        g["n"] += 1
+        outcome = rec.get("outcome")
+        if outcome in ("accepted", "corrected", "rebriefed", "failed"):
+            g[outcome] += 1
+        if isinstance(rec.get("quality"), int):
+            g["quality"].append(rec["quality"])
+        if isinstance(rec.get("tokens_out"), int):
+            g["tokens_out"].append(rec["tokens_out"])
+        if isinstance(rec.get("secs"), (int, float)):
+            g["secs"].append(rec["secs"])
+
+    out = {}
+    for (role, provider), g in groups.items():
+        n = g["n"]
+        out[(role, provider)] = {
+            "n": n,
+            "AR": round(100 * g["accepted"] / n, 1),
+            "CR": round(100 * g["corrected"] / n, 1),
+            "RB": round(100 * g["rebriefed"] / n, 1),
+            "FR": round(100 * g["failed"] / n, 1),
+            "QS": round(sum(g["quality"]) / len(g["quality"]), 2) if g["quality"] else None,
+            "avg_tokens_out": (round(sum(g["tokens_out"]) / len(g["tokens_out"]))
+                               if g["tokens_out"] else None),
+            "avg_secs": (round(sum(g["secs"]) / len(g["secs"]), 1)
+                         if g["secs"] else None),
+        }
+    return out
+
+
+def hints(stats: dict, min_samples: int) -> dict[str, str]:
+    by_role: dict[str, dict[str, dict]] = defaultdict(dict)
+    for (role, provider), row in stats.items():
+        by_role[role][provider] = row
+
+    result = {}
+    for role, providers in sorted(by_role.items()):
+        under = [p for p, r in providers.items() if r["n"] < min_samples]
+        missing = [p for p in ("claude", "codex") if p not in providers]
+        if missing or under:
+            explore = ", ".join(sorted(set(missing + under)))
+            result[role] = f"explore {explore} (n<{min_samples})"
+            continue
+        ranked = sorted(providers.items(), key=lambda kv: -kv[1]["AR"])
+        (best, best_row), (_, runner_row) = ranked[0], ranked[-1]
+        if len(ranked) == 1 or best_row["AR"] - runner_row["AR"] >= 10:
+            result[role] = f"prefer {best} (AR {best_row['AR']} vs {runner_row['AR']})"
+        else:
+            tie = sorted(providers.items(),
+                         key=lambda kv: (kv[1]["avg_secs"] is None, kv[1]["avg_secs"] or 0))
+            faster, faster_row = tie[0]
+            suffix = (f"; {faster} faster at {faster_row['avg_secs']}s"
+                      if faster_row["avg_secs"] is not None else "")
+            result[role] = (f"either (AR within 10pt: {best_row['AR']} vs "
+                            f"{runner_row['AR']}{suffix})")
+    return result
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--days", type=int, default=30)
+    parser.add_argument("--min-samples", type=int, default=5)
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--now", default=None, help="ISO timestamp override (tests)")
+    args = parser.parse_args()
+
+    now = parse_ts(args.now) if args.now else datetime.now(timezone.utc)
+    since = now - timedelta(days=args.days)
+    path = os.environ.get(
+        "AGENT_EXPERIENCE_LEDGER",
+        os.path.expanduser("~/.agents/telemetry/experience.jsonl"),
+    )
+    records = load(path, since)
+    stats = summarize(records)
+    decision = hints(stats, args.min_samples)
+
+    if args.json:
+        payload = {
+            "days": args.days,
+            "records": len(records),
+            "by_role_provider": {
+                f"{role}/{provider}": row for (role, provider), row in sorted(stats.items())
+            },
+            "hints": decision,
+        }
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
+
+    print(f"experience-report — last {args.days} days, {len(records)} records ({path})")
+    if not stats:
+        print("no records; log dispatches with experience-log first.")
+        return 0
+    header = f"{'role':<18}{'prov':<8}{'n':>4}{'AR%':>7}{'CR%':>7}{'RB%':>7}{'FR%':>7}{'QS':>6}{'tok':>8}{'secs':>8}"
+    print(header)
+    print("-" * len(header))
+    for (role, provider), row in sorted(stats.items()):
+        qs = f"{row['QS']:.2f}" if row["QS"] is not None else "-"
+        tok = str(row["avg_tokens_out"]) if row["avg_tokens_out"] is not None else "-"
+        secs = str(row["avg_secs"]) if row["avg_secs"] is not None else "-"
+        print(f"{role:<18}{provider:<8}{row['n']:>4}{row['AR']:>7}{row['CR']:>7}"
+              f"{row['RB']:>7}{row['FR']:>7}{qs:>6}{tok:>8}{secs:>8}")
+    print()
+    for role, hint in decision.items():
+        print(f"hint: {role:<18} {hint}")
+    print("note: quality is main-session subjective; hints are directional, not verdicts.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

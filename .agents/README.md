@@ -14,6 +14,7 @@
 | 路徑 | 職責 |
 |---|---|
 | `skills/headroom-protocol/` | 共用 skill 本體（含 Codex 端 `agents/openai.yaml`）；`.claude/skills` 與 `.codex/skills` 各以 symlink 引用 |
+| `skills/experience-ledger/` | 共用 skill 本體：派工經驗記帳與指標分析（含 `scripts/`）；帳本在 `~/.agents/telemetry/`（machine-local 不入庫） |
 | `skills/speak-human-tw/` | 共用 skill 本體：繁中去 AI 味改寫（蒸餾自上游，見其 `ATTRIBUTION.md`）；同以 symlink 雙端引用 |
 | `skills/INSTALLED.txt` | 第三方安裝 skill 清單（lark 全套等）；只記錄不複製本體 |
 | `.skill-lock.json` | 第三方 skill 版本鎖 |

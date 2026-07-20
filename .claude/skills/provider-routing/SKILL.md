@@ -38,7 +38,7 @@ Named Claude roles own model and effort in frontmatter; omit invocation-level `m
 
 - Report every dispatch to the user before or as it launches: task, provider (Claude role or Codex bridge), model, and effort. Codex bridge dispatches are reported the same way as Claude roles.
 - Each leaf role has a Codex counterpart (`~/.codex/agents/<role>.toml`), invoked from Claude through the `codex:codex-rescue` bridge: prepend that file's `developer_instructions` as the role contract in the brief, pass `--effort` per the tier above, and for read-only roles instruct a read-only run and prohibit writes. Standalone Codex sessions use the same files natively as custom agents.
-- Choose per dispatch between the Claude role and its Codex twin. There is no fixed provider per role — steer by accumulated experience: `telemetry/delegation.jsonl`, observed quality, and cost. Record surprises so later dispatches learn from them.
+- Choose per dispatch between the Claude role and its Codex twin. No fixed provider per role — steer by the experience ledger: load `experience-ledger`, log every dispatch outcome after its quality-check, and consult its report when provider choice is uncertain. Deviating from a hint requires a logged note.
 - The main session quality-checks every subagent deliverable against the brief before integration; a weak deliverable is corrected in main or re-briefed, never silently merged.
 
 ## Independent-verifier triggers

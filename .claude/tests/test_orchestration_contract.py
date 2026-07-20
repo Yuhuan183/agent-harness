@@ -424,6 +424,59 @@ class SharedSkillTests(unittest.TestCase):
         installed = read(".agents/skills/INSTALLED.txt").splitlines()
         self.assertIn("headroom-protocol", installed)
         self.assertIn("speak-human-tw", installed)
+        self.assertIn("experience-ledger", installed)
+
+    def test_experience_ledger_is_shared_and_wired(self) -> None:
+        self._assert_symlinked_body("experience-ledger")
+        base = ROOT / ".agents/skills/experience-ledger"
+        for script in ("experience-log", "experience-report"):
+            path = base / "scripts" / script
+            self.assertTrue(path.is_file(), script)
+            self.assertTrue(os.access(path, os.X_OK), f"{script} not executable")
+        self.assertTrue((base / "references/metrics.md").is_file())
+        # provider-routing points dispatch experience at the ledger skill.
+        routing = read(".claude/skills/provider-routing/SKILL.md")
+        self.assertIn("experience-ledger", routing)
+        self.assertIn("log every dispatch outcome after its quality-check", routing)
+
+    def test_experience_scripts_log_and_report(self) -> None:
+        base = ROOT / ".agents/skills/experience-ledger/scripts"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ledger = os.path.join(temp_dir, "experience.jsonl")
+            env = {**os.environ, "AGENT_EXPERIENCE_LEDGER": ledger}
+
+            def log(*extra: str) -> None:
+                subprocess.run(
+                    [sys.executable, str(base / "experience-log"), *extra],
+                    env=env, check=True, capture_output=True, text=True,
+                )
+
+            for i in range(5):
+                log("--role", "executor", "--provider", "claude",
+                    "--outcome", "accepted", "--quality", "4",
+                    "--secs", "300", "--now", f"2026-07-19T0{i}:00:00+00:00")
+            log("--role", "executor", "--provider", "codex",
+                "--outcome", "failed", "--now", "2026-07-19T06:00:00+00:00")
+            # invalid provider must be rejected
+            bad = subprocess.run(
+                [sys.executable, str(base / "experience-log"),
+                 "--role", "executor", "--provider", "gemini", "--outcome", "accepted"],
+                env=env, capture_output=True, text=True,
+            )
+            self.assertNotEqual(bad.returncode, 0)
+
+            result = subprocess.run(
+                [sys.executable, str(base / "experience-report"),
+                 "--days", "7", "--now", "2026-07-20T00:00:00+00:00", "--json"],
+                env=env, check=True, capture_output=True, text=True,
+            )
+            report = json.loads(result.stdout)
+        self.assertEqual(report["records"], 6)
+        self.assertEqual(report["by_role_provider"]["executor/claude"]["AR"], 100.0)
+        self.assertEqual(report["by_role_provider"]["executor/claude"]["avg_secs"], 300.0)
+        self.assertEqual(report["by_role_provider"]["executor/codex"]["FR"], 100.0)
+        # codex has n<5, so the standardized rule demands exploration, not preference.
+        self.assertIn("explore codex", report["hints"]["executor"])
 
 
 class DocumentationBudgetTests(unittest.TestCase):

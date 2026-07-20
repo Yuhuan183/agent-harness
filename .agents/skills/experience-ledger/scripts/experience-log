@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+"""Append one dispatch-experience record to the cross-agent ledger.
+
+Ledger: ~/.agents/telemetry/experience.jsonl (override: AGENT_EXPERIENCE_LEDGER).
+Machine-local data; never committed. Keep --task a short neutral label —
+no secrets, no verbatim content.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from datetime import datetime, timezone
+
+ROLES = (
+    "Explore", "mech-executor", "executor",
+    "plan-verifier", "verifier", "security-reviewer", "security-executor",
+)
+PROVIDERS = ("claude", "codex")
+OUTCOMES = ("accepted", "corrected", "rebriefed", "failed")
+TIERS = ("pinned", "follow")
+CLASSES = ("recon", "plan", "impl", "verify", "security", "other")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--role", required=True, choices=ROLES)
+    parser.add_argument("--provider", required=True, choices=PROVIDERS)
+    parser.add_argument("--outcome", required=True, choices=OUTCOMES,
+                        help="main-session quality verdict after checking the deliverable")
+    parser.add_argument("--model", default=None)
+    parser.add_argument("--effort", default=None)
+    parser.add_argument("--tier", choices=TIERS, default=None)
+    parser.add_argument("--class", dest="task_class", choices=CLASSES, default="other")
+    parser.add_argument("--task", default=None, help="short neutral label; no sensitive content")
+    parser.add_argument("--quality", type=int, choices=range(1, 6), default=None,
+                        help="1-5 subjective deliverable quality")
+    parser.add_argument("--tokens-out", type=int, default=None)
+    parser.add_argument("--secs", type=float, default=None)
+    parser.add_argument("--note", default=None, help="surprise worth remembering")
+    parser.add_argument("--session", default=None)
+    parser.add_argument("--now", default=None, help="ISO timestamp override (tests)")
+    args = parser.parse_args()
+
+    record = {
+        "ts": args.now or datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "schema": 1,
+        "role": args.role,
+        "provider": args.provider,
+        "outcome": args.outcome,
+    }
+    for key in ("model", "effort", "tier", "task_class", "task",
+                "quality", "tokens_out", "secs", "note", "session"):
+        value = getattr(args, key if key != "tokens_out" else "tokens_out")
+        if value is not None:
+            record[key] = value
+
+    path = os.environ.get(
+        "AGENT_EXPERIENCE_LEDGER",
+        os.path.expanduser("~/.agents/telemetry/experience.jsonl"),
+    )
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    print(f"logged: {args.role}/{args.provider} -> {args.outcome}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
