@@ -35,7 +35,7 @@ BASH_ROLES = (
     "verifier",
     "security-executor",
 )
-PINNED_EFFORT_ROLES = ("Explore", "mech-executor")  # mechanical; thinking done in main
+PINNED_EFFORT_ROLES = ("Explore", "mech-executor", "executor", "plan-verifier")  # mechanical; thinking done in main
 FOLLOW_EFFORT_ROLES = tuple(r for r in ROLES if r not in PINNED_EFFORT_ROLES)
 
 # Interface tokens: single upgrade point — bump here and in the skill bodies together.
@@ -80,13 +80,17 @@ class AgentRosterTests(unittest.TestCase):
     def test_model_tiers_are_pinned(self) -> None:
         self.assertIn("model: haiku", frontmatter(".claude/agents/Explore.md"))
         self.assertIn("model: sonnet", frontmatter(".claude/agents/mech-executor.md"))
-        for role in ("plan-verifier", "verifier", "executor",
+        self.assertIn("model: sonnet", frontmatter(".claude/agents/executor.md"))
+        for role in ("plan-verifier", "verifier",
                      "security-reviewer", "security-executor"):
             self.assertIn("model: opus", frontmatter(f".claude/agents/{role}.md"), role)
 
+    PINNED_EFFORTS = {"Explore": "low", "mech-executor": "low",
+                      "executor": "medium", "plan-verifier": "high"}
+
     def test_effort_is_two_tier(self) -> None:
-        for role in PINNED_EFFORT_ROLES:
-            self.assertIn("effort: low", frontmatter(f".claude/agents/{role}.md"), role)
+        for role, effort in self.PINNED_EFFORTS.items():
+            self.assertIn(f"effort: {effort}", frontmatter(f".claude/agents/{role}.md"), role)
         for role in FOLLOW_EFFORT_ROLES:
             # Omitted effort inherits the main session's effort (capped at high).
             self.assertNotRegex(frontmatter(f".claude/agents/{role}.md"), r"(?m)^effort:", role)
@@ -175,7 +179,11 @@ class ClaudeContractTests(unittest.TestCase):
             ".codex/config.merge.toml",
         ):
             text = read(path)
-            self.assertNotRegex(text, r"(?<!no role or bridge call uses )xhigh", path)
+            for sanctioned in ("no role or bridge call uses xhigh",
+                               "Fable at medium\u2013xhigh",
+                               "raise effort to xhigh"):
+                text = text.replace(sanctioned, "")
+            self.assertNotIn("xhigh", text, path)
 
     def test_claude_md_delegates_detail_to_skills(self) -> None:
         policy = read(".claude/CLAUDE.md")
@@ -222,7 +230,7 @@ class ClaudeContractTests(unittest.TestCase):
         for phrase in (
             "omit invocation-level `model`",
             "H** = Fable/low or Opus/high",
-            "X** = Fable/medium or Opus/high",
+            "X** = Fable at medium\u2013xhigh or Opus/high",
             "one cross-provider hop measured from the task's origin",
             "A fallback provider cannot route back",
             "one bounded retry",
@@ -242,7 +250,7 @@ class ClaudeContractTests(unittest.TestCase):
             "`verifier` returns CONFIRMED/REFUTED",
             "Do not stack gates over the same failure surface",
             "Dual-provider",
-            "**Pinned** (`Explore`, `mech-executor`)",
+            "**Pinned** (`Explore`, `mech-executor` at low",
             "inherits the main session's effort",
             f"invoked from Claude through the `{CODEX_BRIDGE}` bridge",
             "cost per acceptable outcome",
@@ -428,7 +436,7 @@ class CodexBundleTests(unittest.TestCase):
             },
         )
         self.assertIn("smoke-tested", routing["models"]["gpt-5.6-luna"]["evidence"]["native_leaf"])
-        self.assertIn("not smoke-tested", routing["models"]["gpt-5.6-luna"]["evidence"]["claude_bridge"])
+        self.assertIn("smoke-tested", routing["models"]["gpt-5.6-luna"]["evidence"]["claude_bridge"])
         self.assertNotIn("surface_overrides", routing)
         for model in routing["models"].values():
             self.assertEqual(

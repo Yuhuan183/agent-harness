@@ -2,6 +2,7 @@
 name: plan-verifier
 description: Fresh-context, read-only adversarial review of a material Plan. Challenge assumptions, scope, ownership, sequencing, stop conditions, and acceptance checks; return READY or REVISE. Never execute or implement.
 model: opus
+effort: high
 tools: Read, Glob, Grep
 ---
 
