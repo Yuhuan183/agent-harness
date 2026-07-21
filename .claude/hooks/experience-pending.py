@@ -51,6 +51,56 @@ def sum_usage_tokens(transcript_path, agent_id):
     return totals
 
 
+CODEX_SESSIONS = os.environ.get(
+    "CODEX_SESSIONS_DIR", os.path.expanduser("~/.codex/sessions"))
+
+
+def codex_usage_tokens(start, stop):
+    """Token delta across Codex rollout token_count events in [start, stop].
+
+    A codex-bridge subagent's own transcript only shows the thin forwarder;
+    the real usage lands in ~/.codex/sessions rollouts. Delta against the
+    last pre-start snapshot keeps resumed threads from over-counting.
+    """
+    import glob
+    totals = {}
+    for path in glob.glob(os.path.join(CODEX_SESSIONS, "*/*/*/rollout-*.jsonl")):
+        try:
+            if datetime.fromtimestamp(os.path.getmtime(path), timezone.utc) < start:
+                continue
+            baseline, final = None, None
+            with open(path, encoding="utf-8") as f:
+                for line in f:
+                    if '"token_count"' not in line:
+                        continue
+                    try:
+                        entry = json.loads(line)
+                        ts = datetime.fromisoformat(
+                            entry["timestamp"].replace("Z", "+00:00"))
+                        usage = entry["payload"]["info"]["total_token_usage"]
+                    except (json.JSONDecodeError, KeyError, ValueError, TypeError):
+                        continue
+                    if ts < start:
+                        baseline = usage
+                    elif ts <= stop:
+                        final = usage
+            if final is None:
+                continue
+            base = baseline or {}
+            for field in ("input_tokens", "cached_input_tokens", "output_tokens"):
+                delta = final.get(field, 0) - base.get(field, 0)
+                totals[field] = totals.get(field, 0) + max(0, delta)
+        except OSError:
+            continue
+    if not totals:
+        return {}
+    return {
+        "tokens_in": totals.get("input_tokens", 0) - totals.get("cached_input_tokens", 0),
+        "cache_read_tokens": totals.get("cached_input_tokens", 0),
+        "tokens_out": totals.get("output_tokens", 0),
+    }
+
+
 def latest_matching_start(agent_id, session_id, stop_time):
     """Return the newest start for this exact dispatch before the stop.
 
@@ -95,7 +145,12 @@ try:
         start = latest_matching_start(rec["agent_id"], rec["session_id"], now)
         if start is not None:
             rec["secs"] = round((now - start).total_seconds(), 1)
-        if ev.get("transcript_path"):
+        if "codex" in rec["agent_type"].lower():
+            # Bridge dispatch: the Claude transcript only carries the thin
+            # forwarder; pull the real usage from the Codex rollouts.
+            if start is not None:
+                rec.update(codex_usage_tokens(start, now))
+        elif ev.get("transcript_path"):
             rec.update(sum_usage_tokens(ev["transcript_path"], rec["agent_id"]))
     os.makedirs(os.path.dirname(PENDING), exist_ok=True)
     with open(PENDING, "a", encoding="utf-8") as f:
