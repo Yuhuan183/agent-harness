@@ -38,6 +38,7 @@ Main model and effort are user-selected. Reference H is Fable/low or Opus/high; 
 ## Open observations
 
 - Local Claude CLI 2.1.215 is authenticated, but this review did not spend provider calls on a cross-provider live smoke. Static contracts are verified; runtime dispatch remains pending.
+- The 30-day experience ledger still has zero reviewed outcomes. External benchmarks therefore remain priors; collect at least five comparable samples per role/provider before a `prefer` hint is eligible.
 - Permission matching before/after `rtk` command rewrite still needs a focused live probe.
 - OTel remains deferred. Revisit only if existing JSONL/transcript telemetry cannot answer a concrete routing question requiring real-time data.
 - Codex App may rewrite machine `config.toml`; deployment must merge and recheck local state instead of replacing it.
@@ -49,8 +50,9 @@ Main model and effort are user-selected. Reference H is Fable/low or Opus/high; 
 - **2026-07-17** — Added finished-task result collection and Baton approved-scope boundary; removed tracked main model/effort/fallback; adopted single-hop cross-provider routing and GPT-primary security.
 - **2026-07-17** — Distilled runtime documentation: one authoritative location per concern, short main-only rules, self-contained leaf roles, and platform bundles updated only after Claude source stabilization.
 - **2026-07-20** — Removed the `-xhigh` role variants; effort is capped at high and split into two tiers (pinned low for `Explore`/`mech-executor`; all thinking roles follow the main session's effort). Every dispatch (Claude role or Codex bridge) is reported to the user with task, provider, model, and effort; the main session quality-checks subagent output before integration. Added Codex counterparts for each leaf role, invocable from Claude via the codex-rescue bridge (role contract prepended to the brief) and natively as Codex custom agents; provider choice per role is steered by accumulated dispatch experience (`telemetry/delegation.jsonl` and session observations), not fixed rules.
-- **2026-07-20** — Added the `experience-ledger` shared skill: per-dispatch outcome ledger (`~/.agents/telemetry/experience.jsonl`) with standardized role x provider metrics (AR/CR/RB/FR/QS) and an explore/prefer decision rule (n>=5, AR lead >=10pt); provider hints are directional, main session keeps final judgment.
+- **2026-07-20** — Added the `experience-ledger` shared skill: per-dispatch outcome ledger (`~/.agents/telemetry/experience.jsonl`) with standardized role x provider metrics (AR/CR/RB/FR/QS) and an explore/prefer rule (each provider n>=5, decayed Beta posterior P(win)>=0.85); provider hints are directional, main session keeps final judgment.
 - **2026-07-21** — Rechecked model-routing theory against Artificial Analysis Intelligence Index v4.1 and Coding Agent Index v1.2. External rankings are priors only; route on task/harness/settings fit and local acceptable-outcome evidence, and compare total outcome cost rather than raw token price. Corrected ledger documentation: automatic `secs` is subagent runtime only and `tokens_out` is not USD cost.
+- **2026-07-21** — Extended experience schema v2 with input/output/cache tokens plus optional review, rework, and provider-reported API cost. System-managed spawns no longer pollute the pending queue; weekly integrity now surfaces an empty-ledger warning.
 - **2026-07-18** — Verified Headroom docs against upstream v0.32: `wrap` remains the recommended default (not deprecated); documented persistent `install` (launchd/systemd) as an optional always-on alternative. Reaffirmed base URL stays machine-local — never committed to tracked `settings.json`.
 
 ## Verification

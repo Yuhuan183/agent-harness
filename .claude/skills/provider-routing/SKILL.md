@@ -10,7 +10,7 @@ description: Cross-provider and role routing for the main session — H/X model 
 - The user owns the main-session model and effort through the session selector; tracked settings pin neither. Never switch silently.
 - Reference profiles: **H** = Fable/low or Opus/high; **X** = Fable/medium or Opus/high. Effort is capped at high everywhere; no role or bridge call uses xhigh.
 - Model names are dated operational references, not benchmark-derived guarantees for the exact effort. External indices are priors only: prefer the task-relevant model + harness + setting result, then update it with local outcomes.
-- Optimize cost per acceptable outcome, not raw token price. Include retries, review/rework, wall-clock, and failure risk; `tokens_out` is only a tie-break proxy and must not be converted to USD without input/cache telemetry and current prices.
+- Optimize cost per acceptable outcome, not raw token price. Include retries, review/rework, wall-clock, and failure risk; prefer complete input/output/cache telemetry and provider-reported API cost, falling back to narrower proxies only when fields are missing.
 - Two effort tiers. **Pinned** (`Explore`, `mech-executor`): frontmatter locks effort low — mechanical work whose thinking already happened in main. **Follow** (`executor`, `plan-verifier`, `verifier`, `security-reviewer`, `security-executor`): frontmatter omits effort and inherits the main session's effort, keeping challenge depth symmetric with the work it checks.
 
 ## Cross-provider fallback
@@ -29,7 +29,7 @@ description: Cross-provider and role routing for the main session — H/X model 
 | `Explore` | Broad or bulky read-only search; known-target lookup stays direct |
 | `mech-executor` | A complete spec makes the work mechanical |
 | `executor` | Isolation or preserved main context repays reconstruction cost |
-| `plan-verifier` | A material Plan warrants fresh Opus/high challenge |
+| `plan-verifier` | A material Plan warrants a fresh Opus challenge at main-session effort |
 | `verifier` | A completed claim matches an independent-verifier trigger (below) |
 | GPT security bridge | Primary security review or approved implementation at Sol/high |
 | `security-reviewer` / `security-executor` | Claude Opus fallback or explicit Claude choice |

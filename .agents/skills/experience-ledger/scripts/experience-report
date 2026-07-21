@@ -3,7 +3,7 @@
 
 Reads ~/.agents/telemetry/experience.jsonl (override: AGENT_EXPERIENCE_LEDGER).
 Indicators: n, AR (accepted), CR (corrected), RB (rebriefed), FR (failed),
-QS (mean quality). Records are exponentially decayed (--half-life days) so
+QS (mean quality), token/time cost proxies, and optional API cost. Records are exponentially decayed (--half-life days) so
 stale evidence fades as providers upgrade. Decision hints use a Beta posterior
 on the decayed accept counts: prefer a provider when P(win) >= --prefer-p;
 raw sample counts below --min-samples always yield an explore hint.
@@ -21,6 +21,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 POSTERIOR_DRAWS = 4000  # fixed-seed Monte Carlo; deterministic across runs
+TOKEN_FIELDS = ("tokens_in", "tokens_out", "cache_write_tokens", "cache_read_tokens")
 
 
 def parse_ts(value: str) -> datetime:
@@ -50,7 +51,8 @@ def summarize(records: list[dict], now: datetime, half_life: float) -> dict:
     groups: dict[tuple[str, str], dict] = defaultdict(
         lambda: {"n": 0, "w": 0.0, "accepted": 0.0, "corrected": 0.0,
                  "rebriefed": 0.0, "failed": 0.0,
-                 "quality": [], "tokens_out": [], "secs": []}
+                 "quality": [], "tokens_out": [], "total_tokens": [],
+                 "secs": [], "total_secs": [], "api_cost_usd": []}
     )
     for rec in records:
         g = groups[(rec.get("role", "?"), rec.get("provider", "?"))]
@@ -65,8 +67,17 @@ def summarize(records: list[dict], now: datetime, half_life: float) -> dict:
             g["quality"].append((rec["quality"], w))
         if isinstance(rec.get("tokens_out"), int):
             g["tokens_out"].append((rec["tokens_out"], w))
+        if all(isinstance(rec.get(field), int) for field in TOKEN_FIELDS):
+            g["total_tokens"].append((sum(rec[field] for field in TOKEN_FIELDS), w))
         if isinstance(rec.get("secs"), (int, float)):
             g["secs"].append((rec["secs"], w))
+        if all(isinstance(rec.get(field), (int, float))
+               for field in ("secs", "review_secs", "rework_secs")):
+            g["total_secs"].append((
+                rec["secs"] + rec["review_secs"] + rec["rework_secs"], w
+            ))
+        if isinstance(rec.get("api_cost_usd"), (int, float)):
+            g["api_cost_usd"].append((rec["api_cost_usd"], w))
 
     def wmean(pairs: list[tuple[float, float]]) -> float | None:
         total = sum(w for _, w in pairs)
@@ -75,7 +86,10 @@ def summarize(records: list[dict], now: datetime, half_life: float) -> dict:
     out = {}
     for (role, provider), g in groups.items():
         w = g["w"]
-        qs, tok, secs = wmean(g["quality"]), wmean(g["tokens_out"]), wmean(g["secs"])
+        qs = wmean(g["quality"])
+        tok, total_tok = wmean(g["tokens_out"]), wmean(g["total_tokens"])
+        secs, total_secs = wmean(g["secs"]), wmean(g["total_secs"])
+        api_cost = wmean(g["api_cost_usd"])
         out[(role, provider)] = {
             "n": g["n"],
             "AR": round(100 * g["accepted"] / w, 1),
@@ -84,7 +98,10 @@ def summarize(records: list[dict], now: datetime, half_life: float) -> dict:
             "FR": round(100 * g["failed"] / w, 1),
             "QS": round(qs, 2) if qs is not None else None,
             "avg_tokens_out": round(tok) if tok is not None else None,
+            "avg_total_tokens": round(total_tok) if total_tok is not None else None,
             "avg_secs": round(secs, 1) if secs is not None else None,
+            "avg_total_secs": round(total_secs, 1) if total_secs is not None else None,
+            "avg_api_cost_usd": round(api_cost, 4) if api_cost is not None else None,
             "_w": w,
             "_w_accepted": g["accepted"],
         }
@@ -123,19 +140,30 @@ def hints(stats: dict, min_samples: int, prefer_p: float) -> dict[str, str]:
             result[role] = (f"prefer {best} (P(win) {p:.2f}, "
                             f"AR {best_row['AR']} vs {runner_row['AR']})")
         else:
-            # cost tie-break: wall-clock first, then output tokens
+            # Cost tie-break: end-to-end observed time first, then API cost,
+            # complete token usage, and finally the legacy output-only proxy.
             tie = sorted(providers.items(),
-                         key=lambda kv: (kv[1]["avg_secs"] is None, kv[1]["avg_secs"] or 0))
+                         key=lambda kv: (
+                             (kv[1]["avg_total_secs"] or kv[1]["avg_secs"]) is None,
+                             kv[1]["avg_total_secs"] or kv[1]["avg_secs"] or 0))
             faster, faster_row = tie[0]
             cost = []
-            if faster_row["avg_secs"] is not None:
-                cost.append(f"{faster} faster at {faster_row['avg_secs']}s")
+            faster_secs = faster_row["avg_total_secs"] or faster_row["avg_secs"]
+            if faster_secs is not None:
+                cost.append(f"{faster} faster at {faster_secs}s")
+            usd = sorted(providers.items(), key=lambda kv: (
+                kv[1]["avg_api_cost_usd"] is None, kv[1]["avg_api_cost_usd"] or 0))
+            cheap_usd, cheap_usd_row = usd[0]
+            if cheap_usd_row["avg_api_cost_usd"] is not None:
+                cost.append(f"{cheap_usd} lower API cost at ${cheap_usd_row['avg_api_cost_usd']}")
             cheap = sorted(providers.items(),
-                           key=lambda kv: (kv[1]["avg_tokens_out"] is None,
-                                           kv[1]["avg_tokens_out"] or 0))
+                           key=lambda kv: (
+                               (kv[1]["avg_total_tokens"] or kv[1]["avg_tokens_out"]) is None,
+                               kv[1]["avg_total_tokens"] or kv[1]["avg_tokens_out"] or 0))
             cheap_p, cheap_row = cheap[0]
-            if cheap_row["avg_tokens_out"] is not None:
-                cost.append(f"{cheap_p} cheaper at {cheap_row['avg_tokens_out']}tok")
+            cheap_tokens = cheap_row["avg_total_tokens"] or cheap_row["avg_tokens_out"]
+            if cheap_tokens is not None:
+                cost.append(f"{cheap_p} fewer tokens at {cheap_tokens}tok")
             suffix = f"; {', '.join(cost)}" if cost else ""
             result[role] = (f"either (P(win) {p:.2f}, AR {best_row['AR']} vs "
                             f"{runner_row['AR']}{suffix})")
@@ -184,15 +212,19 @@ def main() -> int:
     if not public:
         print("no records; log dispatches with experience-log first.")
         return 0
-    header = f"{'role':<18}{'prov':<8}{'n':>4}{'AR%':>7}{'CR%':>7}{'RB%':>7}{'FR%':>7}{'QS':>6}{'tok':>8}{'secs':>8}"
+    header = f"{'role':<18}{'prov':<8}{'n':>4}{'AR%':>7}{'CR%':>7}{'RB%':>7}{'FR%':>7}{'QS':>6}{'tok':>9}{'secs':>9}{'USD':>9}"
     print(header)
     print("-" * len(header))
     for (role, provider), row in sorted(public.items()):
         qs = f"{row['QS']:.2f}" if row["QS"] is not None else "-"
-        tok = str(row["avg_tokens_out"]) if row["avg_tokens_out"] is not None else "-"
-        secs = str(row["avg_secs"]) if row["avg_secs"] is not None else "-"
+        tok_value = row["avg_total_tokens"] or row["avg_tokens_out"]
+        secs_value = row["avg_total_secs"] or row["avg_secs"]
+        tok = str(tok_value) if tok_value is not None else "-"
+        secs = str(secs_value) if secs_value is not None else "-"
+        usd = (f"{row['avg_api_cost_usd']:.4f}"
+               if row["avg_api_cost_usd"] is not None else "-")
         print(f"{role:<18}{provider:<8}{row['n']:>4}{row['AR']:>7}{row['CR']:>7}"
-              f"{row['RB']:>7}{row['FR']:>7}{qs:>6}{tok:>8}{secs:>8}")
+              f"{row['RB']:>7}{row['FR']:>7}{qs:>6}{tok:>9}{secs:>9}{usd:>9}")
     print()
     for role, hint in decision.items():
         print(f"hint: {role:<18} {hint}")

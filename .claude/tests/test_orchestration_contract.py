@@ -460,7 +460,11 @@ class SharedSkillTests(unittest.TestCase):
             for i in range(5):
                 log("--role", "executor", "--provider", "claude",
                     "--outcome", "accepted", "--quality", "4",
-                    "--secs", "300", "--now", f"2026-07-19T0{i}:00:00+00:00")
+                    "--tokens-in", "100", "--tokens-out", "20",
+                    "--cache-write-tokens", "10", "--cache-read-tokens", "70",
+                    "--secs", "300", "--review-secs", "30", "--rework-secs", "0",
+                    "--api-cost-usd", "0.25",
+                    "--now", f"2026-07-19T0{i}:00:00+00:00")
             log("--role", "executor", "--provider", "codex",
                 "--outcome", "failed", "--now", "2026-07-19T06:00:00+00:00")
             # invalid provider must be rejected
@@ -480,6 +484,9 @@ class SharedSkillTests(unittest.TestCase):
         self.assertEqual(report["records"], 6)
         self.assertEqual(report["by_role_provider"]["executor/claude"]["AR"], 100.0)
         self.assertEqual(report["by_role_provider"]["executor/claude"]["avg_secs"], 300.0)
+        self.assertEqual(report["by_role_provider"]["executor/claude"]["avg_total_secs"], 330.0)
+        self.assertEqual(report["by_role_provider"]["executor/claude"]["avg_total_tokens"], 200)
+        self.assertEqual(report["by_role_provider"]["executor/claude"]["avg_api_cost_usd"], 0.25)
         self.assertEqual(report["by_role_provider"]["executor/codex"]["FR"], 100.0)
         # codex has n<5, so the standardized rule demands exploration, not preference.
         self.assertIn("explore codex", report["hints"]["executor"])
@@ -502,16 +509,37 @@ class SharedSkillTests(unittest.TestCase):
             pending.write_text(
                 "".join(json.dumps(r) + "\n" for r in records), encoding="utf-8"
             )
+            transcript_base = Path(temp_dir) / "transcript"
+            transcript = transcript_base / "subagents" / "agent-shared.jsonl"
+            transcript.parent.mkdir(parents=True)
+            transcript.write_text(json.dumps({"message": {
+                "id": "m1", "usage": {
+                    "input_tokens": 100, "output_tokens": 20,
+                    "cache_creation_input_tokens": 10,
+                    "cache_read_input_tokens": 70,
+                }
+            }}) + "\n", encoding="utf-8")
             env = {
                 **os.environ,
                 "AGENT_EXPERIENCE_PENDING": str(pending),
                 "AGENT_EXPERIENCE_LEDGER": str(ledger),
             }
+            before_system_spawn = pending.read_text()
+            subprocess.run(
+                [sys.executable, str(hook)], env=env,
+                input=json.dumps({
+                    "hook_event_name": "SubagentStop", "agent_type": "",
+                    "agent_id": "system", "session_id": "session-system",
+                }),
+                check=True, capture_output=True, text=True,
+            )
+            self.assertEqual(pending.read_text(), before_system_spawn)
             stop = {
                 "hook_event_name": "SubagentStop",
                 "agent_type": "executor",
                 "agent_id": "shared",
                 "session_id": "session-b",
+                "transcript_path": str(transcript_base) + ".jsonl",
             }
             subprocess.run(
                 [sys.executable, str(hook)], env=env, input=json.dumps(stop),
@@ -528,6 +556,11 @@ class SharedSkillTests(unittest.TestCase):
             )
             logged = json.loads(ledger.read_text().strip())
             self.assertEqual(logged["session"], "session-b")
+            self.assertEqual(logged["schema"], 2)
+            self.assertEqual(logged["tokens_in"], 100)
+            self.assertEqual(logged["tokens_out"], 20)
+            self.assertEqual(logged["cache_write_tokens"], 10)
+            self.assertEqual(logged["cache_read_tokens"], 70)
             remaining = [json.loads(line) for line in pending.read_text().splitlines()]
             self.assertEqual(len(remaining), 1)
             self.assertEqual(remaining[0]["session_id"], "session-a")
@@ -555,6 +588,8 @@ class DocumentationBudgetTests(unittest.TestCase):
         self.assertIn("Baton `0ab4d2e`", plan)
         self.assertIn("MIT", readme)
         self.assertIn("Yuhuan", read("LICENSE"))
+        self.assertIn("P(win)>=0.85", plan)
+        self.assertNotIn("AR lead >=10pt", plan)
 
     def test_harness_engineering_keeps_role_boundaries_local(self) -> None:
         doc = read("docs/harness-engineering.md")
@@ -610,6 +645,14 @@ class MechanismTests(unittest.TestCase):
             report = scripts_dir / "delegation-report"
             report.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
             report.chmod(0o755)
+            experience_report = (Path(temp_home) / ".agents" / "skills" /
+                                 "experience-ledger" / "scripts" / "experience-report")
+            experience_report.parent.mkdir(parents=True)
+            experience_report.write_text(
+                "#!/bin/sh\necho 'experience-report — last 30 days, 0 records'\n",
+                encoding="utf-8",
+            )
+            experience_report.chmod(0o755)
             env = {**os.environ, "HOME": temp_home}
             stamp = claude_dir / "telemetry" / ".integrity-last-run"
 
@@ -623,6 +666,7 @@ class MechanismTests(unittest.TestCase):
             drifted = subprocess.run([sys.executable, str(hook)], env=env,
                                      check=True, capture_output=True, text=True)
             self.assertIn("contract-repo drift", drifted.stdout)
+            self.assertIn("dispatch-experience gap", drifted.stdout)
             self.assertNotIn("check failed", drifted.stdout)
             self.assertTrue(stamp.exists())
 

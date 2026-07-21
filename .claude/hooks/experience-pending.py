@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Experience-ledger pending hook: on SubagentStart/SubagentStop, stage a
-pending dispatch stub (agent_type, wall-clock secs, output tokens) so the
+pending dispatch stub (agent_type, wall-clock secs, token usage) so the
 main session can log an outcome with `experience-log --from-pending
 --outcome <o>` instead of retyping role/tier/secs/tokens. Fail-open — any
 error exits 0."""
@@ -14,9 +14,20 @@ PENDING = os.environ.get(
     os.path.expanduser("~/.agents/telemetry/experience-pending.jsonl"),
 )
 
-def sum_output_tokens(transcript_path, agent_id):
-    """Sum output_tokens across the subagent's assistant turns, deduped by
-    message id (streaming may append several snapshots of one message)."""
+USAGE_FIELDS = {
+    "input_tokens": "tokens_in",
+    "output_tokens": "tokens_out",
+    "cache_creation_input_tokens": "cache_write_tokens",
+    "cache_read_input_tokens": "cache_read_tokens",
+}
+
+
+def sum_usage_tokens(transcript_path, agent_id):
+    """Sum token usage across assistant turns, deduped by message id.
+
+    Streaming may append several snapshots of one message, so the latest
+    usage object for a message replaces earlier snapshots.
+    """
     base = transcript_path[:-6] if transcript_path.endswith(".jsonl") else transcript_path
     path = os.path.join(base, "subagents", f"agent-{agent_id}.jsonl")
     per_message = {}
@@ -25,14 +36,19 @@ def sum_output_tokens(transcript_path, agent_id):
             for line in f:
                 try:
                     msg = json.loads(line).get("message") or {}
-                    tokens = (msg.get("usage") or {}).get("output_tokens")
-                    if isinstance(tokens, int):
-                        per_message[msg.get("id") or len(per_message)] = tokens
+                    usage = msg.get("usage") or {}
+                    if any(isinstance(usage.get(field), int) for field in USAGE_FIELDS):
+                        per_message[msg.get("id") or len(per_message)] = usage
                 except (json.JSONDecodeError, AttributeError):
                     continue
     except OSError:
-        return None
-    return sum(per_message.values()) or None
+        return {}
+    totals = {}
+    for source, target in USAGE_FIELDS.items():
+        values = [usage.get(source) for usage in per_message.values()]
+        if any(isinstance(value, int) for value in values):
+            totals[target] = sum(value for value in values if isinstance(value, int))
+    return totals
 
 
 def latest_matching_start(agent_id, session_id, stop_time):
@@ -69,6 +85,10 @@ try:
         "agent_id": ev.get("agent_id"),
         "session_id": ev.get("session_id"),
     }
+    # Claude emits system-managed spawns without an agent type. They are not
+    # one of this harness's dispatches and would otherwise block --from-pending.
+    if not rec["agent_type"]:
+        sys.exit(0)
     if rec["event"] == "SubagentStop" and rec["agent_id"]:
         # Measure subagent runtime only. Match session as well as agent id so
         # overlapping sessions cannot lend each other a start timestamp.
@@ -76,9 +96,7 @@ try:
         if start is not None:
             rec["secs"] = round((now - start).total_seconds(), 1)
         if ev.get("transcript_path"):
-            tokens = sum_output_tokens(ev["transcript_path"], rec["agent_id"])
-            if tokens is not None:
-                rec["tokens_out"] = tokens
+            rec.update(sum_usage_tokens(ev["transcript_path"], rec["agent_id"]))
     os.makedirs(os.path.dirname(PENDING), exist_ok=True)
     with open(PENDING, "a", encoding="utf-8") as f:
         f.write(json.dumps(rec) + "\n")

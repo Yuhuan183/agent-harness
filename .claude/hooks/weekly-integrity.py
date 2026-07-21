@@ -108,8 +108,8 @@ try:
         checks_completed = False
         findings.append(f"delegation audit failed: {exc}")
 
-    # Informational only: surface dispatch-experience hints when any exist.
-    # Best-effort — a failure here neither blocks the throttle nor alarms.
+    # Informational only: surface dispatch-experience hints or a missing-data
+    # warning. Best-effort — a failure here neither blocks the throttle nor alarms.
     try:
         exp = subprocess.run(
             [os.path.expanduser(
@@ -122,6 +122,11 @@ try:
         hints = [l for l in exp.stdout.splitlines() if l.startswith("hint:")]
         if exp.returncode == 0 and hints:
             findings.append("dispatch-experience hints (30d):\n" + "\n".join(hints))
+        elif exp.returncode == 0 and "30 days, 0 records" in exp.stdout:
+            findings.append(
+                "dispatch-experience gap: no reviewed outcomes in the last 30d; "
+                "log the next comparable dispatch after quality-check"
+            )
     except (OSError, subprocess.TimeoutExpired):
         pass
 

@@ -5,9 +5,10 @@ Ledger: ~/.agents/telemetry/experience.jsonl (override: AGENT_EXPERIENCE_LEDGER)
 Machine-local data; never committed. Keep --task a short neutral label —
 no secrets, no verbatim content.
 
---from-pending consumes the latest SubagentStop stub staged by the
+--from-pending consumes the latest usable SubagentStop stub staged by the
 experience-pending hook (override: AGENT_EXPERIENCE_PENDING), pre-filling
-role/tier/secs/session so a log call shrinks to `--from-pending --outcome <o>`.
+role/tier/secs/token usage/session so a log call shrinks to
+`--from-pending --outcome <o>`.
 Explicit flags always override pending values.
 """
 from __future__ import annotations
@@ -44,7 +45,9 @@ def consume_pending() -> dict | None:
         return None
     stop_index = next(
         (i for i in range(len(lines) - 1, -1, -1)
-         if lines[i].get("event") == "SubagentStop"),
+         if lines[i].get("event") == "SubagentStop"
+         and (lines[i].get("agent_type") in ROLES
+              or "codex" in (lines[i].get("agent_type") or ""))),
         None,
     )
     if stop_index is None:
@@ -60,7 +63,10 @@ def consume_pending() -> dict | None:
     consumed = {stop_index}
     if start_index is not None:
         consumed.add(start_index)
-    keep = [r for i, r in enumerate(lines) if i not in consumed]
+    # Drop legacy system-spawn records with no role while rewriting; they are
+    # not loggable harness dispatches and otherwise accumulate forever.
+    keep = [r for i, r in enumerate(lines)
+            if i not in consumed and r.get("agent_type")]
     with open(PENDING_PATH, "w", encoding="utf-8") as f:
         for r in keep:
             f.write(json.dumps(r) + "\n")
@@ -83,7 +89,16 @@ def main() -> int:
     parser.add_argument("--quality", type=int, choices=range(1, 6), default=None,
                         help="1-5 subjective deliverable quality")
     parser.add_argument("--tokens-out", type=int, default=None)
+    parser.add_argument("--tokens-in", type=int, default=None)
+    parser.add_argument("--cache-write-tokens", type=int, default=None)
+    parser.add_argument("--cache-read-tokens", type=int, default=None)
     parser.add_argument("--secs", type=float, default=None)
+    parser.add_argument("--review-secs", type=float, default=None,
+                        help="main-session quality-check time")
+    parser.add_argument("--rework-secs", type=float, default=None,
+                        help="main-session correction/integration time")
+    parser.add_argument("--api-cost-usd", type=float, default=None,
+                        help="provider-reported API cost when available")
     parser.add_argument("--note", default=None, help="surprise worth remembering")
     parser.add_argument("--session", default=None)
     parser.add_argument("--now", default=None, help="ISO timestamp override (tests)")
@@ -100,8 +115,10 @@ def main() -> int:
             args.provider = "codex" if (agent_type and "codex" in agent_type) else "claude"
         if args.secs is None and isinstance(stub.get("secs"), (int, float)):
             args.secs = stub["secs"]
-        if args.tokens_out is None and isinstance(stub.get("tokens_out"), int):
-            args.tokens_out = stub["tokens_out"]
+        for field in ("tokens_in", "tokens_out", "cache_write_tokens",
+                      "cache_read_tokens"):
+            if getattr(args, field) is None and isinstance(stub.get(field), int):
+                setattr(args, field, stub[field])
         if args.session is None:
             args.session = stub.get("session_id")
     if args.role is None or args.provider is None:
@@ -111,14 +128,16 @@ def main() -> int:
 
     record = {
         "ts": args.now or datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "schema": 1,
+        "schema": 2,
         "role": args.role,
         "provider": args.provider,
         "outcome": args.outcome,
     }
-    for key in ("model", "effort", "tier", "task_class", "task",
-                "quality", "tokens_out", "secs", "note", "session"):
-        value = getattr(args, key if key != "tokens_out" else "tokens_out")
+    for key in ("model", "effort", "tier", "task_class", "task", "quality",
+                "tokens_in", "tokens_out", "cache_write_tokens",
+                "cache_read_tokens", "secs", "review_secs", "rework_secs",
+                "api_cost_usd", "note", "session"):
+        value = getattr(args, key)
         if value is not None:
             record[key] = value
 
