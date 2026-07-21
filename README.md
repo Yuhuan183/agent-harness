@@ -40,15 +40,6 @@ symlink 引用（避免重複）。跨 agent runtime 知識（如 Headroom）也
    的本機路徑段、sessions、cache、history、auth 憑證）一律不入庫，改以 `*.merge.*` /
    `examples/` 範例手動 merge。
 
-## 現況
-
-- 蒸餾快照日期：2026-07-21。
-- 已完成並回寫 2026-07-20 全域基線：`CLAUDE.md` 瘦身 6.9KB → 2.1KB（routing 抽至
-  `.claude/skills/provider-routing/`）；codex 配置統一於 `.codex/`；共用 skill 與跨 agent
-  runtime 知識統一於 `.agents/`；文檔分為專案知識層與可攜配置層兩層，各層具 README。
-- 待辦：review 並提交 2026-07-21 的模型路由／成本研究更新後，執行
-  `scripts/sync.sh --apply` 回寫本次差異並開新 session 驗收（見 `docs/setup.md`）。
-
 ## License
 
 [MIT](LICENSE)。此 repo 為個人 harness 配置與方法論；MIT 允許自由取用與改寫，僅保留著作權聲明。

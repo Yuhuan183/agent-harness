@@ -97,35 +97,13 @@
     "padding": 2
   },
   "enabledPlugins": {
-    "ui-ux-pro-max@ui-ux-pro-max-skill": true,
-    "headroom@headroom-marketplace": false,
-    "codex@openai-codex": true,
-    "figma@claude-plugins-official": true,
-    "warp@claude-code-warp": true
+    "codex@openai-codex": true
   },
   "extraKnownMarketplaces": {
-    "ui-ux-pro-max-skill": {
-      "source": {
-        "source": "github",
-        "repo": "nextlevelbuilder/ui-ux-pro-max-skill"
-      }
-    },
-    "headroom-marketplace": {
-      "source": {
-        "source": "github",
-        "repo": "headroomlabs-ai/headroom"
-      }
-    },
     "openai-codex": {
       "source": {
         "source": "git",
         "url": "https://github.com/openai/codex-plugin-cc.git"
-      }
-    },
-    "claude-code-warp": {
-      "source": {
-        "source": "github",
-        "repo": "warpdotdev/claude-code-warp"
       }
     }
   },
