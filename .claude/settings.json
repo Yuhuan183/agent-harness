@@ -65,6 +65,11 @@
             "type": "command",
             "command": "python3 \"$HOME/.claude/hooks/delegation-audit.py\"",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/experience-pending.py\"",
+            "timeout": 10
           }
         ]
       }
@@ -75,6 +80,11 @@
           {
             "type": "command",
             "command": "python3 \"$HOME/.claude/hooks/delegation-audit.py\"",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/experience-pending.py\"",
             "timeout": 10
           }
         ]

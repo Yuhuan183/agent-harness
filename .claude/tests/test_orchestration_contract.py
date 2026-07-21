@@ -36,6 +36,11 @@ BASH_ROLES = (
 PINNED_EFFORT_ROLES = ("Explore", "mech-executor")  # mechanical; thinking done in main
 FOLLOW_EFFORT_ROLES = tuple(r for r in ROLES if r not in PINNED_EFFORT_ROLES)
 
+# Interface tokens: single upgrade point — bump here and in the skill bodies together.
+GPT_BRIDGE_MODEL = "gpt-5.6-sol"
+CODEX_BRIDGE = "codex:codex-rescue"
+DISPATCH_OPTIONS = ("Dispatch GPT + Claude", "Dispatch GPT", "Dispatch Claude")
+
 
 def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
@@ -179,7 +184,7 @@ class ClaudeContractTests(unittest.TestCase):
         # not inline in the resident contract.
         for moved in (
             "Discovery → Plan → Approval",
-            "gpt-5.6-sol",
+            GPT_BRIDGE_MODEL,
             "H = Fable",
             "2.1.207",
         ):
@@ -220,14 +225,12 @@ class ClaudeContractTests(unittest.TestCase):
             "one cross-provider hop measured from the task's origin",
             "A fallback provider cannot route back",
             "one bounded retry",
-            "Dispatch GPT + Claude",
-            "Dispatch GPT`",
-            "Dispatch Claude",
+            *(f"`{option}`" for option in DISPATCH_OPTIONS),
             "never two writers on the same artifacts",
             "Security remains GPT-primary",
             "never Fable",
-            "`codex:codex-rescue`",
-            "--model gpt-5.6-sol`",
+            f"`{CODEX_BRIDGE}`",
+            f"--model {GPT_BRIDGE_MODEL}`",
             "write-capable by default",
             "explicitly prohibit writes",
             "`plan-verifier` returns READY/REVISE",
@@ -236,7 +239,7 @@ class ClaudeContractTests(unittest.TestCase):
             "Dual-provider",
             "**Pinned** (`Explore`, `mech-executor`)",
             "inherits the main session's effort",
-            "invoked from Claude through the `codex:codex-rescue` bridge",
+            f"invoked from Claude through the `{CODEX_BRIDGE}` bridge",
         ):
             self.assertIn(phrase, skill)
 

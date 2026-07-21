@@ -3,19 +3,24 @@
 
 Reads ~/.agents/telemetry/experience.jsonl (override: AGENT_EXPERIENCE_LEDGER).
 Indicators: n, AR (accepted), CR (corrected), RB (rebriefed), FR (failed),
-QS (mean quality). Decision hints follow the rule in references/metrics.md:
-prefer a provider only at n >= min-samples AND an AR lead >= 10 points;
-under-sampled providers get an explore hint. Quality judgments are
-main-session subjective — treat hints as directional, not verdicts.
+QS (mean quality). Records are exponentially decayed (--half-life days) so
+stale evidence fades as providers upgrade. Decision hints use a Beta posterior
+on the decayed accept counts: prefer a provider when P(win) >= --prefer-p;
+raw sample counts below --min-samples always yield an explore hint.
+Quality judgments are main-session subjective — hints are directional,
+not verdicts.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import random
 import sys
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
+
+POSTERIOR_DRAWS = 4000  # fixed-seed Monte Carlo; deterministic across runs
 
 
 def parse_ts(value: str) -> datetime:
@@ -41,43 +46,64 @@ def load(path: str, since: datetime) -> list[dict]:
     return records
 
 
-def summarize(records: list[dict]) -> dict:
+def summarize(records: list[dict], now: datetime, half_life: float) -> dict:
     groups: dict[tuple[str, str], dict] = defaultdict(
-        lambda: {"n": 0, "accepted": 0, "corrected": 0, "rebriefed": 0,
-                 "failed": 0, "quality": [], "tokens_out": [], "secs": []}
+        lambda: {"n": 0, "w": 0.0, "accepted": 0.0, "corrected": 0.0,
+                 "rebriefed": 0.0, "failed": 0.0,
+                 "quality": [], "tokens_out": [], "secs": []}
     )
     for rec in records:
         g = groups[(rec.get("role", "?"), rec.get("provider", "?"))]
+        age_days = max(0.0, (now - parse_ts(rec["ts"])).total_seconds() / 86400)
+        w = 0.5 ** (age_days / half_life) if half_life > 0 else 1.0
         g["n"] += 1
+        g["w"] += w
         outcome = rec.get("outcome")
         if outcome in ("accepted", "corrected", "rebriefed", "failed"):
-            g[outcome] += 1
+            g[outcome] += w
         if isinstance(rec.get("quality"), int):
-            g["quality"].append(rec["quality"])
+            g["quality"].append((rec["quality"], w))
         if isinstance(rec.get("tokens_out"), int):
-            g["tokens_out"].append(rec["tokens_out"])
+            g["tokens_out"].append((rec["tokens_out"], w))
         if isinstance(rec.get("secs"), (int, float)):
-            g["secs"].append(rec["secs"])
+            g["secs"].append((rec["secs"], w))
+
+    def wmean(pairs: list[tuple[float, float]]) -> float | None:
+        total = sum(w for _, w in pairs)
+        return sum(v * w for v, w in pairs) / total if total else None
 
     out = {}
     for (role, provider), g in groups.items():
-        n = g["n"]
+        w = g["w"]
+        qs, tok, secs = wmean(g["quality"]), wmean(g["tokens_out"]), wmean(g["secs"])
         out[(role, provider)] = {
-            "n": n,
-            "AR": round(100 * g["accepted"] / n, 1),
-            "CR": round(100 * g["corrected"] / n, 1),
-            "RB": round(100 * g["rebriefed"] / n, 1),
-            "FR": round(100 * g["failed"] / n, 1),
-            "QS": round(sum(g["quality"]) / len(g["quality"]), 2) if g["quality"] else None,
-            "avg_tokens_out": (round(sum(g["tokens_out"]) / len(g["tokens_out"]))
-                               if g["tokens_out"] else None),
-            "avg_secs": (round(sum(g["secs"]) / len(g["secs"]), 1)
-                         if g["secs"] else None),
+            "n": g["n"],
+            "AR": round(100 * g["accepted"] / w, 1),
+            "CR": round(100 * g["corrected"] / w, 1),
+            "RB": round(100 * g["rebriefed"] / w, 1),
+            "FR": round(100 * g["failed"] / w, 1),
+            "QS": round(qs, 2) if qs is not None else None,
+            "avg_tokens_out": round(tok) if tok is not None else None,
+            "avg_secs": round(secs, 1) if secs is not None else None,
+            "_w": w,
+            "_w_accepted": g["accepted"],
         }
     return out
 
 
-def hints(stats: dict, min_samples: int) -> dict[str, str]:
+def p_beats(a: dict, b: dict) -> float:
+    """P(accept-rate A > B) under Beta(1+acc, 1+rest) posteriors on the
+    decayed counts. Fixed seed keeps the report deterministic."""
+    rng = random.Random(0)
+    wins = 0
+    for _ in range(POSTERIOR_DRAWS):
+        pa = rng.betavariate(1 + a["_w_accepted"], 1 + a["_w"] - a["_w_accepted"])
+        pb = rng.betavariate(1 + b["_w_accepted"], 1 + b["_w"] - b["_w_accepted"])
+        wins += pa > pb
+    return wins / POSTERIOR_DRAWS
+
+
+def hints(stats: dict, min_samples: int, prefer_p: float) -> dict[str, str]:
     by_role: dict[str, dict[str, dict]] = defaultdict(dict)
     for (role, provider), row in stats.items():
         by_role[role][provider] = row
@@ -91,16 +117,27 @@ def hints(stats: dict, min_samples: int) -> dict[str, str]:
             result[role] = f"explore {explore} (n<{min_samples})"
             continue
         ranked = sorted(providers.items(), key=lambda kv: -kv[1]["AR"])
-        (best, best_row), (_, runner_row) = ranked[0], ranked[-1]
-        if len(ranked) == 1 or best_row["AR"] - runner_row["AR"] >= 10:
-            result[role] = f"prefer {best} (AR {best_row['AR']} vs {runner_row['AR']})"
+        (best, best_row), (runner, runner_row) = ranked[0], ranked[-1]
+        p = p_beats(best_row, runner_row) if len(ranked) > 1 else 1.0
+        if p >= prefer_p:
+            result[role] = (f"prefer {best} (P(win) {p:.2f}, "
+                            f"AR {best_row['AR']} vs {runner_row['AR']})")
         else:
+            # cost tie-break: wall-clock first, then output tokens
             tie = sorted(providers.items(),
                          key=lambda kv: (kv[1]["avg_secs"] is None, kv[1]["avg_secs"] or 0))
             faster, faster_row = tie[0]
-            suffix = (f"; {faster} faster at {faster_row['avg_secs']}s"
-                      if faster_row["avg_secs"] is not None else "")
-            result[role] = (f"either (AR within 10pt: {best_row['AR']} vs "
+            cost = []
+            if faster_row["avg_secs"] is not None:
+                cost.append(f"{faster} faster at {faster_row['avg_secs']}s")
+            cheap = sorted(providers.items(),
+                           key=lambda kv: (kv[1]["avg_tokens_out"] is None,
+                                           kv[1]["avg_tokens_out"] or 0))
+            cheap_p, cheap_row = cheap[0]
+            if cheap_row["avg_tokens_out"] is not None:
+                cost.append(f"{cheap_p} cheaper at {cheap_row['avg_tokens_out']}tok")
+            suffix = f"; {', '.join(cost)}" if cost else ""
+            result[role] = (f"either (P(win) {p:.2f}, AR {best_row['AR']} vs "
                             f"{runner_row['AR']}{suffix})")
     return result
 
@@ -109,6 +146,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--days", type=int, default=30)
     parser.add_argument("--min-samples", type=int, default=5)
+    parser.add_argument("--half-life", type=float, default=45.0,
+                        help="decay half-life in days; 0 disables decay")
+    parser.add_argument("--prefer-p", type=float, default=0.85,
+                        help="posterior P(win) threshold for a prefer hint")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--now", default=None, help="ISO timestamp override (tests)")
     args = parser.parse_args()
@@ -120,29 +161,33 @@ def main() -> int:
         os.path.expanduser("~/.agents/telemetry/experience.jsonl"),
     )
     records = load(path, since)
-    stats = summarize(records)
-    decision = hints(stats, args.min_samples)
+    stats = summarize(records, now, args.half_life)
+    decision = hints(stats, args.min_samples, args.prefer_p)
+    public = {key: {k: v for k, v in row.items() if not k.startswith("_")}
+              for key, row in stats.items()}
 
     if args.json:
         payload = {
             "days": args.days,
+            "half_life": args.half_life,
             "records": len(records),
             "by_role_provider": {
-                f"{role}/{provider}": row for (role, provider), row in sorted(stats.items())
+                f"{role}/{provider}": row for (role, provider), row in sorted(public.items())
             },
             "hints": decision,
         }
         print(json.dumps(payload, ensure_ascii=False, indent=2))
         return 0
 
-    print(f"experience-report — last {args.days} days, {len(records)} records ({path})")
-    if not stats:
+    print(f"experience-report — last {args.days} days, {len(records)} records, "
+          f"half-life {args.half_life}d ({path})")
+    if not public:
         print("no records; log dispatches with experience-log first.")
         return 0
     header = f"{'role':<18}{'prov':<8}{'n':>4}{'AR%':>7}{'CR%':>7}{'RB%':>7}{'FR%':>7}{'QS':>6}{'tok':>8}{'secs':>8}"
     print(header)
     print("-" * len(header))
-    for (role, provider), row in sorted(stats.items()):
+    for (role, provider), row in sorted(public.items()):
         qs = f"{row['QS']:.2f}" if row["QS"] is not None else "-"
         tok = str(row["avg_tokens_out"]) if row["avg_tokens_out"] is not None else "-"
         secs = str(row["avg_secs"]) if row["avg_secs"] is not None else "-"

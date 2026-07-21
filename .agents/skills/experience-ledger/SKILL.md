@@ -9,14 +9,16 @@ description: 派工經驗記帳與分析：每次子 agent 品質檢查後記錄
 
 ## 記帳（每次派工的 quality-check 之後，一筆）
 
+SubagentStart/Stop hook（`experience-pending.py`）已自動暫存 role、wall-clock 與 session，記帳只需補 outcome：
+
 ```bash
 ~/.agents/skills/experience-ledger/scripts/experience-log \
-  --role executor --provider claude --outcome accepted \
-  --tier follow --class impl --task "auth refactor" --quality 4 --secs 420
+  --from-pending --outcome accepted --class impl --task "auth refactor" --quality 4
 ```
 
+- 明確旗標永遠覆蓋 pending 值；Codex bridge 派工 stub 無法辨識角色時補 `--role`。無 stub 時退回全手動旗標。
 - Claude 角色與 Codex bridge 派工**都要記**；outcome 由主 session 的品質判定決定：`accepted`（一次過）/ `corrected`（修過才整合）/ `rebriefed`（重派）/ `failed`（棄用或 fallback）。
-- `--secs` 建議必記：發派到整合完成的 wall-clock（含主 session 修正時間）——時間成本是 provider 裁量的主要 tie-breaker。
+- `--tokens-out` 建議必記（可得時）：算力成本是 either hint 的次級 tie-breaker；時間成本（`secs`）由 hook 自動帶入。
 - `--task` 用短中性標籤，不寫機密與逐字內容；意外寫進 `--note`。
 - 偏離 report hint 的 provider 選擇，必記 `--note` 說明理由。
 
@@ -26,6 +28,6 @@ description: 派工經驗記帳與分析：每次子 agent 品質檢查後記錄
 ~/.agents/skills/experience-ledger/scripts/experience-report --days 30
 ```
 
-輸出 role × provider 的 n/AR/CR/RB/FR/QS 與決策 hint。決策規則：樣本 n<5 → explore 補數據；AR 領先 ≥10pt → prefer；差距內 → either，以成本代理裁量。**hint 是方向不是判決**——主 session 保留最終判斷。
+輸出 role × provider 的 n/AR/CR/RB/FR/QS 與決策 hint（紀錄依 45 天半衰期加權，舊證據自然淡出）。決策規則：樣本 n<5 → explore 補數據；Beta 後驗 P(win)≥0.85 → prefer；否則 either，以成本代理（時間、token）裁量。**hint 是方向不是判決**——主 session 保留最終判斷。
 
 指標定義、schema、誠實邊界與進化節奏見 [references/metrics.md](references/metrics.md)。派工頻率與 nested 違規由既有 `delegation-report` 覆蓋，與本帳本互補。

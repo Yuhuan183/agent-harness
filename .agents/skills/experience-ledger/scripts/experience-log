@@ -4,6 +4,11 @@
 Ledger: ~/.agents/telemetry/experience.jsonl (override: AGENT_EXPERIENCE_LEDGER).
 Machine-local data; never committed. Keep --task a short neutral label —
 no secrets, no verbatim content.
+
+--from-pending consumes the latest SubagentStop stub staged by the
+experience-pending hook (override: AGENT_EXPERIENCE_PENDING), pre-filling
+role/tier/secs/session so a log call shrinks to `--from-pending --outcome <o>`.
+Explicit flags always override pending values.
 """
 from __future__ import annotations
 
@@ -21,12 +26,41 @@ PROVIDERS = ("claude", "codex")
 OUTCOMES = ("accepted", "corrected", "rebriefed", "failed")
 TIERS = ("pinned", "follow")
 CLASSES = ("recon", "plan", "impl", "verify", "security", "other")
+PINNED_ROLES = ("Explore", "mech-executor")
+
+PENDING_PATH = os.environ.get(
+    "AGENT_EXPERIENCE_PENDING",
+    os.path.expanduser("~/.agents/telemetry/experience-pending.jsonl"),
+)
+
+
+def consume_pending() -> dict | None:
+    """Pop the most recent SubagentStop stub; rewrite the file without the
+    consumed stop and its paired start."""
+    try:
+        with open(PENDING_PATH, encoding="utf-8") as f:
+            lines = [json.loads(l) for l in f if l.strip()]
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+    stop = next((r for r in reversed(lines) if r.get("event") == "SubagentStop"), None)
+    if stop is None:
+        return None
+    keep = [r for r in lines
+            if r is not stop
+            and not (r.get("event") == "SubagentStart"
+                     and r.get("agent_id") == stop.get("agent_id"))]
+    with open(PENDING_PATH, "w", encoding="utf-8") as f:
+        for r in keep:
+            f.write(json.dumps(r) + "\n")
+    return stop
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--role", required=True, choices=ROLES)
-    parser.add_argument("--provider", required=True, choices=PROVIDERS)
+    parser.add_argument("--from-pending", action="store_true",
+                        help="pre-fill from the latest hook-staged dispatch stub")
+    parser.add_argument("--role", choices=ROLES, default=None)
+    parser.add_argument("--provider", choices=PROVIDERS, default=None)
     parser.add_argument("--outcome", required=True, choices=OUTCOMES,
                         help="main-session quality verdict after checking the deliverable")
     parser.add_argument("--model", default=None)
@@ -42,6 +76,24 @@ def main() -> int:
     parser.add_argument("--session", default=None)
     parser.add_argument("--now", default=None, help="ISO timestamp override (tests)")
     args = parser.parse_args()
+
+    if args.from_pending:
+        stub = consume_pending()
+        if stub is None:
+            parser.error("--from-pending: no staged SubagentStop stub found")
+        agent_type = stub.get("agent_type")
+        if args.role is None and agent_type in ROLES:
+            args.role = agent_type
+        if args.provider is None:
+            args.provider = "codex" if (agent_type and "codex" in agent_type) else "claude"
+        if args.secs is None and isinstance(stub.get("secs"), (int, float)):
+            args.secs = stub["secs"]
+        if args.session is None:
+            args.session = stub.get("session_id")
+    if args.role is None or args.provider is None:
+        parser.error("--role and --provider are required (or resolvable via --from-pending)")
+    if args.tier is None:
+        args.tier = "pinned" if args.role in PINNED_ROLES else "follow"
 
     record = {
         "ts": args.now or datetime.now(timezone.utc).isoformat(timespec="seconds"),
