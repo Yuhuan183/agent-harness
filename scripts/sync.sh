@@ -67,7 +67,7 @@ sync_path ".agents/docs"                      "$HOME/.agents/docs"
 sync_path ".agents/README.md"                 "$HOME/.agents/README.md"
 
 # --- .claude：可攜契約（mcp_servers.json 為機器狀態，僅提示手動 merge） ---
-for p in CLAUDE.md README.md RTK.md settings.json \
+for p in CLAUDE.md README.md RTK.md settings.json model-routing.toml \
          agents hooks prompts scripts sh tests examples; do
   sync_path ".claude/$p" "$HOME/.claude/$p"
 done

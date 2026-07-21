@@ -1,0 +1,278 @@
+version = 1
+as_of = "2026-07-22"
+benchmark = "Artificial Analysis Intelligence Index v4.1"
+metric_scope = "English text benchmark prior; not local coding-agent success rate"
+availability_scope = "Per-surface status; benchmark data is retained even when a dispatch override is unverified"
+availability_semantics = "configured means router-permitted, not necessarily smoke-tested; evidence records verification level"
+evidence_caveat = "AA publishes only single-configuration (adaptive reasoning, max effort) aggregates for Claude models; per-effort curves are unavailable. Scores are priors for model ranking, not effort selection. Effort choices below are design priors pending local experience-ledger data (ledger n=0 as of as_of)."
+
+[selection]
+default = "balanced"
+fast = "fast"
+quality_guarded = "quality_guarded"
+economy = "economy"
+high_risk = "quality_guarded"
+
+[route_application.roles]
+main = "user_owned_session_selector"
+explore = "frontmatter_pin"
+mech-executor = "frontmatter_pin"
+executor = "frontmatter_pin"
+plan-verifier = "frontmatter_pin"
+verifier = "frontmatter_pin"
+security-reviewer = "frontmatter_pin"
+security-executor = "frontmatter_pin"
+
+[models."claude-fable-5"]
+source = "https://artificialanalysis.ai/models/claude-fable-5"
+
+[models."claude-fable-5".availability]
+subscription = "documented"
+main_selector = "configured"
+role_frontmatter_override = "not_routed"
+
+[models."claude-fable-5".evidence]
+main_selector = "in use as this session's main model"
+role_frontmatter = "contract forbids Fable in named roles; fallback from GPT lands on Opus, never Fable"
+
+[models."claude-fable-5".aggregate]
+score_max_effort = 60
+output_tokens_per_sec = 68.3
+total_eval_cost_usd = 5630.52
+eval_output_tokens = 87000000
+
+[models."claude-opus-4-8"]
+source = "https://artificialanalysis.ai/models/claude-opus-4-8"
+
+[models."claude-opus-4-8".availability]
+subscription = "documented"
+main_selector = "configured"
+role_frontmatter_override = "configured"
+
+[models."claude-opus-4-8".evidence]
+role_frontmatter = "smoke-tested: plan-verifier/verifier/security-* pin model: opus today"
+
+[models."claude-opus-4-8".aggregate]
+score_max_effort = 56
+total_eval_cost_usd = 3752.55
+eval_output_tokens = 120000000
+
+[models."claude-sonnet-5"]
+source = "https://artificialanalysis.ai/models/claude-sonnet-5"
+
+[models."claude-sonnet-5".availability]
+subscription = "documented"
+main_selector = "configured"
+role_frontmatter_override = "configured"
+
+[models."claude-sonnet-5".evidence]
+role_frontmatter = "smoke-tested: mech-executor and executor pin model: sonnet today"
+
+[models."claude-sonnet-5".aggregate]
+score_max_effort = 53
+output_tokens_per_sec = 83.9
+total_eval_cost_usd = 4010.12
+eval_output_tokens = 300000000
+
+[models."claude-haiku-4-5"]
+source = "https://artificialanalysis.ai/models/claude-4-5-haiku"
+
+[models."claude-haiku-4-5".availability]
+subscription = "documented"
+main_selector = "configured"
+role_frontmatter_override = "configured"
+
+[models."claude-haiku-4-5".evidence]
+role_frontmatter = "smoke-tested: Explore pins model: haiku today"
+
+[models."claude-haiku-4-5".aggregate]
+score_non_reasoning = 24
+output_tokens_per_sec = 93.7
+
+[quality_floor]
+policy = "Meet the role quality tier first; optimize the selected secondary objective only within allowed routes."
+
+[quality_floor.roles]
+main = "judgment"
+explore = "support"
+mech-executor = "support"
+executor = "judgment"
+plan-verifier = "judgment"
+verifier = "critical"
+security-reviewer = "critical"
+security-executor = "critical"
+
+[quality_floor.allowed]
+support = ["claude-haiku-4-5/low", "claude-sonnet-5/low", "claude-opus-4-8/low"]
+judgment = ["claude-sonnet-5/medium", "claude-opus-4-8/medium", "claude-opus-4-8/high", "claude-fable-5/medium", "claude-fable-5/high", "claude-fable-5/xhigh"]
+critical = ["claude-opus-4-8/high"]
+
+[quality_floor.notes]
+judgment_fable = "Fable routes in the judgment tier apply to the main session only (H/X profiles); named roles stay on Opus."
+xhigh = "xhigh is main-session-only under profile X; no named role or bridge call uses it."
+
+[profiles.balanced]
+description = "Meet every quality floor, then balance capability, speed, cost, and output tokens."
+
+[profiles.balanced.roles.main]
+model = "user_selected"
+effort = "user_selected"
+reason = "The user owns the main-session model and effort; H = Fable/low or Opus/high, X = Fable medium-xhigh or Opus/high."
+
+[profiles.balanced.roles.explore]
+model = "claude-haiku-4-5"
+effort = "low"
+reason = "Broad read-only search is support-tier; Haiku's speed dominates and findings are re-judged in main."
+
+[profiles.balanced.roles.mech-executor]
+model = "claude-sonnet-5"
+effort = "low"
+reason = "Complete-spec mechanical work; Sonnet adds capability headroom over Haiku at low effort."
+
+[profiles.balanced.roles.executor]
+model = "claude-sonnet-5"
+effort = "medium"
+reason = "User-directed pin: Sonnet/medium for judgment-heavy implementation; escalate to main or Opus on the pin's first quality miss."
+
+[profiles.balanced.roles.plan-verifier]
+model = "claude-opus-4-8"
+effort = "high"
+reason = "User-directed pin: material plans always receive high-effort adversarial review."
+
+[profiles.balanced.roles.verifier]
+model = "claude-opus-4-8"
+effort = "high"
+reason = "Independent adversarial verification keeps a high reasoning floor."
+
+[profiles.balanced.roles.security-reviewer]
+model = "claude-opus-4-8"
+effort = "high"
+reason = "Security review is a trust-boundary task."
+
+[profiles.balanced.roles.security-executor]
+model = "claude-opus-4-8"
+effort = "high"
+reason = "Security implementation preserves the approved high-reasoning floor."
+
+[profiles.fast]
+description = "Fastest route among combinations that meet each role's quality floor."
+
+[profiles.fast.roles.explore]
+model = "claude-haiku-4-5"
+effort = "low"
+reason = "Already the fastest eligible route (93.7 tok/s prior)."
+
+[profiles.fast.roles.mech-executor]
+model = "claude-haiku-4-5"
+effort = "low"
+reason = "Haiku meets the support floor when the spec is complete; promote back to Sonnet on first correction."
+
+[profiles.fast.roles.executor]
+model = "claude-sonnet-5"
+effort = "medium"
+reason = "Fastest route that meets the judgment floor."
+
+[profiles.fast.roles.plan-verifier]
+model = "claude-opus-4-8"
+effort = "high"
+reason = "Plan verification keeps its minimum reasoning floor."
+
+[profiles.fast.roles.verifier]
+model = "claude-opus-4-8"
+effort = "high"
+reason = "Speed preference does not downgrade an independent high-impact gate."
+
+[profiles.fast.roles.security-reviewer]
+model = "claude-opus-4-8"
+effort = "high"
+reason = "Speed preference does not lower security review depth."
+
+[profiles.fast.roles.security-executor]
+model = "claude-opus-4-8"
+effort = "high"
+reason = "Speed preference does not lower security implementation depth."
+
+[profiles.economy]
+description = "Lowest cost proxy among combinations that meet each role's quality floor. Subscription quota has no published dollar conversion; treat as token-proxy economy."
+
+[profiles.economy.roles.explore]
+model = "claude-haiku-4-5"
+effort = "low"
+reason = "Lowest eligible token cost for support-tier reconnaissance."
+
+[profiles.economy.roles.mech-executor]
+model = "claude-haiku-4-5"
+effort = "low"
+reason = "Cheapest support route under a complete spec; promote to Sonnet when the ledger shows corrections."
+
+[profiles.economy.roles.executor]
+model = "claude-sonnet-5"
+effort = "medium"
+reason = "Cheaper routes do not meet the judgment floor."
+
+[profiles.economy.roles.plan-verifier]
+model = "claude-opus-4-8"
+effort = "high"
+reason = "The plan-verifier quality floor forbids saving cost by dropping to low effort."
+
+[profiles.economy.roles.verifier]
+model = "claude-opus-4-8"
+effort = "high"
+reason = "Critical verification has one allowed quality-preserving route."
+
+[profiles.economy.roles.security-reviewer]
+model = "claude-opus-4-8"
+effort = "high"
+reason = "Critical security review has one allowed quality-preserving route."
+
+[profiles.economy.roles.security-executor]
+model = "claude-opus-4-8"
+effort = "high"
+reason = "Critical security implementation has one allowed quality-preserving route."
+
+[profiles.quality_guarded]
+description = "Guard high-risk, high-impact, or ambiguity-heavy work without overspending on bounded support roles."
+
+[profiles.quality_guarded.roles.main]
+model = "user_selected"
+effort = "user_selected"
+reason = "Recommend profile X (Fable up to xhigh or Opus/high); the user still owns the switch."
+
+[profiles.quality_guarded.roles.explore]
+model = "claude-sonnet-5"
+effort = "low"
+reason = "Stronger evidence coverage for high-stakes work; low effort because exploration cannot decide or implement."
+
+[profiles.quality_guarded.roles.mech-executor]
+model = "claude-sonnet-5"
+effort = "low"
+reason = "A complete specification and stop-on-exception contract provide the quality guard."
+
+[profiles.quality_guarded.roles.executor]
+model = "claude-opus-4-8"
+effort = "high"
+reason = "High-impact local design and implementation need deeper reasoning."
+
+[profiles.quality_guarded.roles.plan-verifier]
+model = "claude-opus-4-8"
+effort = "high"
+reason = "Material plans receive adversarial high-effort review."
+
+[profiles.quality_guarded.roles.verifier]
+model = "claude-opus-4-8"
+effort = "high"
+reason = "Independent verification remains high effort."
+
+[profiles.quality_guarded.roles.security-reviewer]
+model = "claude-opus-4-8"
+effort = "high"
+reason = "Security review remains high effort."
+
+[profiles.quality_guarded.roles.security-executor]
+model = "claude-opus-4-8"
+effort = "high"
+reason = "Security implementation remains high effort."
+
+[revision_policy]
+trigger = "Re-derive profiles when the experience ledger reaches n>=5 for a role x provider cell, or on a material model/benchmark change."
+method = "Ledger AR/CR/RB/FR/QS with 45-day half-life overrides benchmark priors; deviations from a ledger hint require a logged note."
