@@ -24,7 +24,10 @@
 
 主模型與 effort 由使用者選擇；H／X 是建議組合，不會自動切換。跨 provider dispatch、
 fallback、role routing 與 verifier 觸發條件全部收斂在 `skills/provider-routing/`，
-按需載入——本 README 不再重述，避免雙 source of truth。
+按需載入。Claude 原生 roles 保留各自 frontmatter；經 `codex:codex-rescue` 呼叫的 Codex twin
+則必須先用 `${CODEX_HOME:-$HOME/.codex}/scripts/model-routing resolve --surface claude-bridge`
+解析共同的 profile，不能再套用 Claude 的 pinned／follow effort。模型與 effort 的資料來源
+因此仍只有一份。
 
 ## 初始設定
 

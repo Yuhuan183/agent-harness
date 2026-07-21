@@ -17,7 +17,8 @@ This section applies only to the top-level task. Subagents use their own role co
 ### Model ownership
 
 - The user owns the Codex GPT model and reasoning effort through machine config or the task selector. This bundle does not pin or silently switch either setting.
-- GPT-5.6 Sol/high is the current operational reference for high-risk or judgment-heavy work; it is not an automatic route or a claim that a max-effort benchmark proves this exact setting. Effort is capped at high.
+- The `model-routing.toml` beside this contract is a quality-first prior: every role must meet its quality tier before optimizing for `fast`, `quality-guarded`, `economy`, or `balanced`. Local accepted-outcome evidence overrides external benchmarks.
+- Main routes are session-start recommendations and cannot switch the running task. Before leaf dispatch, resolve the role with `${CODEX_HOME:-$HOME/.codex}/scripts/model-routing` (source checkout: `.codex/scripts/model-routing`) and follow its `invocation` object exactly. Use `fork_turns = "none"` with the complete brief when changing model or agent type. Pass model/effort only for `spawn_argument`; `agent_config` routes pin them in the registered custom role. High-risk routes use `quality-guarded`, reserving GPT-5.6 Sol/high for judgment and critical roles.
 - If the selected GPT model is unavailable or fails, report the model, attempts, evidence, artifacts, and acceptance checks.
 
 ### Dispatch

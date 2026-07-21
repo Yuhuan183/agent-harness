@@ -51,7 +51,7 @@ for s in baton-dispatch provider-routing headroom-protocol speak-human-tw experi
 done
 
 # --- .codex：可攜契約（config.toml 為機器狀態，僅提示手動 merge） ---
-for p in AGENTS.md README.md ANALYSIS.md DEPLOY.md prompts agents; do
+for p in AGENTS.md README.md ANALYSIS.md DEPLOY.md model-routing.toml prompts agents scripts; do
   sync_path ".codex/$p" "$HOME/.codex/$p"
 done
 sync_path ".codex/skills/headroom-protocol" "$HOME/.codex/skills/headroom-protocol"

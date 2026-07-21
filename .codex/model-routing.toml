@@ -1,0 +1,364 @@
+version = 3
+as_of = "2026-07-21"
+benchmark = "Artificial Analysis Intelligence Index v4.1"
+metric_scope = "English text benchmark prior; not local coding-agent success rate"
+availability_scope = "Per-surface status; benchmark data is retained even when a dispatch override is unverified"
+availability_semantics = "configured means router-permitted, not necessarily smoke-tested; evidence records verification level"
+
+[selection]
+default = "balanced"
+fast = "fast"
+quality_guarded = "quality_guarded"
+economy = "economy"
+high_risk = "quality_guarded"
+
+[route_application.roles]
+main = "session_start_recommendation"
+explore = "dispatch_override"
+mech-executor = "dispatch_override"
+executor = "dispatch_override"
+plan-verifier = "dispatch_override"
+verifier = "dispatch_override"
+security-reviewer = "dispatch_override"
+security-executor = "dispatch_override"
+
+[models."gpt-5.6-sol"]
+source = "https://artificialanalysis.ai/models/gpt-5-6-sol"
+
+[models."gpt-5.6-sol".availability]
+subscription = "documented"
+main_selector = "documented"
+native_leaf_override = "spawn_argument"
+claude_bridge_override = "configured"
+
+[models."gpt-5.6-sol".efforts.low]
+score = 49.4440
+cost_usd_per_index_task = 0.19747
+decode_minutes_per_index_task = 0.77299
+reasoning_tokens_per_index_task = 616.3584
+answer_tokens_per_index_task = 1891.3954
+output_tokens_per_index_task = 2507.7537
+
+[models."gpt-5.6-sol".efforts.medium]
+score = 53.5888
+cost_usd_per_index_task = 0.31398
+decode_minutes_per_index_task = 1.23356
+reasoning_tokens_per_index_task = 1524.2649
+answer_tokens_per_index_task = 2678.4565
+output_tokens_per_index_task = 4202.7214
+
+[models."gpt-5.6-sol".efforts.high]
+score = 55.8665
+cost_usd_per_index_task = 0.45301
+decode_minutes_per_index_task = 1.83309
+reasoning_tokens_per_index_task = 3187.2679
+answer_tokens_per_index_task = 3503.0407
+output_tokens_per_index_task = 6690.3086
+
+[models."gpt-5.6-sol".efforts.xhigh]
+score = 57.6538
+cost_usd_per_index_task = 0.68248
+decode_minutes_per_index_task = 2.70965
+reasoning_tokens_per_index_task = 5548.7635
+answer_tokens_per_index_task = 4391.7929
+output_tokens_per_index_task = 9940.5564
+
+[models."gpt-5.6-sol".efforts.max]
+score = 58.8898
+cost_usd_per_index_task = 1.03733
+decode_minutes_per_index_task = 4.15178
+reasoning_tokens_per_index_task = 10076.1795
+answer_tokens_per_index_task = 5270.1728
+output_tokens_per_index_task = 15346.3522
+
+[models."gpt-5.6-terra"]
+source = "https://artificialanalysis.ai/models/gpt-5-6-terra"
+
+[models."gpt-5.6-terra".availability]
+subscription = "documented"
+main_selector = "documented"
+native_leaf_override = "spawn_argument"
+claude_bridge_override = "configured"
+
+[models."gpt-5.6-terra".efforts.low]
+score = 40.4657
+cost_usd_per_index_task = 0.15417
+decode_minutes_per_index_task = 0.26701
+reasoning_tokens_per_index_task = 584.5130
+answer_tokens_per_index_task = 1673.8730
+output_tokens_per_index_task = 2258.3860
+
+[models."gpt-5.6-terra".efforts.medium]
+score = 45.5742
+cost_usd_per_index_task = 0.17520
+decode_minutes_per_index_task = 0.45844
+reasoning_tokens_per_index_task = 1442.8103
+answer_tokens_per_index_task = 2326.2762
+output_tokens_per_index_task = 3769.0864
+
+[models."gpt-5.6-terra".efforts.high]
+score = 48.9549
+cost_usd_per_index_task = 0.33633
+decode_minutes_per_index_task = 0.93955
+reasoning_tokens_per_index_task = 4227.9240
+answer_tokens_per_index_task = 3510.3981
+output_tokens_per_index_task = 7738.3221
+
+[models."gpt-5.6-terra".efforts.xhigh]
+score = 51.6046
+cost_usd_per_index_task = 0.47687
+decode_minutes_per_index_task = 1.34996
+reasoning_tokens_per_index_task = 6825.4530
+answer_tokens_per_index_task = 4210.2763
+output_tokens_per_index_task = 11035.7292
+
+[models."gpt-5.6-terra".efforts.max]
+score = 54.9529
+cost_usd_per_index_task = 0.82461
+decode_minutes_per_index_task = 2.05628
+reasoning_tokens_per_index_task = 14183.9251
+answer_tokens_per_index_task = 5185.8701
+output_tokens_per_index_task = 19369.7952
+
+[models."gpt-5.6-luna"]
+source = "https://artificialanalysis.ai/models/gpt-5-6-luna"
+
+[models."gpt-5.6-luna".availability]
+subscription = "documented"
+main_selector = "documented"
+native_leaf_override = "agent_config"
+claude_bridge_override = "configured"
+
+[models."gpt-5.6-luna".evidence]
+native_leaf = "smoke-tested on Codex CLI 0.144.6 with a temporary registered custom agent"
+claude_bridge = "assumed configurable by user decision; not smoke-tested"
+
+[models."gpt-5.6-luna".efforts.low]
+score = 33.2639
+cost_usd_per_index_task = 0.04046
+decode_minutes_per_index_task = 0.19438
+reasoning_tokens_per_index_task = 600.3002
+answer_tokens_per_index_task = 1697.6452
+output_tokens_per_index_task = 2297.9454
+
+[models."gpt-5.6-luna".efforts.medium]
+score = 38.0506
+cost_usd_per_index_task = 0.05042
+decode_minutes_per_index_task = 0.31476
+reasoning_tokens_per_index_task = 1360.6067
+answer_tokens_per_index_task = 2302.2691
+output_tokens_per_index_task = 3662.8758
+
+[models."gpt-5.6-luna".efforts.high]
+score = 46.0590
+cost_usd_per_index_task = 0.09476
+decode_minutes_per_index_task = 0.69949
+reasoning_tokens_per_index_task = 4666.8784
+answer_tokens_per_index_task = 3451.2097
+output_tokens_per_index_task = 8118.0881
+
+[models."gpt-5.6-luna".efforts.xhigh]
+score = 49.0677
+cost_usd_per_index_task = 0.13896
+decode_minutes_per_index_task = 1.04895
+reasoning_tokens_per_index_task = 8415.7800
+answer_tokens_per_index_task = 4076.5240
+output_tokens_per_index_task = 12492.3040
+
+[models."gpt-5.6-luna".efforts.max]
+score = 51.2359
+cost_usd_per_index_task = 0.20941
+decode_minutes_per_index_task = 1.57140
+reasoning_tokens_per_index_task = 13905.5161
+answer_tokens_per_index_task = 5006.4891
+output_tokens_per_index_task = 18912.0053
+
+[quality_floor]
+policy = "Meet the role quality tier first; optimize the selected secondary objective only within allowed routes."
+
+[quality_floor.roles]
+main = "judgment"
+explore = "support"
+mech-executor = "support"
+executor = "judgment"
+plan-verifier = "judgment"
+verifier = "critical"
+security-reviewer = "critical"
+security-executor = "critical"
+
+[quality_floor.allowed]
+support = ["gpt-5.6-terra/low", "gpt-5.6-sol/low", "gpt-5.6-sol/medium", "gpt-5.6-sol/high"]
+judgment = ["gpt-5.6-sol/medium", "gpt-5.6-sol/high"]
+critical = ["gpt-5.6-sol/high"]
+
+[profiles.balanced]
+description = "Meet every quality floor, then balance capability, speed, cost, and output tokens."
+
+[profiles.balanced.roles.main]
+model = "gpt-5.6-sol"
+effort = "medium"
+reason = "Balanced integration and synthesis; promote high-risk work explicitly."
+
+[profiles.balanced.roles.explore]
+model = "gpt-5.6-sol"
+effort = "low"
+reason = "Adds capability headroom for broad evidence gathering without raising reasoning effort."
+
+[profiles.balanced.roles.mech-executor]
+model = "gpt-5.6-sol"
+effort = "low"
+reason = "Adds model capability while keeping a complete mechanical specification at low effort."
+
+[profiles.balanced.roles.executor]
+model = "gpt-5.6-sol"
+effort = "medium"
+reason = "Judgment-heavy implementation benefits from Sol while avoiding high-effort overhead."
+
+[profiles.balanced.roles.plan-verifier]
+model = "gpt-5.6-sol"
+effort = "medium"
+reason = "Material plan challenge needs more depth than a scan."
+
+[profiles.balanced.roles.verifier]
+model = "gpt-5.6-sol"
+effort = "high"
+reason = "Independent adversarial verification keeps a high reasoning floor."
+
+[profiles.balanced.roles.security-reviewer]
+model = "gpt-5.6-sol"
+effort = "high"
+reason = "Security review is a trust-boundary task."
+
+[profiles.balanced.roles.security-executor]
+model = "gpt-5.6-sol"
+effort = "high"
+reason = "Security implementation preserves the approved high-reasoning floor."
+
+[profiles.fast]
+description = "Fastest route among combinations that meet each role's quality floor."
+
+[profiles.fast.roles.main]
+model = "gpt-5.6-sol"
+effort = "medium"
+reason = "Terra medium is faster but falls below the judgment-role quality floor."
+
+[profiles.fast.roles.explore]
+model = "gpt-5.6-terra"
+effort = "low"
+reason = "Fastest currently dispatchable reconnaissance prior."
+
+[profiles.fast.roles.mech-executor]
+model = "gpt-5.6-terra"
+effort = "low"
+reason = "Fast mechanical execution from a complete specification."
+
+[profiles.fast.roles.executor]
+model = "gpt-5.6-sol"
+effort = "medium"
+reason = "Fastest currently dispatchable route that meets the judgment-role quality floor."
+
+[profiles.fast.roles.plan-verifier]
+model = "gpt-5.6-sol"
+effort = "medium"
+reason = "Plan verification keeps its minimum reasoning floor."
+
+[profiles.fast.roles.verifier]
+model = "gpt-5.6-sol"
+effort = "high"
+reason = "Speed preference does not downgrade an independent high-impact gate."
+
+[profiles.fast.roles.security-reviewer]
+model = "gpt-5.6-sol"
+effort = "high"
+reason = "Speed preference does not lower security review depth."
+
+[profiles.fast.roles.security-executor]
+model = "gpt-5.6-sol"
+effort = "high"
+reason = "Speed preference does not lower security implementation depth."
+
+[profiles.economy]
+description = "Lowest AA cost proxy among combinations that meet each role's quality floor."
+
+[profiles.economy.roles.main]
+model = "gpt-5.6-sol"
+effort = "medium"
+reason = "Cheaper routes do not meet the judgment-role quality floor."
+
+[profiles.economy.roles.explore]
+model = "gpt-5.6-terra"
+effort = "low"
+reason = "Lowest eligible AA cost without Luna/high's current latency and output-token overhead."
+
+[profiles.economy.roles.mech-executor]
+model = "gpt-5.6-terra"
+effort = "low"
+reason = "Terra/low remains the efficient mechanical route until local Luna evidence justifies its overhead."
+
+[profiles.economy.roles.executor]
+model = "gpt-5.6-sol"
+effort = "medium"
+reason = "Sol medium is cheaper and stronger than Terra high while meeting the quality floor."
+
+[profiles.economy.roles.plan-verifier]
+model = "gpt-5.6-sol"
+effort = "medium"
+reason = "The plan-verifier quality floor forbids saving cost by dropping to low effort."
+
+[profiles.economy.roles.verifier]
+model = "gpt-5.6-sol"
+effort = "high"
+reason = "Critical verification has one allowed quality-preserving route."
+
+[profiles.economy.roles.security-reviewer]
+model = "gpt-5.6-sol"
+effort = "high"
+reason = "Critical security review has one allowed quality-preserving route."
+
+[profiles.economy.roles.security-executor]
+model = "gpt-5.6-sol"
+effort = "high"
+reason = "Critical security implementation has one allowed quality-preserving route."
+
+[profiles.quality_guarded]
+description = "Guard high-risk, high-impact, or ambiguity-heavy work without overspending on bounded support roles."
+
+[profiles.quality_guarded.roles.main]
+model = "gpt-5.6-sol"
+effort = "high"
+reason = "Main owns ambiguity resolution, architecture, integration, and final judgment."
+
+[profiles.quality_guarded.roles.explore]
+model = "gpt-5.6-sol"
+effort = "low"
+reason = "Use the stronger model for evidence coverage, but low effort because exploration cannot decide or implement."
+
+[profiles.quality_guarded.roles.mech-executor]
+model = "gpt-5.6-sol"
+effort = "low"
+reason = "A complete specification and stop-on-exception contract provide the quality guard; deeper reasoning is unnecessary."
+
+[profiles.quality_guarded.roles.executor]
+model = "gpt-5.6-sol"
+effort = "high"
+reason = "High-impact local design and implementation need deeper reasoning."
+
+[profiles.quality_guarded.roles.plan-verifier]
+model = "gpt-5.6-sol"
+effort = "high"
+reason = "Material plans receive adversarial high-effort review."
+
+[profiles.quality_guarded.roles.verifier]
+model = "gpt-5.6-sol"
+effort = "high"
+reason = "Independent verification remains high effort."
+
+[profiles.quality_guarded.roles.security-reviewer]
+model = "gpt-5.6-sol"
+effort = "high"
+reason = "Security review remains high effort."
+
+[profiles.quality_guarded.roles.security-executor]
+model = "gpt-5.6-sol"
+effort = "high"
+reason = "Security implementation remains high effort."

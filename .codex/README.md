@@ -7,8 +7,10 @@
 
 | 路徑 | 職責 | 同步 |
 |---|---|---|
-| `AGENTS.md` | Codex 全域工作契約（45 行已審核可攜版：outcome-first、最小 scope、direct-first dispatch、風險觸發的獨立驗證） | 自動 |
+| `AGENTS.md` | Codex 全域工作契約（outcome-first、最小 scope、direct-first dispatch、風險觸發的獨立驗證） | 自動 |
 | `agents/verifier.toml` | Codex 獨立 verifier 角色定義 | 自動 |
+| `model-routing.toml` | Codex main／leaf 的結構化 model-effort 先驗與 AA v4.1 快照 | 自動 |
+| `scripts/model-routing` | 驗證品質門檻，並依快速、風險防護、最省或均衡優先解析 profile | 自動 |
 | `skills/headroom-protocol` | symlink → `../.agents/skills/headroom-protocol`（與 Claude 共用同一本體） | 自動 |
 | `skills/experience-ledger` | symlink → `../.agents/skills/experience-ledger`（派工經驗記帳與分析，與 Claude 共用） | 自動 |
 | `skills/speak-human-tw` | symlink → `../.agents/skills/speak-human-tw`（繁中去 AI 味，與 Claude 共用同一本體） | 自動 |
@@ -21,5 +23,13 @@
 
 `config.toml` 是機器狀態（base URL、憑證路徑、marketplace 來源、PID 等），
 **永不自動覆蓋**；跨機器只透過 `config.merge.toml` 帶可攜設定，套用方式見 `DEPLOY.md`。
+`model-routing.toml` 只是可查詢的 dispatch 建議，不會改寫 `config.toml` 或目前 task；本機
+`experience-ledger` 有足夠同類樣本時，其可接受率、返工、時間與 token 證據優先。
+Main route 只供開啟 task 前選擇；執行中的 main 不會切換模型。Leaf route 依 resolver 的
+`invocation` 使用 spawn argument；未來若啟用 Luna，才使用另行註冊的 custom agent config。切換模型時固定
+`fork_turns = "none"`，由完整 brief 重建必要脈絡。部署後從 `${CODEX_HOME:-$HOME/.codex}/scripts/model-routing` 執行；repo 內則
+使用 `.codex/scripts/model-routing`。模型可用性分為訂閱、main selector、原生 leaf override
+與 Claude bridge override；訂閱可用不等於 leaf override 已驗證。Claude 經
+`codex:codex-rescue` 派 Codex twin 時，也必須以 `--surface claude-bridge` 解析同一份 profile。
 `~/.codex/skills/headroom-protocol` 回寫後應為指向 `~/.agents/` 的 symlink（`sync.sh` 以
 `--force` 將既有實體目錄替換為連結）。

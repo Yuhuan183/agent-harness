@@ -23,6 +23,7 @@ ROLES = (
     "verifier",
     "security-executor",
 )
+CODEX_ROLES = tuple(role.lower() if role == "Explore" else role for role in ROLES)
 READ_ONLY_ROLES = (
     "Explore",
     "plan-verifier",
@@ -38,7 +39,6 @@ PINNED_EFFORT_ROLES = ("Explore", "mech-executor")  # mechanical; thinking done 
 FOLLOW_EFFORT_ROLES = tuple(r for r in ROLES if r not in PINNED_EFFORT_ROLES)
 
 # Interface tokens: single upgrade point — bump here and in the skill bodies together.
-GPT_BRIDGE_MODEL = "gpt-5.6-sol"
 CODEX_BRIDGE = "codex:codex-rescue"
 DISPATCH_OPTIONS = ("Dispatch GPT + Claude", "Dispatch GPT", "Dispatch Claude")
 
@@ -185,7 +185,7 @@ class ClaudeContractTests(unittest.TestCase):
         # not inline in the resident contract.
         for moved in (
             "Discovery → Plan → Approval",
-            GPT_BRIDGE_MODEL,
+            "gpt-5.6-sol",
             "H = Fable",
             "2.1.207",
         ):
@@ -231,7 +231,11 @@ class ClaudeContractTests(unittest.TestCase):
             "Security remains GPT-primary",
             "never Fable",
             f"`{CODEX_BRIDGE}`",
-            f"--model {GPT_BRIDGE_MODEL}`",
+            "--surface claude-bridge",
+            "--model <model>`",
+            "--effort <effort>`",
+            "single source of truth for Codex bridge model and effort",
+            "quality-guarded` only for high-risk, high-impact, or highly uncertain work",
             "write-capable by default",
             "explicitly prohibit writes",
             "`plan-verifier` returns READY/REVISE",
@@ -245,6 +249,8 @@ class ClaudeContractTests(unittest.TestCase):
             "External indices are priors only",
         ):
             self.assertIn(phrase, skill)
+        self.assertIn("${CODEX_HOME:-$HOME/.codex}/scripts/model-routing", skill)
+        self.assertNotIn("--model gpt-5.6-sol", skill)
 
 
 class MachineStateHygieneTests(unittest.TestCase):
@@ -356,11 +362,9 @@ class CodexBundleTests(unittest.TestCase):
             path = f".codex/agents/{codex_name}.toml"
             agent = tomllib.loads(read(path))
             self.assertEqual(agent["name"], codex_name, path)
-            self.assertNotEqual(agent.get("model_reasoning_effort"), "xhigh", path)
-            if codex_name in ("explore", "mech-executor"):
-                self.assertEqual(agent["model_reasoning_effort"], "low", path)
-            else:
-                self.assertNotIn("model_reasoning_effort", agent, path)
+            # Routing profiles are selected per dispatch; role files stay reusable.
+            self.assertNotIn("model", agent, path)
+            self.assertNotIn("model_reasoning_effort", agent, path)
             expected_sandbox = "read-only" if codex_name in read_only else "workspace-write"
             self.assertEqual(agent["sandbox_mode"], expected_sandbox, path)
             self.assertRegex(agent["developer_instructions"].lower(), r"(never|do not) delegate", path)
@@ -369,6 +373,242 @@ class CodexBundleTests(unittest.TestCase):
                 f"./agents/{codex_name}.toml",
                 codex_name,
             )
+
+    def test_model_routing_profiles_are_complete_and_dispatchable(self) -> None:
+        routing = tomllib.loads(read(".codex/model-routing.toml"))
+        self.assertEqual(routing["version"], 3)
+        self.assertEqual(
+            routing["selection"],
+            {
+                "default": "balanced",
+                "fast": "fast",
+                "quality_guarded": "quality_guarded",
+                "economy": "economy",
+                "high_risk": "quality_guarded",
+            },
+        )
+        self.assertEqual(
+            set(routing["profiles"]),
+            {"balanced", "fast", "quality_guarded", "economy"},
+        )
+        required_roles = {"main", *CODEX_ROLES}
+        role_tiers = routing["quality_floor"]["roles"]
+        application = routing["route_application"]["roles"]
+        allowed = routing["quality_floor"]["allowed"]
+        self.assertEqual(set(role_tiers), required_roles)
+        self.assertEqual(set(application), required_roles)
+        self.assertEqual(application["main"], "session_start_recommendation")
+        for role in CODEX_ROLES:
+            self.assertEqual(application[role], "dispatch_override", role)
+        for profile_name, profile in routing["profiles"].items():
+            self.assertEqual(set(profile["roles"]), required_roles, profile_name)
+            for role, route in profile["roles"].items():
+                model = routing["models"][route["model"]]
+                delivery = model["availability"]["native_leaf_override"]
+                self.assertIn(delivery, {"spawn_argument", "agent_config"})
+                if role != "main" and delivery == "agent_config":
+                    self.assertIn("agent_type", route, f"{profile_name}/{role}")
+                self.assertIn(route["effort"], model["efforts"], f"{profile_name}/{role}")
+                self.assertIn(
+                    f"{route['model']}/{route['effort']}",
+                    allowed[role_tiers[role]],
+                    f"{profile_name}/{role} falls below its quality floor",
+                )
+                self.assertTrue(route["reason"], f"{profile_name}/{role}")
+                self.assertNotEqual(route["model"], "gpt-5.6-luna")
+
+        luna_availability = routing["models"]["gpt-5.6-luna"]["availability"]
+        self.assertEqual(
+            luna_availability,
+            {
+                "subscription": "documented",
+                "main_selector": "documented",
+                "native_leaf_override": "agent_config",
+                "claude_bridge_override": "configured",
+            },
+        )
+        self.assertIn("smoke-tested", routing["models"]["gpt-5.6-luna"]["evidence"]["native_leaf"])
+        self.assertIn("not smoke-tested", routing["models"]["gpt-5.6-luna"]["evidence"]["claude_bridge"])
+        self.assertNotIn("surface_overrides", routing)
+        for model in routing["models"].values():
+            self.assertEqual(
+                set(model["efforts"]), {"low", "medium", "high", "xhigh", "max"}
+            )
+        self.assertAlmostEqual(
+            routing["models"]["gpt-5.6-terra"]["efforts"]["max"]
+            ["cost_usd_per_index_task"],
+            0.82461,
+        )
+        self.assertAlmostEqual(
+            routing["models"]["gpt-5.6-sol"]["efforts"]["high"]
+            ["output_tokens_per_index_task"],
+            6690.3086,
+        )
+
+    def test_model_routing_cli_validates_and_resolves_quality_first_priority(self) -> None:
+        script = ROOT / ".codex/scripts/model-routing"
+        self.assertTrue(os.access(script, os.X_OK))
+        validated = subprocess.run(
+            [str(script), "validate"], check=True, capture_output=True, text=True,
+        )
+        self.assertIn("valid: 4 profiles", validated.stdout)
+        resolved = subprocess.run(
+            [str(script), "resolve", "--priority", "fast",
+             "--role", "executor"],
+            check=True, capture_output=True, text=True,
+        )
+        route = json.loads(resolved.stdout)
+        self.assertEqual(route["profile"], "fast")
+        self.assertEqual(route["surface"], "native-leaf")
+        self.assertEqual(route["application"], "dispatch_override")
+        self.assertEqual(route["quality_tier"], "judgment")
+        self.assertEqual(route["model"], "gpt-5.6-sol")
+        self.assertEqual(route["effort"], "medium")
+        economical = subprocess.run(
+            [str(script), "resolve", "--priority", "economy",
+             "--role", "executor"],
+            check=True, capture_output=True, text=True,
+        )
+        economy_route = json.loads(economical.stdout)
+        self.assertEqual(economy_route["profile"], "economy")
+        self.assertEqual(economy_route["model"], "gpt-5.6-sol")
+        self.assertEqual(economy_route["effort"], "medium")
+        economical_support = subprocess.run(
+            [str(script), "resolve", "--priority", "economy",
+             "--role", "explore"],
+            check=True, capture_output=True, text=True,
+        )
+        economy_support = json.loads(economical_support.stdout)
+        self.assertEqual(economy_support["model"], "gpt-5.6-terra")
+        self.assertEqual(economy_support["effort"], "low")
+        self.assertEqual(economy_support["invocation"], {
+            "agent_type": "explore",
+            "fork_turns": "none",
+            "model_delivery": "spawn_argument",
+            "pass_model_override": True,
+        })
+        guarded = subprocess.run(
+            [str(script), "resolve", "--priority", "quality-guarded",
+             "--role", "explore"],
+            check=True, capture_output=True, text=True,
+        )
+        guarded_route = json.loads(guarded.stdout)
+        self.assertEqual(guarded_route["profile"], "quality_guarded")
+        self.assertEqual(guarded_route["model"], "gpt-5.6-sol")
+        self.assertEqual(guarded_route["effort"], "low")
+
+        bridge = subprocess.run(
+            [str(script), "resolve", "--surface", "claude-bridge",
+             "--priority", "fast", "--role", "explore"],
+            check=True, capture_output=True, text=True,
+        )
+        bridge_route = json.loads(bridge.stdout)
+        self.assertEqual(bridge_route["surface"], "claude-bridge")
+        self.assertEqual(bridge_route["model"], "gpt-5.6-terra")
+        self.assertEqual(bridge_route["effort"], "low")
+        bridge_economy = subprocess.run(
+            [str(script), "resolve", "--surface", "claude-bridge",
+             "--priority", "economy", "--role", "explore"],
+            check=True, capture_output=True, text=True,
+        )
+        bridge_economy_route = json.loads(bridge_economy.stdout)
+        self.assertEqual(bridge_economy_route["model"], "gpt-5.6-terra")
+        self.assertEqual(bridge_economy_route["effort"], "low")
+        self.assertEqual(
+            bridge_economy_route["invocation"]["model_delivery"],
+            "bridge_argument",
+        )
+
+        original = read(".codex/model-routing.toml")
+        invalid = original.replace(
+            '[profiles.fast.roles.executor]\nmodel = "gpt-5.6-sol"',
+            '[profiles.fast.roles.executor]\nmodel = "gpt-5.6-terra"',
+            1,
+        )
+        self.assertNotEqual(invalid, original)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            invalid_config = Path(temp_dir) / "model-routing.toml"
+            invalid_config.write_text(invalid, encoding="utf-8")
+            rejected = subprocess.run(
+                [str(script), "--config", str(invalid_config), "validate"],
+                capture_output=True, text=True,
+            )
+        self.assertNotEqual(rejected.returncode, 0)
+        self.assertIn("falls below quality tier judgment", rejected.stderr)
+
+        slow_fast = original.replace(
+            '[profiles.fast.roles.explore]\nmodel = "gpt-5.6-terra"',
+            '[profiles.fast.roles.explore]\nmodel = "gpt-5.6-sol"',
+            1,
+        )
+        self.assertNotEqual(slow_fast, original)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            slow_config = Path(temp_dir) / "model-routing.toml"
+            slow_config.write_text(slow_fast, encoding="utf-8")
+            rejected_fast = subprocess.run(
+                [str(script), "--config", str(slow_config), "validate"],
+                capture_output=True, text=True,
+            )
+        self.assertNotEqual(rejected_fast.returncode, 0)
+        self.assertIn("is not optimal for decode_minutes_per_index_task",
+                      rejected_fast.stderr)
+
+        costly_economy = original.replace(
+            '[profiles.economy.roles.explore]\nmodel = "gpt-5.6-terra"',
+            '[profiles.economy.roles.explore]\nmodel = "gpt-5.6-sol"',
+            1,
+        )
+        self.assertNotEqual(costly_economy, original)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            costly_config = Path(temp_dir) / "model-routing.toml"
+            costly_config.write_text(costly_economy, encoding="utf-8")
+            rejected_economy = subprocess.run(
+                [str(script), "--config", str(costly_config), "validate"],
+                capture_output=True, text=True,
+            )
+        self.assertNotEqual(rejected_economy.returncode, 0)
+        self.assertIn("is not optimal for cost_usd_per_index_task",
+                      rejected_economy.stderr)
+
+        unavailable_bridge = original.replace(
+            'claude_bridge_override = "configured"',
+            'claude_bridge_override = "unverified"',
+            1,
+        )
+        self.assertNotEqual(unavailable_bridge, original)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            bridge_config = Path(temp_dir) / "model-routing.toml"
+            bridge_config.write_text(unavailable_bridge, encoding="utf-8")
+            rejected_bridge = subprocess.run(
+                [str(script), "--config", str(bridge_config), "validate"],
+                capture_output=True, text=True,
+            )
+        self.assertNotEqual(rejected_bridge.returncode, 0)
+        self.assertIn("uses model unavailable to claude-bridge",
+                      rejected_bridge.stderr)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            malformed_config = Path(temp_dir) / "model-routing.toml"
+            malformed_config.write_text("[broken", encoding="utf-8")
+            malformed = subprocess.run(
+                [str(script), "--config", str(malformed_config), "validate"],
+                capture_output=True, text=True,
+            )
+        self.assertEqual(malformed.returncode, 2)
+        self.assertIn("ERROR: cannot load routing config", malformed.stderr)
+        self.assertNotIn("Traceback", malformed.stderr)
+
+    def test_model_routing_bundle_is_documented_and_synced(self) -> None:
+        readme = read(".codex/README.md")
+        deploy = read(".codex/DEPLOY.md")
+        sync = read("scripts/sync.sh")
+        for artifact in ("model-routing.toml", "scripts/model-routing"):
+            self.assertIn(artifact, readme)
+            self.assertIn(artifact, deploy)
+        self.assertIn("model-routing.toml prompts agents scripts", sync)
+        agents = read(".codex/AGENTS.md")
+        self.assertIn("${CODEX_HOME:-$HOME/.codex}/scripts/model-routing", agents)
+        self.assertIn("session-start recommendations", agents)
 
     def test_codex_dispatch_reporting_matches_claude(self) -> None:
         agents = read(".codex/AGENTS.md")

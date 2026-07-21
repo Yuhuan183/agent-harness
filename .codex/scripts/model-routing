@@ -1,0 +1,402 @@
+#!/usr/bin/env python3
+"""Inspect and validate Codex model-routing recommendations."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import tomllib
+from pathlib import Path
+
+
+CONFIG_PATH = Path(__file__).resolve().parents[1] / "model-routing.toml"
+REQUIRED_ROLES = {
+    "main",
+    "explore",
+    "mech-executor",
+    "executor",
+    "plan-verifier",
+    "verifier",
+    "security-reviewer",
+    "security-executor",
+}
+SELECTION_KEYS = {"default", "fast", "quality_guarded", "economy", "high_risk"}
+REQUIRED_EFFORTS = {"low", "medium", "high", "xhigh", "max"}
+REQUIRED_METRICS = {
+    "score",
+    "cost_usd_per_index_task",
+    "decode_minutes_per_index_task",
+    "reasoning_tokens_per_index_task",
+    "answer_tokens_per_index_task",
+    "output_tokens_per_index_task",
+}
+PROFILE_OBJECTIVES = {
+    "fast": "decode_minutes_per_index_task",
+    "economy": "cost_usd_per_index_task",
+}
+AVAILABILITY_SCHEMA = {
+    "subscription": {"documented", "unverified"},
+    "main_selector": {"documented", "unverified"},
+    "native_leaf_override": {"spawn_argument", "agent_config", "unverified"},
+    "claude_bridge_override": {"configured", "unverified"},
+}
+SURFACE_KEYS = {
+    "native-leaf": ("native_leaf_override", {"spawn_argument", "agent_config"}),
+    "claude-bridge": ("claude_bridge_override", {"configured"}),
+}
+SURFACE_OVERRIDE_KEYS = {"native-leaf": "native_leaf", "claude-bridge": "claude_bridge"}
+
+
+def is_dispatchable(model: dict, surface: str = "native-leaf") -> bool:
+    key, expected = SURFACE_KEYS[surface]
+    return model.get("availability", {}).get(key) in expected
+
+
+def route_for_surface(
+    config: dict, profile_name: str, role: str, surface: str
+) -> dict | None:
+    override = (
+        config.get("surface_overrides", {})
+        .get(SURFACE_OVERRIDE_KEYS[surface], {})
+        .get(profile_name, {})
+        .get("roles", {})
+        .get(role)
+    )
+    if override is not None:
+        return override
+    return config.get("profiles", {}).get(profile_name, {}).get("roles", {}).get(role)
+
+
+def load_config(path: Path) -> dict:
+    with path.open("rb") as handle:
+        return tomllib.load(handle)
+
+
+def validation_errors(config: dict) -> list[str]:
+    errors: list[str] = []
+    if config.get("version") != 3:
+        errors.append("version must be 3")
+
+    models = config.get("models", {})
+    profiles = config.get("profiles", {})
+    selection = config.get("selection", {})
+    route_application = config.get("route_application", {}).get("roles", {})
+    quality_floor = config.get("quality_floor", {})
+    role_tiers = quality_floor.get("roles", {})
+    allowed_by_tier = quality_floor.get("allowed", {})
+    if set(selection) != SELECTION_KEYS:
+        errors.append("selection keys must exactly match the routing schema")
+    if set(role_tiers) != REQUIRED_ROLES:
+        errors.append("quality_floor.roles must cover main and every leaf role")
+    if set(route_application) != REQUIRED_ROLES:
+        errors.append("route_application.roles must cover main and every leaf role")
+    for role, application in route_application.items():
+        expected = "session_start_recommendation" if role == "main" else "dispatch_override"
+        if application != expected:
+            errors.append(f"route_application role {role} must be {expected}")
+    for role, tier in role_tiers.items():
+        if tier not in allowed_by_tier:
+            errors.append(f"quality_floor role {role} references unknown tier: {tier!r}")
+    for tier, allowed_routes in allowed_by_tier.items():
+        if not allowed_routes:
+            errors.append(f"quality_floor tier {tier} must allow at least one route")
+        for route_key in allowed_routes:
+            if "/" not in route_key:
+                errors.append(f"quality_floor tier {tier} has malformed route: {route_key!r}")
+                continue
+            allowed_model, allowed_effort = route_key.rsplit("/", 1)
+            model = models.get(allowed_model)
+            if model is None:
+                errors.append(f"quality_floor tier {tier} references unknown model: {allowed_model}")
+            elif not is_dispatchable(model):
+                errors.append(f"quality_floor tier {tier} uses non-dispatchable model: {allowed_model}")
+            elif allowed_effort not in model.get("efforts", {}):
+                errors.append(
+                    f"quality_floor tier {tier} references unknown effort: {allowed_effort!r}"
+                )
+    for model_name, model in models.items():
+        availability = model.get("availability", {})
+        if set(availability) != set(AVAILABILITY_SCHEMA):
+            errors.append(f"model {model_name} availability must cover every surface")
+        for surface, valid_states in AVAILABILITY_SCHEMA.items():
+            if availability.get(surface) not in valid_states:
+                errors.append(
+                    f"model {model_name} has invalid {surface} availability: "
+                    f"{availability.get(surface)!r}"
+                )
+        efforts = model.get("efforts", {})
+        if set(efforts) != REQUIRED_EFFORTS:
+            errors.append(f"model {model_name} must define low through max efforts")
+        for effort, metrics in efforts.items():
+            missing_metrics = REQUIRED_METRICS - metrics.keys()
+            if missing_metrics:
+                errors.append(
+                    f"model {model_name}/{effort} missing metrics: "
+                    f"{', '.join(sorted(missing_metrics))}"
+                )
+                continue
+            if any(not isinstance(metrics[key], (int, float)) or metrics[key] <= 0
+                   for key in REQUIRED_METRICS):
+                errors.append(f"model {model_name}/{effort} metrics must be positive numbers")
+            token_sum = (
+                metrics["reasoning_tokens_per_index_task"]
+                + metrics["answer_tokens_per_index_task"]
+            )
+            if abs(token_sum - metrics["output_tokens_per_index_task"]) > 0.01:
+                errors.append(f"model {model_name}/{effort} output token total is inconsistent")
+    for key in SELECTION_KEYS:
+        profile = selection.get(key)
+        if profile not in profiles:
+            errors.append(f"selection.{key} references unknown profile: {profile!r}")
+
+    for profile_name, profile in profiles.items():
+        roles = profile.get("roles", {})
+        missing = REQUIRED_ROLES - roles.keys()
+        extra = roles.keys() - REQUIRED_ROLES
+        if missing:
+            errors.append(f"profile {profile_name} missing roles: {', '.join(sorted(missing))}")
+        if extra:
+            errors.append(f"profile {profile_name} has unknown roles: {', '.join(sorted(extra))}")
+        for role, route in roles.items():
+            model_name = route.get("model")
+            effort = route.get("effort")
+            model = models.get(model_name)
+            if model is None:
+                errors.append(f"profile {profile_name}/{role} references unknown model: {model_name!r}")
+                continue
+            if not is_dispatchable(model):
+                errors.append(f"profile {profile_name}/{role} uses non-dispatchable model: {model_name}")
+            native_delivery = model.get("availability", {}).get("native_leaf_override")
+            if role != "main" and native_delivery == "agent_config" and not route.get("agent_type"):
+                errors.append(
+                    f"profile {profile_name}/{role} requires agent_type for agent_config delivery"
+                )
+            if effort not in model.get("efforts", {}):
+                errors.append(f"profile {profile_name}/{role} references unknown effort: {effort!r}")
+            tier = role_tiers.get(role)
+            route_key = f"{model_name}/{effort}"
+            if tier in allowed_by_tier and route_key not in allowed_by_tier[tier]:
+                errors.append(
+                    f"profile {profile_name}/{role} route {route_key} "
+                    f"falls below quality tier {tier}"
+                )
+            if not route.get("reason"):
+                errors.append(f"profile {profile_name}/{role} has no reason")
+
+    overrides = config.get("surface_overrides", {})
+    extra_surfaces = set(overrides) - set(SURFACE_OVERRIDE_KEYS.values())
+    if extra_surfaces:
+        errors.append(f"surface_overrides has unknown surfaces: {', '.join(sorted(extra_surfaces))}")
+    for surface_name, surface_profiles in overrides.items():
+        if surface_name not in SURFACE_OVERRIDE_KEYS.values():
+            continue
+        for profile_name, profile_override in surface_profiles.items():
+            if profile_name not in profiles:
+                errors.append(
+                    f"surface_overrides.{surface_name} references unknown profile: "
+                    f"{profile_name}"
+                )
+            roles = profile_override.get("roles", {})
+            extra_roles = roles.keys() - REQUIRED_ROLES
+            if extra_roles:
+                errors.append(
+                    f"surface_overrides.{surface_name}.{profile_name} has unknown roles: "
+                    f"{', '.join(sorted(extra_roles))}"
+                )
+    for surface in SURFACE_KEYS:
+        for profile_name in profiles:
+            for role in REQUIRED_ROLES:
+                route = route_for_surface(config, profile_name, role, surface)
+                if route is None:
+                    continue
+                model_name = route.get("model")
+                effort = route.get("effort")
+                model = models.get(model_name)
+                if model is None:
+                    continue
+                if not is_dispatchable(model, surface):
+                    errors.append(
+                        f"profile {profile_name}/{role} uses model unavailable to "
+                        f"{surface}: {model_name}"
+                    )
+                tier = role_tiers.get(role)
+                route_key = f"{model_name}/{effort}"
+                if tier in allowed_by_tier and route_key not in allowed_by_tier[tier]:
+                    errors.append(
+                        f"profile {profile_name}/{role} {surface} route {route_key} "
+                        f"falls below quality tier {tier}"
+                    )
+                if effort not in model.get("efforts", {}):
+                    errors.append(
+                        f"profile {profile_name}/{role} {surface} references unknown "
+                        f"effort: {effort!r}"
+                    )
+                if not route.get("reason"):
+                    errors.append(f"profile {profile_name}/{role} {surface} has no reason")
+
+    for profile_name, metric in PROFILE_OBJECTIVES.items():
+        for surface in SURFACE_KEYS:
+            for role in profiles.get(profile_name, {}).get("roles", {}):
+                chosen = route_for_surface(config, profile_name, role, surface)
+                tier = role_tiers.get(role)
+                candidates = []
+                for route_key in allowed_by_tier.get(tier, []):
+                    candidate_model, candidate_effort = route_key.rsplit("/", 1)
+                    model = models.get(candidate_model, {})
+                    metrics = model.get("efforts", {}).get(candidate_effort)
+                    if is_dispatchable(model, surface) and metrics:
+                        candidates.append((metrics[metric], route_key))
+                chosen_key = f"{chosen.get('model')}/{chosen.get('effort')}"
+                if candidates:
+                    best_value, best_key = min(candidates)
+                    chosen_model = models.get(chosen.get("model"), {})
+                    chosen_metrics = chosen_model.get("efforts", {}).get(
+                        chosen.get("effort"), {}
+                    )
+                    chosen_value = chosen_metrics.get(metric)
+                    if chosen_value is not None and chosen_value > best_value + 1e-9:
+                        errors.append(
+                            f"profile {profile_name}/{role} {surface} route {chosen_key} "
+                            f"is not optimal for {metric}; {best_key} is lower"
+                        )
+    return errors
+
+
+def resolve_profile(config: dict, profile: str | None, priority: str | None) -> str:
+    if profile:
+        return profile
+    key = {
+        None: "default",
+        "balanced": "default",
+        "fast": "fast",
+        "quality-guarded": "quality_guarded",
+        "economy": "economy",
+        "high-risk": "high_risk",
+    }[priority]
+    return config["selection"][key]
+
+
+def command_validate(config: dict) -> int:
+    errors = validation_errors(config)
+    if errors:
+        for error in errors:
+            print(f"ERROR: {error}", file=sys.stderr)
+        return 1
+    print(
+        f"valid: {len(config['profiles'])} profiles, "
+        f"{len(config['models'])} benchmark models"
+    )
+    return 0
+
+
+def command_list(config: dict, as_json: bool) -> int:
+    rows = [
+        {"profile": name, "description": profile["description"]}
+        for name, profile in config["profiles"].items()
+    ]
+    if as_json:
+        print(json.dumps(rows, indent=2))
+    else:
+        for row in rows:
+            print(f"{row['profile']}: {row['description']}")
+    return 0
+
+
+def command_resolve(
+    config: dict, role: str, profile: str | None, priority: str | None, surface: str
+) -> int:
+    profile_name = resolve_profile(config, profile, priority)
+    if profile_name not in config["profiles"]:
+        print(f"ERROR: unknown profile: {profile_name}", file=sys.stderr)
+        return 2
+    route = route_for_surface(config, profile_name, role, surface)
+    if route is None:
+        print(f"ERROR: unknown role: {role}", file=sys.stderr)
+        return 2
+    model = config["models"][route["model"]]
+    if not is_dispatchable(model, surface):
+        print(
+            f"ERROR: model {route['model']} is not dispatchable on {surface}",
+            file=sys.stderr,
+        )
+        return 2
+    metrics = model["efforts"][route["effort"]]
+    if role == "main":
+        invocation = {"model_delivery": "session_selector"}
+    elif surface == "claude-bridge":
+        invocation = {
+            "agent_type": "codex:codex-rescue",
+            "fork_turns": "none",
+            "model_delivery": "bridge_argument",
+            "pass_model_override": True,
+        }
+    else:
+        delivery = model["availability"]["native_leaf_override"]
+        invocation = {
+            "agent_type": route.get("agent_type", role),
+            "fork_turns": "none",
+            "model_delivery": delivery,
+            "pass_model_override": delivery == "spawn_argument",
+        }
+    print(json.dumps({
+        "profile": profile_name,
+        "objective": config["profiles"][profile_name]["description"],
+        "role": role,
+        "surface": surface,
+        "application": config["route_application"]["roles"][role],
+        "quality_tier": config["quality_floor"]["roles"][role],
+        **route,
+        "invocation": invocation,
+        "benchmark_metrics": metrics,
+    }, indent=2))
+    return 0
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", type=Path, default=CONFIG_PATH)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    list_parser = subparsers.add_parser("list", help="list routing profiles")
+    list_parser.add_argument("--json", action="store_true")
+
+    subparsers.add_parser("validate", help="validate routing references")
+
+    resolve_parser = subparsers.add_parser("resolve", help="resolve one role recommendation")
+    resolve_parser.add_argument("--role", required=True)
+    resolve_parser.add_argument(
+        "--surface",
+        choices=tuple(SURFACE_KEYS),
+        default="native-leaf",
+    )
+    source = resolve_parser.add_mutually_exclusive_group()
+    source.add_argument("--profile")
+    source.add_argument(
+        "--priority",
+        choices=("balanced", "fast", "quality-guarded", "economy", "high-risk"),
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        config = load_config(args.config)
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        print(f"ERROR: cannot load routing config: {error}", file=sys.stderr)
+        return 2
+    errors = validation_errors(config)
+    if args.command != "validate" and errors:
+        for error in errors:
+            print(f"ERROR: {error}", file=sys.stderr)
+        return 1
+    if args.command == "validate":
+        return command_validate(config)
+    if args.command == "list":
+        return command_list(config, args.json)
+    return command_resolve(config, args.role, args.profile, args.priority, args.surface)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
