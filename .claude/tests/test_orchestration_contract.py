@@ -559,11 +559,31 @@ class MechanismTests(unittest.TestCase):
             report.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
             report.chmod(0o755)
             env = {**os.environ, "HOME": temp_home}
-            failed = subprocess.run([sys.executable, str(hook)], env=env,
-                                    check=True, capture_output=True, text=True)
             stamp = claude_dir / "telemetry" / ".integrity-last-run"
-            self.assertIn("contract-repo check failed", failed.stdout)
-            self.assertFalse(stamp.exists())
+
+            # rsync-deployed ~/.claude (no .git): drift vs the repo copy is
+            # reported, but the check completes and the throttle advances.
+            repo = Path(temp_home) / "repo"
+            (repo / ".claude").mkdir(parents=True)
+            (repo / ".claude" / "CLAUDE.md").write_text("contract\n",
+                                                        encoding="utf-8")
+            env["AGENT_HARNESS_REPO"] = str(repo)
+            drifted = subprocess.run([sys.executable, str(hook)], env=env,
+                                     check=True, capture_output=True, text=True)
+            self.assertIn("contract-repo drift", drifted.stdout)
+            self.assertNotIn("check failed", drifted.stdout)
+            self.assertTrue(stamp.exists())
+
+            # No git and no harness checkout either: skip gracefully.
+            stamp.unlink()
+            env["AGENT_HARNESS_REPO"] = str(Path(temp_home) / "missing")
+            skipped = subprocess.run([sys.executable, str(hook)], env=env,
+                                     check=True, capture_output=True, text=True)
+            self.assertNotIn("check failed", skipped.stdout)
+            self.assertTrue(stamp.exists())
+
+            # ~/.claude as a git checkout keeps the original git-status path.
+            stamp.unlink()
             subprocess.run(["git", "init", str(claude_dir)], check=True,
                            capture_output=True, text=True)
             completed = subprocess.run([sys.executable, str(hook)], env=env,
