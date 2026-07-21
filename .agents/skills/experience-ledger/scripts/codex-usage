@@ -1,0 +1,145 @@
+#!/usr/bin/env python3
+"""Read Codex CLI usage and quota from local session rollout files.
+
+Codex writes a `token_count` event per turn into
+~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl (override: CODEX_SESSIONS_DIR),
+carrying cumulative/last-turn token usage and the account rate-limit snapshot
+(used_percent of the plan window, reset time, plan type). This tool surfaces:
+
+  codex-usage                # quota snapshot + latest session's usage
+  codex-usage --quota        # quota snapshot only
+  codex-usage --session <id> # one session's cumulative usage (id substring ok)
+  codex-usage --days N       # limit the file scan window (default 7)
+  codex-usage --json         # machine-readable output
+
+Usage figures come from Codex's own telemetry; the quota snapshot is as of the
+most recent turn found, not a live API query.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+SESSIONS_DIR = Path(os.environ.get(
+    "CODEX_SESSIONS_DIR", os.path.expanduser("~/.codex/sessions")))
+
+
+def recent_files(days: int) -> list[Path]:
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    files = []
+    for f in SESSIONS_DIR.glob("*/*/*/rollout-*.jsonl"):
+        try:
+            if datetime.fromtimestamp(f.stat().st_mtime, timezone.utc) >= cutoff:
+                files.append(f)
+        except OSError:
+            continue
+    return sorted(files, key=lambda f: f.stat().st_mtime)
+
+
+def last_token_count(path: Path) -> dict | None:
+    """Last token_count payload in a rollout file, or None."""
+    found = None
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                if '"token_count"' not in line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                payload = rec.get("payload") or {}
+                if payload.get("type") == "token_count":
+                    found = payload
+    except OSError:
+        return None
+    return found
+
+
+def fmt_usage(usage: dict) -> str:
+    return (f"in {usage.get('input_tokens', 0):,} "
+            f"(cached {usage.get('cached_input_tokens', 0):,}) / "
+            f"out {usage.get('output_tokens', 0):,} "
+            f"(reasoning {usage.get('reasoning_output_tokens', 0):,}) / "
+            f"total {usage.get('total_tokens', 0):,}")
+
+
+def fmt_quota(rl: dict) -> str:
+    primary = rl.get("primary") or {}
+    used = primary.get("used_percent")
+    window_h = (primary.get("window_minutes") or 0) / 60
+    resets = primary.get("resets_at")
+    reset_str = (datetime.fromtimestamp(resets, timezone.utc)
+                 .astimezone().strftime("%Y-%m-%d %H:%M %Z")
+                 if isinstance(resets, (int, float)) else "?")
+    parts = [f"plan {rl.get('plan_type', '?')}",
+             f"used {used}% of {window_h:.0f}h window" if used is not None else "used ?",
+             f"resets {reset_str}"]
+    secondary = rl.get("secondary") or {}
+    if secondary.get("used_percent") is not None:
+        parts.append(f"secondary {secondary['used_percent']}%")
+    if rl.get("rate_limit_reached_type"):
+        parts.append(f"LIMIT REACHED: {rl['rate_limit_reached_type']}")
+    return "; ".join(parts)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--quota", action="store_true", help="quota snapshot only")
+    parser.add_argument("--session", default=None,
+                        help="session id (substring of the rollout filename)")
+    parser.add_argument("--days", type=int, default=7)
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args()
+
+    files = recent_files(args.days)
+    if args.session:
+        files = [f for f in files if args.session in f.name]
+    if not files:
+        print(f"no codex session files in the last {args.days} days"
+              + (f" matching '{args.session}'" if args.session else "")
+              + f" under {SESSIONS_DIR}")
+        return 1
+
+    # Newest file with a token_count event wins for the quota snapshot.
+    payload, source = None, None
+    for f in reversed(files):
+        payload = last_token_count(f)
+        if payload:
+            source = f
+            break
+    if payload is None:
+        print("no token_count events found (sessions may predate usage telemetry)")
+        return 1
+
+    info = payload.get("info") or {}
+    rl = payload.get("rate_limits") or {}
+    if args.json:
+        print(json.dumps({
+            "source": str(source),
+            "as_of": datetime.fromtimestamp(
+                source.stat().st_mtime, timezone.utc).isoformat(timespec="seconds"),
+            "session_total": info.get("total_token_usage"),
+            "last_turn": info.get("last_token_usage"),
+            "context_window": info.get("model_context_window"),
+            "rate_limits": rl,
+        }, indent=2))
+        return 0
+
+    print(f"codex quota  — {fmt_quota(rl)}")
+    print(f"  as of {source.name} "
+          f"({datetime.fromtimestamp(source.stat().st_mtime, timezone.utc).astimezone():%Y-%m-%d %H:%M})")
+    if not args.quota:
+        total = info.get("total_token_usage") or {}
+        last = info.get("last_token_usage") or {}
+        print(f"session total — {fmt_usage(total)}")
+        print(f"last turn     — {fmt_usage(last)}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

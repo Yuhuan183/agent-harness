@@ -30,4 +30,6 @@ SubagentStart/Stop hook（`experience-pending.py`）已自動暫存 role、wall-
 
 輸出 role × provider 的 n/AR/CR/RB/FR/QS、成本代理與決策 hint（紀錄依 45 天半衰期加權，舊證據自然淡出）。決策規則：樣本 n<5 → explore 補數據；Beta 後驗 P(win)≥0.85 → prefer；否則 either，依「subagent＋複核＋返工時間 → API cost → 完整 token → output token」裁量。**hint 是方向不是判決**——主 session 保留最終判斷。
 
+Codex 側 token 與額度：`scripts/codex-usage` 讀本機 `~/.codex/sessions/` rollout 的 `token_count` 事件——`--quota` 看帳號窗口用量（重度派工前檢查），無旗標另附最近 session 的累計與末回合 usage，可作 Codex 派工 `--tokens-out` 的資料源。
+
 指標定義、schema、誠實邊界與進化節奏見 [references/metrics.md](references/metrics.md)。派工頻率與 nested 違規由既有 `delegation-report` 覆蓋，與本帳本互補。

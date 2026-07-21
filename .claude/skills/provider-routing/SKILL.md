@@ -42,6 +42,7 @@ Named Claude roles own model and effort in frontmatter; omit invocation-level `m
 - Each leaf role has a Codex counterpart (`~/.codex/agents/<role>.toml`), invoked from Claude through the `codex:codex-rescue` bridge: prepend that file's `developer_instructions` as the role contract, pass `--effort` per tier, and for read-only roles prohibit writes.
 - Choose per dispatch between the Claude role and its Codex twin — steer by the experience ledger: load `experience-ledger`, log every dispatch outcome after its quality-check (use `--from-pending` to consume the hook-staged stub), and consult its report when provider choice is uncertain. Deviating from a hint requires a logged note.
 - Compare like with like: same role/task class and, where practical, the same brief. Re-sample after a material model, harness, or benchmark change instead of treating an old leaderboard or ledger hint as permanent.
+- Codex cost telemetry lives in local session rollouts, not the plugin output: `experience-ledger`'s `codex-usage` script reports per-turn tokens and the account quota snapshot. Check quota before heavy Codex dispatch; when the window is nearly exhausted, prefer the Claude role.
 - QC is tiered by role tier. **Pinned** deliverables (mechanical work from a complete spec) get a spot-check: sample the diff, run the brief's acceptance checks. **Follow** deliverables get a full review against the brief. Either way a weak deliverable is corrected in main or re-briefed, never silently merged.
 
 ## Independent-verifier triggers
