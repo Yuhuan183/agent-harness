@@ -131,7 +131,7 @@ claude_bridge_override = "configured"
 
 [models."gpt-5.6-luna".evidence]
 native_leaf = "smoke-tested on Codex CLI 0.144.6 with a temporary registered custom agent"
-claude_bridge = "assumed configurable by user decision; not smoke-tested"
+claude_bridge = "smoke-tested 2026-07-22 via codex:codex-rescue --model gpt-5.6-luna --effort low; rollout recorded gpt-5.6-luna/low"
 
 [models."gpt-5.6-luna".efforts.low]
 score = 33.2639
