@@ -18,7 +18,7 @@ SubagentStart/Stop hook（`experience-pending.py`）已自動暫存 role、wall-
 
 - 明確旗標永遠覆蓋 pending 值；Codex bridge 派工 stub 無法辨識角色時補 `--role`。無 stub 時退回全手動旗標。
 - Claude 角色與 Codex bridge 派工**都要記**；outcome 由主 session 的品質判定決定：`accepted`（一次過）/ `corrected`（修過才整合）/ `rebriefed`（重派）/ `failed`（棄用或 fallback）。
-- `--tokens-out` 建議必記（可得時）：算力成本是 either hint 的次級 tie-breaker；時間成本（`secs`）由 hook 自動帶入。
+- `--tokens-out` 建議必記（可得時）：只是 either hint 的算力代理，不是美元成本；`secs` 由 hook 自動帶入，只涵蓋 subagent start-to-stop，不含主 session 修正與整合。
 - `--task` 用短中性標籤，不寫機密與逐字內容；意外寫進 `--note`。
 - 偏離 report hint 的 provider 選擇，必記 `--note` 說明理由。
 

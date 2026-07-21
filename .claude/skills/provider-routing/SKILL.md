@@ -9,6 +9,8 @@ description: Cross-provider and role routing for the main session — H/X model 
 
 - The user owns the main-session model and effort through the session selector; tracked settings pin neither. Never switch silently.
 - Reference profiles: **H** = Fable/low or Opus/high; **X** = Fable/medium or Opus/high. Effort is capped at high everywhere; no role or bridge call uses xhigh.
+- Model names are dated operational references, not benchmark-derived guarantees for the exact effort. External indices are priors only: prefer the task-relevant model + harness + setting result, then update it with local outcomes.
+- Optimize cost per acceptable outcome, not raw token price. Include retries, review/rework, wall-clock, and failure risk; `tokens_out` is only a tie-break proxy and must not be converted to USD without input/cache telemetry and current prices.
 - Two effort tiers. **Pinned** (`Explore`, `mech-executor`): frontmatter locks effort low — mechanical work whose thinking already happened in main. **Follow** (`executor`, `plan-verifier`, `verifier`, `security-reviewer`, `security-executor`): frontmatter omits effort and inherits the main session's effort, keeping challenge depth symmetric with the work it checks.
 
 ## Cross-provider fallback
@@ -39,6 +41,7 @@ Named Claude roles own model and effort in frontmatter; omit invocation-level `m
 - Report every dispatch in one fixed line, nothing more: `dispatch: <task> — <role>@<provider> <model>/<effort>`. Codex bridge dispatches are reported the same way as Claude roles.
 - Each leaf role has a Codex counterpart (`~/.codex/agents/<role>.toml`), invoked from Claude through the `codex:codex-rescue` bridge: prepend that file's `developer_instructions` as the role contract, pass `--effort` per tier, and for read-only roles prohibit writes.
 - Choose per dispatch between the Claude role and its Codex twin — steer by the experience ledger: load `experience-ledger`, log every dispatch outcome after its quality-check (use `--from-pending` to consume the hook-staged stub), and consult its report when provider choice is uncertain. Deviating from a hint requires a logged note.
+- Compare like with like: same role/task class and, where practical, the same brief. Re-sample after a material model, harness, or benchmark change instead of treating an old leaderboard or ledger hint as permanent.
 - QC is tiered by role tier. **Pinned** deliverables (mechanical work from a complete spec) get a spot-check: sample the diff, run the brief's acceptance checks. **Follow** deliverables get a full review against the brief. Either way a weak deliverable is corrected in main or re-briefed, never silently merged.
 
 ## Independent-verifier triggers

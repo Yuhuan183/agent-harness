@@ -35,6 +35,30 @@ def sum_output_tokens(transcript_path, agent_id):
     return sum(per_message.values()) or None
 
 
+def latest_matching_start(agent_id, session_id, stop_time):
+    """Return the newest start for this exact dispatch before the stop.
+
+    Agent ids are not assumed to be globally unique across sessions.
+    """
+    try:
+        with open(PENDING, encoding="utf-8") as f:
+            records = [json.loads(line) for line in f if line.strip()]
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+    for prev in reversed(records):
+        if (prev.get("event") != "SubagentStart"
+                or prev.get("agent_id") != agent_id
+                or prev.get("session_id") != session_id):
+            continue
+        try:
+            start = datetime.fromisoformat(prev["ts"])
+        except (KeyError, ValueError, TypeError):
+            continue
+        if start <= stop_time:
+            return start
+    return None
+
+
 try:
     ev = json.load(sys.stdin)
     now = datetime.now(timezone.utc)
@@ -46,17 +70,11 @@ try:
         "session_id": ev.get("session_id"),
     }
     if rec["event"] == "SubagentStop" and rec["agent_id"]:
-        # pair with the staged start to compute dispatch wall-clock
-        try:
-            with open(PENDING, encoding="utf-8") as f:
-                for line in f:
-                    prev = json.loads(line)
-                    if (prev.get("event") == "SubagentStart"
-                            and prev.get("agent_id") == rec["agent_id"]):
-                        start = datetime.fromisoformat(prev["ts"])
-                        rec["secs"] = round((now - start).total_seconds(), 1)
-        except FileNotFoundError:
-            pass
+        # Measure subagent runtime only. Match session as well as agent id so
+        # overlapping sessions cannot lend each other a start timestamp.
+        start = latest_matching_start(rec["agent_id"], rec["session_id"], now)
+        if start is not None:
+            rec["secs"] = round((now - start).total_seconds(), 1)
         if ev.get("transcript_path"):
             tokens = sum_output_tokens(ev["transcript_path"], rec["agent_id"])
             if tokens is not None:

@@ -7,6 +7,7 @@ import sys
 import tempfile
 import tomllib
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -240,6 +241,8 @@ class ClaudeContractTests(unittest.TestCase):
             "**Pinned** (`Explore`, `mech-executor`)",
             "inherits the main session's effort",
             f"invoked from Claude through the `{CODEX_BRIDGE}` bridge",
+            "cost per acceptable outcome",
+            "External indices are priors only",
         ):
             self.assertIn(phrase, skill)
 
@@ -481,6 +484,54 @@ class SharedSkillTests(unittest.TestCase):
         # codex has n<5, so the standardized rule demands exploration, not preference.
         self.assertIn("explore codex", report["hints"]["executor"])
 
+    def test_experience_pending_pairs_by_session_and_consumes_one_dispatch(self) -> None:
+        hook = ROOT / ".claude/hooks/experience-pending.py"
+        log_script = ROOT / ".agents/skills/experience-ledger/scripts/experience-log"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            pending = Path(temp_dir) / "pending.jsonl"
+            ledger = Path(temp_dir) / "experience.jsonl"
+            now = datetime.now(timezone.utc)
+            records = [
+                {"ts": (now - timedelta(seconds=100)).isoformat(),
+                 "event": "SubagentStart", "agent_type": "executor",
+                 "agent_id": "shared", "session_id": "session-b"},
+                {"ts": (now - timedelta(seconds=1)).isoformat(),
+                 "event": "SubagentStart", "agent_type": "executor",
+                 "agent_id": "shared", "session_id": "session-a"},
+            ]
+            pending.write_text(
+                "".join(json.dumps(r) + "\n" for r in records), encoding="utf-8"
+            )
+            env = {
+                **os.environ,
+                "AGENT_EXPERIENCE_PENDING": str(pending),
+                "AGENT_EXPERIENCE_LEDGER": str(ledger),
+            }
+            stop = {
+                "hook_event_name": "SubagentStop",
+                "agent_type": "executor",
+                "agent_id": "shared",
+                "session_id": "session-b",
+            }
+            subprocess.run(
+                [sys.executable, str(hook)], env=env, input=json.dumps(stop),
+                check=True, capture_output=True, text=True,
+            )
+            staged = [json.loads(line) for line in pending.read_text().splitlines()]
+            self.assertGreater(staged[-1]["secs"], 90)
+            self.assertLess(staged[-1]["secs"], 120)
+
+            subprocess.run(
+                [sys.executable, str(log_script), "--from-pending",
+                 "--outcome", "accepted"],
+                env=env, check=True, capture_output=True, text=True,
+            )
+            logged = json.loads(ledger.read_text().strip())
+            self.assertEqual(logged["session"], "session-b")
+            remaining = [json.loads(line) for line in pending.read_text().splitlines()]
+            self.assertEqual(len(remaining), 1)
+            self.assertEqual(remaining[0]["session_id"], "session-a")
+
 
 class DocumentationBudgetTests(unittest.TestCase):
     def test_docs_stay_distilled(self) -> None:
@@ -509,6 +560,7 @@ class DocumentationBudgetTests(unittest.TestCase):
         doc = read("docs/harness-engineering.md")
         self.assertIn("main-only 段必須短", doc)
         self.assertIn("角色檔要自足", doc)
+        self.assertIn("每個可接受成果的預期總成本", doc)
 
 
 class MechanismTests(unittest.TestCase):

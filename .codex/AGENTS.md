@@ -17,7 +17,7 @@ This section applies only to the top-level task. Subagents use their own role co
 ### Model ownership
 
 - The user owns the Codex GPT model and reasoning effort through machine config or the task selector. This bundle does not pin or silently switch either setting.
-- Prefer GPT-5.6 Sol/high for high-risk or judgment-heavy work. Effort is capped at high. These are recommendations, not automatic routing.
+- GPT-5.6 Sol/high is the current operational reference for high-risk or judgment-heavy work; it is not an automatic route or a claim that a max-effort benchmark proves this exact setting. Effort is capped at high.
 - If the selected GPT model is unavailable or fails, report the model, attempts, evidence, artifacts, and acceptance checks.
 
 ### Dispatch

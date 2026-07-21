@@ -42,13 +42,25 @@ def consume_pending() -> dict | None:
             lines = [json.loads(l) for l in f if l.strip()]
     except (FileNotFoundError, json.JSONDecodeError):
         return None
-    stop = next((r for r in reversed(lines) if r.get("event") == "SubagentStop"), None)
-    if stop is None:
+    stop_index = next(
+        (i for i in range(len(lines) - 1, -1, -1)
+         if lines[i].get("event") == "SubagentStop"),
+        None,
+    )
+    if stop_index is None:
         return None
-    keep = [r for r in lines
-            if r is not stop
-            and not (r.get("event") == "SubagentStart"
-                     and r.get("agent_id") == stop.get("agent_id"))]
+    stop = lines[stop_index]
+    start_index = next(
+        (i for i in range(stop_index - 1, -1, -1)
+         if lines[i].get("event") == "SubagentStart"
+         and lines[i].get("agent_id") == stop.get("agent_id")
+         and lines[i].get("session_id") == stop.get("session_id")),
+        None,
+    )
+    consumed = {stop_index}
+    if start_index is not None:
+        consumed.add(start_index)
+    keep = [r for i, r in enumerate(lines) if i not in consumed]
     with open(PENDING_PATH, "w", encoding="utf-8") as f:
         for r in keep:
             f.write(json.dumps(r) + "\n")

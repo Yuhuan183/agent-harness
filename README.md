@@ -42,11 +42,12 @@ symlink 引用（避免重複）。跨 agent runtime 知識（如 Headroom）也
 
 ## 現況
 
-- 蒸餾快照日期：2026-07-20。
-- 已完成（尚未回寫全域）：`CLAUDE.md` 瘦身 6.9KB → 2.1KB（routing 抽至
+- 蒸餾快照日期：2026-07-21。
+- 已完成並回寫 2026-07-20 全域基線：`CLAUDE.md` 瘦身 6.9KB → 2.1KB（routing 抽至
   `.claude/skills/provider-routing/`）；codex 配置統一於 `.codex/`；共用 skill 與跨 agent
   runtime 知識統一於 `.agents/`；文檔分為專案知識層與可攜配置層兩層，各層具 README。
-- 待辦：執行 `scripts/sync.sh --apply` 回寫全域並跑驗收（見 `docs/global-claude-md-slimming.md`）。
+- 待辦：review 並提交 2026-07-21 的模型路由／成本研究更新後，執行
+  `scripts/sync.sh --apply` 回寫本次差異並開新 session 驗收（見 `docs/setup.md`）。
 
 ## License
 
