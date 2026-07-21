@@ -57,6 +57,23 @@ try:
         checks_completed = False
         findings.append(f"delegation audit failed: {exc}")
 
+    # Informational only: surface dispatch-experience hints when any exist.
+    # Best-effort — a failure here neither blocks the throttle nor alarms.
+    try:
+        exp = subprocess.run(
+            [os.path.expanduser(
+                "~/.agents/skills/experience-ledger/scripts/experience-report"),
+             "--days", "30"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        hints = [l for l in exp.stdout.splitlines() if l.startswith("hint:")]
+        if exp.returncode == 0 and hints:
+            findings.append("dispatch-experience hints (30d):\n" + "\n".join(hints))
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
     if checks_completed:
         try:
             os.makedirs(os.path.dirname(STAMP), exist_ok=True)

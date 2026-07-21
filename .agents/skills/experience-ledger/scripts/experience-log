@@ -88,6 +88,8 @@ def main() -> int:
             args.provider = "codex" if (agent_type and "codex" in agent_type) else "claude"
         if args.secs is None and isinstance(stub.get("secs"), (int, float)):
             args.secs = stub["secs"]
+        if args.tokens_out is None and isinstance(stub.get("tokens_out"), int):
+            args.tokens_out = stub["tokens_out"]
         if args.session is None:
             args.session = stub.get("session_id")
     if args.role is None or args.provider is None:
