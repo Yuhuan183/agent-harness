@@ -20,7 +20,7 @@
 | 文件 | 保存內容 | 不保存內容 |
 |---|---|---|
 | [Harness Engineering Playbook](harness-engineering.md) | 可跨專案複用的設計與驗證方法 | 當前 route pins、實驗原始數據 |
-| [研究摘要](harness-engineering-research.md) | benchmark 快照、成本口徑、本機案例、證據限制 | runtime 強制規則 |
+| [研究摘要](harness-engineering-research.md) | benchmark 快照、成本口徑、案例取捨、研究缺口 | runtime 強制規則、現行 route pins |
 | [配置與部署](setup.md) | bootstrap、apply、驗收與回滾步驟 | 模型選擇理由 |
 | [CLAUDE.md 瘦身紀錄](global-claude-md-slimming.md) | 歷史決策與逐區塊驗收 | 當前 orchestration 狀態 |
 | [Orchestration plan](../.claude/plans/orchestration-plan.md) | 短期現況、未決項與決策紀錄 | 完整方法論與研究全文 |

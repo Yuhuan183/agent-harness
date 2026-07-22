@@ -256,6 +256,34 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertIn("LEAF_DISPATCH", skill)
         self.assertIn("LEAF_RESULT", skill)
 
+    def test_pilotfish_v130_guardrails_are_backend_neutral_and_cross_surface(self) -> None:
+        skill = read(".claude/skills/baton-dispatch/SKILL.md")
+        brief = read(".claude/skills/baton-dispatch/references/briefs-and-stops.md")
+        claude = read(".claude/CLAUDE.contract.md")
+        codex = read(".codex/AGENTS.contract.md")
+        triggers = read(
+            ".claude/skills/provider-routing/references/verifier-triggers.md"
+        )
+
+        for text in (skill, brief, codex):
+            self.assertIn("stable one-shot brief", text)
+            self.assertIn("independent and the same shape", text)
+            self.assertIn("per-item acceptance", text)
+        self.assertIn("known root cause and remedy", skill)
+        self.assertIn("known remedy", codex)
+        self.assertIn("not a numeric trigger", brief)
+        self.assertIn("never use an item-count trigger", codex)
+
+        for text in (skill, triggers, codex):
+            self.assertIn("smallest coherent integration boundary", text)
+            self.assertIn("intermediate evidence", text)
+            self.assertIn("cross-language or FFI", text)
+            self.assertIn("serialization or pre-aggregation", text)
+        for text in (skill, claude, codex):
+            self.assertIn("substantially unchanged Plan", text)
+            self.assertIn("material revision or new evidence", text)
+            self.assertRegex(text, r"silently (overrule|overriding)")
+
     def test_provider_routing_owns_model_and_fallback_policy(self) -> None:
         skill = read(".claude/skills/provider-routing/SKILL.md")
         for phrase in (
@@ -1164,9 +1192,13 @@ class DocumentationBudgetTests(unittest.TestCase):
 
     def test_harness_engineering_keeps_role_boundaries_local(self) -> None:
         doc = read("docs/harness-engineering.md")
+        research = read("docs/harness-engineering-research.md")
         self.assertIn("main-only 段必須短", doc)
         self.assertIn("角色檔要自足", doc)
         self.assertIn("每個可接受成果的預期總成本", doc)
+        self.assertIn("完整主張可反駁的最小整合邊界", doc)
+        self.assertIn("stable brief", doc)
+        self.assertIn("研究摘要不再複製容易過期的 route 表格", research)
 
 
 class MechanismTests(unittest.TestCase):

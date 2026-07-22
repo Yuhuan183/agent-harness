@@ -8,10 +8,10 @@
 |---|---|---|
 | CLI output | `rtk` PreToolUse rewrite, fail-open | `settings.json`, `RTK.md` |
 | Context compression | Headroom wrap mode (recommended default) + optional persistent install; no durable proxy routing in tracked settings | `../.agents/docs/headroom-runtime.md` |
-| Orchestration | Direct-first brake distilled from Baton `0ab4d2e` | `CLAUDE.md`, `skills/baton-dispatch/` |
+| Orchestration | Direct-first brake from Baton `0ab4d2e`, plus Pilotfish v1.3 shape-based batching and Plan anti-churn | `CLAUDE.md`, `skills/baton-dispatch/` |
 | Roles | Seven self-contained capability contracts; task class and scenario refine work without role proliferation | `agents/`, `skills/baton-dispatch/` |
 | Routing data | Per-provider routing files with quality floors and priority profiles | `model-routing.toml`, `../.codex/model-routing.toml` |
-| Verification | Focused checks first; Plan and outcome verifiers are capability-separated | `agents/plan-verifier.md`, `agents/verifier.md` |
+| Verification | Plan/outcome roles stay capability-separated; fresh outcome verification uses the smallest coherent integration boundary | `agents/plan-verifier.md`, `agents/verifier.md` |
 | Monitoring | Delegation audit, weekly drift check, usage metadata report, runtime guard | `hooks/`, `scripts/` |
 | Portability | Claude source of truth distilled into Codex and ChatGPT bundles after local review | `../.codex/` |
 
@@ -68,7 +68,7 @@
 - **2026-07-18** — Headroom verified against upstream v0.32; base URL stays machine-local.
 - **2026-07-20** — Two-tier role effort (capped at high); per-dispatch reporting and QC; Codex counterparts for each leaf role via the codex-rescue bridge. Added `experience-ledger` skill (AR/CR/RB/FR/QS, explore/prefer rule).
 - **2026-07-21** — External rankings (AA v4.1, Coding Agent Index v1.2) demoted to priors; route on local acceptable-outcome cost. Added token, review/rework, and API-cost coverage.
-- **2026-07-22** — Three quality-first profiles standardized. Claude routes became atomic source deployment presets; Codex native/bridge remained per-dispatch. Sol/Terra/Luna bridge paths and Luna custom-agent delivery were rollout-verified, while Luna stayed unrouted. Experience schema v3 added request source and dispatch/rollout identity; config-driven comparable cohorts replaced fixed code thresholds. Sync preflight, settings overwrite guard, cross-platform drift, and post-apply parity were expanded.
+- **2026-07-22** — Three quality-first profiles standardized; Claude uses atomic deployment presets while Codex native/bridge remains per-dispatch. Sol/Terra/Luna availability was verified, Luna stayed unrouted, and experience schema v3 added source plus dispatch/rollout identity. Sync preflight, overwrite/drift guards, and parity checks expanded. Pilotfish v1.3 informed shape-based batching, coherent-boundary verification, and Plan anti-churn without changing routes.
 
 ## Verification
 

@@ -45,3 +45,14 @@ For each workstream, list required reads, allowed writes, forbidden writes, seco
 | Retry/rate-limit cascade | Reduce concurrency or batch size |
 
 Known one-file fix stays direct. Independent read-only sources may fan out. Shared registries converge before builders start.
+
+## Recurrent execution batch
+
+Treat recurrence as a contract-shape check, not a numeric trigger. Before batching, confirm all of the following:
+
+- one stable one-shot brief covers goal, constraints, done criteria, ownership, and per-item acceptance;
+- every remaining item is independent and the same shape;
+- no item needs main's evolving diagnostic evidence or shared-state decision;
+- main retains exception handling, integration, and final acceptance.
+
+Diagnosed review findings with known remedies count as execution items. Unknown causes, uncertain remedies, and findings that share mutable state stay in the main reasoning chain until stabilized.

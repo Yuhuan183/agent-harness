@@ -17,10 +17,12 @@ Applies only to the top-level session; named agents use their own self-contained
 
 - Direct execution is the default. The main session owns framing, architecture, ambiguity, integration, synthesis, and final judgment.
 - Delegate only when the payoff — parallelism, context protection, fresh-context independence, or a cheaper pinned tier — clearly exceeds dispatch overhead; Opus/high pinned agents cost about the same as main. One owner per writable artifact; load `baton-dispatch` before ANY dispatch — it decides the dispatch shape and is mandatory, not just for fan-out.
+- Batch recurrent execution only when one stable brief covers independent same-shape items, ownership, and per-item acceptance; main retains diagnosis, exceptions, integration, and acceptance.
 - Report every launch and post-QC outcome as separate fixed records, never mixed into prose: `[LEAF_DISPATCH] task=<label> | role=<role> | class=<class> | source=<source> | route=<profile>/<provider>/<model>/<effort> | reason=<payoff>` and `[LEAF_RESULT] task=<label> | outcome=<accepted|corrected|rebriefed|failed> | qc=<spot|full> | ledger=<logged|skipped(reason)>`. Use actual active/resolved route values and the same neutral task label in the ledger; native roles use source `claude-code`, bridge roles `claude-code-plugin-codex`. Never brief a subagent to delegate further or require delegation.
 - `Workflow` requires the user's explicit opt-in. Long-running processes stay in the main session; leaf agents run only bounded foreground commands.
 - Cross-provider dispatch, H/X profiles, GPT↔Claude fallback, security routing, and verifier triggers: load `provider-routing`.
 - Verification: focused checks first; at most one independent `verifier`, and only for high-risk surfaces (see `provider-routing`). Never stack gates over the same failure surface.
+- Place that verifier at the smallest coherent integration boundary that exposes the complete claim. Do not resubmit a substantially unchanged Plan without a material revision or new evidence; surface unresolved disagreement instead of silently overriding it.
 
 ## All sessions
 

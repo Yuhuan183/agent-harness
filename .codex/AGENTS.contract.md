@@ -29,6 +29,7 @@ Before delegating, confirm observable outcome, delegation benefit, independent w
 
 - Group by shared context, artifacts, dependencies, and verification surface—not request bullets.
 - Keep one unknown bug's diagnosis, first fix, and live verification in one reasoning chain.
+- Batch recurrent execution only when one stable one-shot brief completely states the goal, constraints, done criteria, ownership, and per-item acceptance, and all remaining items are independent and the same shape. A diagnosed review finding with a known remedy is execution work, but main still owns triage, exceptions, integration, and acceptance; never use an item-count trigger or batch work coupled to main's evolving evidence.
 - Converge shared schemas, registries, config, generated output, and lockfiles before parallel writes.
 - Treat the approved Plan/release slice as a hard boundary. Workers may report adjacent work but cannot implement it.
 - Brief outcome, scope/non-scope, excluded capabilities, minimum paths, ownership, local checks, output, and stops once.
@@ -36,12 +37,15 @@ Before delegating, confirm observable outcome, delegation benefit, independent w
 - Collect the finished subagent response and quality-check it against the brief before integration. Follow up only for genuinely new or redirected work.
 - After quality-checking each native Codex leaf, log the outcome with `experience-ledger`, request source `codex`, resolved profile/model/effort, and the dispatched non-smoke task class.
 - Centralize repository-wide, live, or expensive gates; preserve partial evidence when stopping.
+- Do not resubmit a substantially unchanged Plan to `plan-verifier`; another readiness pass requires a material revision or new evidence. If disagreement remains unresolved, simplify the Plan, surface the blocker, or defer the blocked scope—never silently overrule it.
 
 ### Independent verifier
 
 Use exactly one verifier only when failure could affect a security/trust boundary, money, destructive data, migrations, concurrency, public APIs, or cross-repo compatibility; judgment-heavy integration cannot be proven mechanically; acceptance depends on adversarial state/boundary behavior; evidence conflicts; reproduction fails; or the user requests independent verification.
 
 Do not use it for docs-only, trivial config, decisive mechanical checks, low-risk direct work, or duplicate review. Stack gates only for distinct failure surfaces.
+
+Place fresh verification at the smallest coherent integration boundary where the complete acceptance claim can be independently refuted. Tests, builds, and static checks are intermediate evidence during iteration. Verify earlier for security, cross-language or FFI, serialization or pre-aggregation, irreversible-operation, and integration-blocking boundaries; earlier timing does not authorize another verifier over the same surface.
 
 ## Reporting
 
