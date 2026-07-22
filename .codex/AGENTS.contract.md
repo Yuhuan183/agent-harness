@@ -34,6 +34,7 @@ Before delegating, confirm observable outcome, delegation benefit, independent w
 - Brief outcome, scope/non-scope, excluded capabilities, minimum paths, ownership, local checks, output, and stops once.
 - Report every dispatch to the user: task, model, and effort. Never brief a subagent to delegate further, and never hand one a task that would require delegation.
 - Collect the finished subagent response and quality-check it against the brief before integration. Follow up only for genuinely new or redirected work.
+- After quality-checking each native Codex leaf, log the outcome with `experience-ledger`, request source `codex`, resolved profile/model/effort, and a non-smoke task class.
 - Centralize repository-wide, live, or expensive gates; preserve partial evidence when stopping.
 
 ### Independent verifier

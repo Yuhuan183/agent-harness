@@ -33,7 +33,7 @@ Never map request bullets directly to agents.
 
 ## Run design
 
-1. Stabilize outcome, scope/non-scope, constraints, and evidence.
+1. Stabilize outcome, scope/non-scope, constraints, evidence, and ledger task class.
 2. Converge shared schemas, registries, config, generated output, and lockfiles.
 3. Assign one owner to every writable artifact and name the integration owner.
 4. Brief only minimum paths, local checks, output, and stop conditions.

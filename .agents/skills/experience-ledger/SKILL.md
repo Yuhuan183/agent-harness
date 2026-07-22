@@ -16,22 +16,22 @@ SubagentStart/Stop hook（`experience-pending.py`）已自動暫存 role、wall-
   --from-pending --outcome accepted --class impl --task "auth refactor" --quality 4
 ```
 
-- 明確旗標永遠覆蓋 pending 值；Codex bridge 派工 stub 無法辨識角色時補 `--role`。無 stub 時退回全手動旗標。
+- 明確旗標永遠覆蓋 pending 值；重疊完成時 `--from-pending` 會拒絕猜測，須補 hook 產生的 `--dispatch-id`。無 stub 的 native Codex 記錄須補 `--request-source codex`、role、provider 與 route。
 - Claude 角色與 Codex bridge 派工**都要記**；outcome 由主 session 的品質判定決定：`accepted`（一次過）/ `corrected`（修過才整合）/ `rebriefed`（重派）/ `failed`（棄用或 fallback）。
-- hook 會帶入 input/output/cache token 與 subagent `secs`（可得時）；品質檢查後補 `--review-secs`、`--rework-secs`，provider 有可靠帳單值時再補 `--api-cost-usd`。缺欄位時 report 會退回較窄的代理，不能冒充完整美元成本。
+- hook 會記錄 `request_source`（`claude-code`／`claude-code-plugin-codex`）、dispatch、rollout、input/output/cache token 與 `secs`（可得時）；native Codex 使用 `codex`。bridge 時窗若碰到多個 rollout，標記 ambiguous 並不寫 token，避免錯帳。品質檢查後補 `--review-secs`、`--rework-secs`；有可靠帳單值才補 `--api-cost-usd`。
 - `--task` 用短中性標籤，不寫機密與逐字內容；意外寫進 `--note`。
 - 偏離 report hint 的 provider 選擇，必記 `--note` 說明理由。
 
 ## 查詢（provider 選擇不確定時；每週例行一次）
 
 ```bash
-~/.agents/skills/experience-ledger/scripts/experience-report --days 30
+~/.agents/skills/experience-ledger/scripts/experience-report
 ```
 
-輸出 role × provider 的 n/AR/CR/RB/FR/QS、成本代理與決策 hint（紀錄依 45 天半衰期加權，舊證據自然淡出）。決策規則：樣本 n<5 → explore 補數據；Beta 後驗 P(win)≥0.85 → prefer；否則 either，依「subagent＋複核＋返工時間 → API cost → 完整 token → output token」裁量。**hint 是方向不是判決**——主 session 保留最終判斷。
+輸出 role × task class × provider 的 observed/decision n、AR/CR/RB/FR/QS、來源、coverage、成本代理與 hint。只有 schema v3 且來源與 route 完整的 production 紀錄能進決策；舊資料仍顯示但不影響 hint。門檻只由兩側 `model-routing.toml` 的相同 `revision_policy` 驅動；目前為 90 天、45 天半衰期、每格 n≥10、P(win)≥0.90。兩側設定不同或缺欄位時停止。`smoke`／`other` 不產生 hint；成本只比較雙方都有足量的相同口徑。**hint 是方向不是判決**。
 
 Codex 側 token 與額度：`scripts/codex-usage` 讀本機 `~/.codex/sessions/` rollout 的 `token_count` 事件——`--quota` 看帳號窗口用量（重度派工前檢查；短窗口如 5h 優先於週窗口——短窗口耗盡任務直接停擺，接近 90% 就改派 Claude 或等重置），無旗標另附最近 session 的累計與末回合 usage，可作 Codex 派工 `--tokens-out` 的資料源。
 
-Profile 重推：`scripts/experience-revise` 讀帳本與兩側 routing 檔（經共用 schema 層），對每個 role 回報 unsampled／insufficient／keep／consider——consider 需該格 n≥5、P(win)≥0.85 且不低於品質底線。工具只建議不改檔；採納後手動改 TOML 並記 decision。
+Profile 重推：`scripts/experience-revise` 直接讀每側 `revision_policy`，只在目前 deployment profile 的相同 role／task class 比較 route cell，並回報 unsampled／insufficient／keep／consider。工具只建議不改檔；role-wide 調整仍由 main 綜合各 cohort 後決定。
 
 指標定義、schema、誠實邊界與進化節奏見 [references/metrics.md](references/metrics.md)。派工頻率與 nested 違規由既有 `delegation-report` 覆蓋，與本帳本互補。

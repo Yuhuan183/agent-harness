@@ -7,12 +7,32 @@ error exits 0."""
 import json
 import os
 import sys
+from contextlib import contextmanager
 from datetime import datetime, timezone
 
 PENDING = os.environ.get(
     "AGENT_EXPERIENCE_PENDING",
     os.path.expanduser("~/.agents/telemetry/experience-pending.jsonl"),
 )
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - non-POSIX fallback remains fail-open
+    fcntl = None
+
+
+@contextmanager
+def pending_lock():
+    """Serialize appends with experience-log's read/modify/write cycle."""
+    os.makedirs(os.path.dirname(PENDING), exist_ok=True)
+    with open(PENDING + ".lock", "a", encoding="utf-8") as lock:
+        if fcntl is not None:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            if fcntl is not None:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
 
 USAGE_FIELDS = {
     "input_tokens": "tokens_in",
@@ -56,14 +76,14 @@ CODEX_SESSIONS = os.environ.get(
 
 
 def codex_usage_tokens(start, stop):
-    """Token delta across Codex rollout token_count events in [start, stop].
+    """Token delta for one unambiguous Codex rollout in [start, stop].
 
     A codex-bridge subagent's own transcript only shows the thin forwarder;
     the real usage lands in ~/.codex/sessions rollouts. Delta against the
     last pre-start snapshot keeps resumed threads from over-counting.
     """
     import glob
-    totals = {}
+    candidates = []
     for path in glob.glob(os.path.join(CODEX_SESSIONS, "*/*/*/rollout-*.jsonl")):
         try:
             if datetime.fromtimestamp(os.path.getmtime(path), timezone.utc) < start:
@@ -87,17 +107,29 @@ def codex_usage_tokens(start, stop):
             if final is None:
                 continue
             base = baseline or {}
-            for field in ("input_tokens", "cached_input_tokens", "output_tokens"):
-                delta = final.get(field, 0) - base.get(field, 0)
-                totals[field] = totals.get(field, 0) + max(0, delta)
+            delta = {
+                field: max(0, final.get(field, 0) - base.get(field, 0))
+                for field in ("input_tokens", "cached_input_tokens", "output_tokens")
+            }
+            if any(delta.values()):
+                candidates.append((path, delta))
         except OSError:
             continue
-    if not totals:
+    if not candidates:
         return {}
+    if len(candidates) > 1:
+        return {
+            "telemetry_warning": "ambiguous_codex_rollout",
+            "rollout_candidates": len(candidates),
+        }
+    path, totals = candidates[0]
     return {
-        "tokens_in": totals.get("input_tokens", 0) - totals.get("cached_input_tokens", 0),
+        "tokens_in": max(
+            0, totals.get("input_tokens", 0) - totals.get("cached_input_tokens", 0)
+        ),
         "cache_read_tokens": totals.get("cached_input_tokens", 0),
         "tokens_out": totals.get("output_tokens", 0),
+        "rollout_id": os.path.basename(path).removesuffix(".jsonl"),
     }
 
 
@@ -139,6 +171,12 @@ try:
     # one of this harness's dispatches and would otherwise block --from-pending.
     if not rec["agent_type"]:
         sys.exit(0)
+    rec["dispatch_id"] = f"{rec['session_id']}:{rec['agent_id']}"
+    rec["request_source"] = (
+        "claude-code-plugin-codex"
+        if "codex" in rec["agent_type"].lower()
+        else "claude-code"
+    )
     if rec["event"] == "SubagentStop" and rec["agent_id"]:
         # Measure subagent runtime only. Match session as well as agent id so
         # overlapping sessions cannot lend each other a start timestamp.
@@ -152,9 +190,9 @@ try:
                 rec.update(codex_usage_tokens(start, now))
         elif ev.get("transcript_path"):
             rec.update(sum_usage_tokens(ev["transcript_path"], rec["agent_id"]))
-    os.makedirs(os.path.dirname(PENDING), exist_ok=True)
-    with open(PENDING, "a", encoding="utf-8") as f:
-        f.write(json.dumps(rec) + "\n")
+    with pending_lock():
+        with open(PENDING, "a", encoding="utf-8") as f:
+            f.write(json.dumps(rec) + "\n")
 except Exception:
     pass
 sys.exit(0)

@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
-"""Standardized dispatch-experience metrics per role x provider.
+"""Comparable dispatch metrics by role x task class x provider.
 
-Reads ~/.agents/telemetry/experience.jsonl (override: AGENT_EXPERIENCE_LEDGER).
-Indicators: n, AR (accepted), CR (corrected), RB (rebriefed), FR (failed),
-QS (mean quality), token/time cost proxies, and optional API cost. Records are exponentially decayed (--half-life days) so
-stale evidence fades as providers upgrade. Decision hints use a Beta posterior
-on the decayed accept counts: prefer a provider when P(win) >= --prefer-p;
-raw sample counts below --min-samples always yield an explore hint.
-Quality judgments are main-session subjective — hints are directional,
-not verdicts.
+The executable revision policy comes from both provider routing files. Hints
+exclude non-production cohorts (for example smoke/other), never mix complete
+and output-only token scopes, and retain request-source coverage so native
+Claude, native Codex, and Claude's Codex plugin remain distinguishable.
 """
 from __future__ import annotations
 
@@ -17,11 +13,27 @@ import json
 import os
 import random
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
-POSTERIOR_DRAWS = 4000  # fixed-seed Monte Carlo; deterministic across runs
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+try:
+    import routing_core as core
+except ImportError:
+    sys.stderr.write("ERROR: shared routing core missing "
+                     "(<root>/.agents/scripts/routing_core.py)\n")
+    sys.exit(2)
+
+POSTERIOR_DRAWS = 4000
 TOKEN_FIELDS = ("tokens_in", "tokens_out", "cache_write_tokens", "cache_read_tokens")
+PROVIDERS = ("claude", "codex")
+REQUEST_SOURCE_PROVIDER = {
+    "claude-code": "claude",
+    "codex": "codex",
+    "claude-code-plugin-codex": "codex",
+}
+ROOT = Path(__file__).resolve().parents[4]
 
 
 def parse_ts(value: str) -> datetime:
@@ -31,86 +43,148 @@ def parse_ts(value: str) -> datetime:
 def load(path: str, since: datetime) -> list[dict]:
     records = []
     try:
-        with open(path, encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
+        with open(path, encoding="utf-8") as handle:
+            for line in handle:
                 try:
-                    rec = json.loads(line)
-                    if parse_ts(rec["ts"]) >= since:
-                        records.append(rec)
+                    record = json.loads(line)
+                    if parse_ts(record["ts"]) >= since:
+                        records.append(record)
                 except (json.JSONDecodeError, KeyError, ValueError):
-                    continue  # skip malformed lines; ledger is append-only best-effort
+                    continue
     except FileNotFoundError:
         pass
     return records
 
 
-def summarize(records: list[dict], now: datetime, half_life: float) -> dict:
-    groups: dict[tuple[str, str], dict] = defaultdict(
-        lambda: {"n": 0, "w": 0.0, "accepted": 0.0, "corrected": 0.0,
-                 "rebriefed": 0.0, "failed": 0.0,
-                 "quality": [], "tokens_out": [], "total_tokens": [],
-                 "secs": [], "total_secs": [], "api_cost_usd": []}
+def load_shared_policy(paths: list[Path]) -> tuple[dict, list[dict]]:
+    policies = []
+    configs = []
+    for path in paths:
+        config = core.load_config(path)
+        errors = core.check_revision_policy(config)
+        if errors:
+            raise ValueError(f"{path}: {'; '.join(errors)}")
+        policies.append(core.revision_policy(config))
+        configs.append(config)
+    if policies[1:] != policies[:-1]:
+        raise ValueError("provider revision_policy values must match for comparison")
+    return policies[0], configs
+
+
+def decision_eligible(record: dict, excluded: set[str]) -> bool:
+    """Only complete v3 production records may drive routing decisions."""
+    source = record.get("request_source")
+    return (
+        isinstance(record.get("schema"), int) and record["schema"] >= 3
+        and record.get("task_class") not in excluded
+        and REQUEST_SOURCE_PROVIDER.get(source) == record.get("provider")
+        and record.get("outcome") in ("accepted", "corrected", "rebriefed", "failed")
+        and all(record.get(field) for field in (
+            "role", "task_class", "profile", "model", "effort"
+        ))
     )
-    for rec in records:
-        g = groups[(rec.get("role", "?"), rec.get("provider", "?"))]
-        age_days = max(0.0, (now - parse_ts(rec["ts"])).total_seconds() / 86400)
-        w = 0.5 ** (age_days / half_life) if half_life > 0 else 1.0
-        g["n"] += 1
-        g["w"] += w
-        outcome = rec.get("outcome")
+
+
+def summarize(records: list[dict], now: datetime, half_life: float,
+              excluded: set[str], by_route: bool = False) -> dict:
+    groups = defaultdict(lambda: {
+        "observed_n": 0, "ineligible_n": 0,
+        "n": 0, "w": 0.0, "accepted": 0.0, "corrected": 0.0,
+        "rebriefed": 0.0, "failed": 0.0, "quality": [],
+        "tokens_out": [], "total_tokens": [], "secs": [], "total_secs": [],
+        "api_cost_usd": [], "sources": Counter(),
+    })
+    for record in records:
+        key = (
+            record.get("role", "?"),
+            record.get("task_class", "other"),
+            record.get("provider", "?"),
+        )
+        if by_route:
+            key += (
+                record.get("profile", "-"), record.get("model", "-"),
+                record.get("effort", "-"),
+            )
+        group = groups[key]
+        group["observed_n"] += 1
+        group["sources"][record.get("request_source", "legacy-unknown")] += 1
+        if not decision_eligible(record, excluded):
+            group["ineligible_n"] += 1
+            continue
+        age_days = max(0.0, (now - parse_ts(record["ts"])).total_seconds() / 86400)
+        weight = 0.5 ** (age_days / half_life) if half_life > 0 else 1.0
+        group["n"] += 1
+        group["w"] += weight
+        outcome = record.get("outcome")
         if outcome in ("accepted", "corrected", "rebriefed", "failed"):
-            g[outcome] += w
-        if isinstance(rec.get("quality"), int):
-            g["quality"].append((rec["quality"], w))
-        if isinstance(rec.get("tokens_out"), int):
-            g["tokens_out"].append((rec["tokens_out"], w))
-        if all(isinstance(rec.get(field), int) for field in TOKEN_FIELDS):
-            g["total_tokens"].append((sum(rec[field] for field in TOKEN_FIELDS), w))
-        if isinstance(rec.get("secs"), (int, float)):
-            g["secs"].append((rec["secs"], w))
-        if all(isinstance(rec.get(field), (int, float))
-               for field in ("secs", "review_secs", "rework_secs")):
-            g["total_secs"].append((
-                rec["secs"] + rec["review_secs"] + rec["rework_secs"], w
+            group[outcome] += weight
+        if isinstance(record.get("quality"), int):
+            group["quality"].append((record["quality"], weight))
+        if isinstance(record.get("tokens_out"), int):
+            group["tokens_out"].append((record["tokens_out"], weight))
+        if all(isinstance(record.get(field), int) for field in TOKEN_FIELDS):
+            group["total_tokens"].append((
+                sum(record[field] for field in TOKEN_FIELDS), weight
             ))
-        if isinstance(rec.get("api_cost_usd"), (int, float)):
-            g["api_cost_usd"].append((rec["api_cost_usd"], w))
+        if isinstance(record.get("secs"), (int, float)):
+            group["secs"].append((record["secs"], weight))
+        if all(isinstance(record.get(field), (int, float))
+               for field in ("secs", "review_secs", "rework_secs")):
+            group["total_secs"].append((
+                record["secs"] + record["review_secs"] + record["rework_secs"],
+                weight,
+            ))
+        if isinstance(record.get("api_cost_usd"), (int, float)):
+            group["api_cost_usd"].append((record["api_cost_usd"], weight))
 
-    def wmean(pairs: list[tuple[float, float]]) -> float | None:
-        total = sum(w for _, w in pairs)
-        return sum(v * w for v, w in pairs) / total if total else None
+    def weighted_mean(values):
+        total = sum(weight for _, weight in values)
+        return sum(value * weight for value, weight in values) / total if total else None
 
-    out = {}
-    for (role, provider), g in groups.items():
-        w = g["w"]
-        qs = wmean(g["quality"])
-        tok, total_tok = wmean(g["tokens_out"]), wmean(g["total_tokens"])
-        secs, total_secs = wmean(g["secs"]), wmean(g["total_secs"])
-        api_cost = wmean(g["api_cost_usd"])
-        out[(role, provider)] = {
-            "n": g["n"],
-            "AR": round(100 * g["accepted"] / w, 1),
-            "CR": round(100 * g["corrected"] / w, 1),
-            "RB": round(100 * g["rebriefed"] / w, 1),
-            "FR": round(100 * g["failed"] / w, 1),
-            "QS": round(qs, 2) if qs is not None else None,
-            "avg_tokens_out": round(tok) if tok is not None else None,
-            "avg_total_tokens": round(total_tok) if total_tok is not None else None,
-            "avg_secs": round(secs, 1) if secs is not None else None,
-            "avg_total_secs": round(total_secs, 1) if total_secs is not None else None,
-            "avg_api_cost_usd": round(api_cost, 4) if api_cost is not None else None,
-            "_w": w,
-            "_w_accepted": g["accepted"],
+    output = {}
+    for key, group in groups.items():
+        weight = group["w"]
+        row = {
+            "observed_n": group["observed_n"],
+            "ineligible_n": group["ineligible_n"],
+            "n": group["n"],
+            "AR": round(100 * group["accepted"] / weight, 1) if weight else None,
+            "CR": round(100 * group["corrected"] / weight, 1) if weight else None,
+            "RB": round(100 * group["rebriefed"] / weight, 1) if weight else None,
+            "FR": round(100 * group["failed"] / weight, 1) if weight else None,
+            "QS": None,
+            "avg_tokens_out": None,
+            "avg_total_tokens": None,
+            "avg_secs": None,
+            "avg_total_secs": None,
+            "avg_api_cost_usd": None,
+            "coverage": {
+                "tokens_out": len(group["tokens_out"]),
+                "total_tokens": len(group["total_tokens"]),
+                "secs": len(group["secs"]),
+                "total_secs": len(group["total_secs"]),
+                "api_cost_usd": len(group["api_cost_usd"]),
+            },
+            "request_sources": dict(sorted(group["sources"].items())),
+            "_w": weight,
+            "_w_accepted": group["accepted"],
         }
-    return out
+        for field, values, digits in (
+            ("QS", group["quality"], 2),
+            ("avg_tokens_out", group["tokens_out"], 0),
+            ("avg_total_tokens", group["total_tokens"], 0),
+            ("avg_secs", group["secs"], 1),
+            ("avg_total_secs", group["total_secs"], 1),
+            ("avg_api_cost_usd", group["api_cost_usd"], 4),
+        ):
+            value = weighted_mean(values)
+            if value is not None:
+                row[field] = round(value, digits)
+        output[key] = row
+    return output
 
 
 def p_beats(a: dict, b: dict) -> float:
-    """P(accept-rate A > B) under Beta(1+acc, 1+rest) posteriors on the
-    decayed counts. Fixed seed keeps the report deterministic."""
     rng = random.Random(0)
     wins = 0
     for _ in range(POSTERIOR_DRAWS):
@@ -120,117 +194,182 @@ def p_beats(a: dict, b: dict) -> float:
     return wins / POSTERIOR_DRAWS
 
 
-def hints(stats: dict, min_samples: int, prefer_p: float) -> dict[str, str]:
-    by_role: dict[str, dict[str, dict]] = defaultdict(dict)
-    for (role, provider), row in stats.items():
-        by_role[role][provider] = row
+def comparable_cost(rows: dict[str, dict], min_samples: int) -> list[str]:
+    """Return tie-break evidence only when every provider has the same scope."""
+    evidence = []
+    for field, coverage, label, unit in (
+        ("avg_total_secs", "total_secs", "end-to-end", "s"),
+        ("avg_secs", "secs", "runtime", "s"),
+        ("avg_api_cost_usd", "api_cost_usd", "API cost", "USD"),
+    ):
+        if not all(row["coverage"][coverage] >= min_samples for row in rows.values()):
+            continue
+        best, row = min(rows.items(), key=lambda item: item[1][field])
+        value = row[field]
+        rendered = f"${value}" if unit == "USD" else f"{value}{unit}"
+        evidence.append(f"{best} lower {label} at {rendered}")
+        if field in ("avg_total_secs", "avg_api_cost_usd"):
+            break
+    if all(row["coverage"]["total_tokens"] >= min_samples for row in rows.values()):
+        best, row = min(rows.items(), key=lambda item: item[1]["avg_total_tokens"])
+        evidence.append(f"{best} lower total tokens at {row['avg_total_tokens']}tok")
+    elif (all(row["coverage"]["tokens_out"] >= min_samples for row in rows.values())
+          and all(row["coverage"]["total_tokens"] == 0 for row in rows.values())):
+        # Output-only is a valid shared proxy only when neither side also has
+        # full-token records. Otherwise a fallback would silently mix scopes.
+        best, row = min(rows.items(), key=lambda item: item[1]["avg_tokens_out"])
+        evidence.append(f"{best} lower output tokens at {row['avg_tokens_out']}tok")
+    return evidence
+
+
+def hints(route_stats: dict, current_routes: dict, min_samples: int,
+          prefer_p: float, excluded: set[str]) -> dict[str, str]:
+    cohorts = {
+        (key[0], key[1]) for key in route_stats
+        if key[1] not in excluded
+    }
 
     result = {}
-    for role, providers in sorted(by_role.items()):
-        under = [p for p, r in providers.items() if r["n"] < min_samples]
-        missing = [p for p in ("claude", "codex") if p not in providers]
+    for role, task_class in sorted(cohorts):
+        key = f"{role}/{task_class}"
+        providers = {}
+        missing = []
+        under = []
+        for provider in PROVIDERS:
+            route = current_routes.get((provider, role.lower()))
+            if route is None:
+                missing.append(provider)
+                continue
+            profile, model, effort = route
+            row = route_stats.get(
+                (role, task_class, provider, profile, model, effort)
+            )
+            if row is None:
+                missing.append(provider)
+            else:
+                providers[provider] = row
+                if row["n"] < min_samples:
+                    under.append(provider)
         if missing or under:
-            explore = ", ".join(sorted(set(missing + under)))
-            result[role] = f"explore {explore} (n<{min_samples})"
+            result[key] = (
+                f"explore {', '.join(sorted(set(missing + under)))} "
+                f"(comparable n<{min_samples})"
+            )
             continue
-        ranked = sorted(providers.items(), key=lambda kv: -kv[1]["AR"])
-        (best, best_row), (runner, runner_row) = ranked[0], ranked[-1]
-        p = p_beats(best_row, runner_row) if len(ranked) > 1 else 1.0
-        if p >= prefer_p:
-            result[role] = (f"prefer {best} (P(win) {p:.2f}, "
-                            f"AR {best_row['AR']} vs {runner_row['AR']})")
+        ranked = sorted(providers.items(), key=lambda item: -item[1]["AR"])
+        (best, best_row), (runner, runner_row) = ranked[:2]
+        probability = p_beats(best_row, runner_row)
+        if probability >= prefer_p:
+            result[key] = (
+                f"prefer {best} (P(win) {probability:.2f}, "
+                f"AR {best_row['AR']} vs {runner_row['AR']})"
+            )
         else:
-            # Cost tie-break: end-to-end observed time first, then API cost,
-            # complete token usage, and finally the legacy output-only proxy.
-            tie = sorted(providers.items(),
-                         key=lambda kv: (
-                             (kv[1]["avg_total_secs"] or kv[1]["avg_secs"]) is None,
-                             kv[1]["avg_total_secs"] or kv[1]["avg_secs"] or 0))
-            faster, faster_row = tie[0]
-            cost = []
-            faster_secs = faster_row["avg_total_secs"] or faster_row["avg_secs"]
-            if faster_secs is not None:
-                cost.append(f"{faster} faster at {faster_secs}s")
-            usd = sorted(providers.items(), key=lambda kv: (
-                kv[1]["avg_api_cost_usd"] is None, kv[1]["avg_api_cost_usd"] or 0))
-            cheap_usd, cheap_usd_row = usd[0]
-            if cheap_usd_row["avg_api_cost_usd"] is not None:
-                cost.append(f"{cheap_usd} lower API cost at ${cheap_usd_row['avg_api_cost_usd']}")
-            cheap = sorted(providers.items(),
-                           key=lambda kv: (
-                               (kv[1]["avg_total_tokens"] or kv[1]["avg_tokens_out"]) is None,
-                               kv[1]["avg_total_tokens"] or kv[1]["avg_tokens_out"] or 0))
-            cheap_p, cheap_row = cheap[0]
-            cheap_tokens = cheap_row["avg_total_tokens"] or cheap_row["avg_tokens_out"]
-            if cheap_tokens is not None:
-                cost.append(f"{cheap_p} fewer tokens at {cheap_tokens}tok")
-            suffix = f"; {', '.join(cost)}" if cost else ""
-            result[role] = (f"either (P(win) {p:.2f}, AR {best_row['AR']} vs "
-                            f"{runner_row['AR']}{suffix})")
+            cost = comparable_cost(dict(ranked[:2]), min_samples)
+            suffix = f"; {', '.join(cost)}" if cost else "; no comparable cost scope"
+            result[key] = (
+                f"either (P(win) {probability:.2f}, AR {best_row['AR']} "
+                f"vs {runner_row['AR']}{suffix})"
+            )
     return result
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--days", type=int, default=30)
-    parser.add_argument("--min-samples", type=int, default=5)
-    parser.add_argument("--half-life", type=float, default=45.0,
-                        help="decay half-life in days; 0 disables decay")
-    parser.add_argument("--prefer-p", type=float, default=0.85,
-                        help="posterior P(win) threshold for a prefer hint")
+    parser.add_argument("--claude-config", type=Path,
+                        default=ROOT / ".claude/model-routing.toml")
+    parser.add_argument("--codex-config", type=Path,
+                        default=ROOT / ".codex/model-routing.toml")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--now", default=None, help="ISO timestamp override (tests)")
     args = parser.parse_args()
 
+    try:
+        policy, configs = load_shared_policy([args.claude_config, args.codex_config])
+    except (OSError, core.tomllib.TOMLDecodeError, ValueError) as error:
+        parser.error(f"cannot load shared revision policy: {error}")
+    days = policy["days"]
+    min_samples = policy["min_samples"]
+    half_life = policy["half_life_days"]
+    prefer_p = policy["prefer_probability"]
+    excluded = set(policy["excluded_task_classes"])
+
     now = parse_ts(args.now) if args.now else datetime.now(timezone.utc)
-    since = now - timedelta(days=args.days)
     path = os.environ.get(
         "AGENT_EXPERIENCE_LEDGER",
         os.path.expanduser("~/.agents/telemetry/experience.jsonl"),
     )
-    records = load(path, since)
-    stats = summarize(records, now, args.half_life)
-    decision = hints(stats, args.min_samples, args.prefer_p)
-    public = {key: {k: v for k, v in row.items() if not k.startswith("_")}
+    records = load(path, now - timedelta(days=days))
+    stats = summarize(records, now, half_life, excluded)
+    route_stats = summarize(records, now, half_life, excluded, by_route=True)
+    current_routes = {}
+    for provider, config in zip(PROVIDERS, configs):
+        profile = config["selection"]["default"]
+        for role, route in core.leaf_routes(config, profile):
+            current_routes[(provider, role)] = (
+                profile, route["model"], route["effort"]
+            )
+    decisions = hints(
+        route_stats, current_routes, min_samples, prefer_p, excluded
+    )
+    public = {key: {field: value for field, value in row.items()
+                    if not field.startswith("_")}
               for key, row in stats.items()}
+    route_public = {key: {field: value for field, value in row.items()
+                          if not field.startswith("_")}
+                    for key, row in route_stats.items()}
 
     if args.json:
-        payload = {
-            "days": args.days,
-            "half_life": args.half_life,
+        print(json.dumps({
+            "policy": policy,
             "records": len(records),
-            "by_role_provider": {
-                f"{role}/{provider}": row for (role, provider), row in sorted(public.items())
+            "decision_records": sum(row["n"] for row in public.values()),
+            "by_cohort_provider": {
+                f"{role}/{task_class}/{provider}": row
+                for (role, task_class, provider), row in sorted(public.items())
             },
-            "hints": decision,
-        }
-        print(json.dumps(payload, ensure_ascii=False, indent=2))
+            "by_route_cohort_provider": {
+                f"{role}/{task_class}/{provider}/{profile}/{model}/{effort}": row
+                for (role, task_class, provider, profile, model, effort), row
+                in sorted(route_public.items())
+            },
+            "hints": decisions,
+        }, ensure_ascii=False, indent=2))
         return 0
 
-    print(f"experience-report — last {args.days} days, {len(records)} records, "
-          f"half-life {args.half_life}d ({path})")
+    print(f"experience-report — {len(records)} records; policy {days}d, "
+          f"half-life {half_life}d, comparable n>={min_samples} ({path})")
     if not public:
         print("no records; log dispatches with experience-log first.")
         return 0
-    header = f"{'role':<18}{'prov':<8}{'n':>4}{'AR%':>7}{'CR%':>7}{'RB%':>7}{'FR%':>7}{'QS':>6}{'tok':>9}{'secs':>9}{'USD':>9}"
+    header = (f"{'role':<18}{'class':<10}{'prov':<8}{'obs':>5}{'n':>4}{'AR%':>7}"
+              f"{'CR%':>7}{'RB%':>7}{'FR%':>7}{'out_tok':>10}"
+              f"{'all_tok':>10}{'secs':>9}  sources")
     print(header)
     print("-" * len(header))
-    for (role, provider), row in sorted(public.items()):
-        qs = f"{row['QS']:.2f}" if row["QS"] is not None else "-"
-        tok_value = row["avg_total_tokens"] or row["avg_tokens_out"]
-        secs_value = row["avg_total_secs"] or row["avg_secs"]
-        tok = str(tok_value) if tok_value is not None else "-"
-        secs = str(secs_value) if secs_value is not None else "-"
-        usd = (f"{row['avg_api_cost_usd']:.4f}"
-               if row["avg_api_cost_usd"] is not None else "-")
-        print(f"{role:<18}{provider:<8}{row['n']:>4}{row['AR']:>7}{row['CR']:>7}"
-              f"{row['RB']:>7}{row['FR']:>7}{qs:>6}{tok:>9}{secs:>9}{usd:>9}")
+
+    def render(value) -> str:
+        return "-" if value is None else str(value)
+
+    for (role, task_class, provider), row in sorted(public.items()):
+        sources = ",".join(f"{key}:{value}"
+                           for key, value in row["request_sources"].items())
+        elapsed = (row["avg_total_secs"] if row["avg_total_secs"] is not None
+                   else row["avg_secs"])
+        print(f"{role:<18}{task_class:<10}{provider:<8}{row['observed_n']:>5}"
+              f"{row['n']:>4}"
+              f"{render(row['AR']):>7}{render(row['CR']):>7}"
+              f"{render(row['RB']):>7}{render(row['FR']):>7}"
+              f"{render(row['avg_tokens_out']):>10}"
+              f"{render(row['avg_total_tokens']):>10}"
+              f"{render(elapsed):>9}  {sources}")
     print()
-    for role, hint in decision.items():
-        print(f"hint: {role:<18} {hint}")
-    print("note: quality is main-session subjective; hints are directional, not verdicts.")
+    for cohort, hint in decisions.items():
+        print(f"hint: {cohort:<28} {hint}")
+    print("note: only complete schema-v3 route records drive hints; smoke/other "
+          "cohorts never do. Cost tie-breaks require matching metric coverage.")
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

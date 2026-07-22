@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
-"""Ledger-driven routing revision suggestions (closes the experience loop).
+"""Config-driven, cohort-safe routing revision suggestions.
 
-Reads the experience ledger and both provider routing files, then reports —
-per provider and role — whether the current default-profile route is backed,
-contradicted, or unsampled by decayed local evidence. Implements each file's
-`revision_policy`: suggestions require n >= --min-samples in a (model, effort)
-cell, a Beta-posterior P(win) >= --prefer-p over the current route's cell, and
-compliance with the role's quality floor. This tool never edits a routing
-file; the main session applies (and logs) any change.
+Each provider's `revision_policy` supplies the sampling window, minimum sample
+count, decay, posterior threshold, cohort fields, and excluded task classes.
+Suggestions compare model/effort cells only inside the same
+profile/role/task_class and never edit routing files.
 """
-
 from __future__ import annotations
 
 import argparse
@@ -29,50 +25,74 @@ except ImportError:
                      "(<root>/.agents/scripts/routing_core.py)\n")
     sys.exit(2)
 
-POSTERIOR_DRAWS = 4000  # fixed-seed Monte Carlo; deterministic across runs
+POSTERIOR_DRAWS = 4000
+ROOT = Path(__file__).resolve().parents[4]
+REQUEST_SOURCE_PROVIDER = {
+    "claude-code": "claude",
+    "codex": "codex",
+    "claude-code-plugin-codex": "codex",
+}
 
 
 def parse_ts(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
-def load_cells(path: str, since: datetime, now: datetime, half_life: float) -> dict:
-    """Decayed accept/total weights per (provider, role, model, effort)."""
-    cells: dict[tuple, dict] = defaultdict(
-        lambda: {"n": 0, "w": 0.0, "accepted": 0.0, "quality": []})
+def load_cells(path: str, since: datetime, now: datetime, half_life: float,
+               excluded: set[str]) -> dict:
+    """Weights per (provider, role, task_class, profile, model, effort)."""
+    cells = defaultdict(lambda: {"n": 0, "w": 0.0, "accepted": 0.0})
     try:
-        lines = open(path, encoding="utf-8").read().splitlines()
+        lines = Path(path).read_text(encoding="utf-8").splitlines()
     except FileNotFoundError:
         return cells
     for line in lines:
         try:
-            rec = json.loads(line)
-            ts = parse_ts(rec["ts"])
+            record = json.loads(line)
+            timestamp = parse_ts(record["ts"])
         except (json.JSONDecodeError, KeyError, ValueError):
             continue
-        if ts < since or not rec.get("model") or not rec.get("effort"):
-            continue  # revision needs route-tagged records
-        key = (rec.get("provider", "?"), rec.get("role", "?").lower(),
-               rec["model"], rec["effort"])
-        c = cells[key]
-        age_days = max(0.0, (now - ts).total_seconds() / 86400)
-        w = 0.5 ** (age_days / half_life) if half_life > 0 else 1.0
-        c["n"] += 1
-        c["w"] += w
-        if rec.get("outcome") == "accepted":
-            c["accepted"] += w
-        if isinstance(rec.get("quality"), int):
-            c["quality"].append((rec["quality"], w))
+        task_class = record.get("task_class", "other")
+        source = record.get("request_source")
+        if (timestamp < since or task_class in excluded
+                or not isinstance(record.get("schema"), int) or record["schema"] < 3
+                or REQUEST_SOURCE_PROVIDER.get(source) != record.get("provider")
+                or not all(record.get(field) for field in (
+                    "role", "task_class", "profile", "model", "effort"
+                ))
+                or record.get("outcome") not in (
+                    "accepted", "corrected", "rebriefed", "failed"
+                )):
+            continue
+        key = (
+            record.get("provider", "?"),
+            record.get("role", "?").lower(),
+            task_class,
+            record["profile"],
+            record["model"],
+            record["effort"],
+        )
+        cell = cells[key]
+        age_days = max(0.0, (now - timestamp).total_seconds() / 86400)
+        weight = 0.5 ** (age_days / half_life) if half_life > 0 else 1.0
+        cell["n"] += 1
+        cell["w"] += weight
+        if record.get("outcome") == "accepted":
+            cell["accepted"] += weight
     return cells
 
 
-def p_beats(a: dict, b: dict) -> float:
+def p_beats(candidate: dict, current: dict) -> float:
     rng = random.Random(0)
     wins = 0
     for _ in range(POSTERIOR_DRAWS):
-        pa = rng.betavariate(1 + a["accepted"], 1 + a["w"] - a["accepted"])
-        pb = rng.betavariate(1 + b["accepted"], 1 + b["w"] - b["accepted"])
-        wins += pa > pb
+        candidate_p = rng.betavariate(
+            1 + candidate["accepted"], 1 + candidate["w"] - candidate["accepted"]
+        )
+        current_p = rng.betavariate(
+            1 + current["accepted"], 1 + current["w"] - current["accepted"]
+        )
+        wins += candidate_p > current_p
     return wins / POSTERIOR_DRAWS
 
 
@@ -81,51 +101,73 @@ def revise(config: dict, provider: str, cells: dict,
     profile = config["selection"]["default"]
     rows = []
     for role, route in core.leaf_routes(config):
-        current_key = (provider, role, route["model"], route["effort"])
-        current = cells.get(current_key)
-        role_cells = {k: v for k, v in cells.items()
-                      if k[0] == provider and k[1] == role}
-        row = {"provider": provider, "role": role, "profile": profile,
-               "current": f"{route['model']}/{route['effort']}",
-               "status": "unsampled", "detail": ""}
-        if not role_cells:
-            rows.append(row)
+        classes = sorted({
+            key[2] for key in cells
+            if key[:2] == (provider, role) and key[3] == profile
+        })
+        if not classes:
+            rows.append({
+                "provider": provider, "role": role, "task_class": "-",
+                "profile": profile, "current": f"{route['model']}/{route['effort']}",
+                "status": "unsampled", "detail": "",
+            })
             continue
-        sampled = sum(c["n"] for c in role_cells.values())
-        if current is None or current["n"] < min_samples:
-            row["status"] = "insufficient"
-            row["detail"] = (f"{sampled} route-tagged records, current cell "
-                             f"n={current['n'] if current else 0}<{min_samples}")
-            rows.append(row)
-            continue
-        row["status"] = "keep"
-        ar = 100 * current["accepted"] / current["w"]
-        row["detail"] = f"n={current['n']}, AR {ar:.0f}%"
-        for key, cell in role_cells.items():
-            if key == current_key or cell["n"] < min_samples:
+        for task_class in classes:
+            current_key = (
+                provider, role, task_class, profile,
+                route["model"], route["effort"]
+            )
+            current = cells.get(current_key)
+            cohort_cells = {
+                key: value for key, value in cells.items()
+                if key[:4] == (provider, role, task_class, profile)
+            }
+            row = {
+                "provider": provider, "role": role, "task_class": task_class,
+                "profile": profile, "current": f"{route['model']}/{route['effort']}",
+                "status": "unsampled", "detail": "",
+            }
+            sampled = sum(cell["n"] for cell in cohort_cells.values())
+            if current is None or current["n"] < min_samples:
+                row["status"] = "insufficient"
+                row["detail"] = (
+                    f"{sampled} comparable records; current cell "
+                    f"n={current['n'] if current else 0}<{min_samples}"
+                )
+                rows.append(row)
                 continue
-            model, effort = key[2], key[3]
-            if core.route_floor_error(config, profile, role, model, effort):
-                continue  # never suggest a route below the quality floor
-            p = p_beats(cell, current)
-            if p >= prefer_p:
+            current_ar = 100 * current["accepted"] / current["w"]
+            row["status"] = "keep"
+            row["detail"] = f"n={current['n']}, AR {current_ar:.0f}%"
+            candidates = []
+            for key, cell in cohort_cells.items():
+                if key == current_key or cell["n"] < min_samples:
+                    continue
+                model, effort = key[4], key[5]
+                if core.route_floor_error(
+                        config, profile, role, model, effort,
+                        context=f"task_class={task_class}"):
+                    continue
+                probability = p_beats(cell, current)
+                if probability >= prefer_p:
+                    candidates.append((probability, key, cell))
+            if candidates:
+                probability, key, cell = max(candidates, key=lambda item: item[0])
                 row["status"] = "consider"
-                row["detail"] = (f"{model}/{effort} P(win) {p:.2f} over current "
-                                 f"(n={cell['n']} vs {current['n']})")
-        rows.append(row)
+                row["detail"] = (
+                    f"{key[4]}/{key[5]} P(win) {probability:.2f} over current "
+                    f"(n={cell['n']} vs {current['n']})"
+                )
+            rows.append(row)
     return rows
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--days", type=int, default=90)
-    parser.add_argument("--min-samples", type=int, default=5)
-    parser.add_argument("--half-life", type=float, default=45.0)
-    parser.add_argument("--prefer-p", type=float, default=0.85)
     parser.add_argument("--claude-config", type=Path,
-                        default=Path(os.path.expanduser("~/.claude/model-routing.toml")))
+                        default=ROOT / ".claude/model-routing.toml")
     parser.add_argument("--codex-config", type=Path,
-                        default=Path(os.path.expanduser("~/.codex/model-routing.toml")))
+                        default=ROOT / ".codex/model-routing.toml")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--now", default=None, help="ISO timestamp override (tests)")
     args = parser.parse_args()
@@ -133,31 +175,52 @@ def main() -> int:
     now = parse_ts(args.now) if args.now else datetime.now(timezone.utc)
     ledger = os.environ.get(
         "AGENT_EXPERIENCE_LEDGER",
-        os.path.expanduser("~/.agents/telemetry/experience.jsonl"))
-    cells = load_cells(ledger, now - timedelta(days=args.days), now, args.half_life)
-
+        os.path.expanduser("~/.agents/telemetry/experience.jsonl"),
+    )
     rows = []
+    configs = {}
+    policies = {}
     for provider, config_path in (("claude", args.claude_config),
                                   ("codex", args.codex_config)):
         try:
             config = core.load_config(config_path)
         except (OSError, core.tomllib.TOMLDecodeError) as error:
-            sys.stderr.write(f"WARN: skip {provider}: {error}\n")
-            continue
-        rows += revise(config, provider, cells, args.min_samples, args.prefer_p)
+            parser.error(f"cannot load {provider} revision policy: {error}")
+        errors = core.check_revision_policy(config)
+        if errors:
+            parser.error(f"invalid {provider} revision policy: {'; '.join(errors)}")
+        configs[provider] = config
+        policy = dict(core.revision_policy(config))
+        policies[provider] = policy
+
+    if policies["claude"] != policies["codex"]:
+        parser.error("provider revision_policy values must match for comparison")
+
+    for provider, config in configs.items():
+        policy = policies[provider]
+        cells = load_cells(
+            ledger,
+            now - timedelta(days=policy["days"]),
+            now,
+            policy["half_life_days"],
+            set(policy["excluded_task_classes"]),
+        )
+        rows += revise(
+            config, provider, cells,
+            policy["min_samples"], policy["prefer_probability"],
+        )
 
     if args.json:
-        print(json.dumps({"days": args.days, "half_life": args.half_life,
-                          "rows": rows}, ensure_ascii=False, indent=2))
+        print(json.dumps({"policies": policies, "rows": rows},
+                         ensure_ascii=False, indent=2))
         return 0
-    print(f"experience-revise — last {args.days} days, half-life "
-          f"{args.half_life}d, min n={args.min_samples} ({ledger})")
+    print(f"experience-revise — config-driven comparable cohorts ({ledger})")
     for row in rows:
-        print(f"{row['provider']:<7}{row['role']:<18}{row['current']:<28}"
-              f"{row['status']:<13}{row['detail']}")
-    if any(r["status"] == "consider" for r in rows):
-        print("note: apply changes manually per revision_policy and log the "
-              "decision; this tool never edits routing files.")
+        print(f"{row['provider']:<7}{row['role']:<18}{row['task_class']:<10}"
+              f"{row['current']:<28}{row['status']:<13}{row['detail']}")
+    if any(row["status"] == "consider" for row in rows):
+        print("note: suggestions are cohort-local; apply a role-wide route change "
+              "only after main judgment and log the decision.")
     return 0
 
 

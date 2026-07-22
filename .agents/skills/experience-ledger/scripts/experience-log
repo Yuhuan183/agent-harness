@@ -5,15 +5,18 @@ Ledger: ~/.agents/telemetry/experience.jsonl (override: AGENT_EXPERIENCE_LEDGER)
 Machine-local data; never committed. Keep --task a short neutral label —
 no secrets, no verbatim content.
 
---from-pending consumes the latest usable SubagentStop stub staged by the
+--from-pending consumes a usable SubagentStop stub staged by the
 experience-pending hook (override: AGENT_EXPERIENCE_PENDING), pre-filling
-role/tier/secs/token usage/session so a log call shrinks to
+role/source/dispatch/time/token usage so a sequential log call shrinks to
 `--from-pending --outcome <o>`.
+When multiple completions are pending, --dispatch-id is required so concurrent
+dispatches cannot be paired with the wrong outcome.
 Explicit flags always override pending values.
 """
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import json
 import os
 import subprocess
@@ -28,7 +31,17 @@ PROVIDERS = ("claude", "codex")
 OUTCOMES = ("accepted", "corrected", "rebriefed", "failed")
 TIERS = ("spot", "full")  # QC tier by task shape
 CLASSES = ("recon", "plan", "impl", "verify", "security", "smoke", "other")
+REQUEST_SOURCES = ("claude-code", "codex", "claude-code-plugin-codex")
 SPOT_QC_ROLES = ("Explore", "mech-executor")
+DEFAULT_CLASSES = {
+    "Explore": "recon",
+    "mech-executor": "impl",
+    "executor": "impl",
+    "plan-verifier": "plan",
+    "verifier": "verify",
+    "security-reviewer": "security",
+    "security-executor": "security",
+}
 CLAUDE_RESOLVER = os.environ.get(
     "AGENT_CLAUDE_RESOLVER", os.path.expanduser("~/.claude/scripts/model-routing"))
 
@@ -37,49 +50,80 @@ PENDING_PATH = os.environ.get(
     os.path.expanduser("~/.agents/telemetry/experience-pending.jsonl"),
 )
 
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - non-POSIX fallback keeps logging usable
+    fcntl = None
 
-def consume_pending() -> dict | None:
-    """Pop the most recent SubagentStop stub; rewrite the file without the
-    consumed stop and its paired start."""
-    try:
-        with open(PENDING_PATH, encoding="utf-8") as f:
-            lines = [json.loads(l) for l in f if l.strip()]
-    except (FileNotFoundError, json.JSONDecodeError):
-        return None
-    stop_index = next(
-        (i for i in range(len(lines) - 1, -1, -1)
-         if lines[i].get("event") == "SubagentStop"
-         and (lines[i].get("agent_type") in ROLES
-              or "codex" in (lines[i].get("agent_type") or ""))),
-        None,
-    )
-    if stop_index is None:
-        return None
-    stop = lines[stop_index]
-    start_index = next(
-        (i for i in range(stop_index - 1, -1, -1)
-         if lines[i].get("event") == "SubagentStart"
-         and lines[i].get("agent_id") == stop.get("agent_id")
-         and lines[i].get("session_id") == stop.get("session_id")),
-        None,
-    )
-    consumed = {stop_index}
-    if start_index is not None:
-        consumed.add(start_index)
-    # Drop legacy system-spawn records with no role while rewriting; they are
-    # not loggable harness dispatches and otherwise accumulate forever.
-    keep = [r for i, r in enumerate(lines)
-            if i not in consumed and r.get("agent_type")]
-    with open(PENDING_PATH, "w", encoding="utf-8") as f:
-        for r in keep:
-            f.write(json.dumps(r) + "\n")
-    return stop
+
+@contextmanager
+def pending_lock():
+    """Serialize hook appends with pending-file read/modify/write cycles."""
+    os.makedirs(os.path.dirname(PENDING_PATH), exist_ok=True)
+    with open(PENDING_PATH + ".lock", "a", encoding="utf-8") as lock:
+        if fcntl is not None:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            if fcntl is not None:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+
+
+def consume_pending(dispatch_id: str | None = None, remove: bool = True,
+                    expected_stop: dict | None = None) -> dict | None:
+    """Select one completion; remove it only after validation succeeds."""
+    with pending_lock():
+        try:
+            with open(PENDING_PATH, encoding="utf-8") as f:
+                lines = [json.loads(l) for l in f if l.strip()]
+        except (FileNotFoundError, json.JSONDecodeError):
+            return None
+        candidates = [
+            i for i, row in enumerate(lines)
+            if row.get("event") == "SubagentStop"
+            and (row.get("agent_type") in ROLES
+                 or "codex" in (row.get("agent_type") or ""))
+            and (dispatch_id is None or row.get("dispatch_id") == dispatch_id)
+            and (expected_stop is None or row == expected_stop)
+        ]
+        if dispatch_id is None and len(candidates) > 1:
+            available = ", ".join(lines[i].get("dispatch_id", "?") for i in candidates)
+            raise ValueError(
+                "multiple completed dispatches are pending; pass --dispatch-id "
+                f"with one of: {available}"
+            )
+        stop_index = candidates[-1] if candidates else None
+        if stop_index is None:
+            return None
+        stop = lines[stop_index]
+        start_index = next(
+            (i for i in range(stop_index - 1, -1, -1)
+             if lines[i].get("event") == "SubagentStart"
+             and lines[i].get("agent_id") == stop.get("agent_id")
+             and lines[i].get("session_id") == stop.get("session_id")),
+            None,
+        )
+        consumed = {stop_index}
+        if start_index is not None:
+            consumed.add(start_index)
+        # Drop legacy system-spawn records with no role while rewriting; they are
+        # not loggable harness dispatches and otherwise accumulate forever.
+        keep = [r for i, r in enumerate(lines)
+                if i not in consumed and r.get("agent_type")]
+        if remove:
+            with open(PENDING_PATH, "w", encoding="utf-8") as f:
+                for r in keep:
+                    f.write(json.dumps(r) + "\n")
+        return stop
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--from-pending", action="store_true",
-                        help="pre-fill from the latest hook-staged dispatch stub")
+                        help="pre-fill from one hook-staged dispatch stub")
+    parser.add_argument("--dispatch-id", default=None,
+                        help="exact staged dispatch id; required when completions overlap")
     parser.add_argument("--role", choices=ROLES, default=None)
     parser.add_argument("--provider", choices=PROVIDERS, default=None)
     parser.add_argument("--outcome", required=True, choices=OUTCOMES,
@@ -87,7 +131,11 @@ def main() -> int:
     parser.add_argument("--model", default=None)
     parser.add_argument("--effort", default=None)
     parser.add_argument("--tier", choices=TIERS, default=None)
-    parser.add_argument("--class", dest="task_class", choices=CLASSES, default="other")
+    parser.add_argument("--class", dest="task_class", choices=CLASSES, default=None)
+    parser.add_argument("--request-source", choices=REQUEST_SOURCES, default=None,
+                        help="claude-code, codex, or claude-code-plugin-codex")
+    parser.add_argument("--profile", default=None,
+                        help="resolved provider routing profile")
     parser.add_argument("--task", default=None, help="short neutral label; no sensitive content")
     parser.add_argument("--quality", type=int, choices=range(1, 6), default=None,
                         help="1-5 subjective deliverable quality")
@@ -104,11 +152,18 @@ def main() -> int:
                         help="provider-reported API cost when available")
     parser.add_argument("--note", default=None, help="surprise worth remembering")
     parser.add_argument("--session", default=None)
+    parser.add_argument("--rollout-id", default=None,
+                        help="provider telemetry rollout id when available")
+    parser.add_argument("--telemetry-warning", default=None,
+                        help="machine-generated telemetry limitation")
     parser.add_argument("--now", default=None, help="ISO timestamp override (tests)")
     args = parser.parse_args()
 
     if args.from_pending:
-        stub = consume_pending()
+        try:
+            stub = consume_pending(args.dispatch_id, remove=False)
+        except ValueError as error:
+            parser.error(str(error))
         if stub is None:
             parser.error("--from-pending: no staged SubagentStop stub found")
         agent_type = stub.get("agent_type")
@@ -124,11 +179,32 @@ def main() -> int:
                 setattr(args, field, stub[field])
         if args.session is None:
             args.session = stub.get("session_id")
+        if args.dispatch_id is None:
+            args.dispatch_id = stub.get("dispatch_id")
+        if args.request_source is None:
+            args.request_source = stub.get("request_source")
+        for field in ("rollout_id", "telemetry_warning"):
+            if getattr(args, field, None) is None and stub.get(field) is not None:
+                setattr(args, field, stub[field])
     if args.role is None or args.provider is None:
         parser.error("--role and --provider are required (or resolvable via --from-pending)")
+    if args.request_source is None:
+        parser.error("--request-source is required when no staged source is available")
+    expected_provider = {
+        "claude-code": "claude",
+        "codex": "codex",
+        "claude-code-plugin-codex": "codex",
+    }[args.request_source]
+    if args.provider != expected_provider:
+        parser.error(
+            f"--request-source {args.request_source} requires provider {expected_provider}"
+        )
     if args.tier is None:
         args.tier = "spot" if args.role in SPOT_QC_ROLES else "full"
-    if args.provider == "claude" and (args.model is None or args.effort is None):
+    if args.task_class is None:
+        args.task_class = DEFAULT_CLASSES[args.role]
+    if args.provider == "claude" and any(
+            value is None for value in (args.profile, args.model, args.effort)):
         # Claude routes are deterministic frontmatter pins (check-pins keeps
         # them aligned with the default profile), so fill the route tag from
         # the resolver — experience-revise only counts tagged records.
@@ -141,21 +217,43 @@ def main() -> int:
                 route = json.loads(resolved.stdout)
                 args.model = args.model or route["model"]
                 args.effort = args.effort or route["effort"]
+                args.profile = args.profile or route["profile"]
         except (OSError, subprocess.TimeoutExpired,
                 json.JSONDecodeError, KeyError):
             pass
+    if args.task_class not in ("smoke", "other"):
+        missing_route = [field for field in ("profile", "model", "effort")
+                         if getattr(args, field) is None]
+        if missing_route:
+            parser.error(
+                "production records require a resolved route; missing --"
+                + ", --".join(missing_route)
+            )
 
     record = {
         "ts": args.now or datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "schema": 2,
+        "schema": 3,
         "role": args.role,
         "provider": args.provider,
+        "request_source": args.request_source,
         "outcome": args.outcome,
     }
-    for key in ("model", "effort", "tier", "task_class", "task", "quality",
+    token_values = [args.tokens_in, args.tokens_out,
+                    args.cache_write_tokens, args.cache_read_tokens]
+    if all(isinstance(value, int) for value in token_values):
+        record["token_scope"] = "full"
+    elif isinstance(args.tokens_out, int) and all(
+            value is None for value in (args.tokens_in, args.cache_write_tokens,
+                                        args.cache_read_tokens)):
+        record["token_scope"] = "output_only"
+    elif any(isinstance(value, int) for value in token_values):
+        record["token_scope"] = "partial"
+    for key in ("dispatch_id", "profile", "model", "effort", "tier",
+                "task_class", "task", "quality",
                 "tokens_in", "tokens_out", "cache_write_tokens",
                 "cache_read_tokens", "secs", "review_secs", "rework_secs",
-                "api_cost_usd", "note", "session"):
+                "api_cost_usd", "note", "session", "rollout_id",
+                "telemetry_warning"):
         value = getattr(args, key)
         if value is not None:
             record[key] = value
@@ -167,6 +265,14 @@ def main() -> int:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    if args.from_pending:
+        try:
+            consume_pending(args.dispatch_id, remove=True, expected_stop=stub)
+        except (OSError, ValueError) as error:
+            print(
+                f"WARN: record was logged but pending cleanup failed: {error}",
+                file=sys.stderr,
+            )
     print(f"logged: {args.role}/{args.provider} -> {args.outcome}")
     return 0
 
