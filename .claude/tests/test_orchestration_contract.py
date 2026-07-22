@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -118,6 +119,15 @@ class AgentRosterTests(unittest.TestCase):
             meta = frontmatter(f".claude/agents/{role}.md")
             self.assertRegex(meta, r"(?m)^disallowedTools:.*\bAgent\b.*\bWorkflow\b")
 
+    def test_explore_separates_recon_from_adversarial_review(self) -> None:
+        for path in (".claude/agents/Explore.md", ".codex/agents/explore.toml"):
+            body = read(path)
+            self.assertIn("task_class: recon", body, path)
+            self.assertIn("task_class: review", body, path)
+            self.assertIn("named review lens", body, path)
+            self.assertIn("semantic seams", body, path)
+            self.assertIn("residual blind spots", body, path)
+
     def test_bash_leaf_roles_never_detach(self) -> None:
         for role in BASH_ROLES:
             body = read(f".claude/agents/{role}.md")
@@ -177,8 +187,12 @@ class ClaudeContractTests(unittest.TestCase):
 
     def test_dispatch_reporting_and_leaf_boundary(self) -> None:
         policy = read(".claude/CLAUDE.contract.md")
-        self.assertIn("Report every dispatch to the user", policy)
-        self.assertIn("Quality-check every result", policy)
+        self.assertIn("[LEAF_DISPATCH]", policy)
+        self.assertIn("[LEAF_RESULT]", policy)
+        for field in ("task=<label>", "role=<role>", "class=<class>",
+                      "source=<source>", "route=<profile>/<provider>/<model>/<effort>",
+                      "ledger=<logged|skipped(reason)>"):
+            self.assertIn(field, policy)
         self.assertIn("Never brief a subagent to delegate further", policy)
         self.assertIn("agent-to-agent briefs stay in precise, concise English", policy)
 
@@ -236,6 +250,11 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertIn("excluded adjacent capabilities", brief)
         self.assertIn("approved boundary crossed", brief)
         self.assertIn("Known one-file fix", brief)
+        self.assertIn("Role, task class, and scenario", brief)
+        self.assertIn("`review`", brief)
+        self.assertIn("semantic-seams", brief)
+        self.assertIn("LEAF_DISPATCH", skill)
+        self.assertIn("LEAF_RESULT", skill)
 
     def test_provider_routing_owns_model_and_fallback_policy(self) -> None:
         skill = read(".claude/skills/provider-routing/SKILL.md")
@@ -267,6 +286,8 @@ class ClaudeContractTests(unittest.TestCase):
             f"invoked from Claude through the `{CODEX_BRIDGE}` bridge",
             "cost per acceptable outcome",
             "External indices are priors only",
+            "[LEAF_DISPATCH]",
+            "[LEAF_RESULT]",
         ):
             self.assertIn(phrase, skill)
         self.assertIn("${CODEX_HOME:-$HOME/.codex}/scripts/model-routing", skill)
@@ -617,7 +638,10 @@ class CodexBundleTests(unittest.TestCase):
 
     def test_codex_dispatch_reporting_matches_claude(self) -> None:
         agents = read(".codex/AGENTS.contract.md")
-        self.assertIn("Report every dispatch to the user", agents)
+        self.assertIn("[LEAF_DISPATCH]", agents)
+        self.assertIn("[LEAF_RESULT]", agents)
+        self.assertIn("source=codex", agents)
+        self.assertIn("ledger=<logged|skipped(reason)>", agents)
         self.assertIn("quality-check it against the brief", agents)
         self.assertIn("Never brief a subagent to delegate further", agents)
 
@@ -742,6 +766,34 @@ class SharedSkillTests(unittest.TestCase):
         self.assertEqual(codex["FR"], 100.0)
         self.assertEqual(codex["request_sources"], {"codex": 1})
         self.assertIn("explore codex", report["hints"]["executor/impl"])
+
+    def test_experience_log_keeps_review_separate_from_recon(self) -> None:
+        base = ROOT / ".agents/skills/experience-ledger/scripts"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ledger = os.path.join(temp_dir, "experience.jsonl")
+            env = {**os.environ, "AGENT_EXPERIENCE_LEDGER": ledger}
+            common = [
+                "--role", "Explore", "--provider", "claude",
+                "--request-source", "claude-code", "--profile", "balanced",
+                "--model", "claude-sonnet-5", "--effort", "low",
+                "--outcome", "accepted",
+            ]
+            for task_class in ("recon", "review"):
+                subprocess.run(
+                    [sys.executable, str(base / "experience-log"), *common,
+                     "--class", task_class, "--task", f"{task_class} sample"],
+                    env=env, check=True, capture_output=True, text=True,
+                )
+            result = subprocess.run(
+                [sys.executable, str(base / "experience-report"), "--json"],
+                env=env, check=True, capture_output=True, text=True,
+            )
+            report = json.loads(result.stdout)
+            records = [json.loads(line) for line in Path(ledger).read_text().splitlines()]
+        self.assertEqual(report["by_cohort_provider"]["Explore/recon/claude"]["n"], 1)
+        self.assertEqual(report["by_cohort_provider"]["Explore/review/claude"]["n"], 1)
+        self.assertEqual({row["task_class"]: row["tier"] for row in records},
+                         {"recon": "spot", "review": "full"})
 
     def test_experience_pending_pairs_by_session_and_consumes_one_dispatch(self) -> None:
         hook = ROOT / ".claude/hooks/experience-pending.py"
@@ -1054,7 +1106,10 @@ class DocumentationBudgetTests(unittest.TestCase):
     def test_docs_stay_distilled(self) -> None:
         budgets = {
             ".claude/CLAUDE.contract.md": 40,
-            "README.md": 70,
+            # Root README owns the complete architecture overview and diagrams;
+            # operational/research detail remains linked in docs/.
+            "README.md": 250,
+            "docs/README.md": 50,
             "docs/harness-engineering.md": 130,
             ".claude/plans/orchestration-plan.md": 80,
             ".codex/AGENTS.contract.md": 60,
@@ -1065,6 +1120,38 @@ class DocumentationBudgetTests(unittest.TestCase):
         }
         for path, limit in budgets.items():
             self.assertLessEqual(len(read(path).splitlines()), limit, path)
+
+    def test_root_readme_is_a_complete_navigation_surface(self) -> None:
+        readme = read("README.md")
+        self.assertEqual(readme.count("```mermaid"), 2)
+        for phrase in (
+            "配置與部署拓撲",
+            "派工與資料回饋迴路",
+            "Main 與七個 leaf roles",
+            "Role、task class 與 scenario 分離",
+            "Routing 語意",
+            "結構化派工回報",
+            "機制與護欄",
+            "管理邊界",
+            "docs/README.md",
+        ):
+            self.assertIn(phrase, readme)
+
+    def test_documentation_navigation_links_resolve_locally(self) -> None:
+        paths = [
+            "README.md", "docs/README.md", ".claude/README.md",
+            ".codex/README.md", ".agents/README.md",
+        ]
+        missing = []
+        for path in paths:
+            base = (ROOT / path).parent
+            for target in re.findall(r"\[[^\]]+\]\(([^)]+)\)", read(path)):
+                if target.startswith(("http://", "https://", "mailto:", "#")):
+                    continue
+                local = target.split("#", 1)[0]
+                if local and not (base / local).resolve().exists():
+                    missing.append(f"{path}: {target}")
+        self.assertEqual(missing, [])
 
     def test_documented_baseline_matches_runtime_contract(self) -> None:
         plan = read(".claude/plans/orchestration-plan.md")

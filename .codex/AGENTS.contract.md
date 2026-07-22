@@ -32,9 +32,9 @@ Before delegating, confirm observable outcome, delegation benefit, independent w
 - Converge shared schemas, registries, config, generated output, and lockfiles before parallel writes.
 - Treat the approved Plan/release slice as a hard boundary. Workers may report adjacent work but cannot implement it.
 - Brief outcome, scope/non-scope, excluded capabilities, minimum paths, ownership, local checks, output, and stops once.
-- Report every dispatch to the user: task, model, and effort. Never brief a subagent to delegate further, and never hand one a task that would require delegation.
+- Report every launch and post-QC outcome as separate fixed records, never mixed into prose: `[LEAF_DISPATCH] task=<label> | role=<role> | class=<class> | source=codex | route=<profile>/codex/<model>/<effort> | reason=<payoff>` and `[LEAF_RESULT] task=<label> | outcome=<accepted|corrected|rebriefed|failed> | qc=<spot|full> | ledger=<logged|skipped(reason)>`. Use actual resolved route values and the same neutral task label in the ledger. Never brief a subagent to delegate further, and never hand one a task that would require delegation.
 - Collect the finished subagent response and quality-check it against the brief before integration. Follow up only for genuinely new or redirected work.
-- After quality-checking each native Codex leaf, log the outcome with `experience-ledger`, request source `codex`, resolved profile/model/effort, and a non-smoke task class.
+- After quality-checking each native Codex leaf, log the outcome with `experience-ledger`, request source `codex`, resolved profile/model/effort, and the dispatched non-smoke task class.
 - Centralize repository-wide, live, or expensive gates; preserve partial evidence when stopping.
 
 ### Independent verifier

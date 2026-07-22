@@ -1,5 +1,8 @@
 # `.agents/` — 跨 Agent 共用層
 
+> 專案全貌與跨平台資料流見[根 README](../README.md)；方法、研究與部署指引見
+> [docs/README.md](../docs/README.md)。
+
 不綁定單一 agent 的通用配置：共用 skill 本體、跨 agent runtime 知識、第三方套件清單。
 回寫到 `~/.agents/`。`.claude/` 與 `.codex/` 以相對 symlink 引用此處，達到「一份本體、
 多處使用」。

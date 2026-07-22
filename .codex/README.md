@@ -1,5 +1,8 @@
 # `.codex/` — Codex Harness 契約
 
+> 專案全貌與跨平台資料流見[根 README](../README.md)；方法、研究與部署指引見
+> [docs/README.md](../docs/README.md)。
+
 可跨機器共用的 Codex／ChatGPT 配置，回寫到 `~/.codex/`。
 與 `.claude/` 平行；跨 agent 共用知識與 skill 本體在 `../.agents/`。
 

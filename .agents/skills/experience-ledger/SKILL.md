@@ -20,6 +20,7 @@ SubagentStart/Stop hook（`experience-pending.py`）已自動暫存 role、wall-
 - Claude 角色與 Codex bridge 派工**都要記**；outcome 由主 session 的品質判定決定：`accepted`（一次過）/ `corrected`（修過才整合）/ `rebriefed`（重派）/ `failed`（棄用或 fallback）。
 - hook 會記錄 `request_source`（`claude-code`／`claude-code-plugin-codex`）、dispatch、rollout、input/output/cache token 與 `secs`（可得時）；native Codex 使用 `codex`。bridge 時窗若碰到多個 rollout，標記 ambiguous 並不寫 token，避免錯帳。品質檢查後補 `--review-secs`、`--rework-secs`；有可靠帳單值才補 `--api-cost-usd`。
 - `--task` 用短中性標籤，不寫機密與逐字內容；意外寫進 `--note`。
+- 專案定位／盤點用 `--class recon`；具明確攻擊 lens 的對抗式專案審查用 `--class review`，後者預設 full QC。不要因為兩者都由 `Explore` 執行就混在同一 cohort。
 - 偏離 report hint 的 provider 選擇，必記 `--note` 說明理由。
 
 ## 查詢（provider 選擇不確定時；每週例行一次）

@@ -9,7 +9,7 @@
 | CLI output | `rtk` PreToolUse rewrite, fail-open | `settings.json`, `RTK.md` |
 | Context compression | Headroom wrap mode (recommended default) + optional persistent install; no durable proxy routing in tracked settings | `../.agents/docs/headroom-runtime.md` |
 | Orchestration | Direct-first brake distilled from Baton `0ab4d2e` | `CLAUDE.md`, `skills/baton-dispatch/` |
-| Roles | Seven self-contained leaf contracts; model and effort owned by frontmatter | `agents/` |
+| Roles | Seven self-contained capability contracts; task class and scenario refine work without role proliferation | `agents/`, `skills/baton-dispatch/` |
 | Routing data | Per-provider routing files with quality floors and priority profiles | `model-routing.toml`, `../.codex/model-routing.toml` |
 | Verification | Focused checks first; Plan and outcome verifiers are capability-separated | `agents/plan-verifier.md`, `agents/verifier.md` |
 | Monitoring | Delegation audit, weekly drift check, usage metadata report, runtime guard | `hooks/`, `scripts/` |
@@ -21,7 +21,7 @@
 - **Role pins**: Claude profiles are deployment presets, not per-dispatch routes. Balanced pins `Explore` sonnet/low, `mech-executor` sonnet/medium, `executor` sonnet/high, `plan-verifier` opus/medium, and `verifier`/`security-*` opus/high. `activate-profile` updates all frontmatter pins and `selection.default` transactionally in source before sync.
 - **Codex bridge**: every leaf dispatch resolves model/effort via `~/.codex/scripts/model-routing` (single source of truth); Sol and Luna bridge overrides are smoke-tested (2026-07-22, rollout-verified).
 - **Cross-provider**: provider choice is CP-first (local reports + external priors + ledger; usage alarm switches to the provider with headroom, asking the user when material). Single-hop fallback from the task's origin, never circular; security routes like any role at its critical floor; dual-provider implementation always has one writer. Uncertain choice uses the three-option user gate.
-- **Experience loop**: every dispatch is reported (`dispatch: <task> — <role>@<provider> <model>/<effort>`), quality-checked, and logged with request source (`claude-code`, `codex`, or `claude-code-plugin-codex`). Policy is config-driven: 90d window, 45d half-life, n>=10 per role/task-class route cell, P(win)>=0.90; smoke/other and mismatched token scopes cannot drive preference.
+- **Experience loop**: every dispatch uses separate `LEAF_DISPATCH` and post-QC `LEAF_RESULT` records, then logs the same neutral task label, task class, source (`claude-code`, `codex`, or `claude-code-plugin-codex`), and route. `recon` and adversarial `review` are separate cohorts. Policy is config-driven: 90d window, 45d half-life, n>=10 per role/task-class route cell, P(win)>=0.90; smoke/other and mismatched token scopes cannot drive preference.
 - **Scope**: leaf roles never orchestrate or read orchestration docs; approved scope is a hard boundary; follow-up runs must contain genuinely new work.
 
 ## Verified mechanisms

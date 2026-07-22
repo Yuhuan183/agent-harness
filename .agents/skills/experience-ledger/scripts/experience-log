@@ -30,7 +30,9 @@ ROLES = (
 PROVIDERS = ("claude", "codex")
 OUTCOMES = ("accepted", "corrected", "rebriefed", "failed")
 TIERS = ("spot", "full")  # QC tier by task shape
-CLASSES = ("recon", "plan", "impl", "verify", "security", "smoke", "other")
+CLASSES = (
+    "recon", "review", "plan", "impl", "verify", "security", "smoke", "other",
+)
 REQUEST_SOURCES = ("claude-code", "codex", "claude-code-plugin-codex")
 SPOT_QC_ROLES = ("Explore", "mech-executor")
 DEFAULT_CLASSES = {
@@ -199,10 +201,14 @@ def main() -> int:
         parser.error(
             f"--request-source {args.request_source} requires provider {expected_provider}"
         )
-    if args.tier is None:
-        args.tier = "spot" if args.role in SPOT_QC_ROLES else "full"
     if args.task_class is None:
         args.task_class = DEFAULT_CLASSES[args.role]
+    if args.tier is None:
+        args.tier = (
+            "full" if args.task_class == "review"
+            else "spot" if args.role in SPOT_QC_ROLES
+            else "full"
+        )
     if args.provider == "claude" and any(
             value is None for value in (args.profile, args.model, args.effort)):
         # Claude routes are deterministic frontmatter pins (check-pins keeps

@@ -6,6 +6,7 @@ Use only after delegation passes the dispatch brake.
 
 ```markdown
 ## Outcome
+## Task class / scenario or review lens
 ## In scope / out of scope / excluded adjacent capabilities
 ## Minimum sources
 ## May write / must not write / secondary writes
@@ -15,6 +16,18 @@ Use only after delegation passes the dispatch brake.
 ```
 
 Do not ask an agent to rediscover settled conclusions. For independent verification, provide artifacts and acceptance criteria without the implementer's preferred conclusion.
+
+## Role, task class, and scenario
+
+These are separate axes:
+
+| Axis | Controls | Examples |
+|---|---|---|
+| Role | Authority, tools, and stop boundary | `Explore`, `executor`, `verifier` |
+| Task class | Comparable experience-ledger cohort | `recon`, `review`, `plan`, `impl`, `verify`, `security` |
+| Scenario / lens | What evidence to attack in this dispatch | `semantic-seams`, `state-concurrency`, `contract-boundaries`, `test-validity`, `numerical-rendering`, `docs-deployment` |
+
+Use `recon` for locating and summarizing; use `review` for adversarial inspection of a bounded project surface. A review brief names one primary lens (at most two when they share evidence), the seam's two truth sources, expected evidence, and residual blind spots to report. Split independent lenses only when parallelism repays reconstruction cost; never create a new role merely to encode a topic.
 
 ## Ownership
 

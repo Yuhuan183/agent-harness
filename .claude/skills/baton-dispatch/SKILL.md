@@ -23,7 +23,7 @@ A single sequential task with none of these stays in main. When the payoff is ma
 | Shape | Use |
 |---|---|
 | Small or tightly coupled | Main session |
-| Broad read-only discovery | One `Explore` run |
+| Broad discovery or one bounded review lens | One `Explore` run |
 | Two to four independent surfaces | Bounded parallel agents |
 | Repeated homogeneous items | Prove one sample, then batch; Workflow still requires user opt-in |
 | Overlapping or competing writes | Isolated workspaces |
@@ -33,17 +33,21 @@ Never map request bullets directly to agents.
 
 ## Run design
 
-1. Stabilize outcome, scope/non-scope, constraints, evidence, and ledger task class.
+1. Stabilize outcome, scope/non-scope, constraints, evidence, ledger task class, and scenario/lens.
 2. Converge shared schemas, registries, config, generated output, and lockfiles.
 3. Assign one owner to every writable artifact and name the integration owner.
 4. Brief only minimum paths, local checks, output, and stop conditions.
 5. Keep local checks local; run expensive or repository-wide gates after integration.
 6. Preserve partial evidence when stopping or changing shape.
 
+Keep the three routing dimensions separate: **role** defines authority and tools; **task class** forms the ledger cohort; **scenario/lens** focuses the brief without creating another role. Use `review` rather than `recon` for adversarial repository review. Do not change a model route merely because a new scenario label was added; collect comparable outcomes first.
+
 The approved Plan or release slice is a hard boundary. Agents may report adjacent opportunities but must stop before adding a domain, table, API, service, deployment responsibility, or materially larger file/schema surface.
 
 ## Result collection
 
 A finished agent's final response is its deliverable — the harness returns it on completion. Collect it from the finished task; never relaunch or ask a read-only recon agent (`Explore`, `plan-verifier`, `security-reviewer`) to relay, restate, or report back a result it already produced. Use the resume channel only for genuinely new or redirected work. Treat a single load-bearing recon fact as an unverified input: sanity-check or re-run it in main, since the `verifier` gate covers executor output, not reconnaissance.
+
+Report the launch and the post-QC outcome as separate `LEAF_DISPATCH` and `LEAF_RESULT` records. The task label, role, task class, and route must match the experience-ledger entry; never bury either record inside prose.
 
 Read [references/briefs-and-stops.md](references/briefs-and-stops.md) only when writing a brief, ownership map, or batch stop rule.
