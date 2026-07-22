@@ -9,7 +9,7 @@ Apply the resident dispatch brake, then choose the smallest reliable shape. This
 
 ## Cost test (run before every dispatch)
 
-A follow-tier agent runs at the main session's model and effort — delegation saves no compute, and briefing, context reconstruction, collection, and quality-check are pure overhead in both tokens and wall-clock. Delegate only when at least one payoff clearly exceeds that overhead:
+A high-tier pinned agent (Opus/high) costs about as much as the main session — delegation saves no compute, and briefing, context reconstruction, collection, and quality-check are pure overhead in both tokens and wall-clock. Delegate only when at least one payoff clearly exceeds that overhead:
 
 1. **Parallelism** — two or more genuinely independent workstreams where wall-clock matters.
 2. **Context protection** — bulky reads or noisy output would pollute the main window that later judgment still needs.

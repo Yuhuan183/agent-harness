@@ -2,7 +2,7 @@
 name: mech-executor
 description: Mechanical implementation from a complete spec: pattern refactors, renames, conventional tests, documentation updates, and bounded bulk edits. Do not use when architecture or product judgment is required.
 model: sonnet
-effort: low
+effort: medium
 disallowedTools: Agent, Workflow
 ---
 

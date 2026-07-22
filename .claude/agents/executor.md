@@ -2,7 +2,7 @@
 name: executor
 description: Judgment-heavy implementation when isolation or preserving main-session context repays reconstruction cost. Give it the goal, constraints, scope, and done-criteria; it makes local design decisions but does not expand the task.
 model: sonnet
-effort: medium
+effort: high
 disallowedTools: Agent, Workflow
 ---
 

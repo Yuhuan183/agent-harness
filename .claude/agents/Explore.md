@@ -1,7 +1,7 @@
 ---
 name: Explore
 description: Broad read-only search across many files, directories, or naming conventions. Return conclusions and file:line evidence, not source dumps. Use direct lookup for one known symbol, path, or value.
-model: haiku
+model: sonnet
 effort: low
 tools: Read, Glob, Grep
 ---

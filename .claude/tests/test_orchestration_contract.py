@@ -35,8 +35,10 @@ BASH_ROLES = (
     "verifier",
     "security-executor",
 )
-PINNED_EFFORT_ROLES = ("Explore", "mech-executor", "executor", "plan-verifier")  # mechanical; thinking done in main
-FOLLOW_EFFORT_ROLES = tuple(r for r in ROLES if r not in PINNED_EFFORT_ROLES)
+# Every role pins model and effort from the active profile (user-directed
+# 2026-07-22); no role follows the main-session effort.
+PINNED_EFFORT_ROLES = ROLES
+FOLLOW_EFFORT_ROLES = ()
 
 # Interface tokens: single upgrade point — bump here and in the skill bodies together.
 CODEX_BRIDGE = "codex:codex-rescue"
@@ -78,22 +80,21 @@ class AgentRosterTests(unittest.TestCase):
                 self.assertNotIn(forbidden, body, f"{role} leaks {forbidden}")
 
     def test_model_tiers_are_pinned(self) -> None:
-        self.assertIn("model: haiku", frontmatter(".claude/agents/Explore.md"))
+        self.assertIn("model: sonnet", frontmatter(".claude/agents/Explore.md"))
         self.assertIn("model: sonnet", frontmatter(".claude/agents/mech-executor.md"))
         self.assertIn("model: sonnet", frontmatter(".claude/agents/executor.md"))
         for role in ("plan-verifier", "verifier",
                      "security-reviewer", "security-executor"):
             self.assertIn("model: opus", frontmatter(f".claude/agents/{role}.md"), role)
 
-    PINNED_EFFORTS = {"Explore": "low", "mech-executor": "low",
-                      "executor": "medium", "plan-verifier": "high"}
+    PINNED_EFFORTS = {"Explore": "low", "mech-executor": "medium",
+                      "executor": "high", "plan-verifier": "medium",
+                      "verifier": "high", "security-reviewer": "high",
+                      "security-executor": "high"}
 
-    def test_effort_is_two_tier(self) -> None:
+    def test_every_role_pins_profile_effort(self) -> None:
         for role, effort in self.PINNED_EFFORTS.items():
             self.assertIn(f"effort: {effort}", frontmatter(f".claude/agents/{role}.md"), role)
-        for role in FOLLOW_EFFORT_ROLES:
-            # Omitted effort inherits the main session's effort (capped at high).
-            self.assertNotRegex(frontmatter(f".claude/agents/{role}.md"), r"(?m)^effort:", role)
 
     def test_capability_split_by_role_kind(self) -> None:
         for role in READ_ONLY_ROLES:
@@ -203,7 +204,7 @@ class ClaudeContractTests(unittest.TestCase):
         skill = read(".claude/skills/baton-dispatch/SKILL.md")
         brief = read(".claude/skills/baton-dispatch/references/briefs-and-stops.md")
         self.assertIn("Do not use for small edits", frontmatter(".claude/skills/baton-dispatch/SKILL.md"))
-        # Cost test: follow-tier delegation saves no compute; payoff must beat overhead.
+        # Cost test: high-tier pinned delegation saves no compute; payoff must beat overhead.
         self.assertIn("## Cost test", skill)
         self.assertIn("delegation saves no compute", skill)
         self.assertIn("clearly exceeds dispatch overhead", read(".claude/CLAUDE.md"))
@@ -250,8 +251,8 @@ class ClaudeContractTests(unittest.TestCase):
             "`verifier` returns CONFIRMED/REFUTED",
             "Do not stack gates over the same failure surface",
             "Dual-provider",
-            "**Pinned** (`Explore`, `mech-executor` at low",
-            "inherits the main session's effort",
+            "pins both model and effort in frontmatter from the active profile",
+            "no role follows the main-session effort",
             f"invoked from Claude through the `{CODEX_BRIDGE}` bridge",
             "cost per acceptable outcome",
             "External indices are priors only",
