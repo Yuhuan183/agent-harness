@@ -1,6 +1,6 @@
 ---
 name: provider-routing
-description: Cross-provider and role routing for the main session — H/X model profiles, GPT↔Claude fallback rules, codex-rescue bridge usage, security review/implementation routing, and independent-verifier triggers. Load when dispatching to GPT, choosing between named Claude roles and the GPT bridge, handling provider failure/handoff, or deciding whether a completed claim needs a verifier. Not needed for ordinary single-provider direct work.
+description: Cross-provider routing — H/X profiles, GPT↔Claude fallback, codex bridge resolution, security routing, verifier triggers. Load before dispatching to GPT, on provider failure/handoff, or when deciding if a claim needs a verifier. Not for single-provider direct work.
 ---
 
 # Provider & Role Routing
@@ -11,7 +11,7 @@ description: Cross-provider and role routing for the main session — H/X model 
 - Reference profiles: **H** = Fable/low or Opus/high; **X** = Fable at medium–xhigh or Opus/high. Effort is capped at high for every named role and bridge call; only the main session under X may raise effort to xhigh.
 - Model names are dated operational references, not benchmark-derived guarantees for the exact effort. External indices are priors only: prefer the task-relevant model + harness + setting result, then update it with local outcomes.
 - Optimize cost per acceptable outcome, not raw token price. Include retries, review/rework, wall-clock, and failure risk; prefer complete input/output/cache telemetry and provider-reported API cost, falling back to narrower proxies only when fields are missing.
-- Claude-side routing data lives in `~/.claude/model-routing.toml` — same structure and quality-floor semantics as the Codex file. AA publishes only max-effort aggregates for Claude, so its scores rank models but do not select effort; profiles there are design priors the experience ledger revises (`revision_policy`). Role pins in agent frontmatter remain the operative mechanism; `~/.claude/scripts/model-routing` validates the file and cross-checks the pins against it (`check-pins`, also run by the weekly integrity hook). Every named Claude role pins both model and effort in frontmatter from the active profile (default `balanced`: Explore Sonnet/low, mech-executor Sonnet/medium, executor Sonnet/high, plan-verifier Opus/medium, verifier and security-* Opus/high); no role follows the main-session effort. Profiles are user-directed priors maintained from data — external benchmarks and the local experience ledger. These pins do not set Codex bridge effort; the shared structured resolver does.
+- Claude routes live in `~/.claude/model-routing.toml` (quality floors + profiles; user-directed priors the experience ledger revises per `revision_policy`). Every named Claude role pins both model and effort in frontmatter from the active profile; no role follows the main-session effort. Query or verify with `~/.claude/scripts/model-routing` (`resolve`, `check-pins` — the latter also runs in weekly integrity); never restate the matrix in prose. These pins do not set Codex bridge effort; the shared structured resolver does.
 ## Codex bridge profile resolution
 
 - Before every `codex:codex-rescue` leaf dispatch, normalize `Explore` to `explore`, then run `${CODEX_HOME:-$HOME/.codex}/scripts/model-routing resolve --surface claude-bridge --priority <priority> --role <role>`. Parse its JSON and pass the returned `model` and `effort` explicitly. Prepend `~/.codex/agents/<role>.toml`'s `developer_instructions` as the role contract; read-only roles must still explicitly prohibit writes because the bridge is write-capable by default.
@@ -34,7 +34,7 @@ description: Cross-provider and role routing for the main session — H/X model 
 | `Explore` | Broad or bulky read-only search; known-target lookup stays direct |
 | `mech-executor` | A complete spec makes the work mechanical |
 | `executor` | Isolation or preserved main context repays reconstruction cost |
-| `plan-verifier` | A material Plan warrants a fresh Opus challenge at main-session effort |
+| `plan-verifier` | A material Plan warrants a fresh Opus challenge |
 | `verifier` | A completed claim matches an independent-verifier trigger (below) |
 | GPT security bridge | Primary security review or approved implementation at Sol/high |
 | `security-reviewer` / `security-executor` | Claude Opus fallback or explicit Claude choice |
@@ -48,7 +48,7 @@ Named Claude roles own model and effort in frontmatter; omit invocation-level `m
 - Choose per dispatch between the Claude role and its Codex twin — steer by the experience ledger: load `experience-ledger`, log every dispatch outcome after its quality-check (use `--from-pending` to consume the hook-staged stub), and consult its report when provider choice is uncertain. Deviating from a hint requires a logged note.
 - Compare like with like: same role/task class and, where practical, the same brief. Re-sample after a material model, harness, or benchmark change instead of treating an old leaderboard or ledger hint as permanent.
 - Codex cost telemetry lives in local session rollouts, not the plugin output: `experience-ledger`'s `codex-usage` script reports per-turn tokens and the account quota snapshot. Check quota before heavy Codex dispatch; the short window (e.g. 5h) outranks the weekly one — exhausting it stalls tasks immediately — so when the short window is near its limit, prefer the Claude role or wait for its reset, regardless of weekly headroom.
-- QC is tiered by role tier. **Pinned** deliverables (mechanical work from a complete spec) get a spot-check: sample the diff, run the brief's acceptance checks. **Follow** deliverables get a full review against the brief. Either way a weak deliverable is corrected in main or re-briefed, never silently merged.
+- QC is tiered by task shape: mechanical work from a complete spec gets a spot-check (sample the diff, run the brief's acceptance checks); judgment-heavy or verification deliverables get a full review against the brief. Either way a weak deliverable is corrected in main or re-briefed, never silently merged.
 
 ## Independent-verifier triggers
 

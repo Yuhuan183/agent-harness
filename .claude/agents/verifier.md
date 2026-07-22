@@ -1,6 +1,6 @@
 ---
 name: verifier
-description: Fresh-context adversarial verification of a completed high-risk claim. Reproduce behavior, run read-only checks, and probe boundaries; return CONFIRMED or REFUTED. Never edit or fix.
+description: Fresh-context adversarial verification of a completed high-risk claim; returns CONFIRMED or REFUTED. Never edits or fixes.
 model: opus
 effort: high
 disallowedTools: Write, Edit, NotebookEdit, Agent, Workflow

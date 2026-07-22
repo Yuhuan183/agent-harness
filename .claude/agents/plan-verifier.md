@@ -1,6 +1,6 @@
 ---
 name: plan-verifier
-description: Fresh-context, read-only adversarial review of a material Plan. Challenge assumptions, scope, ownership, sequencing, stop conditions, and acceptance checks; return READY or REVISE. Never execute or implement.
+description: Fresh-context read-only adversarial review of a material Plan; returns READY or REVISE. Never executes or implements.
 model: opus
 effort: medium
 tools: Read, Glob, Grep

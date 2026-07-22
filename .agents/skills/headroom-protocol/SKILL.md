@@ -1,6 +1,6 @@
 ---
 name: headroom-protocol
-description: Manually compress an unusually large read-only JSON, log, table, or search result when Headroom MCP tools exist and proxy routing is absent. Do not use for ordinary CLI work, small blobs, editable content, or exact error diagnosis.
+description: Manually compress an unusually large read-only blob when Headroom MCP tools exist and proxy routing is absent. Not for ordinary CLI work, small blobs, editable content, or exact error diagnosis.
 ---
 
 # Headroom Protocol

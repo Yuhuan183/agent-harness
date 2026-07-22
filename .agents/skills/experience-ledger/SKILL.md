@@ -1,6 +1,6 @@
 ---
 name: experience-ledger
-description: 派工經驗記帳與分析：每次子 agent 品質檢查後記錄 outcome，累積 role × provider 的標準化指標（AR/CR/RB/FR/QS），在 Claude 與 Codex 之間做數據導向的 provider 選擇。觸發：記錄派工結果、依經驗選 provider、檢視派工經驗指標。不觸發：派工決策本身（baton-dispatch）、provider 規則（provider-routing）、token 用量分析（usage-report）。
+description: 派工經驗記帳與分析：QC 後記錄 outcome，累積 role × provider 指標（AR/CR/RB/FR/QS）做數據導向 provider 選擇。觸發：記錄派工結果、依經驗選 provider、看指標。不觸發：派工決策（baton-dispatch）、provider 規則（provider-routing）、token 用量（usage-report）。
 ---
 
 # Experience Ledger

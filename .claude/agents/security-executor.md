@@ -1,6 +1,6 @@
 ---
 name: security-executor
-description: Claude Opus/high implementation of an approved security contract. Use after GPT H fails or when the user selects Claude. Pre-approval analysis belongs to security-reviewer.
+description: Implements an approved security contract — Claude fallback after GPT H fails, or on user choice. Pre-approval analysis belongs to security-reviewer.
 model: opus
 effort: high
 disallowedTools: Agent, Workflow

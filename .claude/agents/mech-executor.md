@@ -1,6 +1,6 @@
 ---
 name: mech-executor
-description: Mechanical implementation from a complete spec: pattern refactors, renames, conventional tests, documentation updates, and bounded bulk edits. Do not use when architecture or product judgment is required.
+description: Mechanical implementation from a complete spec: refactors, renames, conventional tests, doc updates, bounded bulk edits. Not for judgment calls.
 model: sonnet
 effort: medium
 disallowedTools: Agent, Workflow

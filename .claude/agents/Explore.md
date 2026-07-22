@@ -1,6 +1,6 @@
 ---
 name: Explore
-description: Broad read-only search across many files, directories, or naming conventions. Return conclusions and file:line evidence, not source dumps. Use direct lookup for one known symbol, path, or value.
+description: Broad read-only search; returns conclusions with file:line evidence. Not for one known symbol or path — look those up directly.
 model: sonnet
 effort: low
 tools: Read, Glob, Grep
