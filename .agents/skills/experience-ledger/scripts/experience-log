@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 from datetime import datetime, timezone
 
@@ -25,9 +26,11 @@ ROLES = (
 )
 PROVIDERS = ("claude", "codex")
 OUTCOMES = ("accepted", "corrected", "rebriefed", "failed")
-TIERS = ("pinned", "follow")
+TIERS = ("spot", "full")  # QC tier by task shape
 CLASSES = ("recon", "plan", "impl", "verify", "security", "smoke", "other")
-PINNED_ROLES = ("Explore", "mech-executor")
+SPOT_QC_ROLES = ("Explore", "mech-executor")
+CLAUDE_RESOLVER = os.environ.get(
+    "AGENT_CLAUDE_RESOLVER", os.path.expanduser("~/.claude/scripts/model-routing"))
 
 PENDING_PATH = os.environ.get(
     "AGENT_EXPERIENCE_PENDING",
@@ -124,7 +127,23 @@ def main() -> int:
     if args.role is None or args.provider is None:
         parser.error("--role and --provider are required (or resolvable via --from-pending)")
     if args.tier is None:
-        args.tier = "pinned" if args.role in PINNED_ROLES else "follow"
+        args.tier = "spot" if args.role in SPOT_QC_ROLES else "full"
+    if args.provider == "claude" and (args.model is None or args.effort is None):
+        # Claude routes are deterministic frontmatter pins (check-pins keeps
+        # them aligned with the default profile), so fill the route tag from
+        # the resolver — experience-revise only counts tagged records.
+        # Fail-open: an unavailable resolver just leaves the record untagged.
+        try:
+            resolved = subprocess.run(
+                [CLAUDE_RESOLVER, "resolve", "--role", args.role],
+                capture_output=True, text=True, timeout=10)
+            if resolved.returncode == 0:
+                route = json.loads(resolved.stdout)
+                args.model = args.model or route["model"]
+                args.effort = args.effort or route["effort"]
+        except (OSError, subprocess.TimeoutExpired,
+                json.JSONDecodeError, KeyError):
+            pass
 
     record = {
         "ts": args.now or datetime.now(timezone.utc).isoformat(timespec="seconds"),

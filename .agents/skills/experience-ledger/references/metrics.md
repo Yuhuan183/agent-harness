@@ -8,7 +8,7 @@
 | `role` | ✓ | 七個 leaf role 名 | 派工角色 |
 | `provider` | ✓ | `claude` \| `codex` | 實際執行的 provider |
 | `outcome` | ✓ | `accepted` \| `corrected` \| `rebriefed` \| `failed` | 主 session 品質判定 |
-| `model` / `effort` / `tier` | | | 實際 dispatch 參數（tier: `pinned` \| `follow`） |
+| `model` / `effort` / `tier` | | | 實際 dispatch 參數（tier 為 QC 層: `spot` \| `full`；Claude 角色缺 model/effort 時由 resolver 以現行 pin 自動補標） |
 | `task_class` | | `recon` \| `plan` \| `impl` \| `verify` \| `security` \| `smoke` \| `other` | 任務類型 |
 | `task` | | 短中性標籤 | **不含機密與逐字內容** |
 | `quality` | | 1–5 | 主觀品質分（可省略） |
