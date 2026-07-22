@@ -4,7 +4,7 @@ benchmark = "Artificial Analysis Intelligence Index v4.1"
 metric_scope = "English text benchmark prior; not local coding-agent success rate"
 availability_scope = "Per-surface status; benchmark data is retained even when a dispatch override is unverified"
 availability_semantics = "configured means router-permitted, not necessarily smoke-tested; evidence records verification level"
-evidence_caveat = "AA publishes only single-configuration (adaptive reasoning, max effort) aggregates for Claude models; per-effort curves are unavailable. Scores are priors for model ranking, not effort selection. Effort choices below are user-directed design priors pending local experience-ledger data (ledger sampling started 2026-07-22; re-derive per revision_policy at n>=5 per cell)."
+evidence_caveat = "AA publishes only single-configuration (adaptive reasoning, max effort) aggregates for Claude models; per-effort curves are unavailable. Scores are priors for model ranking, not effort selection. Effort choices below are user-directed deployment presets pending comparable local data; revision_policy requires n>=10 per role/task_class route cell."
 
 [selection]
 default = "balanced"
@@ -49,7 +49,7 @@ main_selector = "configured"
 role_frontmatter_override = "configured"
 
 [models."claude-opus-4-8".evidence]
-role_frontmatter = "smoke-tested: plan-verifier/verifier/security-* pin model: opus today"
+role_frontmatter = "smoke-tested in named roles: plan-verifier/verifier/security-* used the opus alias; active pins are defined by selection.default and verified by check-pins"
 
 [models."claude-opus-4-8".aggregate]
 score_max_effort = 56
@@ -65,7 +65,7 @@ main_selector = "configured"
 role_frontmatter_override = "configured"
 
 [models."claude-sonnet-5".evidence]
-role_frontmatter = "smoke-tested: Explore, mech-executor, and executor pin model: sonnet today"
+role_frontmatter = "smoke-tested in named roles: Explore/mech-executor/executor used the sonnet alias; active pins are defined by selection.default and verified by check-pins"
 
 [models."claude-sonnet-5".aggregate]
 score_max_effort = 53
@@ -110,7 +110,7 @@ critical = ["claude-opus-4-8/medium", "claude-opus-4-8/high"]
 judgment_fable = "Fable routes in the judgment tier apply to the main session only (H/X profiles); named roles stay on Opus."
 xhigh = "xhigh is main-session-only under profile X; no named role or bridge call uses it."
 critical_medium = "opus/medium is allowed so verifier can trade depth for speed under fast; security-* stay at opus/high in every profile."
-effort_source = "All named roles pin effort from the active profile (user-directed 2026-07-22); no role follows the main-session effort."
+effort_source = "All named roles pin effort from the active deployment preset (user-directed 2026-07-22); no role follows the main-session effort."
 
 [profiles.balanced]
 description = "Meet every quality floor, then balance capability, speed, cost, and output tokens."
@@ -237,5 +237,9 @@ effort = "high"
 reason = "Security implementation remains high effort."
 
 [revision_policy]
-trigger = "Re-derive profiles when the experience ledger reaches n>=5 for a role x provider cell, or on a material model/benchmark change."
-method = "Ledger AR/CR/RB/FR/QS with 45-day half-life overrides benchmark priors; deviations from a ledger hint require a logged note."
+days = 90
+min_samples = 10
+half_life_days = 45.0
+prefer_probability = 0.90
+cohort_fields = ["role", "task_class"]
+excluded_task_classes = ["smoke", "other"]

@@ -15,6 +15,14 @@ import tomllib
 from pathlib import Path
 
 SELECTION_KEYS = {"default", "fast", "quality_guarded", "high_risk"}
+REVISION_POLICY_KEYS = {
+    "days",
+    "min_samples",
+    "half_life_days",
+    "prefer_probability",
+    "cohort_fields",
+    "excluded_task_classes",
+}
 PRIORITY_CHOICES = ("balanced", "fast", "quality-guarded", "high-risk")
 _PRIORITY_MAP = {
     None: "default",
@@ -46,6 +54,38 @@ def check_selection(config: dict) -> list[str]:
         if profile not in profiles:
             errors.append(f"selection.{key} references unknown profile: {profile!r}")
     return errors
+
+
+def check_revision_policy(config: dict) -> list[str]:
+    """Validate the shared, executable ledger revision policy."""
+    errors = []
+    policy = config.get("revision_policy", {})
+    if set(policy) != REVISION_POLICY_KEYS:
+        errors.append("revision_policy keys must exactly match the routing schema")
+        return errors
+    if not isinstance(policy["days"], int) or policy["days"] <= 0:
+        errors.append("revision_policy.days must be a positive integer")
+    if not isinstance(policy["min_samples"], int) or policy["min_samples"] < 2:
+        errors.append("revision_policy.min_samples must be an integer >= 2")
+    if not isinstance(policy["half_life_days"], (int, float)) \
+            or policy["half_life_days"] < 0:
+        errors.append("revision_policy.half_life_days must be >= 0")
+    probability = policy["prefer_probability"]
+    if not isinstance(probability, (int, float)) or not 0.5 < probability < 1:
+        errors.append("revision_policy.prefer_probability must be between 0.5 and 1")
+    if policy["cohort_fields"] != ["role", "task_class"]:
+        errors.append(
+            "revision_policy.cohort_fields must be ['role', 'task_class']"
+        )
+    excluded = policy["excluded_task_classes"]
+    if not isinstance(excluded, list) or not all(isinstance(v, str) for v in excluded):
+        errors.append("revision_policy.excluded_task_classes must be a string list")
+    return errors
+
+
+def revision_policy(config: dict) -> dict:
+    """Return a validated policy; callers must run validation first."""
+    return config["revision_policy"]
 
 
 def check_availability(models: dict, schema: dict[str, set]) -> list[str]:

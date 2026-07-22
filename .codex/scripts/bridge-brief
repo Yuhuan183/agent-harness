@@ -6,7 +6,7 @@ role's developer_instructions from agents/<role>.toml, and prints a brief
 skeleton with the resolved model/effort override. The caller appends the
 task, done-criteria, and working directory.
 
-Usage: bridge-brief <role> [--priority balanced|fast|quality-guarded|economy|high-risk]
+Usage: bridge-brief <role> [--priority balanced|fast|quality-guarded|high-risk]
 """
 
 from __future__ import annotations

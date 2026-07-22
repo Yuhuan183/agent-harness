@@ -11,7 +11,7 @@ single-provider and this protocol does not apply there.
 1. **Routing file** — `<provider-dir>/model-routing.toml` in the shared
    structural schema (`selection` with three profiles: balanced / fast /
    quality_guarded, `route_application.roles`, `quality_floor`, `profiles`,
-   `revision_policy`). Per-surface `availability` keys are provider-specific;
+   executable `revision_policy`). Per-surface `availability` keys are provider-specific;
    benchmark metrics use whatever granularity the provider's evaluations
    publish, marked as priors.
 2. **Resolver wrapper** — `<provider-dir>/scripts/model-routing` importing
@@ -23,9 +23,9 @@ single-provider and this protocol does not apply there.
    telemetry (rollout-equivalent) so smoke evidence is provider-recorded, not
    agent-self-reported. Availability stays `unverified` until a dated,
    telemetry-backed smoke test is recorded in the routing file.
-4. **Ledger integration** — a provider name in `experience-log` (`PROVIDERS`),
-   route-tagged records (auto-fill where the provider's routes are
-   deterministic), and inclusion in `experience-revise`'s config list.
+4. **Ledger integration** — a provider name in `experience-log`, a distinct
+   `request_source`, route/profile/dispatch/telemetry identifiers, comparable
+   task classes, and inclusion in `experience-revise`'s config list.
 5. **Quota probe** — a `codex-usage`-equivalent reading local, provider-recorded
    usage; short-window alarms feed the CP-first switch rule. No probe → the
    provider cannot participate in usage-based switching and heavy dispatch to
@@ -41,4 +41,5 @@ single-provider and this protocol does not apply there.
 - Model/effort always come from the provider's own routing profile; the
   CP-first layer chooses the provider, never the route.
 - External benchmarks enter as priors only; local ledger evidence re-derives
-  profiles per each file's `revision_policy`.
+  profiles per each file's validated `revision_policy`. Smoke/other cohorts and
+  mismatched telemetry scopes never drive a provider or route preference.

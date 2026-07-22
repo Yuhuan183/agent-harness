@@ -9,7 +9,7 @@
 | 路徑 | 職責 |
 |---|---|
 | `CLAUDE.contract.md` | Claude Code 執行契約源檔（部署為 `~/.claude/CLAUDE.md`；改名避免本 repo 內 session 重複載入）；僅主 agent 使用的精簡協調規則（~600 tokens） |
-| `agents/` | 七個自足的 Claude leaf roles；model 與 effort 全由 frontmatter 依現行 profile pin 住（矩陣見 `model-routing.toml`）；不讀取主 agent 協調文件；各有 Codex 對應版於 `../.codex/agents/` |
+| `agents/` | 七個自足的 Claude leaf roles；model 與 effort 由 active deployment preset 的 frontmatter pins 決定；各有 Codex 對應版於 `../.codex/agents/` |
 | `skills/` | 依需求載入的工作流；`baton-dispatch`、`provider-routing` 為自有，`headroom-protocol`、`speak-human-tw`、`experience-ledger` symlink 至 `../.agents/skills/` |
 | `settings.json` | Hooks、最小唯讀 allowlist、codex plugin（唯一強依賴）與介面設定；不指定主模型、effort 或 fallback。其他 plugin 屬本機自理，enable 寫 `settings.local.json`（不入庫、sync 不覆蓋） |
 | `examples/headroom-mcp.merge.json` | 可攜的 MCP 宣告片段；手動 merge 進本機 `mcp_servers.json`（後者含機器路徑，不入庫） |
@@ -24,11 +24,13 @@
 
 主模型與 effort 由使用者選擇；H／X 是建議組合，不會自動切換。跨 provider dispatch、
 fallback、role routing 與 verifier 觸發條件全部收斂在 `skills/provider-routing/`，
-按需載入。Claude 原生 roles 的 model 與 effort 由 frontmatter 依 `model-routing.toml` 現行 profile pin 住，
-`scripts/model-routing` 負責 `validate`／`resolve`／`check-pins`（每週 integrity 會自動比對漂移）；
+按需載入。Claude 三個 profile 是 session/deployment preset，不是 per-dispatch override；以
+在 source checkout 用 `scripts/model-routing activate-profile --profile <name>` 一次更新全部
+frontmatter pins，review 後透過根目錄 `scripts/sync.sh --apply` 部署，再開新 session。該工具另
+提供 `validate`／`resolve`／`check-pins`（每週 integrity 會自動比對部署與 source 漂移）；
 經 `codex:codex-rescue` 呼叫的 Codex twin 則必須先用
 `${CODEX_HOME:-$HOME/.codex}/scripts/model-routing resolve --surface claude-bridge`
-解析共同的 profile，不套用 Claude 的 frontmatter pin。兩側各自的資料來源都只有一份。
+解析 per-dispatch profile，不套用 Claude 的 frontmatter pin。兩側各自的資料來源都只有一份。
 
 ## 初始設定
 

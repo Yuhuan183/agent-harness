@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
-"""Inspect and validate Claude model-routing recommendations.
+"""Inspect, validate, and activate Claude routing deployment presets.
 
 Claude routes are applied through agent frontmatter pins (leaf roles) and the
 user-owned session selector (main), not a spawn-time argument. This resolver
 makes `.claude/model-routing.toml` operative by validating its internal
 consistency and cross-checking the deployed frontmatter pins against the
-selected profile (`check-pins`)."""
+selected profile (`check-pins`). Claude profiles are deployment presets, not
+per-dispatch overrides; `activate-profile` updates every leaf pin together."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / ".agents" / "scripts"))
@@ -43,6 +46,7 @@ MODEL_ALIASES = {
     "opus": "claude-opus-4-8",
     "fable": "claude-fable-5",
 }
+MODEL_NAMES = {model: alias for alias, model in MODEL_ALIASES.items()}
 AVAILABILITY_SCHEMA = {
     "subscription": {"documented", "unverified"},
     "main_selector": {"configured", "unverified"},
@@ -66,6 +70,7 @@ def validation_errors(config: dict) -> list[str]:
     role_tiers = config.get("quality_floor", {}).get("roles", {})
 
     errors += core.check_selection(config)
+    errors += core.check_revision_policy(config)
 
     normalized_roles = {role.replace("_", "-") for role in route_application}
     if normalized_roles != REQUIRED_ROLES:
@@ -257,6 +262,135 @@ def command_check_pins(
     return 0
 
 
+def replace_frontmatter_pin(text: str, model: str, effort: str) -> str:
+    """Return agent Markdown with only model/effort frontmatter changed."""
+    match = re.match(r"\A---\n(.*?)\n---\n", text, re.DOTALL)
+    if not match:
+        raise ValueError("agent file has no frontmatter")
+    header = match.group(1)
+    if len(re.findall(r"(?m)^model:\s*.*$", header)) != 1:
+        raise ValueError("agent frontmatter must contain exactly one model pin")
+    if len(re.findall(r"(?m)^effort:\s*.*$", header)) != 1:
+        raise ValueError("agent frontmatter must contain exactly one effort pin")
+    header = re.sub(r"(?m)^model:\s*.*$", f"model: {model}", header)
+    header = re.sub(r"(?m)^effort:\s*.*$", f"effort: {effort}", header)
+    return f"---\n{header}\n---\n{text[match.end():]}"
+
+
+def atomic_write(path: Path, content: str) -> None:
+    """Replace one file on the same filesystem while preserving its mode."""
+    mode = path.stat().st_mode
+    fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(temp_name, mode)
+        os.replace(temp_name, path)
+    finally:
+        try:
+            os.unlink(temp_name)
+        except FileNotFoundError:
+            pass
+
+
+def command_activate_profile(
+    config: dict, config_path: Path, agents_dir: Path, profile_name: str,
+    dry_run: bool,
+) -> int:
+    """Validate all changes first, then apply with rollback on any failure."""
+    if profile_name not in config["profiles"]:
+        print(f"ERROR: unknown profile: {profile_name}", file=sys.stderr)
+        return 2
+    routes = config["profiles"][profile_name]["roles"]
+    pins = deployed_pins(agents_dir)
+    if set(pins) != LEAF_ROLES:
+        missing = ", ".join(sorted(LEAF_ROLES - pins.keys())) or "none"
+        print(f"ERROR: cannot activate profile; missing leaf pins: {missing}", file=sys.stderr)
+        return 1
+
+    originals: dict[Path, str] = {}
+    replacements: dict[Path, str] = {}
+    try:
+        for role in sorted(LEAF_ROLES):
+            path = agents_dir / pins[role]["file"]
+            original = path.read_text(encoding="utf-8")
+            route = routes[role]
+            alias = MODEL_NAMES.get(route["model"])
+            if alias is None:
+                raise ValueError(f"{role}: no Claude frontmatter alias for {route['model']}")
+            originals[path] = original
+            replacements[path] = replace_frontmatter_pin(
+                original, alias, route["effort"]
+            )
+
+        config_text = config_path.read_text(encoding="utf-8")
+        selection = re.search(r"(?ms)^\[selection\]\n(.*?)(?=^\[|\Z)", config_text)
+        if selection is None or len(re.findall(
+                r"(?m)^default\s*=\s*\"[^\"]+\"\s*$", selection.group(1))) != 1:
+            raise ValueError("selection.default must occur exactly once")
+        new_selection = re.sub(
+            r"(?m)^default\s*=\s*\"[^\"]+\"\s*$",
+            f'default = "{profile_name}"', selection.group(0), count=1,
+        )
+        originals[config_path] = config_text
+        replacements[config_path] = (
+            config_text[:selection.start()] + new_selection + config_text[selection.end():]
+        )
+    except (OSError, ValueError) as error:
+        print(f"ERROR: cannot prepare profile activation: {error}", file=sys.stderr)
+        return 1
+
+    changed = [path for path, content in replacements.items()
+               if content != originals[path]]
+    if dry_run:
+        for path in changed:
+            print(f"would update: {path}")
+        print(f"profile {profile_name}: {len(changed)} files would change")
+        return 0
+
+    applied: list[Path] = []
+
+    def rollback() -> list[str]:
+        errors = []
+        for path in reversed(applied):
+            try:
+                atomic_write(path, originals[path])
+            except OSError as rollback_error:
+                errors.append(f"{path}: {rollback_error}")
+        return errors
+
+    try:
+        for path in changed:
+            atomic_write(path, replacements[path])
+            applied.append(path)
+    except OSError as error:
+        rollback_errors = rollback()
+        detail = f"; rollback errors: {'; '.join(rollback_errors)}" if rollback_errors else ""
+        print(f"ERROR: profile activation failed and was rolled back: {error}{detail}",
+              file=sys.stderr)
+        return 1
+
+    try:
+        refreshed = core.load_config(config_path)
+        post_errors = validation_errors(refreshed)
+        result = (1 if post_errors else
+                  command_check_pins(refreshed, agents_dir, profile_name, None))
+    except (OSError, core.tomllib.TOMLDecodeError) as error:
+        post_errors = [str(error)]
+        result = 1
+    if result != 0:
+        rollback_errors = rollback()
+        detail = f"; rollback errors: {'; '.join(rollback_errors)}" if rollback_errors else ""
+        reason = f": {'; '.join(post_errors)}" if post_errors else ""
+        print(f"ERROR: profile activation post-check failed and was rolled back{reason}{detail}",
+              file=sys.stderr)
+        return 1
+    print(f"activated deployment preset: {profile_name} ({len(changed)} files updated)")
+    return 0
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=CONFIG_PATH)
@@ -279,6 +413,13 @@ def parse_args() -> argparse.Namespace:
     check_source = check_parser.add_mutually_exclusive_group()
     check_source.add_argument("--profile")
     check_source.add_argument("--priority", choices=core.PRIORITY_CHOICES)
+    activate = subparsers.add_parser(
+        "activate-profile",
+        help="transactionally apply one Claude deployment preset to every leaf pin",
+    )
+    activate.add_argument("--profile", required=True)
+    activate.add_argument("--agents-dir", type=Path, default=AGENTS_DIR)
+    activate.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
 
 
@@ -300,6 +441,10 @@ def main() -> int:
         return command_list(config, args.json)
     if args.command == "check-pins":
         return command_check_pins(config, args.agents_dir, args.profile, args.priority)
+    if args.command == "activate-profile":
+        return command_activate_profile(
+            config, args.config, args.agents_dir, args.profile, args.dry_run
+        )
     return command_resolve(config, args.role, args.profile, args.priority)
 
 

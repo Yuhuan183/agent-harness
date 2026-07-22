@@ -25,7 +25,8 @@
 `config.toml` 是機器狀態（base URL、憑證路徑、marketplace 來源、PID 等），
 **永不自動覆蓋**；跨機器只透過 `config.merge.toml` 帶可攜設定，套用方式見 `DEPLOY.md`。
 `model-routing.toml` 只是可查詢的 dispatch 建議，不會改寫 `config.toml` 或目前 task；本機
-`experience-ledger` 有足夠同類樣本時，其可接受率、返工、時間與 token 證據優先。
+`experience-ledger` 有足夠同角色／task class 樣本時，其可接受率、返工、時間與同口徑 token 證據優先；
+native Codex 記錄來源為 `codex`，Claude bridge 為 `claude-code-plugin-codex`。
 Main route 只供開啟 task 前選擇；執行中的 main 不會切換模型。Leaf route 依 resolver 的
 `invocation` 使用 spawn argument；未來若啟用 Luna，才使用另行註冊的 custom agent config。切換模型時固定
 `fork_turns = "none"`，由完整 brief 重建必要脈絡。部署後從 `${CODEX_HOME:-$HOME/.codex}/scripts/model-routing` 執行；repo 內則

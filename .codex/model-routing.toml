@@ -324,3 +324,11 @@ reason = "Security review remains high effort."
 model = "gpt-5.6-sol"
 effort = "high"
 reason = "Security implementation remains high effort."
+
+[revision_policy]
+days = 90
+min_samples = 10
+half_life_days = 45.0
+prefer_probability = 0.90
+cohort_fields = ["role", "task_class"]
+excluded_task_classes = ["smoke", "other"]

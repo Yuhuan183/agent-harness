@@ -86,6 +86,7 @@ def validation_errors(config: dict) -> list[str]:
     role_tiers = quality_floor.get("roles", {})
     allowed_by_tier = quality_floor.get("allowed", {})
     errors += core.check_selection(config)
+    errors += core.check_revision_policy(config)
     errors += core.check_quality_floor_roles(config, REQUIRED_ROLES)
     if set(route_application) != REQUIRED_ROLES:
         errors.append("route_application.roles must cover main and every leaf role")
