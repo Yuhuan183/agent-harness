@@ -62,6 +62,8 @@
 
 ## Decision log
 
+- **2026-07-22 (later)** — Token-overhead pass: descriptions trimmed (~350 tok/session), provider-routing prose no longer restates the matrix, repo contract source renamed to `CLAUDE.contract.md` to stop in-repo double-loading (~900 tok/session). Resolver logic unified into `.agents/scripts/routing_core.py`; added `bridge-brief` composer, `smoke` task class, backup rotation (keep 10).
+
 - **2026-07-12** — Fail-open local monitoring and nested-delegation detection.
 - **2026-07-15** — Direct-first cost-aware dispatch replaced fixed pipelines; Headroom wrap ownership; no routine stacked verification.
 - **2026-07-17** — Single-hop cross-provider routing, GPT-primary security, approved-scope boundary; removed tracked main model/effort/fallback. Distilled docs: one authoritative location per concern.
