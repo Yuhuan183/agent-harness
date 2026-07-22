@@ -28,13 +28,13 @@
 
 - Delegation audit records start/stop, detects `spawnDepth >= 2`, and remains fail-open.
 - `scripts/deployment-manifest.tsv` is the single source for sync and weekly drift coverage across Claude, Codex, and shared artifacts; weekly integrity also reports pin drift, delegation alarms, and an empty-ledger warning.
-- Runtime guard blocks capability-sensitive reviewers below Claude Code 2.1.207 or when version is unknown.
+- Runtime guard warns at SessionStart and actually blocks restricted reviewer dispatch via a PreToolUse Agent gate (exit 2) below Claude Code 2.1.207 or when version is unknown; the version probe is cached by binary mtime.
 - Usage report separates main/subagent/historical traffic without claiming subscription-quota equivalence; Codex tokens/quota come from local rollouts (`codex-usage`).
 - Claude→Codex bridge verified end-to-end: resolver JSON → `codex:codex-rescue` dispatch → rollout telemetry confirms the model/effort override (Sol/low, Luna/low).
 - Claude routing file is operative: `.claude/scripts/model-routing` validates the TOML, resolves role routes, and `check-pins` cross-checks agent frontmatter (also run weekly by the integrity hook, fail-open when the resolver is absent).
 - Experience schema v3 records dispatch/rollout identity and request source; ambiguous bridge rollout windows retain a warning instead of adding unrelated token totals.
 - Quota discipline is short-window-first: `codex-usage --quota` lists the shorter window (e.g. 5h) before the weekly one and warns to hold Codex dispatch when it nears exhaustion.
-- Contract tests cover role ownership, preset atomicity, per-dispatch routing, policy validation, ledger concurrency/coverage, deployment preflight, hooks, usage reporting, and platform bundle invariants.
+- Contract tests are split by concern (roles/contracts/deployment/mechanisms/ledger) with word-based doc budgets and twin-role semantic parity checks; coverage spans role ownership, preset atomicity, routing, policy validation, ledger concurrency, deployment preflight, hooks, and platform bundles.
 
 ## Next goals
 
@@ -61,6 +61,8 @@
 - **Codex**: Codex App may rewrite machine `config.toml`; deployment must merge and recheck local state instead of replacing it.
 
 ## Decision log
+
+- **2026-07-22 (review remediation)** — Dual-provider six-dimension review (22 findings) remediated in one pass: runtime guard now truly blocks via a cached PreToolUse gate; weekly integrity refuses silent skips; ledger gained `route_source`, fallback lineage (hops>1 rejected), `--profile` hints, and availability-guarded revise; Codex dispatch detail moved to the `leaf-dispatch` skill; manifest and settings shed non-runtime/personal content; terminology unified (verifier cardinality, `request_source`, reviewed-outcome); runtime docs anglicized; doc budgets became word-based; the test monolith split by concern. Method captured in dev-only `harness-review`.
 
 - **2026-07-12** — Fail-open local monitoring and nested-delegation detection.
 - **2026-07-15** — Direct-first cost-aware dispatch replaced fixed pipelines; Headroom wrap ownership; no routine stacked verification.

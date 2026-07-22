@@ -31,7 +31,7 @@ sync 之前，先確認以下工具鏈到位；除 codex plugin 外，其他 plu
 
 ```bash
 # 1. 基礎 CLI
-brew install rtk                 # hook 依賴；未裝時 fail-open，可后補
+brew install rtk                 # hook 依賴；未裝時 fail-open，可後補
 curl -LsSf https://astral.sh/uv/install.sh | sh   # headroom CLI 由 uv tool 管理
 uv tool install headroom-ai      # 詳見 ~/.agents/docs/headroom-runtime.md
 # Claude Code 與 Codex CLI 依官方文件安裝（本 repo 不管理其版本）

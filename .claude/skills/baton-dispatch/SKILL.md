@@ -1,6 +1,6 @@
 ---
 name: baton-dispatch
-description: Choose the dispatch shape — direct, one agent, bounded parallel, workflow, or isolated workspaces. Use for non-trivial fan-out, batches, or multiple writers. Do not use for small edits, known-target lookups, or tightly coupled debugging.
+description: Decide the dispatch shape — direct, one agent, bounded parallel, workflow, or isolated workspaces. Mandatory before every dispatch. Small edits, known-target lookups, and tightly coupled debugging normally resolve to direct work in main.
 ---
 
 # Baton Dispatch
