@@ -152,6 +152,12 @@ def main() -> int:
                         help="main-session correction/integration time")
     parser.add_argument("--api-cost-usd", type=float, default=None,
                         help="provider-reported API cost when available")
+    parser.add_argument("--origin-provider", choices=PROVIDERS, default=None,
+                        help="task's origin provider when this dispatch is a fallback hop")
+    parser.add_argument("--parent-dispatch-id", default=None,
+                        help="dispatch id of the failed attempt this one falls back from")
+    parser.add_argument("--fallback-hops", type=int, default=None,
+                        help="cross-provider hops from origin (policy allows at most 1)")
     parser.add_argument("--note", default=None, help="surprise worth remembering")
     parser.add_argument("--session", default=None)
     parser.add_argument("--rollout-id", default=None,
@@ -209,6 +215,12 @@ def main() -> int:
             else "spot" if args.role in SPOT_QC_ROLES
             else "full"
         )
+    if args.fallback_hops is not None and args.fallback_hops > 1:
+        parser.error("single-hop fallback: fallback-hops > 1 is a routing violation; "
+                     "surface it instead of logging a second hop")
+    args.route_source = ("explicit" if all(
+        value is not None for value in (args.profile, args.model, args.effort))
+        else None)
     if args.provider == "claude" and any(
             value is None for value in (args.profile, args.model, args.effort)):
         # Claude routes are deterministic frontmatter pins (check-pins keeps
@@ -224,6 +236,10 @@ def main() -> int:
                 args.model = args.model or route["model"]
                 args.effort = args.effort or route["effort"]
                 args.profile = args.profile or route["profile"]
+                # Pins use model aliases; the resolver maps them to dated ids.
+                # Mark the record so alias upgrades cannot masquerade as
+                # verified route evidence (route_source: resolver-assumed).
+                args.route_source = args.route_source or "resolver-assumed"
         except (OSError, subprocess.TimeoutExpired,
                 json.JSONDecodeError, KeyError):
             pass
@@ -255,7 +271,8 @@ def main() -> int:
     elif any(isinstance(value, int) for value in token_values):
         record["token_scope"] = "partial"
     for key in ("dispatch_id", "profile", "model", "effort", "tier",
-                "task_class", "task", "quality",
+                "route_source", "origin_provider", "parent_dispatch_id",
+                "fallback_hops", "task_class", "task", "quality",
                 "tokens_in", "tokens_out", "cache_write_tokens",
                 "cache_read_tokens", "secs", "review_secs", "rework_secs",
                 "api_cost_usd", "note", "session", "rollout_id",

@@ -148,6 +148,8 @@ def revise(config: dict, provider: str, cells: dict,
                         config, profile, role, model, effort,
                         context=f"task_class={task_class}"):
                     continue
+                if not core.model_dispatchable(config, model):
+                    continue
                 probability = p_beats(cell, current)
                 if probability >= prefer_p:
                     candidates.append((probability, key, cell))

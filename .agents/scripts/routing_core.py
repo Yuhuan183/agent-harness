@@ -174,3 +174,19 @@ def leaf_routes(config: dict, profile_name: str | None = None):
     for role, route in config["profiles"][name]["roles"].items():
         if role != "main":
             yield role, route
+
+
+DISPATCHABLE_OVERRIDES = {"configured", "spawn_argument", "agent_config"}
+
+
+def model_dispatchable(config: dict, model: str) -> bool:
+    """True when at least one leaf-override surface can dispatch this model.
+
+    Guards revision suggestions: a model that meets a quality floor but has no
+    configured leaf override (e.g. main-selector-only routes) must never be
+    proposed as a leaf route.
+    """
+    availability = config.get("models", {}).get(model, {}).get("availability", {})
+    overrides = [value for key, value in availability.items()
+                 if key.endswith("_override")]
+    return any(value in DISPATCHABLE_OVERRIDES for value in overrides)

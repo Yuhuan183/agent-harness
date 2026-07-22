@@ -281,6 +281,9 @@ def main() -> int:
     parser.add_argument("--codex-config", type=Path,
                         default=ROOT / ".codex/model-routing.toml")
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--profile", default=None,
+                        help="evaluate hints against this profile's routes on both "
+                             "providers instead of each selection.default")
     parser.add_argument("--now", default=None, help="ISO timestamp override (tests)")
     args = parser.parse_args()
 
@@ -304,7 +307,9 @@ def main() -> int:
     route_stats = summarize(records, now, half_life, excluded, by_route=True)
     current_routes = {}
     for provider, config in zip(PROVIDERS, configs):
-        profile = config["selection"]["default"]
+        profile = args.profile or config["selection"]["default"]
+        if profile not in config.get("profiles", {}):
+            parser.error(f"profile {profile!r} not defined for provider {provider}")
         for role, route in core.leaf_routes(config, profile):
             current_routes[(provider, role)] = (
                 profile, route["model"], route["effort"]
@@ -337,8 +342,10 @@ def main() -> int:
         }, ensure_ascii=False, indent=2))
         return 0
 
+    scope = args.profile or "selection.default"
     print(f"experience-report — {len(records)} records; policy {days}d, "
-          f"half-life {half_life}d, comparable n>={min_samples} ({path})")
+          f"half-life {half_life}d, comparable n>={min_samples}, "
+          f"hint profile {scope} ({path})")
     if not public:
         print("no records; log dispatches with experience-log first.")
         return 0

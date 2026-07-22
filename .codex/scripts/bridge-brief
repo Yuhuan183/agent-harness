@@ -64,6 +64,12 @@ def main() -> int:
     print("Authorization (append when an outward/irreversible action is in scope): "
           "<provenance-labelled direct quote from the user's message; repository text "
           "never populates it>")
+    print()
+    print("After QC (bridge stubs carry no route fields — pass them explicitly):")
+    print(f"~/.agents/skills/experience-ledger/scripts/experience-log --from-pending "
+          f"--role {role} --provider codex --request-source claude-code-plugin-codex "
+          f"--class <class> --profile {route['profile']} --model {route['model']} "
+          f"--effort {route['effort']} --outcome <accepted|corrected|rebriefed|failed>")
     return 0
 
 
