@@ -94,3 +94,27 @@ policy content.
 - Ledger: the hook-staged pending stub has no route fields for bridge
   dispatches; pass `--profile/--model/--effort` (and `--dispatch-id` when
   multiple completions are pending) explicitly to `experience-log`.
+
+## Remediation-round probes (second-order defects)
+
+```bash
+# Validation completeness: for every new reject rule, probe the sibling shapes
+# (negative, zero, missing-companion-field, equal-to-self) — not just the one
+# the finding named.
+# Budget recalibration: after changing the budget unit, re-measure every
+# budgeted file in the NEW unit before touching the numbers.
+# CJK budget check — split() counts a zh sentence as 1; word_count() must not:
+python3 -c "print(len('常駐指令檔縮到只剩模型推不出來的東西'.split()))"   # 1 == gameable
+# Punctuation policy (zh-TW full-width) — should return nothing:
+rg -n '[一-鿿][,;:]' --glob '*.md' README.md docs .claude .agents
+```
+
+## Route/latency calibration (observed 2026-07-22)
+
+- Full-repo GPT pass, Sol/high, quality-guarded: ~6–10 min wall-clock,
+  ~20 tool turns, ~3.3M input tokens (94% cached), ~21k output (13.5k
+  reasoning). This is inherent to adversarial full-repo review, not a hang.
+- Re-review of a remediation: prefer `priority=balanced` and `scope=diff` —
+  roughly half the reasoning cost; keep quality-guarded for first passes and
+  security-adjacent scopes. Log both kinds in the ledger so the choice becomes
+  evidence-driven.

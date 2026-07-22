@@ -12,6 +12,22 @@ Read-only design review of this repo's contracts, routing, and mechanisms.
 Deliverable: ranked findings plus a per-dimension verdict. Never fix during the
 review; fixes are a separate task with their own scope.
 
+## Scope and route (assess by default, user args win)
+
+Accept two optional invocation args; when absent, assess and state the choice:
+
+- `scope=full|diff:<range>|paths:<list>` — default `full` for a first review or
+  after a large merge; prefer `diff`/`paths` for re-reviews and follow-ups.
+- `priority=quality-guarded|balanced|fast` — default `quality-guarded`
+  (Sol/high) for a first full review; `balanced` (Sol/medium, ~half the
+  reasoning cost) for verifying a remediation or a bounded scope. Never `fast`
+  for the GPT pass — review is judgment-dense.
+
+Set latency expectations up front: a full-repo Sol/high pass is a multi-minute,
+dozens-of-tool-turns run (observed ~6–10 min, ~3M input tokens mostly cached).
+Report the assessed scope/priority in the LEAF_DISPATCH record so the ledger
+can later arbitrate quality-guarded vs balanced with local evidence.
+
 ## Method
 
 1. **Inventory first** — sizes and language ratios ground three dimensions
@@ -57,6 +73,30 @@ Each has a core question and a signature failure mode observed in this repo:
    Signature: one platform resident-heavy while the other externalizes the
    same content to skills; line-count budgets defeated by long lines; hooks
    re-probing on every session what a cache could answer.
+
+## Remediation round (when the user says "fix the findings")
+
+Fixing is a separate task from reviewing, and it reliably produces
+second-order defects — hunt these before closing:
+
+- **Validation half-done**: a new reject rule that blocks one bad shape but
+  not its siblings (hops>1 rejected while negative hops pass; add
+  finiteness/negativity checks with every numeric field).
+- **Budget/unit changes invalidate calibration**: changing what a budget
+  counts (lines→words→CJK-aware) requires re-measuring every budgeted file in
+  the new unit, not keeping old numbers.
+- **Availability semantics**: "any surface passes" vs "all surfaces pass" —
+  pick the one that matches how the config is actually applied.
+- **Moved text breaks exact-string tests**: prefer normalized
+  (`" ".join(text.split())`) or union-of-files assertions when content moves
+  between resident contracts and skills.
+- **Bulk edits need line-anchored tools**: a `(?s)` / DOTALL regex on
+  frontmatter once truncated six SKILL bodies — the test suite caught it;
+  restore from git, re-apply line-based. Never bulk-edit without a green
+  suite immediately after.
+- After remediation, re-run this skill with `scope=diff` + `priority=balanced`
+  and require: prior claims HOLD, no regression, and triage of new findings —
+  expect them to be smaller-scope (healthy convergence), not zero.
 
 ## Output contract
 
