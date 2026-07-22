@@ -1,6 +1,6 @@
 # Independent-verifier triggers
 
-Dispatch exactly one `verifier` only when at least one holds:
+Dispatch at most one outcome `verifier` per top-level task, only when at least one holds:
 
 - Failure could affect a security/trust boundary, money, destructive data, migrations, concurrency, public APIs, or cross-repo compatibility.
 - Judgment-heavy integration cannot be proven mechanically.

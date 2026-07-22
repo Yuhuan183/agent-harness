@@ -38,7 +38,7 @@
 
 ## Next goals
 
-> 分類規則：**for all** = 跨 provider 的機制與紀律;**for claude** = 只動 `.claude/` 契約、roles、routing;**for codex** = 只動 `.codex/` 契約、bridge、rollout 佐證。
+> 分類規則：**for all** = 跨 provider 的機制與紀律；**for claude** = 只動 `.claude/` 契約、roles、routing；**for codex** = 只動 `.codex/` 契約、bridge、rollout 佐證。
 
 ### For all
 

@@ -147,7 +147,7 @@ machine-local experience ledger，方便人類回顧與 telemetry 對照。
 | Weekly integrity | 檢查 source／HOME 漂移、pins、delegation alarm 與 ledger 狀態 | [weekly-integrity.py](.claude/hooks/weekly-integrity.py) |
 | RTK／Headroom | 控制工具輸出與大型唯讀 context；不可冒充模型配額 | [RTK](.claude/RTK.md)、[Headroom runtime](.agents/docs/headroom-runtime.md) |
 
-Hooks 與監控預設 fail-open，避免本機診斷工具故障阻塞正常工作；真正的 correctness gate 仍由
+Hooks 與監控預設 fail-open，避免本機診斷工具故障阻塞正常工作（唯一例外：runtime guard 的 PreToolUse gate 在版本過舊或未知時對受限 reviewer 派工 fail-closed）；真正的 correctness gate 仍由
 focused tests、contract tests、主 session QC 與必要時的獨立 verifier 負責。
 
 ## Repository 佈局
