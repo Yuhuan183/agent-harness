@@ -68,7 +68,7 @@
 - **2026-07-18** — Headroom verified against upstream v0.32; base URL stays machine-local.
 - **2026-07-20** — Two-tier role effort (capped at high); per-dispatch reporting and QC; Codex counterparts for each leaf role via the codex-rescue bridge. Added `experience-ledger` skill (AR/CR/RB/FR/QS, explore/prefer rule).
 - **2026-07-21** — External rankings (AA v4.1, Coding Agent Index v1.2) demoted to priors; route on local acceptable-outcome cost. Added token, review/rework, and API-cost coverage.
-- **2026-07-22** — Three quality-first profiles standardized; Claude uses atomic deployment presets while Codex native/bridge remains per-dispatch. Sol/Terra/Luna availability was verified, Luna stayed unrouted, and experience schema v3 added source plus dispatch/rollout identity. Sync preflight, overwrite/drift guards, and parity checks expanded. Pilotfish v1.3 informed shape-based batching, coherent-boundary verification, and Plan anti-churn without changing routes.
+- **2026-07-22** — Three quality-first profiles standardized; Claude uses atomic deployment presets while Codex native/bridge remains per-dispatch. Sol/Terra/Luna availability was verified, Luna stayed unrouted, and experience schema v3 added source plus dispatch/rollout identity. Sync preflight, overwrite/drift guards, and parity checks expanded. Pilotfish v1.3 informed shape-based batching, coherent-boundary verification, and Plan anti-churn without changing routes. Fable-method distillation added INTENT/TWINS/AUTH gates to writer leaf contracts on both providers (role files only, per Codex plan-verifier REVISE), a false-completion fraud checklist in both main QC paths, and brief stop defaults with quoted-authorization provenance; behavioral trap fixtures remain open.
 
 ## Verification
 

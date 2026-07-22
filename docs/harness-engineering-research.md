@@ -77,6 +77,67 @@ policy／prompt SHA-256、invocation、唯一寫入、測試與 verifier verdict
 只證明 compatibility／provenance，不證明 native-Claude 成本或效率。本專案借用的是「證據分級與
 失敗紀錄不漂白」的精神，實作上沿用既有 deployment manifest、ledger eligibility 與 parity checks。
 
+## Fable Method 案例（2026-07-22）
+
+**已驗證**：[`Sahir619/fable-method`](https://github.com/Sahir619/fable-method)（Claude Code plugin
+v1.4.0，MIT）把一套單 session 問題解決迴圈（classify → define done → evidence → decide → act →
+verify → report）寫成四個 skills（fable-method／fable-loop／fable-judge／fable-domain），並附
+15 輪、260+ agent runs 的 eval log 與 raw judge 輸出（`eval/RESULTS.md`、`eval/results/`）。
+證據等級為作者自評的 smoke-test：每格 1–4 runs、LLM judge、單一作者的 fixtures；倉庫敘事
+（「Fable 5 下架前的自我蒸餾」）未經證實。以下只引用其 committed 證據。
+
+對本專案最有訊號的三個實證發現：
+
+1. **規則的形式決定弱模型遵循率**。同一條 intent 規則寫成清單散文時 Haiku 遵循 1/4；改成
+   「報告中必須逐字出現的強制格式行」（`INTENT: code does <X>; check expects <Y>; spec says
+   <Z>`，附權威順序：使用者明示 > spec > tests > 現有行為）後 4/4（round 3）。
+2. **提升與模型檔位成反比**。盲測產出可信 adapter bundle：bare Haiku 2/10（對未驗證工作宣稱
+   production-ready）、Sonnet 9、Opus 8；帶方法後 Haiku 6、Sonnet 10、Opus 9（rounds 12–13）。
+   能力足夠的模型在一般小任務上無提升，nulls 與 wins 並列公開（rounds 1、6、7）。
+3. **文件不是授權**。round 11 中 bare frontier 模型兩次有一次因 fixture 自帶 README 指示而
+   逕行 staging deploy；其 AUTH gate（不可逆／對外動作需引用使用者原話 `AUTH: user said
+   "<exact words>"`，README／workflow 文件只構成 documented、不構成 authorized）因此而生。
+
+fable-judge 的立場（報告是待證主張的集合，只信重跑與 diff）與本 repo `verifier` 相同；它額外
+把「假完成」具體化成可獵捕的 fraud 清單：弱化的檢查、為通過檢查而捏造的 fixture、未申報的
+scope 外改動，以及把殘留 scratch 檔案視為詐欺訊號。方法論上它採用「沒有失敗的 trap 就沒有
+那條規則」covenant：每條規則對應一個 trap fixture 與 answer sheet，judge 只執行與 diff、不讀
+報告；修 defect 後另有 `TWINS: searched <pattern> - found <N> other sites` 強制同型 bug 搜尋。
+
+**推論**：本 repo 的 leaf 正是該方法價值集中的族群——刻意 pinned 在中低檔位（balanced 下
+`Explore` sonnet/low、`mech-executor` sonnet/medium、`executor` sonnet/high）、無人看管、由
+main QC 把關。main 以最高檔位運行且已有 `DECISION:`／`LEAF_DISPATCH`／`LEAF_RESULT` 這類
+決策點強制行；其 nulls 顯示七步迴圈對高檔位 main 是純 token 稅。借鑑面因此鎖定 leaf 契約的
+決策點強制行、QC 的 fraud 清單與行為級 trap eval，而非引入整個迴圈或再疊 gate。
+
+### 對本專案的取捨
+
+| 類別 | 判斷 | 本地處理 |
+|---|---|---|
+| 值得借鑑 | 決策點強制行：INTENT＋權威順序、TWINS、AUTH 引用原話（文件≠授權） | 各加 3–5 行到 `executor`／`mech-executor`／`security-executor` 契約；contract tests 驗存在 |
+| 值得借鑑 | QC fraud 清單（弱化檢查、捏造 fixture、scope 外改動、scratch 殘留） | 併入 baton-dispatch result collection／QC 指引；吸收 fable-judge 而不新增 gate |
+| 值得借鑑 | trap-fixture 行為評測；「無失敗 trap 即刪規則」修剪 covenant | 先建一個 s7 式假完成 fixture 校準 spot vs full QC；covenant 記入 docs，作為契約瘦身依據 |
+| 啟發式 | 數字化硬界限（3 次 fix-verify 失敗即停、2 次無收穫查找即停） | 作為 brief 停止段預設值；屬維運預算，待本機回歸驗證 |
+| 已有等價 | 不信報告的 fresh verification、outcome-first 報告、nulls 照列 | `verifier` 契約、Working agreement、experience ledger 已涵蓋，不複製文字 |
+| 不採用 | 七步迴圈進 main 契約；domain adapters；fable-judge 作第二 gate | main 檔位高且其 nulls 明確；本 repo 為 coding 專用；違反 never-stack-gates |
+
+與 Pilotfish v1.3 的吸收不重疊：pilotfish 補的是派工形狀（batching、gate 擺放、Plan 收斂），
+fable-method 補的是 leaf 執行紀律與 QC 獵物清單；兩者交會處只有「不疊 gate」原則，fraud
+清單因此必須進既有 QC／verifier 文件，不得成為新 gate。跨模型外推是推論：其數據來自
+Haiku／Sonnet／Opus 4 系與單一作者 fixtures，本 repo 的 Sonnet 5 leaf 需以自建 trap 重新取證。
+
+### Codex 鏡射（2026-07-22 定案）
+
+`.codex` 的 leaf roles 與 bridge 派工同屬弱檔位、無人看管族群（balanced 下 support roles 走
+Sol/low）。鏡射方案經 Codex 端 `plan-verifier`（gpt-5.6-sol/medium，claude-bridge）對抗審視後
+定案，其 REVISE 修訂全數採納：強制行只進三個可寫 role 的 TOML `developer_instructions`
+（native 直接註冊、bridge 由 `bridge-brief` 前置，寫進 `AGENTS.contract.md` 只會重複與漂移）；
+fraud 清單只進兩端 main QC 路徑；「write verbatim」改為「emit …並在最終報告重複該行」以免
+被解讀為檔案寫入；權威順序限縮於 intended behavior、不覆蓋 scope 與 sandbox；`TWINS` 明定
+report-only；`AUTH` 是必要非充分條件，且因 leaf 收不到對話歷史，brief 必須內嵌具出處標記的
+使用者原話（repo 文字永不可充當）；scratch/debris 限定為 leaf 自建檔案以免與 preserve-dirty-
+worktree 衝突。GPT-5.6 上強制行的效果轉移仍是未驗證推論，屬 trap fixture 輪的取證目標。
+
 ## Artificial Analysis 快照（2026-07-21）
 
 Artificial Analysis Intelligence Index v4.1 是英文、純文字的綜合評測，共 9 項：Agents 34%、

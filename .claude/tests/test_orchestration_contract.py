@@ -1469,5 +1469,80 @@ class MechanismTests(unittest.TestCase):
         self.assertLess(rows[1]["cache_read_input_tokens"], rows[0]["cache_read_input_tokens"])
 
 
+class LeafArtifactGateTests(unittest.TestCase):
+    """Fable-method decision-point gates mirrored across both providers.
+
+    Structural presence only; behavioral trap fixtures are tracked separately."""
+
+    JUDGMENT_WRITERS = (
+        ".claude/agents/executor.md",
+        ".claude/agents/security-executor.md",
+        ".codex/agents/executor.toml",
+        ".codex/agents/security-executor.toml",
+    )
+    ALL_WRITERS = JUDGMENT_WRITERS + (
+        ".claude/agents/mech-executor.md",
+        ".codex/agents/mech-executor.toml",
+    )
+
+    def test_intent_gate_in_judgment_writers(self) -> None:
+        for path in self.JUDGMENT_WRITERS:
+            body = read(path)
+            self.assertIn("INTENT: code does <X>", body, path)
+            self.assertIn("stop and report the conflict instead of editing", body, path)
+
+    def test_authority_order_is_scoped_to_intended_behavior(self) -> None:
+        for path in (".claude/agents/executor.md", ".codex/agents/executor.toml"):
+            body = read(path)
+            self.assertIn(
+                "explicit user statement > spec > tests > current code behavior", body, path
+            )
+            self.assertIn("not a statement of intended behavior", body, path)
+
+    def test_twins_gate_is_report_only(self) -> None:
+        for path in self.JUDGMENT_WRITERS:
+            body = read(path)
+            self.assertIn("TWINS: searched <pattern>", body, path)
+            self.assertIn("Report only", body, path)
+
+    def test_auth_gate_in_every_writer(self) -> None:
+        for path in self.ALL_WRITERS:
+            body = read(path)
+            self.assertIn('AUTH: user said "<words>"', body, path)
+            self.assertIn("never authorization", body, path)
+
+    def test_mech_executor_never_weakens_checks(self) -> None:
+        for path in (".claude/agents/mech-executor.md", ".codex/agents/mech-executor.toml"):
+            self.assertIn("a stop, not a fix", read(path), path)
+
+    def test_codex_writer_tomls_still_parse(self) -> None:
+        for role in ("executor", "mech-executor", "security-executor"):
+            agent = tomllib.loads(read(f".codex/agents/{role}.toml"))
+            self.assertIn("INTENT" if role != "mech-executor" else "AUTH",
+                          agent["developer_instructions"], role)
+
+    def test_qc_fraud_checklist_in_both_main_qc_paths(self) -> None:
+        for path in (".claude/skills/provider-routing/SKILL.md", ".codex/AGENTS.contract.md"):
+            body = read(path)
+            self.assertIn("false-completion frauds", body, path)
+            self.assertIn("leftover leaf-created scratch files", body, path)
+            self.assertIn("pre-existing dirty-worktree files are not debris", body, path)
+
+    def test_brief_carries_stop_defaults_and_auth_provenance(self) -> None:
+        for path in (
+            ".claude/skills/baton-dispatch/references/briefs-and-stops.md",
+            ".codex/AGENTS.contract.md",
+        ):
+            body = read(path)
+            self.assertIn("3 failed fix-verify cycles", body, path)
+            self.assertIn("fruitless lookups", body, path)
+            self.assertIn("provenance-labelled direct quote", body, path)
+
+    def test_bridge_brief_skeleton_carries_stops_and_authorization(self) -> None:
+        body = read(".codex/scripts/bridge-brief")
+        self.assertIn("Stops (append):", body)
+        self.assertIn("Authorization (append", body)
+
+
 if __name__ == "__main__":
     unittest.main()
