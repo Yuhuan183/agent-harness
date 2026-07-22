@@ -107,6 +107,10 @@ if [[ $APPLY -eq 1 ]]; then
     fi
   done
   [[ $FAIL -eq 0 ]] || exit 1
+  # 備份輪替：只保留最近 10 份（apply 已驗證 parity，舊備份僅是回滾保險）
+  ls -1d "$REPO/backups"/*/ 2>/dev/null | sort -r | tail -n +11 | while read -r old; do
+    rm -rf "$old"
+  done
   log "backup: $BACKUP"
   log "done. 全部同步路徑驗證一致；開新 session 驗證契約載入。"
 else

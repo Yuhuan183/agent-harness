@@ -9,7 +9,7 @@
 | `provider` | ✓ | `claude` \| `codex` | 實際執行的 provider |
 | `outcome` | ✓ | `accepted` \| `corrected` \| `rebriefed` \| `failed` | 主 session 品質判定 |
 | `model` / `effort` / `tier` | | | 實際 dispatch 參數（tier: `pinned` \| `follow`） |
-| `task_class` | | `recon` \| `plan` \| `impl` \| `verify` \| `security` \| `other` | 任務類型 |
+| `task_class` | | `recon` \| `plan` \| `impl` \| `verify` \| `security` \| `smoke` \| `other` | 任務類型 |
 | `task` | | 短中性標籤 | **不含機密與逐字內容** |
 | `quality` | | 1–5 | 主觀品質分（可省略） |
 | `tokens_in` / `tokens_out` | 自動（可得時） | int | 一般 input/output token |

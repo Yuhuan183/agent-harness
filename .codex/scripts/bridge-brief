@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+"""Compose a ready-to-send Codex bridge brief for one leaf role.
+
+Runs the routing resolver for the claude-bridge surface, prepends the
+role's developer_instructions from agents/<role>.toml, and prints a brief
+skeleton with the resolved model/effort override. The caller appends the
+task, done-criteria, and working directory.
+
+Usage: bridge-brief <role> [--priority balanced|fast|quality-guarded|economy|high-risk]
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+import tomllib
+from pathlib import Path
+
+CODEX_DIR = Path(__file__).resolve().parents[1]
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("role")
+    parser.add_argument("--priority", default="balanced")
+    args = parser.parse_args()
+    role = "explore" if args.role == "Explore" else args.role
+
+    resolved = subprocess.run(
+        [str(CODEX_DIR / "scripts" / "model-routing"), "resolve",
+         "--surface", "claude-bridge", "--priority", args.priority, "--role", role],
+        capture_output=True, text=True,
+    )
+    if resolved.returncode != 0:
+        sys.stderr.write(resolved.stderr)
+        return resolved.returncode
+    route = json.loads(resolved.stdout)
+
+    agent_toml = CODEX_DIR / "agents" / f"{role}.toml"
+    try:
+        agent = tomllib.loads(agent_toml.read_text(encoding="utf-8"))
+    except OSError:
+        sys.stderr.write(f"ERROR: missing role contract: {agent_toml}\n")
+        return 2
+    instructions = agent.get("developer_instructions", "").strip()
+    read_only = agent.get("sandbox_mode") == "read-only"
+
+    print(f"dispatch: <task> — {role}@codex {route['model']}/{route['effort']}")
+    print()
+    print(f"Run as a Codex bridge dispatch with explicit overrides: "
+          f"--model {route['model']} --effort {route['effort']}.")
+    if read_only:
+        print("This role is READ-ONLY: do not write, edit, or execute state-changing "
+              "commands (the bridge is write-capable by default; prohibit writes explicitly).")
+    print()
+    print("Role contract (developer instructions):")
+    print(instructions)
+    print()
+    print("Task (append): <goal, scope, constraints, done-criteria, working directory>")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

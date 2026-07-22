@@ -26,7 +26,7 @@ ROLES = (
 PROVIDERS = ("claude", "codex")
 OUTCOMES = ("accepted", "corrected", "rebriefed", "failed")
 TIERS = ("pinned", "follow")
-CLASSES = ("recon", "plan", "impl", "verify", "security", "other")
+CLASSES = ("recon", "plan", "impl", "verify", "security", "smoke", "other")
 PINNED_ROLES = ("Explore", "mech-executor")
 
 PENDING_PATH = os.environ.get(
