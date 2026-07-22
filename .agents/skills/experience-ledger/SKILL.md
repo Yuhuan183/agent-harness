@@ -32,4 +32,6 @@ SubagentStart/Stop hook（`experience-pending.py`）已自動暫存 role、wall-
 
 Codex 側 token 與額度：`scripts/codex-usage` 讀本機 `~/.codex/sessions/` rollout 的 `token_count` 事件——`--quota` 看帳號窗口用量（重度派工前檢查；短窗口如 5h 優先於週窗口——短窗口耗盡任務直接停擺，接近 90% 就改派 Claude 或等重置），無旗標另附最近 session 的累計與末回合 usage，可作 Codex 派工 `--tokens-out` 的資料源。
 
+Profile 重推：`scripts/experience-revise` 讀帳本與兩側 routing 檔（經共用 schema 層），對每個 role 回報 unsampled／insufficient／keep／consider——consider 需該格 n≥5、P(win)≥0.85 且不低於品質底線。工具只建議不改檔；採納後手動改 TOML 並記 decision。
+
 指標定義、schema、誠實邊界與進化節奏見 [references/metrics.md](references/metrics.md)。派工頻率與 nested 違規由既有 `delegation-report` 覆蓋，與本帳本互補。

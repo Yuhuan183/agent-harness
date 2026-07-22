@@ -121,3 +121,17 @@ def route_floor_error(
             f"falls below quality tier {tier}"
         )
     return None
+
+
+def leaf_routes(config: dict, profile_name: str | None = None):
+    """Yield (role, route) for every leaf role of a profile.
+
+    Cross-provider schema contract for tooling: both routing files share
+    selection/profiles/quality_floor/revision_policy structures, so revision
+    tools consume either file through this accessor instead of hard-coding a
+    provider schema. Defaults to the selection.default profile.
+    """
+    name = profile_name or config["selection"]["default"]
+    for role, route in config["profiles"][name]["roles"].items():
+        if role != "main":
+            yield role, route

@@ -1,0 +1,165 @@
+#!/usr/bin/env python3
+"""Ledger-driven routing revision suggestions (closes the experience loop).
+
+Reads the experience ledger and both provider routing files, then reports —
+per provider and role — whether the current default-profile route is backed,
+contradicted, or unsampled by decayed local evidence. Implements each file's
+`revision_policy`: suggestions require n >= --min-samples in a (model, effort)
+cell, a Beta-posterior P(win) >= --prefer-p over the current route's cell, and
+compliance with the role's quality floor. This tool never edits a routing
+file; the main session applies (and logs) any change.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import random
+import sys
+from collections import defaultdict
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+try:
+    import routing_core as core
+except ImportError:
+    sys.stderr.write("ERROR: shared routing core missing "
+                     "(<root>/.agents/scripts/routing_core.py)\n")
+    sys.exit(2)
+
+POSTERIOR_DRAWS = 4000  # fixed-seed Monte Carlo; deterministic across runs
+
+
+def parse_ts(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def load_cells(path: str, since: datetime, now: datetime, half_life: float) -> dict:
+    """Decayed accept/total weights per (provider, role, model, effort)."""
+    cells: dict[tuple, dict] = defaultdict(
+        lambda: {"n": 0, "w": 0.0, "accepted": 0.0, "quality": []})
+    try:
+        lines = open(path, encoding="utf-8").read().splitlines()
+    except FileNotFoundError:
+        return cells
+    for line in lines:
+        try:
+            rec = json.loads(line)
+            ts = parse_ts(rec["ts"])
+        except (json.JSONDecodeError, KeyError, ValueError):
+            continue
+        if ts < since or not rec.get("model") or not rec.get("effort"):
+            continue  # revision needs route-tagged records
+        key = (rec.get("provider", "?"), rec.get("role", "?").lower(),
+               rec["model"], rec["effort"])
+        c = cells[key]
+        age_days = max(0.0, (now - ts).total_seconds() / 86400)
+        w = 0.5 ** (age_days / half_life) if half_life > 0 else 1.0
+        c["n"] += 1
+        c["w"] += w
+        if rec.get("outcome") == "accepted":
+            c["accepted"] += w
+        if isinstance(rec.get("quality"), int):
+            c["quality"].append((rec["quality"], w))
+    return cells
+
+
+def p_beats(a: dict, b: dict) -> float:
+    rng = random.Random(0)
+    wins = 0
+    for _ in range(POSTERIOR_DRAWS):
+        pa = rng.betavariate(1 + a["accepted"], 1 + a["w"] - a["accepted"])
+        pb = rng.betavariate(1 + b["accepted"], 1 + b["w"] - b["accepted"])
+        wins += pa > pb
+    return wins / POSTERIOR_DRAWS
+
+
+def revise(config: dict, provider: str, cells: dict,
+           min_samples: int, prefer_p: float) -> list[dict]:
+    profile = config["selection"]["default"]
+    rows = []
+    for role, route in core.leaf_routes(config):
+        current_key = (provider, role, route["model"], route["effort"])
+        current = cells.get(current_key)
+        role_cells = {k: v for k, v in cells.items()
+                      if k[0] == provider and k[1] == role}
+        row = {"provider": provider, "role": role, "profile": profile,
+               "current": f"{route['model']}/{route['effort']}",
+               "status": "unsampled", "detail": ""}
+        if not role_cells:
+            rows.append(row)
+            continue
+        sampled = sum(c["n"] for c in role_cells.values())
+        if current is None or current["n"] < min_samples:
+            row["status"] = "insufficient"
+            row["detail"] = (f"{sampled} route-tagged records, current cell "
+                             f"n={current['n'] if current else 0}<{min_samples}")
+            rows.append(row)
+            continue
+        row["status"] = "keep"
+        ar = 100 * current["accepted"] / current["w"]
+        row["detail"] = f"n={current['n']}, AR {ar:.0f}%"
+        for key, cell in role_cells.items():
+            if key == current_key or cell["n"] < min_samples:
+                continue
+            model, effort = key[2], key[3]
+            if core.route_floor_error(config, profile, role, model, effort):
+                continue  # never suggest a route below the quality floor
+            p = p_beats(cell, current)
+            if p >= prefer_p:
+                row["status"] = "consider"
+                row["detail"] = (f"{model}/{effort} P(win) {p:.2f} over current "
+                                 f"(n={cell['n']} vs {current['n']})")
+        rows.append(row)
+    return rows
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--days", type=int, default=90)
+    parser.add_argument("--min-samples", type=int, default=5)
+    parser.add_argument("--half-life", type=float, default=45.0)
+    parser.add_argument("--prefer-p", type=float, default=0.85)
+    parser.add_argument("--claude-config", type=Path,
+                        default=Path(os.path.expanduser("~/.claude/model-routing.toml")))
+    parser.add_argument("--codex-config", type=Path,
+                        default=Path(os.path.expanduser("~/.codex/model-routing.toml")))
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--now", default=None, help="ISO timestamp override (tests)")
+    args = parser.parse_args()
+
+    now = parse_ts(args.now) if args.now else datetime.now(timezone.utc)
+    ledger = os.environ.get(
+        "AGENT_EXPERIENCE_LEDGER",
+        os.path.expanduser("~/.agents/telemetry/experience.jsonl"))
+    cells = load_cells(ledger, now - timedelta(days=args.days), now, args.half_life)
+
+    rows = []
+    for provider, config_path in (("claude", args.claude_config),
+                                  ("codex", args.codex_config)):
+        try:
+            config = core.load_config(config_path)
+        except (OSError, core.tomllib.TOMLDecodeError) as error:
+            sys.stderr.write(f"WARN: skip {provider}: {error}\n")
+            continue
+        rows += revise(config, provider, cells, args.min_samples, args.prefer_p)
+
+    if args.json:
+        print(json.dumps({"days": args.days, "half_life": args.half_life,
+                          "rows": rows}, ensure_ascii=False, indent=2))
+        return 0
+    print(f"experience-revise — last {args.days} days, half-life "
+          f"{args.half_life}d, min n={args.min_samples} ({ledger})")
+    for row in rows:
+        print(f"{row['provider']:<7}{row['role']:<18}{row['current']:<28}"
+              f"{row['status']:<13}{row['detail']}")
+    if any(r["status"] == "consider" for r in rows):
+        print("note: apply changes manually per revision_policy and log the "
+              "decision; this tool never edits routing files.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

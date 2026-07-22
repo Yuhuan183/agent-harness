@@ -34,7 +34,7 @@
 - Claude routing file is operative: `.claude/scripts/model-routing` validates the TOML, resolves role routes, and `check-pins` cross-checks agent frontmatter (also run weekly by the integrity hook, fail-open when the resolver is absent).
 - Experience-ledger pipeline verified end-to-end on a real bridge dispatch: hook-staged stub → `--from-pending` → tokens/secs auto-captured from rollout delta.
 - Quota discipline is short-window-first: `codex-usage --quota` lists the shorter window (e.g. 5h) before the weekly one and warns to hold Codex dispatch when it nears exhaustion.
-- Contract tests (46) cover role ownership, main/leaf separation, routing, scope boundaries, hooks, Headroom, usage reporting, and platform bundle invariants.
+- Contract tests (47) cover role ownership, main/leaf separation, routing, scope boundaries, hooks, Headroom, usage reporting, and platform bundle invariants.
 
 ## Next goals
 
@@ -47,7 +47,7 @@
 
 ### For Claude
 
-- Re-derive `.claude/model-routing.toml` profiles from ledger data per its `revision_policy` (AA aggregates stay priors only).
+- Apply `experience-revise` suggestions to `.claude/model-routing.toml` once cells reach n>=5 (tool ships; AA aggregates stay priors only).
 - Live probe: permission matching around the `rtk` PreToolUse rewrite.
 
 ### For Codex
@@ -68,7 +68,7 @@
 - **2026-07-18** — Headroom verified against upstream v0.32; base URL stays machine-local.
 - **2026-07-20** — Two-tier role effort (capped at high); per-dispatch reporting and QC; Codex counterparts for each leaf role via the codex-rescue bridge. Added `experience-ledger` skill (AR/CR/RB/FR/QS, explore/prefer rule).
 - **2026-07-21** — External rankings (AA v4.1, Coding Agent Index v1.2) demoted to priors; route on local acceptable-outcome cost. Experience schema v2 (tokens, review/rework, API cost).
-- **2026-07-22** — X profile allows main-session xhigh. Claude routing made operative: `.claude/model-routing.toml` + resolver (validate/resolve/check-pins) wired into weekly integrity; resolver core shared in `.agents/scripts/routing_core.py`. Bridge smoke-tested end-to-end (Sol/low incl. mech-executor, Luna/low; rollout-verified); first ledger record logged. User-directed: follow-tier abolished — all roles pin effort from the profile matrix (see `model-routing.toml`; Haiku unrouted; critical admits opus/medium for verifier only); plan goals categorized (all/claude/codex); 5h short quota window overrides the weekly one. Token-overhead pass: descriptions trimmed, matrix prose deduplicated, contract source renamed `CLAUDE.contract.md` (no in-repo double load); added `bridge-brief`, `smoke` class, backup rotation.
+- **2026-07-22** — AGENTS.md source renamed `AGENTS.contract.md` (same double-load fix); `experience-revise` closes the ledger loop via the shared schema accessor. X profile allows main-session xhigh. Claude routing made operative: `.claude/model-routing.toml` + resolver (validate/resolve/check-pins) wired into weekly integrity; resolver core shared in `.agents/scripts/routing_core.py`. Bridge smoke-tested end-to-end (Sol/low incl. mech-executor, Luna/low; rollout-verified); first ledger record logged. User-directed: follow-tier abolished — all roles pin effort from the profile matrix (see `model-routing.toml`; Haiku unrouted; critical admits opus/medium for verifier only); plan goals categorized (all/claude/codex); 5h short quota window overrides the weekly one. Token-overhead pass: descriptions trimmed, matrix prose deduplicated, contract source renamed `CLAUDE.contract.md` (no in-repo double load); added `bridge-brief`, `smoke` class, backup rotation.
 
 ## Verification
 

@@ -79,5 +79,44 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
             self.assertIn("verifier: frontmatter effort 'low'", result.stderr)
 
 
+
+REVISE = ROOT / ".agents/skills/experience-ledger/scripts/experience-revise"
+
+
+class ExperienceReviseTests(unittest.TestCase):
+    def test_suggests_only_floor_compliant_routes_at_min_samples(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ledger = Path(temp_dir) / "experience.jsonl"
+            rows = []
+            # current executor route performs poorly...
+            rows += [{"ts": "2026-07-20T00:00:00+00:00", "role": "executor",
+                      "provider": "claude", "model": "claude-sonnet-5",
+                      "effort": "high", "outcome": "failed"}] * 5
+            # ...opus/high (meets the judgment floor) performs well...
+            rows += [{"ts": "2026-07-20T00:00:00+00:00", "role": "executor",
+                      "provider": "claude", "model": "claude-opus-4-8",
+                      "effort": "high", "outcome": "accepted"}] * 6
+            # ...and sonnet/low also performs well but falls below the floor.
+            rows += [{"ts": "2026-07-20T00:00:00+00:00", "role": "executor",
+                      "provider": "claude", "model": "claude-sonnet-5",
+                      "effort": "low", "outcome": "accepted"}] * 6
+            ledger.write_text("\n".join(json.dumps(r) for r in rows),
+                              encoding="utf-8")
+            result = subprocess.run(
+                [str(REVISE), "--claude-config", str(ROOT / ".claude/model-routing.toml"),
+                 "--codex-config", str(Path(temp_dir) / "missing.toml"),
+                 "--now", "2026-07-21T00:00:00+00:00"],
+                capture_output=True, text=True,
+                env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger)},
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            executor_line = next(l for l in result.stdout.splitlines()
+                                 if l.startswith("claude executor"))
+            self.assertIn("consider", executor_line)
+            self.assertIn("claude-opus-4-8/high", executor_line)
+            self.assertNotIn("claude-sonnet-5/low", executor_line)
+            self.assertIn("never edits routing files", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()
