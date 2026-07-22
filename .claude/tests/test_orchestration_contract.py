@@ -746,7 +746,8 @@ class SharedSkillTests(unittest.TestCase):
         base = ROOT / ".agents/skills/experience-ledger/scripts"
         with tempfile.TemporaryDirectory() as temp_dir:
             ledger = os.path.join(temp_dir, "experience.jsonl")
-            env = {**os.environ, "AGENT_EXPERIENCE_LEDGER": ledger}
+            env = {**os.environ, "AGENT_EXPERIENCE_LEDGER": ledger,
+                   "AGENT_CLAUDE_RESOLVER": str(ROOT / ".claude/scripts/model-routing")}
 
             def log(*extra: str) -> None:
                 subprocess.run(
@@ -799,7 +800,8 @@ class SharedSkillTests(unittest.TestCase):
         base = ROOT / ".agents/skills/experience-ledger/scripts"
         with tempfile.TemporaryDirectory() as temp_dir:
             ledger = os.path.join(temp_dir, "experience.jsonl")
-            env = {**os.environ, "AGENT_EXPERIENCE_LEDGER": ledger}
+            env = {**os.environ, "AGENT_EXPERIENCE_LEDGER": ledger,
+                   "AGENT_CLAUDE_RESOLVER": str(ROOT / ".claude/scripts/model-routing")}
             common = [
                 "--role", "Explore", "--provider", "claude",
                 "--request-source", "claude-code", "--profile", "balanced",
@@ -855,6 +857,7 @@ class SharedSkillTests(unittest.TestCase):
                 **os.environ,
                 "AGENT_EXPERIENCE_PENDING": str(pending),
                 "AGENT_EXPERIENCE_LEDGER": str(ledger),
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / ".claude/scripts/model-routing"),
             }
             before_system_spawn = pending.read_text()
             subprocess.run(
@@ -921,6 +924,7 @@ class SharedSkillTests(unittest.TestCase):
                 **os.environ,
                 "AGENT_EXPERIENCE_PENDING": str(pending),
                 "AGENT_EXPERIENCE_LEDGER": str(ledger),
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / ".claude/scripts/model-routing"),
             }
             ambiguous = subprocess.run(
                 [sys.executable, str(log_script), "--from-pending",
@@ -962,7 +966,8 @@ class SharedSkillTests(unittest.TestCase):
                  "--dispatch-id", "session:bridge", "--role", "executor",
                  "--outcome", "accepted"],
                 env={**os.environ, "AGENT_EXPERIENCE_PENDING": str(pending),
-                     "AGENT_EXPERIENCE_LEDGER": str(ledger)},
+                     "AGENT_EXPERIENCE_LEDGER": str(ledger),
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / ".claude/scripts/model-routing")},
                 capture_output=True, text=True,
             )
             self.assertNotEqual(result.returncode, 0)
@@ -999,7 +1004,8 @@ class SharedSkillTests(unittest.TestCase):
             result = subprocess.run(
                 [sys.executable, str(report_script), "--json",
                  "--now", "2026-07-22T00:00:00+00:00"],
-                env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger)},
+                env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger),
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / ".claude/scripts/model-routing")},
                 check=True, capture_output=True, text=True,
             )
         report = json.loads(result.stdout)
@@ -1046,7 +1052,8 @@ class SharedSkillTests(unittest.TestCase):
             result = subprocess.run(
                 [sys.executable, str(report_script), "--json",
                  "--now", "2026-07-22T00:00:00+00:00"],
-                env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger)},
+                env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger),
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / ".claude/scripts/model-routing")},
                 check=True, capture_output=True, text=True,
             )
         report = json.loads(result.stdout)
@@ -1085,7 +1092,8 @@ class SharedSkillTests(unittest.TestCase):
             result = subprocess.run(
                 [sys.executable, str(report_script), "--json",
                  "--now", "2026-07-22T00:00:00+00:00"],
-                env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger)},
+                env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger),
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / ".claude/scripts/model-routing")},
                 check=True, capture_output=True, text=True,
             )
         report = json.loads(result.stdout)
@@ -1120,7 +1128,8 @@ class SharedSkillTests(unittest.TestCase):
             result = subprocess.run(
                 [sys.executable, str(report_script),
                  "--now", "2026-07-22T00:00:00+00:00"],
-                env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger)},
+                env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger),
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / ".claude/scripts/model-routing")},
                 capture_output=True, text=True,
             )
         self.assertEqual(result.returncode, 0, result.stderr)
