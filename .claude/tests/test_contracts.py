@@ -495,23 +495,25 @@ class DocumentationBudgetTests(unittest.TestCase):
         # Word budgets, not line budgets — a line count is gameable by long
         # lines; words track resident attention cost. Raising a budget is a
         # deliberate decision, not a mechanical bump.
+        # Units are word_count() words: one per CJK character, one per other
+        # non-space run — zh-TW prose pays the same attention tax as English.
         budgets = {
             ".claude/CLAUDE.contract.md": 520,
             # Root README owns the complete architecture overview and diagrams;
             # operational/research detail remains linked in docs/.
-            "README.md": 1000,
-            "docs/README.md": 230,
-            "docs/harness-engineering.md": 620,
-            ".claude/plans/orchestration-plan.md": 1150,
+            "README.md": 2250,
+            "docs/README.md": 640,
+            "docs/harness-engineering.md": 2350,
+            ".claude/plans/orchestration-plan.md": 1300,
             ".codex/AGENTS.contract.md": 590,
             ".codex/ANALYSIS.md": 500,
             ".codex/DEPLOY.md": 550,
-            ".claude/skills/baton-dispatch/SKILL.md": 830,
-            ".claude/skills/provider-routing/SKILL.md": 1450,
-            ".codex/skills/leaf-dispatch/SKILL.md": 700,
+            ".claude/skills/baton-dispatch/SKILL.md": 890,
+            ".claude/skills/provider-routing/SKILL.md": 1480,
+            ".codex/skills/leaf-dispatch/SKILL.md": 720,
         }
         for path, limit in budgets.items():
-            self.assertLessEqual(len(read(path).split()), limit, path)
+            self.assertLessEqual(word_count(read(path)), limit, path)
 
     def test_root_readme_is_a_complete_navigation_surface(self) -> None:
         readme = read("README.md")

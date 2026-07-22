@@ -73,3 +73,8 @@ def git(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def word_count(text: str) -> int:
+    """Budget unit: each CJK character counts as one word; other runs of
+    non-space text count as one. Plain split() would let Chinese prose dodge
+    the resident-attention budget entirely."""
+    return len(re.findall(r"[\u4e00-\u9fff]|[^\s\u4e00-\u9fff]+", text))
