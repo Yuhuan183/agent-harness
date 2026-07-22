@@ -13,6 +13,37 @@ import time
 PERIOD = 7 * 86400
 STAMP = os.path.expanduser("~/.claude/telemetry/.integrity-last-run")
 
+
+def load_deployment_manifest(repo):
+    """Return validated repo-relative source and HOME-relative target pairs."""
+    path = os.path.join(repo, "scripts", "deployment-manifest.tsv")
+    pairs = []
+    sources = set()
+    targets = set()
+    with open(path, encoding="utf-8") as manifest:
+        for line_number, raw in enumerate(manifest, 1):
+            line = raw.rstrip("\n")
+            if not line or line.startswith("#"):
+                continue
+            fields = line.split("\t")
+            if len(fields) != 2 or not all(fields):
+                raise ValueError(f"malformed deployment manifest line {line_number}")
+            source, target = fields
+            prefixes = (".agents/", ".claude/", ".codex/")
+            if not source.startswith(prefixes) or not target.startswith(prefixes):
+                raise ValueError(f"unsafe deployment manifest line {line_number}")
+            if any(part in ("", ".", "..") for part in source.split("/")) \
+                    or any(part in ("", ".", "..") for part in target.split("/")):
+                raise ValueError(f"unsafe deployment path line {line_number}")
+            if source in sources or target in targets:
+                raise ValueError(f"duplicate deployment manifest line {line_number}")
+            sources.add(source)
+            targets.add(target)
+            pairs.append((source, target))
+    if not pairs:
+        raise ValueError("deployment manifest is empty")
+    return pairs
+
 try:
     if os.path.exists(STAMP) and time.time() - os.path.getmtime(STAMP) < PERIOD:
         sys.exit(0)
@@ -46,51 +77,52 @@ try:
                     "contract-repo drift (uncommitted changes in ~/.claude):\n"
                     + r.stdout.rstrip()
                 )
-        elif os.path.isdir(os.path.join(harness_repo, ".claude")):
-            # repo source basenames may differ from the deployed name;
-            # (repo_relpath, deployed_relpath) pairs.
-            synced = [
-                ("CLAUDE.contract.md", "CLAUDE.md"), "README.md", "RTK.md", "settings.json",
-                "agents", "hooks", "prompts", "scripts", "sh", "tests",
-                "examples", "plans/orchestration-plan.md",
-                "skills/baton-dispatch", "skills/provider-routing",
-                "skills/headroom-protocol", "skills/speak-human-tw",
-                "skills/experience-ledger",
-            ]
+        if os.path.isdir(os.path.join(harness_repo, ".claude")):
             drift = []
-            for entry in synced:
-                rp, p = entry if isinstance(entry, tuple) else (entry, entry)
-                src = os.path.join(harness_repo, ".claude", rp)
-                if not os.path.exists(src):
-                    continue
-                r = subprocess.run(
-                    ["rsync", "-a", "--links", "-n", "--itemize-changes",
-                     src, os.path.dirname(os.path.join(claude_dir, p)) + "/",],
-                    capture_output=True,
-                    text=True,
-                    timeout=10,
-                )
+            for source_rel, target_rel in load_deployment_manifest(harness_repo):
+                src = os.path.join(harness_repo, source_rel)
+                if not os.path.lexists(src):
+                    raise ValueError(f"deployment source missing: {source_rel}")
+                deployed = os.path.join(os.path.expanduser("~"), target_rel)
+                if os.path.isdir(src):
+                    r = subprocess.run(
+                        ["rsync", "-a", "--links", "--delete", "--delete-excluded",
+                         "--exclude", "__pycache__/", "--exclude", "*.pyc",
+                         "--exclude", ".DS_Store", "-n", "--itemize-changes",
+                         src, os.path.dirname(deployed) + "/"],
+                        capture_output=True, text=True, timeout=10,
+                    )
+                else:
+                    same = subprocess.run(
+                        ["cmp", "-s", src, deployed], timeout=10,
+                    )
+                    r = subprocess.CompletedProcess(
+                        args=same.args, returncode=0,
+                        stdout="" if same.returncode == 0 else "file content differs\n",
+                        stderr="",
+                    )
                 if r.returncode != 0:
                     checks_completed = False
                     detail = (r.stderr or r.stdout).rstrip()
                     findings.append(
-                        f"contract-repo check failed (rsync exit {r.returncode}, {p}):\n{detail}"
+                        f"deployment drift check failed (rsync exit {r.returncode}, "
+                        f"{target_rel}):\n{detail}"
                     )
                     break
                 for line in r.stdout.splitlines():
                     # rsync -n itemized lines starting with '.' are unchanged;
                     # anything else means content would be copied (drift).
                     if line and not line.startswith(".") and not line.endswith("/"):
-                        drift.append(f"{p}: {line}")
+                        drift.append(f"~/{target_rel}: {line}")
             if drift:
                 findings.append(
-                    "contract-repo drift (~/.claude differs from repo copy — "
+                    "deployment drift (managed HOME targets differ from repo — "
                     "run scripts/sync.sh --apply or commit repo changes):\n"
                     + "\n".join(drift)
                 )
         # else: no git repo and no harness checkout — nothing to compare
         # against; skip the drift check without blocking the throttle.
-    except (OSError, subprocess.TimeoutExpired) as exc:
+    except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
         checks_completed = False
         findings.append(f"contract-repo check failed: {exc}")
 
@@ -138,23 +170,40 @@ try:
         checks_completed = False
         findings.append(f"model-routing check failed: {exc}")
 
+    codex_routing = os.path.expanduser("~/.codex/scripts/model-routing")
+    try:
+        if os.access(codex_routing, os.X_OK):
+            validated = subprocess.run(
+                [codex_routing, "validate"], capture_output=True, text=True, timeout=10
+            )
+            if validated.returncode != 0:
+                checks_completed = False
+                detail = (validated.stderr or validated.stdout).rstrip()
+                findings.append(
+                    f"Codex model-routing check failed (exit {validated.returncode}):\n"
+                    f"{detail}"
+                )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        checks_completed = False
+        findings.append(f"Codex model-routing check failed: {exc}")
+
     # Informational only: surface dispatch-experience hints or a missing-data
     # warning. Best-effort — a failure here neither blocks the throttle nor alarms.
     try:
         exp = subprocess.run(
             [os.path.expanduser(
                 "~/.agents/skills/experience-ledger/scripts/experience-report"),
-             "--days", "30"],
+             ],
             capture_output=True,
             text=True,
             timeout=10,
         )
         hints = [l for l in exp.stdout.splitlines() if l.startswith("hint:")]
         if exp.returncode == 0 and hints:
-            findings.append("dispatch-experience hints (30d):\n" + "\n".join(hints))
-        elif exp.returncode == 0 and "30 days, 0 records" in exp.stdout:
+            findings.append("dispatch-experience hints:\n" + "\n".join(hints))
+        elif exp.returncode == 0 and "no records" in exp.stdout:
             findings.append(
-                "dispatch-experience gap: no reviewed outcomes in the last 30d; "
+                "dispatch-experience gap: no reviewed outcomes in the configured window; "
                 "log the next comparable dispatch after quality-check"
             )
     except (OSError, subprocess.TimeoutExpired):

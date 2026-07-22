@@ -58,6 +58,14 @@ scripts/sync.sh --apply    # 2. 實際套用（自動備份到 backups/<timestam
 # 4. 開新 Claude Code / Codex session，確認契約與 skills 載入
 ```
 
+dry-run 與 apply 都會先跑 JSON／shell／兩側 routing／Claude pins／contract tests；任何失敗都在寫入前停止。
+所有可攜 source→HOME 映射只定義於 `scripts/deployment-manifest.tsv`；`sync.sh` 與 weekly integrity
+共同讀取它，新增或改名部署成品時不得另建第二份清單。
+若全域 `settings.json` 有 repo 未管理的 key，apply 預設停止：先移至 `settings.local.json`；只有明確接受
+刪除時才使用 `--accept-settings-overwrite`。切換 Claude preset 時，先在 source checkout 執行
+`.claude/scripts/model-routing activate-profile --profile <balanced|fast|quality_guarded>`，確認 git diff，
+再 sync 並開新 session；只改 `~/.claude` 會被 weekly integrity 視為相對 Git source 的 drift。
+
 ## 驗收
 
 - 新 session 中全域 CLAUDE.md 僅約 600 tokens；`provider-routing`、`baton-dispatch`、

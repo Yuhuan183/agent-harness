@@ -18,23 +18,23 @@
 ## Routing policy (summary)
 
 - **Main session**: model and effort are user-selected; tracked settings pin neither. Reference profiles: H = Fable/low or Opus/high; X = Fable at medium–xhigh or Opus/high (xhigh is main-session-only).
-- **Role pins**: every role pins model and effort from the active profile (no follow-tier). Balanced: `Explore` sonnet/low, `mech-executor` sonnet/medium, `executor` sonnet/high, `plan-verifier` opus/medium, `verifier`/`security-*` opus/high. Full matrix in `model-routing.toml`; profiles are user-directed priors maintained from ledger and benchmark data.
+- **Role pins**: Claude profiles are deployment presets, not per-dispatch routes. Balanced pins `Explore` sonnet/low, `mech-executor` sonnet/medium, `executor` sonnet/high, `plan-verifier` opus/medium, and `verifier`/`security-*` opus/high. `activate-profile` updates all frontmatter pins and `selection.default` transactionally in source before sync.
 - **Codex bridge**: every leaf dispatch resolves model/effort via `~/.codex/scripts/model-routing` (single source of truth); Sol and Luna bridge overrides are smoke-tested (2026-07-22, rollout-verified).
 - **Cross-provider**: provider choice is CP-first (local reports + external priors + ledger; usage alarm switches to the provider with headroom, asking the user when material). Single-hop fallback from the task's origin, never circular; security routes like any role at its critical floor; dual-provider implementation always has one writer. Uncertain choice uses the three-option user gate.
-- **Experience loop**: every dispatch is reported (`dispatch: <task> — <role>@<provider> <model>/<effort>`), quality-checked, and logged to the experience ledger (AR/CR/RB/FR/QS; explore until n>=5 per provider, prefer at decayed Beta P(win)>=0.85). Hints are directional; main session keeps final judgment.
+- **Experience loop**: every dispatch is reported (`dispatch: <task> — <role>@<provider> <model>/<effort>`), quality-checked, and logged with request source (`claude-code`, `codex`, or `claude-code-plugin-codex`). Policy is config-driven: 90d window, 45d half-life, n>=10 per role/task-class route cell, P(win)>=0.90; smoke/other and mismatched token scopes cannot drive preference.
 - **Scope**: leaf roles never orchestrate or read orchestration docs; approved scope is a hard boundary; follow-up runs must contain genuinely new work.
 
 ## Verified mechanisms
 
 - Delegation audit records start/stop, detects `spawnDepth >= 2`, and remains fail-open.
-- Weekly integrity reports dirty contract state, delegation alarms, and an empty-ledger warning.
+- `scripts/deployment-manifest.tsv` is the single source for sync and weekly drift coverage across Claude, Codex, and shared artifacts; weekly integrity also reports pin drift, delegation alarms, and an empty-ledger warning.
 - Runtime guard blocks capability-sensitive reviewers below Claude Code 2.1.207 or when version is unknown.
 - Usage report separates main/subagent/historical traffic without claiming subscription-quota equivalence; Codex tokens/quota come from local rollouts (`codex-usage`).
 - Claude→Codex bridge verified end-to-end: resolver JSON → `codex:codex-rescue` dispatch → rollout telemetry confirms the model/effort override (Sol/low, Luna/low).
 - Claude routing file is operative: `.claude/scripts/model-routing` validates the TOML, resolves role routes, and `check-pins` cross-checks agent frontmatter (also run weekly by the integrity hook, fail-open when the resolver is absent).
-- Experience-ledger pipeline verified end-to-end on a real bridge dispatch: hook-staged stub → `--from-pending` → tokens/secs auto-captured from rollout delta.
+- Experience schema v3 records dispatch/rollout identity and request source; ambiguous bridge rollout windows retain a warning instead of adding unrelated token totals.
 - Quota discipline is short-window-first: `codex-usage --quota` lists the shorter window (e.g. 5h) before the weekly one and warns to hold Codex dispatch when it nears exhaustion.
-- Contract tests (47) cover role ownership, main/leaf separation, routing, scope boundaries, hooks, Headroom, usage reporting, and platform bundle invariants.
+- Contract tests cover role ownership, preset atomicity, per-dispatch routing, policy validation, ledger concurrency/coverage, deployment preflight, hooks, usage reporting, and platform bundle invariants.
 
 ## Next goals
 
@@ -42,12 +42,12 @@
 
 ### For all
 
-- Fill the experience ledger: log every dispatch outcome after QC; reach n>=5 per role x provider cell (sampling live since 2026-07-22).
+- Fill comparable cohorts: record every dispatch after QC, including source/profile/model/effort; reach n>=10 per role × task class × route cell before route preference.
 - Quota-aware dispatch discipline: check `codex-usage --quota` before heavy Codex dispatch. The short window (5h) outranks the weekly window — exhausting it stalls tasks immediately; near its limit, dispatch Claude or wait for reset regardless of weekly headroom.
 
 ### For Claude
 
-- Apply `experience-revise` suggestions to `.claude/model-routing.toml` once cells reach n>=5 (tool ships; AA aggregates stay priors only).
+- Review `experience-revise` suggestions only after policy thresholds are met; apply a Claude role-wide change through a source deployment preset, never from one mixed cohort.
 - Live probe: permission matching around the `rtk` PreToolUse rewrite.
 
 ### For Codex
@@ -64,11 +64,11 @@
 
 - **2026-07-12** — Fail-open local monitoring and nested-delegation detection.
 - **2026-07-15** — Direct-first cost-aware dispatch replaced fixed pipelines; Headroom wrap ownership; no routine stacked verification.
-- **2026-07-17** — Single-hop cross-provider routing, GPT-primary security, approved-scope boundary; removed tracked main model/effort/fallback. Distilled docs: one authoritative location per concern.
+- **2026-07-17** — Single-hop cross-provider routing and approved-scope boundary; removed tracked main model/effort/fallback. Distilled docs: one authoritative location per concern.
 - **2026-07-18** — Headroom verified against upstream v0.32; base URL stays machine-local.
 - **2026-07-20** — Two-tier role effort (capped at high); per-dispatch reporting and QC; Codex counterparts for each leaf role via the codex-rescue bridge. Added `experience-ledger` skill (AR/CR/RB/FR/QS, explore/prefer rule).
-- **2026-07-21** — External rankings (AA v4.1, Coding Agent Index v1.2) demoted to priors; route on local acceptable-outcome cost. Experience schema v2 (tokens, review/rework, API cost).
-- **2026-07-22** — AGENTS.md source renamed `AGENTS.contract.md` (same double-load fix); `experience-revise` closes the ledger loop via the shared schema accessor. X profile allows main-session xhigh. Claude routing made operative: `.claude/model-routing.toml` + resolver (validate/resolve/check-pins) wired into weekly integrity; resolver core shared in `.agents/scripts/routing_core.py`. Bridge smoke-tested end-to-end (Sol/low incl. mech-executor, Luna/low; rollout-verified); first ledger record logged. User-directed: follow-tier abolished — all roles pin effort from the profile matrix (see `model-routing.toml`; Haiku unrouted; critical admits opus/medium for verifier only); plan goals categorized (all/claude/codex); 5h short quota window overrides the weekly one. Token-overhead pass: descriptions trimmed, matrix prose deduplicated, contract sources renamed `*.contract.md` (no in-repo double load); added `bridge-brief`, `smoke` class, backup rotation. Rules v2 (user-directed): economy profile removed — three profiles (balanced/fast/quality_guarded), usage protection moved to the CP-first provider-choice layer; security GPT-primacy retired; provider-extension protocol documented (`provider-routing/references/provider-protocol.md`).
+- **2026-07-21** — External rankings (AA v4.1, Coding Agent Index v1.2) demoted to priors; route on local acceptable-outcome cost. Added token, review/rework, and API-cost coverage.
+- **2026-07-22** — Three quality-first profiles standardized. Claude routes became atomic source deployment presets; Codex native/bridge remained per-dispatch. Sol/Terra/Luna bridge paths and Luna custom-agent delivery were rollout-verified, while Luna stayed unrouted. Experience schema v3 added request source and dispatch/rollout identity; config-driven comparable cohorts replaced fixed code thresholds. Sync preflight, settings overwrite guard, cross-platform drift, and post-apply parity were expanded.
 
 ## Verification
 

@@ -35,7 +35,7 @@ BASH_ROLES = (
     "verifier",
     "security-executor",
 )
-# Every role pins model and effort from the active profile (user-directed
+# Every role pins model and effort from the active deployment preset (user-directed
 # 2026-07-22); no role follows the main-session effort.
 PINNED_EFFORT_ROLES = ROLES
 FOLLOW_EFFORT_ROLES = ()
@@ -47,6 +47,16 @@ DISPATCH_OPTIONS = ("Dispatch GPT + Claude", "Dispatch GPT", "Dispatch Claude")
 
 def read(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
+
+
+def deployment_manifest() -> list[tuple[str, str]]:
+    pairs = []
+    for raw in read("scripts/deployment-manifest.tsv").splitlines():
+        if not raw or raw.startswith("#"):
+            continue
+        source, target = raw.split("\t")
+        pairs.append((source, target))
+    return pairs
 
 
 def frontmatter(path: str) -> str:
@@ -126,6 +136,7 @@ class AgentRosterTests(unittest.TestCase):
         self.assertNotIn("CONFIRMED", plan)
         self.assertIn("CONFIRMED", outcome)
         self.assertIn("REFUTED", outcome)
+        self.assertIn("INCONCLUSIVE", outcome)
         self.assertNotIn("READY", outcome)
         self.assertIn("isolated worktree", outcome)
         self.assertIn("git status --short", outcome)
@@ -167,7 +178,7 @@ class ClaudeContractTests(unittest.TestCase):
     def test_dispatch_reporting_and_leaf_boundary(self) -> None:
         policy = read(".claude/CLAUDE.contract.md")
         self.assertIn("Report every dispatch to the user", policy)
-        self.assertIn("quality-check each subagent's output", policy)
+        self.assertIn("Quality-check every result", policy)
         self.assertIn("Never brief a subagent to delegate further", policy)
         self.assertIn("agent-to-agent briefs stay in precise, concise English", policy)
 
@@ -251,8 +262,8 @@ class ClaudeContractTests(unittest.TestCase):
             "`verifier` returns CONFIRMED/REFUTED",
             "Do not stack gates over the same failure surface",
             "Dual-provider",
-            "pins both model and effort in frontmatter from the active profile",
-            "no role follows the main-session effort",
+            "profiles are **deployment presets**, not per-dispatch routes",
+            "updates all pins transactionally",
             f"invoked from Claude through the `{CODEX_BRIDGE}` bridge",
             "cost per acceptable outcome",
             "External indices are priors only",
@@ -350,7 +361,7 @@ class CodexBundleTests(unittest.TestCase):
         )
         verifier = tomllib.loads(read(".codex/agents/verifier.toml"))
         self.assertEqual(verifier["sandbox_mode"], "read-only")
-        # Follow-tier role: no pinned effort; the caller passes the session effort.
+        # Codex role files stay reusable; the per-dispatch resolver passes effort.
         self.assertNotIn("model_reasoning_effort", verifier)
         self.assertIn("routine low-risk work", verifier["description"])
 
@@ -398,6 +409,18 @@ class CodexBundleTests(unittest.TestCase):
         self.assertEqual(
             set(routing["profiles"]),
             {"balanced", "fast", "quality_guarded"},
+        )
+        self.assertEqual(routing["revision_policy"], {
+            "days": 90,
+            "min_samples": 10,
+            "half_life_days": 45.0,
+            "prefer_probability": 0.90,
+            "cohort_fields": ["role", "task_class"],
+            "excluded_task_classes": ["smoke", "other"],
+        })
+        self.assertEqual(
+            routing["revision_policy"],
+            tomllib.loads(read(".claude/model-routing.toml"))["revision_policy"],
         )
         required_roles = {"main", *CODEX_ROLES}
         role_tiers = routing["quality_floor"]["roles"]
@@ -582,11 +605,12 @@ class CodexBundleTests(unittest.TestCase):
     def test_model_routing_bundle_is_documented_and_synced(self) -> None:
         readme = read(".codex/README.md")
         deploy = read(".codex/DEPLOY.md")
-        sync = read("scripts/sync.sh")
+        managed = set(deployment_manifest())
         for artifact in ("model-routing.toml", "scripts/model-routing"):
             self.assertIn(artifact, readme)
             self.assertIn(artifact, deploy)
-        self.assertIn("model-routing.toml prompts agents scripts", sync)
+        self.assertIn((".codex/model-routing.toml", ".codex/model-routing.toml"), managed)
+        self.assertIn((".codex/scripts", ".codex/scripts"), managed)
         agents = read(".codex/AGENTS.contract.md")
         self.assertIn("${CODEX_HOME:-$HOME/.codex}/scripts/model-routing", agents)
         self.assertIn("session-start recommendations", agents)
@@ -656,7 +680,7 @@ class SharedSkillTests(unittest.TestCase):
     def test_experience_ledger_is_shared_and_wired(self) -> None:
         self._assert_symlinked_body("experience-ledger")
         base = ROOT / ".agents/skills/experience-ledger"
-        for script in ("experience-log", "experience-report"):
+        for script in ("experience-log", "experience-report", "experience-revise"):
             path = base / "scripts" / script
             self.assertTrue(path.is_file(), script)
             self.assertTrue(os.access(path, os.X_OK), f"{script} not executable")
@@ -664,7 +688,7 @@ class SharedSkillTests(unittest.TestCase):
         # provider-routing points dispatch experience at the ledger skill.
         routing = read(".claude/skills/provider-routing/SKILL.md")
         self.assertIn("experience-ledger", routing)
-        self.assertIn("log every dispatch outcome after its quality-check", routing)
+        self.assertIn("log every dispatch outcome after QC", routing)
 
     def test_experience_scripts_log_and_report(self) -> None:
         base = ROOT / ".agents/skills/experience-ledger/scripts"
@@ -678,15 +702,19 @@ class SharedSkillTests(unittest.TestCase):
                     env=env, check=True, capture_output=True, text=True,
                 )
 
-            for i in range(5):
+            for i in range(10):
                 log("--role", "executor", "--provider", "claude",
+                    "--request-source", "claude-code", "--class", "impl",
                     "--outcome", "accepted", "--quality", "4",
                     "--tokens-in", "100", "--tokens-out", "20",
                     "--cache-write-tokens", "10", "--cache-read-tokens", "70",
                     "--secs", "300", "--review-secs", "30", "--rework-secs", "0",
                     "--api-cost-usd", "0.25",
-                    "--now", f"2026-07-19T0{i}:00:00+00:00")
+                    "--now", f"2026-07-{19 + i // 8:02d}T{i % 8:02d}:00:00+00:00")
             log("--role", "executor", "--provider", "codex",
+                "--request-source", "codex", "--class", "impl",
+                "--profile", "balanced", "--model", "gpt-5.6-sol",
+                "--effort", "medium",
                 "--outcome", "failed", "--now", "2026-07-19T06:00:00+00:00")
             # invalid provider must be rejected
             bad = subprocess.run(
@@ -698,19 +726,22 @@ class SharedSkillTests(unittest.TestCase):
 
             result = subprocess.run(
                 [sys.executable, str(base / "experience-report"),
-                 "--days", "7", "--now", "2026-07-20T00:00:00+00:00", "--json"],
+                 "--now", "2026-07-22T00:00:00+00:00", "--json"],
                 env=env, check=True, capture_output=True, text=True,
             )
             report = json.loads(result.stdout)
-        self.assertEqual(report["records"], 6)
-        self.assertEqual(report["by_role_provider"]["executor/claude"]["AR"], 100.0)
-        self.assertEqual(report["by_role_provider"]["executor/claude"]["avg_secs"], 300.0)
-        self.assertEqual(report["by_role_provider"]["executor/claude"]["avg_total_secs"], 330.0)
-        self.assertEqual(report["by_role_provider"]["executor/claude"]["avg_total_tokens"], 200)
-        self.assertEqual(report["by_role_provider"]["executor/claude"]["avg_api_cost_usd"], 0.25)
-        self.assertEqual(report["by_role_provider"]["executor/codex"]["FR"], 100.0)
-        # codex has n<5, so the standardized rule demands exploration, not preference.
-        self.assertIn("explore codex", report["hints"]["executor"])
+        self.assertEqual(report["records"], 11)
+        claude = report["by_cohort_provider"]["executor/impl/claude"]
+        codex = report["by_cohort_provider"]["executor/impl/codex"]
+        self.assertEqual(claude["AR"], 100.0)
+        self.assertEqual(claude["avg_secs"], 300.0)
+        self.assertEqual(claude["avg_total_secs"], 330.0)
+        self.assertEqual(claude["avg_total_tokens"], 200.0)
+        self.assertEqual(claude["avg_api_cost_usd"], 0.25)
+        self.assertEqual(claude["request_sources"], {"claude-code": 10})
+        self.assertEqual(codex["FR"], 100.0)
+        self.assertEqual(codex["request_sources"], {"codex": 1})
+        self.assertIn("explore codex", report["hints"]["executor/impl"])
 
     def test_experience_pending_pairs_by_session_and_consumes_one_dispatch(self) -> None:
         hook = ROOT / ".claude/hooks/experience-pending.py"
@@ -777,7 +808,10 @@ class SharedSkillTests(unittest.TestCase):
             )
             logged = json.loads(ledger.read_text().strip())
             self.assertEqual(logged["session"], "session-b")
-            self.assertEqual(logged["schema"], 2)
+            self.assertEqual(logged["schema"], 3)
+            self.assertEqual(logged["request_source"], "claude-code")
+            self.assertEqual(logged["dispatch_id"], "session-b:shared")
+            self.assertEqual(logged["token_scope"], "full")
             self.assertEqual(logged["tokens_in"], 100)
             self.assertEqual(logged["tokens_out"], 20)
             self.assertEqual(logged["cache_write_tokens"], 10)
@@ -785,6 +819,235 @@ class SharedSkillTests(unittest.TestCase):
             remaining = [json.loads(line) for line in pending.read_text().splitlines()]
             self.assertEqual(len(remaining), 1)
             self.assertEqual(remaining[0]["session_id"], "session-a")
+
+    def test_experience_log_requires_dispatch_id_for_overlapping_completions(self) -> None:
+        log_script = ROOT / ".agents/skills/experience-ledger/scripts/experience-log"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            pending = Path(temp_dir) / "pending.jsonl"
+            ledger = Path(temp_dir) / "experience.jsonl"
+            rows = []
+            for suffix in ("a", "b"):
+                common = {
+                    "agent_type": "executor", "agent_id": suffix,
+                    "session_id": "session", "request_source": "claude-code",
+                    "dispatch_id": f"session:{suffix}",
+                }
+                rows.append({**common, "event": "SubagentStart"})
+                rows.append({**common, "event": "SubagentStop", "secs": 1.0})
+            pending.write_text(
+                "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8"
+            )
+            env = {
+                **os.environ,
+                "AGENT_EXPERIENCE_PENDING": str(pending),
+                "AGENT_EXPERIENCE_LEDGER": str(ledger),
+            }
+            ambiguous = subprocess.run(
+                [sys.executable, str(log_script), "--from-pending",
+                 "--outcome", "accepted"],
+                env=env, capture_output=True, text=True,
+            )
+            self.assertNotEqual(ambiguous.returncode, 0)
+            self.assertIn("multiple completed dispatches", ambiguous.stderr)
+            self.assertFalse(ledger.exists())
+
+            selected = subprocess.run(
+                [sys.executable, str(log_script), "--from-pending",
+                 "--dispatch-id", "session:b", "--outcome", "accepted"],
+                env=env, check=True, capture_output=True, text=True,
+            )
+            self.assertIn("logged", selected.stdout)
+            logged = json.loads(ledger.read_text(encoding="utf-8"))
+            self.assertEqual(logged["dispatch_id"], "session:b")
+            self.assertEqual(logged["request_source"], "claude-code")
+
+    def test_invalid_bridge_log_does_not_consume_pending_completion(self) -> None:
+        log_script = ROOT / ".agents/skills/experience-ledger/scripts/experience-log"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            pending = Path(temp_dir) / "pending.jsonl"
+            ledger = Path(temp_dir) / "experience.jsonl"
+            common = {
+                "agent_type": "codex:codex-rescue", "agent_id": "bridge",
+                "session_id": "session", "request_source": "claude-code-plugin-codex",
+                "dispatch_id": "session:bridge",
+            }
+            pending.write_text(
+                json.dumps({**common, "event": "SubagentStart"}) + "\n"
+                + json.dumps({**common, "event": "SubagentStop", "secs": 2.0}) + "\n",
+                encoding="utf-8",
+            )
+            before = pending.read_text(encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(log_script), "--from-pending",
+                 "--dispatch-id", "session:bridge", "--role", "executor",
+                 "--outcome", "accepted"],
+                env={**os.environ, "AGENT_EXPERIENCE_PENDING": str(pending),
+                     "AGENT_EXPERIENCE_LEDGER": str(ledger)},
+                capture_output=True, text=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("production records require a resolved route", result.stderr)
+            self.assertEqual(pending.read_text(encoding="utf-8"), before)
+            self.assertFalse(ledger.exists())
+
+    def test_experience_report_never_mixes_total_and_output_only_cost(self) -> None:
+        report_script = ROOT / ".agents/skills/experience-ledger/scripts/experience-report"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ledger = Path(temp_dir) / "experience.jsonl"
+            rows = []
+            for provider, source in (("claude", "claude-code"), ("codex", "codex")):
+                for i in range(10):
+                    row = {
+                        "ts": f"2026-07-20T{i:02d}:00:00+00:00",
+                        "schema": 3, "role": "executor", "task_class": "impl",
+                        "provider": provider, "request_source": source,
+                        "outcome": "accepted", "tokens_out": 20,
+                        "profile": "balanced",
+                        "model": ("claude-sonnet-5" if provider == "claude"
+                                  else "gpt-5.6-sol"),
+                        "effort": "high" if provider == "claude" else "medium",
+                    }
+                    if provider == "claude":
+                        row.update({"tokens_in": 100, "cache_write_tokens": 10,
+                                    "cache_read_tokens": 70, "token_scope": "full"})
+                    else:
+                        row["token_scope"] = "output_only"
+                    rows.append(row)
+            ledger.write_text(
+                "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8"
+            )
+            result = subprocess.run(
+                [sys.executable, str(report_script), "--json",
+                 "--now", "2026-07-22T00:00:00+00:00"],
+                env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger)},
+                check=True, capture_output=True, text=True,
+            )
+        report = json.loads(result.stdout)
+        self.assertIn("no comparable cost scope", report["hints"]["executor/impl"])
+        self.assertEqual(
+            report["by_cohort_provider"]["executor/impl/claude"]["coverage"]
+            ["total_tokens"], 10,
+        )
+        self.assertEqual(
+            report["by_cohort_provider"]["executor/impl/codex"]["coverage"]
+            ["total_tokens"], 0,
+        )
+
+    def test_experience_report_does_not_pool_routes_to_reach_sample_floor(self) -> None:
+        report_script = ROOT / ".agents/skills/experience-ledger/scripts/experience-report"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ledger = Path(temp_dir) / "experience.jsonl"
+            rows = []
+            routes = {
+                "claude": (
+                    "claude-code",
+                    (("balanced", "claude-sonnet-5", "high"),
+                     ("fast", "claude-opus-4-8", "low")),
+                ),
+                "codex": (
+                    "codex",
+                    (("balanced", "gpt-5.6-sol", "medium"),
+                     ("fast", "gpt-5.6-sol", "low")),
+                ),
+            }
+            for provider, (source, provider_routes) in routes.items():
+                for profile, model, effort in provider_routes:
+                    for i in range(5):
+                        rows.append({
+                            "ts": f"2026-07-20T{i:02d}:00:00+00:00",
+                            "schema": 3, "role": "executor",
+                            "task_class": "impl", "provider": provider,
+                            "request_source": source, "outcome": "accepted",
+                            "profile": profile, "model": model, "effort": effort,
+                        })
+            ledger.write_text(
+                "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8"
+            )
+            result = subprocess.run(
+                [sys.executable, str(report_script), "--json",
+                 "--now", "2026-07-22T00:00:00+00:00"],
+                env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger)},
+                check=True, capture_output=True, text=True,
+            )
+        report = json.loads(result.stdout)
+        self.assertEqual(
+            report["by_cohort_provider"]["executor/impl/claude"]["n"], 10
+        )
+        self.assertEqual(
+            report["by_cohort_provider"]["executor/impl/codex"]["n"], 10
+        )
+        self.assertEqual(
+            report["by_route_cohort_provider"]
+            ["executor/impl/claude/balanced/claude-sonnet-5/high"]["n"], 5
+        )
+        self.assertEqual(
+            report["by_route_cohort_provider"]
+            ["executor/impl/codex/balanced/gpt-5.6-sol/medium"]["n"], 5
+        )
+        self.assertIn("explore claude, codex", report["hints"]["executor/impl"])
+
+    def test_experience_report_excludes_smoke_and_other_from_decision_counts(self) -> None:
+        report_script = ROOT / ".agents/skills/experience-ledger/scripts/experience-report"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ledger = Path(temp_dir) / "experience.jsonl"
+            rows = []
+            for task_class in ("smoke", "other"):
+                rows.append({
+                    "ts": "2026-07-20T00:00:00+00:00", "schema": 3,
+                    "role": "executor", "task_class": task_class,
+                    "provider": "codex", "request_source": "codex",
+                    "outcome": "accepted", "profile": "balanced",
+                    "model": "gpt-5.6-sol", "effort": "medium",
+                })
+            ledger.write_text(
+                "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8"
+            )
+            result = subprocess.run(
+                [sys.executable, str(report_script), "--json",
+                 "--now", "2026-07-22T00:00:00+00:00"],
+                env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger)},
+                check=True, capture_output=True, text=True,
+            )
+        report = json.loads(result.stdout)
+        self.assertEqual(report["decision_records"], 0)
+        self.assertEqual(report["hints"], {})
+        for task_class in ("smoke", "other"):
+            row = report["by_cohort_provider"][f"executor/{task_class}/codex"]
+            self.assertEqual(row["observed_n"], 1)
+            self.assertEqual(row["ineligible_n"], 1)
+            self.assertEqual(row["n"], 0)
+
+    def test_experience_report_renders_all_legacy_cohorts(self) -> None:
+        report_script = ROOT / ".agents/skills/experience-ledger/scripts/experience-report"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ledger = Path(temp_dir) / "experience.jsonl"
+            rows = [
+                {
+                    "ts": "2026-07-20T00:00:00+00:00", "schema": 2,
+                    "role": "Explore", "task_class": "recon",
+                    "provider": "claude", "outcome": "accepted",
+                    "model": "claude-sonnet-5", "effort": "low",
+                },
+                {
+                    "ts": "2026-07-20T01:00:00+00:00", "schema": 1,
+                    "role": "mech-executor", "task_class": "impl",
+                    "provider": "codex", "outcome": "failed",
+                },
+            ]
+            ledger.write_text(
+                "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8"
+            )
+            result = subprocess.run(
+                [sys.executable, str(report_script),
+                 "--now", "2026-07-22T00:00:00+00:00"],
+                env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger)},
+                capture_output=True, text=True,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Explore", result.stdout)
+        self.assertIn("mech-executor", result.stdout)
+        self.assertIn("legacy-unknown", result.stdout)
+        self.assertNotIn("TypeError", result.stderr)
 
 
 class DocumentationBudgetTests(unittest.TestCase):
@@ -809,7 +1072,7 @@ class DocumentationBudgetTests(unittest.TestCase):
         self.assertIn("Baton `0ab4d2e`", plan)
         self.assertIn("MIT", readme)
         self.assertIn("Yuhuan", read("LICENSE"))
-        self.assertIn("P(win)>=0.85", plan)
+        self.assertIn("P(win)>=0.90", plan)
         self.assertNotIn("AR lead >=10pt", plan)
 
     def test_harness_engineering_keeps_role_boundaries_local(self) -> None:
@@ -870,7 +1133,7 @@ class MechanismTests(unittest.TestCase):
                                  "experience-ledger" / "scripts" / "experience-report")
             experience_report.parent.mkdir(parents=True)
             experience_report.write_text(
-                "#!/bin/sh\necho 'experience-report — last 30 days, 0 records'\n",
+                "#!/bin/sh\necho 'no records; log dispatches first'\n",
                 encoding="utf-8",
             )
             experience_report.chmod(0o755)
@@ -883,10 +1146,15 @@ class MechanismTests(unittest.TestCase):
             (repo / ".claude").mkdir(parents=True)
             (repo / ".claude" / "CLAUDE.contract.md").write_text("contract\n",
                                                                  encoding="utf-8")
+            (repo / "scripts").mkdir()
+            (repo / "scripts/deployment-manifest.tsv").write_text(
+                ".claude/CLAUDE.contract.md\t.claude/CLAUDE.md\n",
+                encoding="utf-8",
+            )
             env["AGENT_HARNESS_REPO"] = str(repo)
             drifted = subprocess.run([sys.executable, str(hook)], env=env,
                                      check=True, capture_output=True, text=True)
-            self.assertIn("contract-repo drift", drifted.stdout)
+            self.assertIn("deployment drift", drifted.stdout)
             self.assertIn("dispatch-experience gap", drifted.stdout)
             self.assertNotIn("check failed", drifted.stdout)
             self.assertTrue(stamp.exists())
@@ -907,6 +1175,108 @@ class MechanismTests(unittest.TestCase):
                                        check=True, capture_output=True, text=True)
             self.assertNotIn("check failed", completed.stdout)
             self.assertTrue(stamp.exists())
+
+    def test_sync_and_weekly_integrity_share_one_deployment_manifest(self) -> None:
+        hook = read(".claude/hooks/weekly-integrity.py")
+        sync = read("scripts/sync.sh")
+        pairs = deployment_manifest()
+        sources = [source for source, _ in pairs]
+        targets = [target for _, target in pairs]
+        self.assertEqual(len(sources), len(set(sources)))
+        self.assertEqual(len(targets), len(set(targets)))
+        self.assertIn("deployment-manifest.tsv", hook)
+        self.assertIn("deployment-manifest.tsv", sync)
+        self.assertNotIn("cross_platform =", hook)
+        self.assertIn((".claude/CLAUDE.contract.md", ".claude/CLAUDE.md"), pairs)
+        self.assertIn((".codex/AGENTS.contract.md", ".codex/AGENTS.md"), pairs)
+        for source, target in pairs:
+            self.assertTrue((ROOT / source).exists(), source)
+            self.assertRegex(target, r"^\.(agents|claude|codex)/")
+
+    def test_sync_rejects_unknown_arguments_and_dry_run_preflights(self) -> None:
+        sync = ROOT / "scripts/sync.sh"
+        unknown = subprocess.run(
+            [str(sync), "--unknown"], capture_output=True, text=True,
+        )
+        self.assertEqual(unknown.returncode, 2)
+        self.assertIn("unknown argument", unknown.stderr)
+
+        with tempfile.TemporaryDirectory() as temp_home:
+            result = subprocess.run(
+                [str(sync)], capture_output=True, text=True,
+                env={**os.environ, "HOME": temp_home,
+                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"},
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("preflight: passed", result.stdout)
+        self.assertIn("dry-run 完成", result.stdout)
+
+        with tempfile.TemporaryDirectory() as temp_home:
+            for platform in (".claude", ".codex", ".agents"):
+                unrelated = Path(temp_home) / platform / "skills/unrelated/SKILL.md"
+                unrelated.parent.mkdir(parents=True)
+                unrelated.write_text("user-owned\n", encoding="utf-8")
+            applied = subprocess.run(
+                [str(sync), "--apply"], capture_output=True, text=True,
+                env={**os.environ, "HOME": temp_home,
+                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"},
+            )
+            self.assertEqual(applied.returncode, 0, applied.stderr)
+            self.assertIn("backup: none (no existing managed targets)", applied.stdout)
+            self.assertEqual(
+                (Path(temp_home) / ".claude/CLAUDE.md").read_text(encoding="utf-8"),
+                read(".claude/CLAUDE.contract.md"),
+            )
+            self.assertEqual(
+                (Path(temp_home) / ".codex/AGENTS.md").read_text(encoding="utf-8"),
+                read(".codex/AGENTS.contract.md"),
+            )
+            self.assertTrue(
+                (Path(temp_home) / ".codex/skills/experience-ledger/SKILL.md").is_file()
+            )
+            for source_rel, target_rel in deployment_manifest():
+                source = ROOT / source_rel
+                target = Path(temp_home) / target_rel
+                if source.is_dir():
+                    parity = subprocess.run(
+                        ["rsync", "-an", "--links", "--force", "--delete",
+                         "--delete-excluded", "--exclude", "__pycache__/",
+                         "--exclude", "*.pyc", "--exclude", ".DS_Store",
+                         "--itemize-changes", str(source), str(target.parent) + "/"],
+                        capture_output=True, text=True,
+                    )
+                    self.assertEqual(parity.returncode, 0, parity.stderr)
+                    self.assertEqual(parity.stdout, "", f"drift: {target_rel}")
+                else:
+                    self.assertEqual(source.read_bytes(), target.read_bytes(), target_rel)
+            self.assertFalse(any(Path(temp_home).rglob("__pycache__")))
+            self.assertFalse(any(Path(temp_home).rglob("*.pyc")))
+            self.assertFalse(any(Path(temp_home).rglob(".DS_Store")))
+            for platform in (".claude", ".codex", ".agents"):
+                unrelated = Path(temp_home) / platform / "skills/unrelated/SKILL.md"
+                self.assertEqual(unrelated.read_text(encoding="utf-8"), "user-owned\n")
+
+    def test_sync_refuses_to_drop_global_settings_array_items(self) -> None:
+        sync = ROOT / "scripts/sync.sh"
+        with tempfile.TemporaryDirectory() as temp_home:
+            settings_path = Path(temp_home) / ".claude/settings.json"
+            settings_path.parent.mkdir(parents=True)
+            settings = json.loads(read(".claude/settings.json"))
+            settings.setdefault("permissions", {}).setdefault("allow", []).append(
+                "Bash(user-local-command:*)"
+            )
+            settings_path.write_text(json.dumps(settings), encoding="utf-8")
+            before = settings_path.read_text(encoding="utf-8")
+            result = subprocess.run(
+                [str(sync), "--apply"], capture_output=True, text=True,
+                env={**os.environ, "HOME": temp_home,
+                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"},
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("permissions.allow", result.stdout)
+            self.assertIn("已停止 apply", result.stdout)
+            self.assertEqual(settings_path.read_text(encoding="utf-8"), before)
+            self.assertFalse((Path(temp_home) / ".codex").exists())
 
     def test_usage_report_separates_sources_and_finds_rolling_peak(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
