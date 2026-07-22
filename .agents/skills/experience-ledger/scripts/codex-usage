@@ -68,20 +68,30 @@ def fmt_usage(usage: dict) -> str:
             f"total {usage.get('total_tokens', 0):,}")
 
 
-def fmt_quota(rl: dict) -> str:
-    primary = rl.get("primary") or {}
-    used = primary.get("used_percent")
-    window_h = (primary.get("window_minutes") or 0) / 60
-    resets = primary.get("resets_at")
+def fmt_window(win: dict) -> str:
+    used = win.get("used_percent")
+    window_h = (win.get("window_minutes") or 0) / 60
+    resets = win.get("resets_at")
     reset_str = (datetime.fromtimestamp(resets, timezone.utc)
                  .astimezone().strftime("%Y-%m-%d %H:%M %Z")
                  if isinstance(resets, (int, float)) else "?")
-    parts = [f"plan {rl.get('plan_type', '?')}",
-             f"used {used}% of {window_h:.0f}h window" if used is not None else "used ?",
-             f"resets {reset_str}"]
-    secondary = rl.get("secondary") or {}
-    if secondary.get("used_percent") is not None:
-        parts.append(f"secondary {secondary['used_percent']}%")
+    if used is None:
+        return "used ?"
+    return f"used {used}% of {window_h:.0f}h window, resets {reset_str}"
+
+
+def fmt_quota(rl: dict) -> str:
+    # The short window (e.g. 5h) outranks the weekly one for dispatch
+    # decisions: exhausting it stalls tasks immediately, so it is listed
+    # first and drives the hold warning.
+    windows = [w for w in (rl.get("primary"), rl.get("secondary"))
+               if w and w.get("used_percent") is not None]
+    windows.sort(key=lambda w: w.get("window_minutes") or float("inf"))
+    parts = [f"plan {rl.get('plan_type', '?')}"]
+    parts += [fmt_window(w) for w in windows] or ["used ?"]
+    if windows and (windows[0].get("window_minutes") or 0) <= 12 * 60 \
+            and windows[0]["used_percent"] >= 90:
+        parts.append("SHORT WINDOW NEARLY EXHAUSTED — hold Codex dispatch until reset")
     if rl.get("rate_limit_reached_type"):
         parts.append(f"LIMIT REACHED: {rl['rate_limit_reached_type']}")
     return "; ".join(parts)
