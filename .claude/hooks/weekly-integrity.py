@@ -108,6 +108,33 @@ try:
         checks_completed = False
         findings.append(f"delegation audit failed: {exc}")
 
+    # Pin-drift check is skipped when the deployment lacks the resolver
+    # (e.g. a partially synced ~/.claude); nothing to compare against.
+    routing_script = os.path.join(claude_dir, "scripts", "model-routing")
+    try:
+        if not os.access(routing_script, os.X_OK):
+            pins = None
+        else:
+            pins = subprocess.run(
+                [routing_script, "check-pins"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        if pins is None:
+            pass
+        elif pins.returncode == 1:
+            findings.append(
+                "model-routing pin drift:\n" + (pins.stderr or pins.stdout).rstrip()
+            )
+        elif pins.returncode != 0:
+            checks_completed = False
+            detail = (pins.stderr or pins.stdout).rstrip()
+            findings.append(f"model-routing check failed (exit {pins.returncode}):\n{detail}")
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        checks_completed = False
+        findings.append(f"model-routing check failed: {exc}")
+
     # Informational only: surface dispatch-experience hints or a missing-data
     # warning. Best-effort — a failure here neither blocks the throttle nor alarms.
     try:

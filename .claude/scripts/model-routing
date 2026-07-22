@@ -1,0 +1,357 @@
+#!/usr/bin/env python3
+"""Inspect and validate Claude model-routing recommendations.
+
+Claude routes are applied through agent frontmatter pins (leaf roles) and the
+user-owned session selector (main), not a spawn-time argument. This resolver
+makes `.claude/model-routing.toml` operative by validating its internal
+consistency and cross-checking the deployed frontmatter pins against the
+selected profile (`check-pins`)."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+import tomllib
+from pathlib import Path
+
+CONFIG_PATH = Path(__file__).resolve().parents[1] / "model-routing.toml"
+AGENTS_DIR = Path(__file__).resolve().parents[1] / "agents"
+LEAF_ROLES = {
+    "explore",
+    "mech-executor",
+    "executor",
+    "plan-verifier",
+    "verifier",
+    "security-reviewer",
+    "security-executor",
+}
+REQUIRED_ROLES = LEAF_ROLES | {"main"}
+SELECTION_KEYS = {"default", "fast", "quality_guarded", "economy", "high_risk"}
+EFFORTS = {"low", "medium", "high", "xhigh"}
+MODEL_ALIASES = {
+    "haiku": "claude-haiku-4-5",
+    "sonnet": "claude-sonnet-5",
+    "opus": "claude-opus-4-8",
+    "fable": "claude-fable-5",
+}
+AVAILABILITY_SCHEMA = {
+    "subscription": {"documented", "unverified"},
+    "main_selector": {"configured", "unverified"},
+    "role_frontmatter_override": {"configured", "not_routed", "unverified"},
+}
+
+
+def is_dispatchable(model: dict) -> bool:
+    availability = model.get("availability", {})
+    return availability.get("role_frontmatter_override") == "configured"
+
+
+def load_config(path: Path) -> dict:
+    with path.open("rb") as handle:
+        return tomllib.load(handle)
+
+
+def validation_errors(config: dict) -> list[str]:
+    errors: list[str] = []
+    if config.get("version") != 1:
+        errors.append("version must be 1")
+
+    models = config.get("models", {})
+    profiles = config.get("profiles", {})
+    selection = config.get("selection", {})
+    route_application = config.get("route_application", {}).get("roles", {})
+    quality_floor = config.get("quality_floor", {})
+    role_tiers = quality_floor.get("roles", {})
+    allowed_by_tier = quality_floor.get("allowed", {})
+
+    if set(selection) != SELECTION_KEYS:
+        errors.append("selection keys must exactly match the routing schema")
+    for key, profile in selection.items():
+        if profile not in profiles:
+            errors.append(f"selection.{key} references unknown profile: {profile!r}")
+
+    normalized_roles = {role.replace("_", "-") for role in route_application}
+    if normalized_roles != REQUIRED_ROLES:
+        errors.append("route_application.roles must cover main and every leaf role")
+    for role, application in route_application.items():
+        expected = "user_owned_session_selector" if role == "main" else "frontmatter_pin"
+        if application != expected:
+            errors.append(f"route_application role {role} must be {expected}")
+
+    if set(role_tiers) != REQUIRED_ROLES:
+        errors.append("quality_floor.roles must cover main and every leaf role")
+    for role, tier in role_tiers.items():
+        if tier not in allowed_by_tier:
+            errors.append(f"quality_floor role {role} references unknown tier: {tier!r}")
+    for tier, allowed_routes in allowed_by_tier.items():
+        if not allowed_routes:
+            errors.append(f"quality_floor tier {tier} must allow at least one route")
+        for route_key in allowed_routes:
+            if "/" not in route_key:
+                errors.append(f"quality_floor tier {tier} has malformed route: {route_key!r}")
+                continue
+            allowed_model, allowed_effort = route_key.rsplit("/", 1)
+            if allowed_model not in models:
+                errors.append(
+                    f"quality_floor tier {tier} references unknown model: {allowed_model}"
+                )
+            if allowed_effort not in EFFORTS:
+                errors.append(
+                    f"quality_floor tier {tier} references unknown effort: {allowed_effort!r}"
+                )
+
+    for model_name, model in models.items():
+        availability = model.get("availability", {})
+        if set(availability) != set(AVAILABILITY_SCHEMA):
+            errors.append(f"model {model_name} availability must cover every surface")
+        for surface, valid_states in AVAILABILITY_SCHEMA.items():
+            if availability.get(surface) not in valid_states:
+                errors.append(
+                    f"model {model_name} has invalid {surface} availability: "
+                    f"{availability.get(surface)!r}"
+                )
+
+    for profile_name, profile in profiles.items():
+        roles = profile.get("roles", {})
+        missing = LEAF_ROLES - roles.keys()
+        extra = roles.keys() - REQUIRED_ROLES
+        if missing:
+            errors.append(
+                f"profile {profile_name} missing roles: {', '.join(sorted(missing))}"
+            )
+        if extra:
+            errors.append(
+                f"profile {profile_name} has unknown roles: {', '.join(sorted(extra))}"
+            )
+        for role, route in roles.items():
+            if not route.get("reason"):
+                errors.append(f"profile {profile_name}/{role} has no reason")
+            if role == "main":
+                if route.get("model") != "user_selected" or route.get("effort") != "user_selected":
+                    errors.append(
+                        f"profile {profile_name}/main must stay user_selected on both axes"
+                    )
+                continue
+            model_name = route.get("model")
+            effort = route.get("effort")
+            model = models.get(model_name)
+            if model is None:
+                errors.append(
+                    f"profile {profile_name}/{role} references unknown model: {model_name!r}"
+                )
+                continue
+            if not is_dispatchable(model):
+                errors.append(
+                    f"profile {profile_name}/{role} uses non-dispatchable model: {model_name}"
+                )
+            if effort not in EFFORTS:
+                errors.append(
+                    f"profile {profile_name}/{role} references unknown effort: {effort!r}"
+                )
+            tier = role_tiers.get(role)
+            route_key = f"{model_name}/{effort}"
+            if tier in allowed_by_tier and route_key not in allowed_by_tier[tier]:
+                errors.append(
+                    f"profile {profile_name}/{role} route {route_key} "
+                    f"falls below quality tier {tier}"
+                )
+    return errors
+
+
+def resolve_profile(config: dict, profile: str | None, priority: str | None) -> str:
+    if profile:
+        return profile
+    key = {
+        None: "default",
+        "balanced": "default",
+        "fast": "fast",
+        "quality-guarded": "quality_guarded",
+        "economy": "economy",
+        "high-risk": "high_risk",
+    }[priority]
+    return config["selection"][key]
+
+
+def parse_frontmatter(path: Path) -> dict:
+    fields: dict[str, str] = {}
+    text = path.read_text(encoding="utf-8")
+    match = re.match(r"\A---\n(.*?)\n---\n", text, re.DOTALL)
+    if not match:
+        return fields
+    for line in match.group(1).splitlines():
+        if ":" in line and not line.startswith((" ", "\t")):
+            key, _, value = line.partition(":")
+            fields[key.strip()] = value.strip()
+    return fields
+
+
+def deployed_pins(agents_dir: Path) -> dict[str, dict]:
+    pins: dict[str, dict] = {}
+    for path in sorted(agents_dir.glob("*.md")):
+        fields = parse_frontmatter(path)
+        name = fields.get("name", path.stem).lower()
+        if name not in LEAF_ROLES:
+            continue
+        pins[name] = {
+            "file": path.name,
+            "model_alias": fields.get("model"),
+            "model": MODEL_ALIASES.get(fields.get("model", ""), fields.get("model")),
+            "effort": fields.get("effort"),
+        }
+    return pins
+
+
+def command_validate(config: dict) -> int:
+    errors = validation_errors(config)
+    if errors:
+        for error in errors:
+            print(f"ERROR: {error}", file=sys.stderr)
+        return 1
+    print(
+        f"valid: {len(config['profiles'])} profiles, "
+        f"{len(config['models'])} benchmark models"
+    )
+    return 0
+
+
+def command_list(config: dict, as_json: bool) -> int:
+    rows = [
+        {"profile": name, "description": profile["description"]}
+        for name, profile in config["profiles"].items()
+    ]
+    if as_json:
+        print(json.dumps(rows, indent=2))
+    else:
+        for row in rows:
+            print(f"{row['profile']}: {row['description']}")
+    return 0
+
+
+def command_resolve(
+    config: dict, role: str, profile: str | None, priority: str | None
+) -> int:
+    profile_name = resolve_profile(config, profile, priority)
+    if profile_name not in config["profiles"]:
+        print(f"ERROR: unknown profile: {profile_name}", file=sys.stderr)
+        return 2
+    role = role.lower()
+    route = config["profiles"][profile_name].get("roles", {}).get(role)
+    if route is None and role == "main":
+        route = {
+            "model": "user_selected",
+            "effort": "user_selected",
+            "reason": "The user owns the main-session model and effort.",
+        }
+    if route is None:
+        print(f"ERROR: unknown role: {role}", file=sys.stderr)
+        return 2
+    if role == "main":
+        invocation = {"model_delivery": "session_selector"}
+    else:
+        invocation = {
+            "agent_type": "Explore" if role == "explore" else role,
+            "model_delivery": "frontmatter_pin",
+            "effort_delivery": "frontmatter_pin",
+        }
+    print(json.dumps({
+        "profile": profile_name,
+        "objective": config["profiles"][profile_name]["description"],
+        "role": role,
+        "application": config["route_application"]["roles"][role],
+        "quality_tier": config["quality_floor"]["roles"][role],
+        **route,
+        "invocation": invocation,
+    }, indent=2))
+    return 0
+
+
+def command_check_pins(
+    config: dict, agents_dir: Path, profile: str | None, priority: str | None
+) -> int:
+    profile_name = resolve_profile(config, profile, priority)
+    routes = config["profiles"][profile_name]["roles"]
+    pins = deployed_pins(agents_dir)
+    problems: list[str] = []
+    for role in sorted(LEAF_ROLES):
+        route = routes.get(role)
+        pin = pins.get(role)
+        if pin is None:
+            problems.append(f"{role}: no agent frontmatter found under {agents_dir}")
+            continue
+        if route is None:
+            problems.append(f"{role}: profile {profile_name} has no route")
+            continue
+        if pin["model"] != route["model"]:
+            problems.append(
+                f"{role}: frontmatter pins {pin['model']} "
+                f"but profile {profile_name} expects {route['model']}"
+            )
+        if pin["effort"] != route["effort"]:
+            problems.append(
+                f"{role}: frontmatter effort {pin['effort']!r} "
+                f"differs from profile {profile_name} effort {route['effort']!r}"
+            )
+    if problems:
+        for problem in problems:
+            print(f"DRIFT: {problem}", file=sys.stderr)
+        return 1
+    print(f"pins match profile {profile_name}: {len(pins)} roles checked")
+    return 0
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", type=Path, default=CONFIG_PATH)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    list_parser = subparsers.add_parser("list", help="list routing profiles")
+    list_parser.add_argument("--json", action="store_true")
+
+    subparsers.add_parser("validate", help="validate routing references")
+
+    resolve_parser = subparsers.add_parser("resolve", help="resolve one role recommendation")
+    resolve_parser.add_argument("--role", required=True)
+    source = resolve_parser.add_mutually_exclusive_group()
+    source.add_argument("--profile")
+    source.add_argument(
+        "--priority",
+        choices=("balanced", "fast", "quality-guarded", "economy", "high-risk"),
+    )
+    check_parser = subparsers.add_parser(
+        "check-pins", help="cross-check agent frontmatter pins against a profile"
+    )
+    check_parser.add_argument("--agents-dir", type=Path, default=AGENTS_DIR)
+    check_source = check_parser.add_mutually_exclusive_group()
+    check_source.add_argument("--profile")
+    check_source.add_argument(
+        "--priority",
+        choices=("balanced", "fast", "quality-guarded", "economy", "high-risk"),
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        config = load_config(args.config)
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        print(f"ERROR: cannot load routing config: {error}", file=sys.stderr)
+        return 2
+    errors = validation_errors(config)
+    if args.command != "validate" and errors:
+        for error in errors:
+            print(f"ERROR: {error}", file=sys.stderr)
+        return 1
+    if args.command == "validate":
+        return command_validate(config)
+    if args.command == "list":
+        return command_list(config, args.json)
+    if args.command == "check-pins":
+        return command_check_pins(config, args.agents_dir, args.profile, args.priority)
+    return command_resolve(config, args.role, args.profile, args.priority)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
