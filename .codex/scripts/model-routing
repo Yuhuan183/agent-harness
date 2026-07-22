@@ -40,7 +40,6 @@ REQUIRED_METRICS = {
 }
 PROFILE_OBJECTIVES = {
     "fast": "decode_minutes_per_index_task",
-    "economy": "cost_usd_per_index_task",
 }
 AVAILABILITY_SCHEMA = {
     "subscription": {"documented", "unverified"},

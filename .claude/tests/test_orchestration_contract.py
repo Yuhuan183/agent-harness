@@ -237,7 +237,7 @@ class ClaudeContractTests(unittest.TestCase):
             "one bounded retry",
             *(f"`{option}`" for option in DISPATCH_OPTIONS),
             "never two writers on the same artifacts",
-            "Security remains GPT-primary",
+            "Security keeps its capability split on either provider",
             "never Fable",
             f"`{CODEX_BRIDGE}`",
             "--surface claude-bridge",
@@ -392,13 +392,12 @@ class CodexBundleTests(unittest.TestCase):
                 "default": "balanced",
                 "fast": "fast",
                 "quality_guarded": "quality_guarded",
-                "economy": "economy",
                 "high_risk": "quality_guarded",
             },
         )
         self.assertEqual(
             set(routing["profiles"]),
-            {"balanced", "fast", "quality_guarded", "economy"},
+            {"balanced", "fast", "quality_guarded"},
         )
         required_roles = {"main", *CODEX_ROLES}
         role_tiers = routing["quality_floor"]["roles"]
@@ -460,7 +459,7 @@ class CodexBundleTests(unittest.TestCase):
         validated = subprocess.run(
             [str(script), "validate"], check=True, capture_output=True, text=True,
         )
-        self.assertIn("valid: 4 profiles", validated.stdout)
+        self.assertIn("valid: 3 profiles", validated.stdout)
         resolved = subprocess.run(
             [str(script), "resolve", "--priority", "fast",
              "--role", "executor"],
@@ -473,24 +472,22 @@ class CodexBundleTests(unittest.TestCase):
         self.assertEqual(route["quality_tier"], "judgment")
         self.assertEqual(route["model"], "gpt-5.6-sol")
         self.assertEqual(route["effort"], "medium")
-        economical = subprocess.run(
-            [str(script), "resolve", "--priority", "economy",
+        high_risk = subprocess.run(
+            [str(script), "resolve", "--priority", "high-risk",
              "--role", "executor"],
             check=True, capture_output=True, text=True,
         )
-        economy_route = json.loads(economical.stdout)
-        self.assertEqual(economy_route["profile"], "economy")
-        self.assertEqual(economy_route["model"], "gpt-5.6-sol")
-        self.assertEqual(economy_route["effort"], "medium")
-        economical_support = subprocess.run(
-            [str(script), "resolve", "--priority", "economy",
+        high_risk_route = json.loads(high_risk.stdout)
+        self.assertEqual(high_risk_route["profile"], "quality_guarded")
+        fast_support = subprocess.run(
+            [str(script), "resolve", "--priority", "fast",
              "--role", "explore"],
             check=True, capture_output=True, text=True,
         )
-        economy_support = json.loads(economical_support.stdout)
-        self.assertEqual(economy_support["model"], "gpt-5.6-terra")
-        self.assertEqual(economy_support["effort"], "low")
-        self.assertEqual(economy_support["invocation"], {
+        fast_support_route = json.loads(fast_support.stdout)
+        self.assertEqual(fast_support_route["model"], "gpt-5.6-terra")
+        self.assertEqual(fast_support_route["effort"], "low")
+        self.assertEqual(fast_support_route["invocation"], {
             "agent_type": "explore",
             "fork_turns": "none",
             "model_delivery": "spawn_argument",
@@ -515,16 +512,8 @@ class CodexBundleTests(unittest.TestCase):
         self.assertEqual(bridge_route["surface"], "claude-bridge")
         self.assertEqual(bridge_route["model"], "gpt-5.6-terra")
         self.assertEqual(bridge_route["effort"], "low")
-        bridge_economy = subprocess.run(
-            [str(script), "resolve", "--surface", "claude-bridge",
-             "--priority", "economy", "--role", "explore"],
-            check=True, capture_output=True, text=True,
-        )
-        bridge_economy_route = json.loads(bridge_economy.stdout)
-        self.assertEqual(bridge_economy_route["model"], "gpt-5.6-terra")
-        self.assertEqual(bridge_economy_route["effort"], "low")
         self.assertEqual(
-            bridge_economy_route["invocation"]["model_delivery"],
+            bridge_route["invocation"]["model_delivery"],
             "bridge_argument",
         )
 
@@ -561,23 +550,6 @@ class CodexBundleTests(unittest.TestCase):
         self.assertNotEqual(rejected_fast.returncode, 0)
         self.assertIn("is not optimal for decode_minutes_per_index_task",
                       rejected_fast.stderr)
-
-        costly_economy = original.replace(
-            '[profiles.economy.roles.explore]\nmodel = "gpt-5.6-terra"',
-            '[profiles.economy.roles.explore]\nmodel = "gpt-5.6-sol"',
-            1,
-        )
-        self.assertNotEqual(costly_economy, original)
-        with tempfile.TemporaryDirectory() as temp_dir:
-            costly_config = Path(temp_dir) / "model-routing.toml"
-            costly_config.write_text(costly_economy, encoding="utf-8")
-            rejected_economy = subprocess.run(
-                [str(script), "--config", str(costly_config), "validate"],
-                capture_output=True, text=True,
-            )
-        self.assertNotEqual(rejected_economy.returncode, 0)
-        self.assertIn("is not optimal for cost_usd_per_index_task",
-                      rejected_economy.stderr)
 
         unavailable_bridge = original.replace(
             'claude_bridge_override = "configured"',

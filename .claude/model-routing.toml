@@ -10,7 +10,6 @@ evidence_caveat = "AA publishes only single-configuration (adaptive reasoning, m
 default = "balanced"
 fast = "fast"
 quality_guarded = "quality_guarded"
-economy = "economy"
 high_risk = "quality_guarded"
 
 [route_application.roles]
@@ -110,7 +109,7 @@ critical = ["claude-opus-4-8/medium", "claude-opus-4-8/high"]
 [quality_floor.notes]
 judgment_fable = "Fable routes in the judgment tier apply to the main session only (H/X profiles); named roles stay on Opus."
 xhigh = "xhigh is main-session-only under profile X; no named role or bridge call uses it."
-critical_medium = "opus/medium is allowed so verifier can trade depth for speed/cost under fast and economy; security-* stay at opus/high in every profile."
+critical_medium = "opus/medium is allowed so verifier can trade depth for speed under fast; security-* stay at opus/high in every profile."
 effort_source = "All named roles pin effort from the active profile (user-directed 2026-07-22); no role follows the main-session effort."
 
 [profiles.balanced]
@@ -193,44 +192,6 @@ reason = "Speed preference does not lower security review depth."
 model = "claude-opus-4-8"
 effort = "high"
 reason = "Speed preference does not lower security implementation depth."
-
-[profiles.economy]
-description = "Lowest cost proxy among combinations that meet each role's quality floor. Subscription quota has no published dollar conversion; treat as token-proxy economy."
-
-[profiles.economy.roles.explore]
-model = "claude-sonnet-5"
-effort = "low"
-reason = "Lowest eligible token cost at the user-directed Sonnet floor."
-
-[profiles.economy.roles.mech-executor]
-model = "claude-sonnet-5"
-effort = "medium"
-reason = "User-directed: keep medium fidelity; economy comes from the executor and verifier routes."
-
-[profiles.economy.roles.executor]
-model = "claude-opus-4-8"
-effort = "low"
-reason = "User-directed prior: Opus/low as the economical implementation route; ledger data decides whether it beats Sonnet/medium on cost per acceptable outcome."
-
-[profiles.economy.roles.plan-verifier]
-model = "claude-opus-4-8"
-effort = "medium"
-reason = "User-directed: medium challenge depth as the economical default."
-
-[profiles.economy.roles.verifier]
-model = "claude-opus-4-8"
-effort = "medium"
-reason = "User-directed: medium verification depth as the economical default."
-
-[profiles.economy.roles.security-reviewer]
-model = "claude-opus-4-8"
-effort = "high"
-reason = "Critical security review has one allowed quality-preserving route at high."
-
-[profiles.economy.roles.security-executor]
-model = "claude-opus-4-8"
-effort = "high"
-reason = "Critical security implementation stays at high."
 
 [profiles.quality_guarded]
 description = "Guard high-risk, high-impact, or ambiguity-heavy work without overspending on bounded support roles."

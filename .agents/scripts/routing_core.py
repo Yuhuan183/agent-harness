@@ -14,14 +14,13 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-SELECTION_KEYS = {"default", "fast", "quality_guarded", "economy", "high_risk"}
-PRIORITY_CHOICES = ("balanced", "fast", "quality-guarded", "economy", "high-risk")
+SELECTION_KEYS = {"default", "fast", "quality_guarded", "high_risk"}
+PRIORITY_CHOICES = ("balanced", "fast", "quality-guarded", "high-risk")
 _PRIORITY_MAP = {
     None: "default",
     "balanced": "default",
     "fast": "fast",
     "quality-guarded": "quality_guarded",
-    "economy": "economy",
     "high-risk": "high_risk",
 }
 

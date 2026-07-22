@@ -24,7 +24,7 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         self.assertTrue(os.access(SCRIPT, os.X_OK))
         result = run("validate")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("valid: 4 profiles", result.stdout)
+        self.assertIn("valid: 3 profiles", result.stdout)
 
     def test_resolves_pinned_and_follow_tier_routes(self) -> None:
         result = run("resolve", "--role", "executor")

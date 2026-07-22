@@ -9,7 +9,6 @@ availability_semantics = "configured means router-permitted, not necessarily smo
 default = "balanced"
 fast = "fast"
 quality_guarded = "quality_guarded"
-economy = "economy"
 high_risk = "quality_guarded"
 
 [route_application.roles]
@@ -282,49 +281,6 @@ reason = "Speed preference does not lower security review depth."
 model = "gpt-5.6-sol"
 effort = "high"
 reason = "Speed preference does not lower security implementation depth."
-
-[profiles.economy]
-description = "Lowest AA cost proxy among combinations that meet each role's quality floor."
-
-[profiles.economy.roles.main]
-model = "gpt-5.6-sol"
-effort = "medium"
-reason = "Cheaper routes do not meet the judgment-role quality floor."
-
-[profiles.economy.roles.explore]
-model = "gpt-5.6-terra"
-effort = "low"
-reason = "Lowest eligible AA cost without Luna/high's current latency and output-token overhead."
-
-[profiles.economy.roles.mech-executor]
-model = "gpt-5.6-terra"
-effort = "low"
-reason = "Terra/low remains the efficient mechanical route until local Luna evidence justifies its overhead."
-
-[profiles.economy.roles.executor]
-model = "gpt-5.6-sol"
-effort = "medium"
-reason = "Sol medium is cheaper and stronger than Terra high while meeting the quality floor."
-
-[profiles.economy.roles.plan-verifier]
-model = "gpt-5.6-sol"
-effort = "medium"
-reason = "The plan-verifier quality floor forbids saving cost by dropping to low effort."
-
-[profiles.economy.roles.verifier]
-model = "gpt-5.6-sol"
-effort = "high"
-reason = "Critical verification has one allowed quality-preserving route."
-
-[profiles.economy.roles.security-reviewer]
-model = "gpt-5.6-sol"
-effort = "high"
-reason = "Critical security review has one allowed quality-preserving route."
-
-[profiles.economy.roles.security-executor]
-model = "gpt-5.6-sol"
-effort = "high"
-reason = "Critical security implementation has one allowed quality-preserving route."
 
 [profiles.quality_guarded]
 description = "Guard high-risk, high-impact, or ambiguity-heavy work without overspending on bounded support roles."
