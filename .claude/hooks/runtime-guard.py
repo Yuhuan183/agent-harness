@@ -36,7 +36,8 @@ def probe_version():
     try:
         with open(CACHE, encoding="utf-8") as fh:
             cached = json.load(fh)
-        if cached.get("mtime") == mtime and parse_version(cached.get("raw", "")):
+        if (cached.get("binary") == binary and cached.get("mtime") == mtime
+                and parse_version(cached.get("raw", ""))):
             return cached["raw"]
     except Exception:
         pass
@@ -56,7 +57,7 @@ def probe_version():
         try:
             os.makedirs(os.path.dirname(CACHE), exist_ok=True)
             with open(CACHE, "w", encoding="utf-8") as fh:
-                json.dump({"mtime": mtime, "raw": raw}, fh)
+                json.dump({"binary": binary, "mtime": mtime, "raw": raw}, fh)
         except Exception:
             pass
     return raw

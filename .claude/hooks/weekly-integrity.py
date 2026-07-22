@@ -59,6 +59,9 @@ try:
         "AGENT_HARNESS_REPO", os.path.expanduser("~/WorkSpace/agent-harness")
     )
     try:
+        # The two drift models are mutually exclusive: a git-managed ~/.claude
+        # answers drift itself; only rsync-managed deployments compare against
+        # the source checkout via the manifest.
         if os.path.isdir(os.path.join(claude_dir, ".git")):
             r = subprocess.run(
                 ["git", "-C", claude_dir, "status", "--porcelain"],
@@ -77,7 +80,7 @@ try:
                     "contract-repo drift (uncommitted changes in ~/.claude):\n"
                     + r.stdout.rstrip()
                 )
-        if not os.path.isdir(os.path.join(harness_repo, ".claude")):
+        elif not os.path.isdir(os.path.join(harness_repo, ".claude")):
             # A managed deployment without a reachable source checkout has no
             # drift monitoring at all — that is a finding, not a silent skip,
             # and the throttle must not advance past it.
