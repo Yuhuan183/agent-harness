@@ -16,9 +16,6 @@
 .claude/prompts	.claude/prompts
 .claude/scripts	.claude/scripts
 .claude/sh	.claude/sh
-.claude/tests	.claude/tests
-.claude/examples	.claude/examples
-.claude/plans/orchestration-plan.md	.claude/plans/orchestration-plan.md
 .claude/skills/baton-dispatch	.claude/skills/baton-dispatch
 .claude/skills/provider-routing	.claude/skills/provider-routing
 .claude/skills/headroom-protocol	.claude/skills/headroom-protocol
@@ -32,6 +29,7 @@
 .codex/prompts	.codex/prompts
 .codex/agents	.codex/agents
 .codex/scripts	.codex/scripts
+.codex/skills/leaf-dispatch	.codex/skills/leaf-dispatch
 .codex/skills/headroom-protocol	.codex/skills/headroom-protocol
 .codex/skills/speak-human-tw	.codex/skills/speak-human-tw
 .codex/skills/experience-ledger	.codex/skills/experience-ledger

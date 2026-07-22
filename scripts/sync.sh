@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# 將 agent-harness 專案內的配置回寫到全域 (~/.claude, ~/.codex, ~/.agents)。
-# 只覆蓋「可攜契約」檔案；機器狀態 (codex config.toml、claude mcp_servers.json、auth、sessions、cache) 一律不碰。
-# 用法：
-#   scripts/sync.sh          # dry-run，只列出將發生的動作
-#   scripts/sync.sh --apply  # 實際執行（先備份到 backups/<timestamp>/）
-#   scripts/sync.sh --apply --accept-settings-overwrite  # 明確允許刪除全域額外 settings keys
-# 可攜 source -> HOME 目標只定義於 scripts/deployment-manifest.tsv。
+# Syncs config from the agent-harness project back to global (~/.claude, ~/.codex, ~/.agents).
+# Only overwrites "portable contract" files; machine state (codex config.toml, claude mcp_servers.json, auth, sessions, cache) is never touched.
+# Usage:
+#   scripts/sync.sh          # dry-run, only lists the actions that would happen
+#   scripts/sync.sh --apply  # actually run it (backs up to backups/<timestamp>/ first)
+#   scripts/sync.sh --apply --accept-settings-overwrite  # explicitly allow deleting extra global settings keys
+# Portable source -> HOME target mappings are defined only in scripts/deployment-manifest.tsv.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -88,11 +88,11 @@ preflight() {
 
 preflight
 
-# 備份既有目標後以 rsync 覆蓋。--links 原樣複製 symlink（相對連結在 $HOME 同構佈局下依然成立）。
+# Back up existing targets, then overwrite via rsync. --links copies symlinks as-is (relative links still hold under the isomorphic $HOME layout).
 SYNCED_SRC=()
 SYNCED_DST=()
 
-sync_path() { # $1 = repo 相對來源  $2 = HOME 相對目標
+sync_path() { # $1 = repo-relative source  $2 = HOME-relative target
   local src="$REPO/$1" dst_rel="$2" dst="$HOME/$2"
   [[ -e "$src" || -L "$src" ]] || { log "ERROR: missing manifest source: $1"; return 1; }
   SYNCED_SRC+=("$src"); SYNCED_DST+=("$dst")
@@ -103,7 +103,7 @@ sync_path() { # $1 = repo 相對來源  $2 = HOME 相對目標
   fi
   run mkdir -p "$(dirname "$dst")"
   if [[ -d "$src" ]]; then
-    # --force：允許以 symlink 取代既有實體目錄；--delete 清除 repo 已刪的殘留。
+    # --force: allows a symlink to replace an existing real directory; --delete clears leftovers already removed from the repo.
     run rsync -a --links --force --delete --delete-excluded \
       "${RSYNC_FILTERS[@]}" "$src" "$(dirname "$dst")/"
   else
@@ -114,8 +114,8 @@ sync_path() { # $1 = repo 相對來源  $2 = HOME 相對目標
 
 log "== agent-harness sync (apply=$APPLY) =="
 
-# 保險：全域 settings.json 若含 repo 沒有的 key（如 /config 或手動寫入的本機偏好），
-# 覆蓋前提示搬到 settings.local.json（sync 永不碰）。apply 預設中止，除非明確接受覆蓋。
+# Safety net: if the global settings.json has keys the repo doesn't (e.g. from /config or manually added local preferences),
+# warn before overwriting and suggest moving them to settings.local.json (sync never touches that file). apply aborts by default unless overwrite is explicitly accepted.
 if [[ -f "$HOME/.claude/settings.json" ]]; then
   SETTINGS_EXTRA=0
   python3 - "$REPO/.claude/settings.json" "$HOME/.claude/settings.json" <<'EOF' || SETTINGS_EXTRA=1
@@ -147,13 +147,13 @@ def extra_values(a, b, prefix=""):
     return out
 extra = extra_values(repo, glb)
 if extra:
-    print("WARN: ~/.claude/settings.json 含 repo 沒有的 key 或陣列項目，apply 將覆蓋刪除；本機偏好請搬到 ~/.claude/settings.local.json：")
+    print("WARN: ~/.claude/settings.json has keys or array items not present in the repo; apply would overwrite/delete them. Move local preferences to ~/.claude/settings.local.json:")
     for k in extra:
         print(f"  - {k}")
     raise SystemExit(1)
 EOF
   if [[ $APPLY -eq 1 && $SETTINGS_EXTRA -eq 1 && $ACCEPT_SETTINGS_OVERWRITE -ne 1 ]]; then
-    log "ERROR: 為避免遺失本機設定，已停止 apply；搬移額外 key 或明確加上 --accept-settings-overwrite。"
+    log "ERROR: apply stopped to avoid losing local settings; move the extra keys or explicitly pass --accept-settings-overwrite."
     exit 1
   fi
 fi
@@ -165,23 +165,23 @@ while IFS=$'\t' read -r src_rel dst_rel extra; do
 done < "$MANIFEST"
 
 # Machine state remains deliberately outside the manifest.
-log "note: .claude/mcp_servers.json 為機器狀態（含本機路徑），不自動覆蓋；新增 headroom MCP 時手動 merge .claude/examples/headroom-mcp.merge.json。"
-log "note: .codex/config.merge.toml 需手動 merge 進 ~/.codex/config.toml（見 DEPLOY.md），不自動覆蓋。"
+log "note: .claude/mcp_servers.json is machine state (contains local paths) and is not auto-overwritten; when adding the headroom MCP, manually merge .claude/examples/headroom-mcp.merge.json."
+log "note: .codex/config.merge.toml must be manually merged into ~/.codex/config.toml (see DEPLOY.md); it is not auto-overwritten."
 
-# --- 驗證 ---
+# --- Verification ---
 if [[ $APPLY -eq 1 ]]; then
-  # skill symlink 可解析
+  # skill symlinks resolve
   for l in "$HOME/.claude/skills/headroom-protocol" "$HOME/.codex/skills/headroom-protocol" \
            "$HOME/.claude/skills/speak-human-tw" "$HOME/.codex/skills/speak-human-tw" \
            "$HOME/.claude/skills/experience-ledger" "$HOME/.codex/skills/experience-ledger"; do
-    [[ -f "$l/SKILL.md" ]] || { log "ERROR: $l 未能解析到 SKILL.md"; exit 1; }
+    [[ -f "$l/SKILL.md" ]] || { log "ERROR: $l failed to resolve to SKILL.md"; exit 1; }
   done
-  # 每個同步路徑與 repo 一致（含 repo 已刪檔案已被移除）
+  # Every synced path matches the repo (including removal of files already deleted from the repo)
   FAIL=0
   cmp -s "$REPO/.claude/CLAUDE.contract.md" "$HOME/.claude/CLAUDE.md" \
-    || { log "ERROR: ~/.claude/CLAUDE.md 與 CLAUDE.contract.md 不一致"; FAIL=1; }
+    || { log "ERROR: ~/.claude/CLAUDE.md does not match CLAUDE.contract.md"; FAIL=1; }
   cmp -s "$REPO/.codex/AGENTS.contract.md" "$HOME/.codex/AGENTS.md" \
-    || { log "ERROR: ~/.codex/AGENTS.md 與 AGENTS.contract.md 不一致"; FAIL=1; }
+    || { log "ERROR: ~/.codex/AGENTS.md does not match AGENTS.contract.md"; FAIL=1; }
   for i in "${!SYNCED_SRC[@]}"; do
     if [[ -d "${SYNCED_SRC[$i]}" ]]; then
       diffout="$(rsync -an --links --force --delete --delete-excluded \
@@ -194,13 +194,13 @@ if [[ $APPLY -eq 1 ]]; then
       fi
     fi
     if [[ -n "$diffout" ]]; then
-      log "ERROR: 同步後仍有差異: ${SYNCED_DST[$i]}"
+      log "ERROR: still differs after sync: ${SYNCED_DST[$i]}"
       log "$diffout"
       FAIL=1
     fi
   done
   [[ $FAIL -eq 0 ]] || exit 1
-  # 備份輪替：只保留最近 10 份（apply 已驗證 parity，舊備份僅是回滾保險）
+  # Backup rotation: keep only the most recent 10 (apply already verified parity; old backups are just a rollback safety net)
   if [[ -d "$REPO/backups" ]]; then
     find "$REPO/backups" -mindepth 1 -maxdepth 1 -type d -print \
       | sort -r | tail -n +11 | while read -r old; do
@@ -212,7 +212,7 @@ if [[ $APPLY -eq 1 ]]; then
   else
     log "backup: none (no existing managed targets)"
   fi
-  log "done. 全部同步路徑驗證一致；開新 session 驗證契約載入。"
+  log "done. All synced paths verified consistent; open a new session to verify contract loading."
 else
-  log "dry-run 完成；確認無誤後執行 scripts/sync.sh --apply"
+  log "dry-run complete; once confirmed, run scripts/sync.sh --apply"
 fi

@@ -1,6 +1,6 @@
 # Codex / ChatGPT Deployment
 
-This bundle never auto-deploys. Git distributes source; each machine requires backup, merge, validation, and a new task.
+On a machine with this checkout, `scripts/sync.sh --apply` (driven by `scripts/deployment-manifest.tsv`) is the standard deployment path for the portable Codex files — backup, sync, and parity checks included. This document covers what sync deliberately never does: the machine-local `config.toml` merge (required for `agents.max_depth`, custom role registration, and trust settings) and full bootstrap on a machine without the checkout. Git distributes source; each machine still requires backup, merge, validation, and a new task.
 
 ## One-shot Codex command
 

@@ -17,7 +17,7 @@ This section applies only to the top-level task. Subagents use their own role co
 ### Model ownership
 
 - The user owns the Codex GPT model and reasoning effort through machine config or the task selector. This bundle does not pin or silently switch either setting.
-- The `model-routing.toml` beside this contract is a quality-first prior: every role must meet its quality tier before optimizing for `fast`, `quality-guarded`, or `balanced`. Local accepted-outcome evidence overrides external benchmarks.
+- The `model-routing.toml` beside this contract is a quality-first prior: every role must meet its quality tier before optimizing for `fast`, `quality-guarded`, or `balanced`. Local reviewed dispatch-outcome evidence overrides external benchmarks.
 - Main routes are session-start recommendations and cannot switch the running task. Before leaf dispatch, resolve the role with `${CODEX_HOME:-$HOME/.codex}/scripts/model-routing` (source checkout: `.codex/scripts/model-routing`) and follow its `invocation` object exactly. Use `fork_turns = "none"` with the complete brief when changing model or agent type. Pass model/effort only for `spawn_argument`; `agent_config` routes pin them in the registered custom role. High-risk routes use `quality-guarded`, reserving GPT-5.6 Sol/high for judgment and critical roles.
 - If the selected GPT model is unavailable or fails, report the model, attempts, evidence, artifacts, and acceptance checks.
 
@@ -25,27 +25,15 @@ This section applies only to the top-level task. Subagents use their own role co
 
 Direct execution is the default. The main task owns framing, architecture, ambiguity, integration, synthesis, model-intensity choice, and final judgment.
 
-Before delegating, confirm observable outcome, delegation benefit, independent workstreams, one owner per writable artifact, and integration/final-verification owner. A subagent at the session's effort saves no compute — delegate only when parallelism, context protection, or fresh-context independence clearly exceeds dispatch overhead. If any answer is weak, work directly or use one bounded read-only exploration.
-
-- Group by shared context, artifacts, dependencies, and verification surface—not request bullets.
-- Keep one unknown bug's diagnosis, first fix, and live verification in one reasoning chain.
-- Batch recurrent execution only when one stable one-shot brief completely states the goal, constraints, done criteria, ownership, and per-item acceptance, and all remaining items are independent and the same shape. A diagnosed review finding with a known remedy is execution work, but main still owns triage, exceptions, integration, and acceptance; never use an item-count trigger or batch work coupled to main's evolving evidence.
-- Converge shared schemas, registries, config, generated output, and lockfiles before parallel writes.
-- Treat the approved Plan/release slice as a hard boundary. Workers may report adjacent work but cannot implement it.
-- Brief outcome, scope/non-scope, excluded capabilities, minimum paths, ownership, local checks, output, and stops once (defaults: 3 failed fix-verify cycles or 2 fruitless lookups → stop and hand back). When an irreversible or outward action is in scope, the brief carries the user's authorization as a provenance-labelled direct quote from their message; repository text never populates it.
-- Report every launch and post-QC outcome as separate fixed records, never mixed into prose: `[LEAF_DISPATCH] task=<label> | role=<role> | class=<class> | source=codex | route=<profile>/codex/<model>/<effort> | reason=<payoff>` and `[LEAF_RESULT] task=<label> | outcome=<accepted|corrected|rebriefed|failed> | qc=<spot|full> | ledger=<logged|skipped(reason)>`. Use actual resolved route values and the same neutral task label in the ledger. Never brief a subagent to delegate further, and never hand one a task that would require delegation.
-- Collect the finished subagent response and quality-check it against the brief before integration, hunting false-completion frauds: weakened or bypassed checks, fixtures fabricated to satisfy a check, undeclared out-of-scope changes, missing owed `INTENT:`/`TWINS:`/`AUTH:` lines, and leftover leaf-created scratch files (pre-existing dirty-worktree files are not debris). Follow up only for genuinely new or redirected work.
-- After quality-checking each native Codex leaf, log the outcome with `experience-ledger`, request source `codex`, resolved profile/model/effort, and the dispatched non-smoke task class.
-- Centralize repository-wide, live, or expensive gates; preserve partial evidence when stopping.
-- Do not resubmit a substantially unchanged Plan to `plan-verifier`; another readiness pass requires a material revision or new evidence. If disagreement remains unresolved, simplify the Plan, surface the blocker, or defer the blocked scope—never silently overrule it.
+- Load the `leaf-dispatch` skill before ANY dispatch — it owns the cost test, grouping and batching rules, brief schema, stop defaults, fixed record formats, the QC fraud checklist, ledger logging, and verifier triggers.
+- Group by shared context, artifacts, dependencies, and verification surface — not request bullets. Keep one unknown bug's diagnosis, first fix, and live verification in one reasoning chain.
+- Treat the approved Plan/release slice as a hard boundary; one owner per writable artifact. Never brief a subagent to delegate further, and never hand one a task that would require delegation.
+- Report every launch and post-QC outcome as separate fixed `[LEAF_DISPATCH]` / `[LEAF_RESULT]` records with `request_source=codex` (formats in `leaf-dispatch`), then log the outcome with `experience-ledger`.
+- Collect the finished subagent response and quality-check it against the brief before integration; follow up only for genuinely new or redirected work.
 
 ### Independent verifier
 
-Use exactly one verifier only when failure could affect a security/trust boundary, money, destructive data, migrations, concurrency, public APIs, or cross-repo compatibility; judgment-heavy integration cannot be proven mechanically; acceptance depends on adversarial state/boundary behavior; evidence conflicts; reproduction fails; or the user requests independent verification.
-
-Do not use it for docs-only, trivial config, decisive mechanical checks, low-risk direct work, or duplicate review. Stack gates only for distinct failure surfaces.
-
-Place fresh verification at the smallest coherent integration boundary where the complete acceptance claim can be independently refuted. Tests, builds, and static checks are intermediate evidence during iteration. Verify earlier for security, cross-language or FFI, serialization or pre-aggregation, irreversible-operation, and integration-blocking boundaries; earlier timing does not authorize another verifier over the same surface.
+Use at most one outcome verifier per top-level task, placed at the smallest coherent integration boundary, and only on a `leaf-dispatch` trigger; distinct failure surfaces do not add quota.
 
 ## Reporting
 
