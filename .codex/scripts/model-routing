@@ -6,8 +6,16 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import tomllib
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / ".agents" / "scripts"))
+try:
+    import routing_core as core
+except ImportError:  # partial deployment: .agents layer not synced
+    sys.stderr.write(
+        "ERROR: shared routing core missing (<root>/.agents/scripts/routing_core.py); "
+        "sync the .agents layer before resolving routes\n")
+    sys.exit(2)
 
 
 CONFIG_PATH = Path(__file__).resolve().parents[1] / "model-routing.toml"
@@ -21,7 +29,6 @@ REQUIRED_ROLES = {
     "security-reviewer",
     "security-executor",
 }
-SELECTION_KEYS = {"default", "fast", "quality_guarded", "economy", "high_risk"}
 REQUIRED_EFFORTS = {"low", "medium", "high", "xhigh", "max"}
 REQUIRED_METRICS = {
     "score",
@@ -68,11 +75,6 @@ def route_for_surface(
     return config.get("profiles", {}).get(profile_name, {}).get("roles", {}).get(role)
 
 
-def load_config(path: Path) -> dict:
-    with path.open("rb") as handle:
-        return tomllib.load(handle)
-
-
 def validation_errors(config: dict) -> list[str]:
     errors: list[str] = []
     if config.get("version") != 3:
@@ -80,51 +82,32 @@ def validation_errors(config: dict) -> list[str]:
 
     models = config.get("models", {})
     profiles = config.get("profiles", {})
-    selection = config.get("selection", {})
     route_application = config.get("route_application", {}).get("roles", {})
     quality_floor = config.get("quality_floor", {})
     role_tiers = quality_floor.get("roles", {})
     allowed_by_tier = quality_floor.get("allowed", {})
-    if set(selection) != SELECTION_KEYS:
-        errors.append("selection keys must exactly match the routing schema")
-    if set(role_tiers) != REQUIRED_ROLES:
-        errors.append("quality_floor.roles must cover main and every leaf role")
+    errors += core.check_selection(config)
+    errors += core.check_quality_floor_roles(config, REQUIRED_ROLES)
     if set(route_application) != REQUIRED_ROLES:
         errors.append("route_application.roles must cover main and every leaf role")
     for role, application in route_application.items():
         expected = "session_start_recommendation" if role == "main" else "dispatch_override"
         if application != expected:
             errors.append(f"route_application role {role} must be {expected}")
-    for role, tier in role_tiers.items():
-        if tier not in allowed_by_tier:
-            errors.append(f"quality_floor role {role} references unknown tier: {tier!r}")
-    for tier, allowed_routes in allowed_by_tier.items():
-        if not allowed_routes:
-            errors.append(f"quality_floor tier {tier} must allow at least one route")
-        for route_key in allowed_routes:
-            if "/" not in route_key:
-                errors.append(f"quality_floor tier {tier} has malformed route: {route_key!r}")
-                continue
-            allowed_model, allowed_effort = route_key.rsplit("/", 1)
-            model = models.get(allowed_model)
-            if model is None:
-                errors.append(f"quality_floor tier {tier} references unknown model: {allowed_model}")
-            elif not is_dispatchable(model):
-                errors.append(f"quality_floor tier {tier} uses non-dispatchable model: {allowed_model}")
-            elif allowed_effort not in model.get("efforts", {}):
-                errors.append(
-                    f"quality_floor tier {tier} references unknown effort: {allowed_effort!r}"
-                )
+
+    def route_ok(model_name: str, effort: str) -> str | None:
+        model = models.get(model_name)
+        if model is None:
+            return f"references unknown model: {model_name}"
+        if not is_dispatchable(model):
+            return f"uses non-dispatchable model: {model_name}"
+        if effort not in model.get("efforts", {}):
+            return f"references unknown effort: {effort!r}"
+        return None
+
+    errors += core.check_allowed_routes(config, route_ok)
+    errors += core.check_availability(models, AVAILABILITY_SCHEMA)
     for model_name, model in models.items():
-        availability = model.get("availability", {})
-        if set(availability) != set(AVAILABILITY_SCHEMA):
-            errors.append(f"model {model_name} availability must cover every surface")
-        for surface, valid_states in AVAILABILITY_SCHEMA.items():
-            if availability.get(surface) not in valid_states:
-                errors.append(
-                    f"model {model_name} has invalid {surface} availability: "
-                    f"{availability.get(surface)!r}"
-                )
         efforts = model.get("efforts", {})
         if set(efforts) != REQUIRED_EFFORTS:
             errors.append(f"model {model_name} must define low through max efforts")
@@ -145,11 +128,6 @@ def validation_errors(config: dict) -> list[str]:
             )
             if abs(token_sum - metrics["output_tokens_per_index_task"]) > 0.01:
                 errors.append(f"model {model_name}/{effort} output token total is inconsistent")
-    for key in SELECTION_KEYS:
-        profile = selection.get(key)
-        if profile not in profiles:
-            errors.append(f"selection.{key} references unknown profile: {profile!r}")
-
     for profile_name, profile in profiles.items():
         roles = profile.get("roles", {})
         missing = REQUIRED_ROLES - roles.keys()
@@ -174,13 +152,9 @@ def validation_errors(config: dict) -> list[str]:
                 )
             if effort not in model.get("efforts", {}):
                 errors.append(f"profile {profile_name}/{role} references unknown effort: {effort!r}")
-            tier = role_tiers.get(role)
-            route_key = f"{model_name}/{effort}"
-            if tier in allowed_by_tier and route_key not in allowed_by_tier[tier]:
-                errors.append(
-                    f"profile {profile_name}/{role} route {route_key} "
-                    f"falls below quality tier {tier}"
-                )
+            floor = core.route_floor_error(config, profile_name, role, model_name, effort)
+            if floor:
+                errors.append(floor)
             if not route.get("reason"):
                 errors.append(f"profile {profile_name}/{role} has no reason")
 
@@ -220,13 +194,10 @@ def validation_errors(config: dict) -> list[str]:
                         f"profile {profile_name}/{role} uses model unavailable to "
                         f"{surface}: {model_name}"
                     )
-                tier = role_tiers.get(role)
-                route_key = f"{model_name}/{effort}"
-                if tier in allowed_by_tier and route_key not in allowed_by_tier[tier]:
-                    errors.append(
-                        f"profile {profile_name}/{role} {surface} route {route_key} "
-                        f"falls below quality tier {tier}"
-                    )
+                floor = core.route_floor_error(
+                    config, profile_name, role, model_name, effort, context=surface)
+                if floor:
+                    errors.append(floor)
                 if effort not in model.get("efforts", {}):
                     errors.append(
                         f"profile {profile_name}/{role} {surface} references unknown "
@@ -263,20 +234,6 @@ def validation_errors(config: dict) -> list[str]:
     return errors
 
 
-def resolve_profile(config: dict, profile: str | None, priority: str | None) -> str:
-    if profile:
-        return profile
-    key = {
-        None: "default",
-        "balanced": "default",
-        "fast": "fast",
-        "quality-guarded": "quality_guarded",
-        "economy": "economy",
-        "high-risk": "high_risk",
-    }[priority]
-    return config["selection"][key]
-
-
 def command_validate(config: dict) -> int:
     errors = validation_errors(config)
     if errors:
@@ -306,7 +263,7 @@ def command_list(config: dict, as_json: bool) -> int:
 def command_resolve(
     config: dict, role: str, profile: str | None, priority: str | None, surface: str
 ) -> int:
-    profile_name = resolve_profile(config, profile, priority)
+    profile_name = core.resolve_profile(config, profile, priority)
     if profile_name not in config["profiles"]:
         print(f"ERROR: unknown profile: {profile_name}", file=sys.stderr)
         return 2
@@ -372,18 +329,15 @@ def parse_args() -> argparse.Namespace:
     )
     source = resolve_parser.add_mutually_exclusive_group()
     source.add_argument("--profile")
-    source.add_argument(
-        "--priority",
-        choices=("balanced", "fast", "quality-guarded", "economy", "high-risk"),
-    )
+    source.add_argument("--priority", choices=core.PRIORITY_CHOICES)
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     try:
-        config = load_config(args.config)
-    except (OSError, tomllib.TOMLDecodeError) as error:
+        config = core.load_config(args.config)
+    except (OSError, core.tomllib.TOMLDecodeError) as error:
         print(f"ERROR: cannot load routing config: {error}", file=sys.stderr)
         return 2
     errors = validation_errors(config)

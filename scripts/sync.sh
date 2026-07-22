@@ -63,6 +63,7 @@ sync_path ".agents/skills/headroom-protocol" "$HOME/.agents/skills/headroom-prot
 sync_path ".agents/skills/speak-human-tw"    "$HOME/.agents/skills/speak-human-tw"
 sync_path ".agents/skills/experience-ledger" "$HOME/.agents/skills/experience-ledger"
 sync_path ".agents/.skill-lock.json"         "$HOME/.agents/.skill-lock.json"
+sync_path ".agents/scripts"                   "$HOME/.agents/scripts"
 sync_path ".agents/docs"                      "$HOME/.agents/docs"
 sync_path ".agents/README.md"                 "$HOME/.agents/README.md"
 
