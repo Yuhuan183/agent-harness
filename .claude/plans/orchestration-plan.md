@@ -48,6 +48,7 @@
 ### For Claude
 
 - Review `experience-revise` suggestions only after policy thresholds are met; apply a Claude role-wide change through a source deployment preset, never from one mixed cohort.
+- F-06 follow-up: Claude pins are aliases, so ledger routes stay `route_source: resolver-assumed`. Once telemetry exposes the actual runtime model id, mark mismatches non-decisive. Verify at the next alias upgrade: pre-upgrade assumed records must not be credited to the new model.
 - Live probe: permission matching around the `rtk` PreToolUse rewrite.
 
 ### For Codex
@@ -62,7 +63,7 @@
 
 ## Decision log
 
-- **2026-07-22 (review remediation)** — Dual-provider six-dimension review (22 findings) remediated in one pass: runtime guard now truly blocks via a cached PreToolUse gate; weekly integrity refuses silent skips; ledger gained `route_source`, fallback lineage (hops>1 rejected), `--profile` hints, and availability-guarded revise; Codex dispatch detail moved to the `leaf-dispatch` skill; manifest and settings shed non-runtime/personal content; terminology unified (verifier cardinality, `request_source`, reviewed-outcome); runtime docs anglicized; doc budgets became word-based; the test monolith split by concern. Method captured in dev-only `harness-review`.
+- **2026-07-22 (review remediation)** — Dual-provider six-dimension review (22 findings) remediated: runtime guard truly blocks via a cached PreToolUse gate; weekly integrity refuses silent skips; ledger gained `route_source`, fallback lineage (hops>1 rejected), `--profile` hints, availability-guarded revise; Codex dispatch detail moved to `leaf-dispatch`; manifest/settings shed non-runtime content; terminology unified; runtime docs anglicized; word-based doc budgets; test monolith split. Method: dev-only `harness-review`.
 
 - **2026-07-12** — Fail-open local monitoring and nested-delegation detection.
 - **2026-07-15** — Direct-first cost-aware dispatch replaced fixed pipelines; Headroom wrap ownership; no routine stacked verification.
@@ -70,7 +71,7 @@
 - **2026-07-18** — Headroom verified against upstream v0.32; base URL stays machine-local.
 - **2026-07-20** — Two-tier role effort (capped at high); per-dispatch reporting and QC; Codex counterparts for each leaf role via the codex-rescue bridge. Added `experience-ledger` skill (AR/CR/RB/FR/QS, explore/prefer rule).
 - **2026-07-21** — External rankings (AA v4.1, Coding Agent Index v1.2) demoted to priors; route on local acceptable-outcome cost. Added token, review/rework, and API-cost coverage.
-- **2026-07-22** — Three quality-first profiles standardized; Claude uses atomic deployment presets while Codex native/bridge remains per-dispatch. Sol/Terra/Luna availability was verified, Luna stayed unrouted, and experience schema v3 added source plus dispatch/rollout identity. Sync preflight, overwrite/drift guards, and parity checks expanded. Pilotfish v1.3 informed shape-based batching, coherent-boundary verification, and Plan anti-churn without changing routes. Fable-method distillation added INTENT/TWINS/AUTH gates to writer leaf contracts on both providers (role files only, per Codex plan-verifier REVISE), a false-completion fraud checklist in both main QC paths, and brief stop defaults with quoted-authorization provenance; behavioral trap fixtures remain open.
+- **2026-07-22** — Three quality-first profiles standardized; Claude atomic deployment presets vs Codex per-dispatch. Sol/Terra/Luna availability verified (Luna unrouted); experience schema v3 added source and dispatch/rollout identity. Sync preflight and drift guards expanded. Pilotfish v1.3 batching and Plan anti-churn adopted. Fable-method INTENT/TWINS/AUTH gates and QC fraud checklist added to both providers; behavioral trap fixtures remain open.
 
 ## Verification
 

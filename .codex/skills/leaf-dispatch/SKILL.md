@@ -1,6 +1,9 @@
 ---
 name: leaf-dispatch
-description: Codex main-task dispatch procedure — cost test, grouping and batching rules, brief schema, stop defaults, fixed dispatch records, QC fraud checklist, ledger logging, and verifier triggers. Load before every leaf dispatch decision. Not for subagent (leaf) work — leaves never orchestrate.
+description: |
+  Codex main-task dispatch procedure — cost test, grouping and batching rules, brief schema, stop defaults, fixed dispatch records, QC fraud checklist, ledger logging, and verifier triggers. Load before every leaf dispatch decision.
+  觸發：任何 leaf 派工前、「怎麼拆」「要不要派」「批次」「brief 怎麼寫」「驗收怎麼定」。
+  不觸發：subagent（leaf）自身的工作——leaf 永不 orchestrate。
 ---
 
 # Leaf Dispatch

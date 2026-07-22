@@ -1,6 +1,9 @@
 ---
 name: provider-routing
-description: Cross-provider routing — H/X profiles, GPT↔Claude fallback, codex bridge resolution, security routing, verifier triggers. Load before dispatching to GPT, on provider failure/handoff, or when deciding if a claim needs a verifier. Not for single-provider direct work.
+description: |
+  Cross-provider routing — H/X profiles, GPT↔Claude fallback, codex bridge resolution, security routing, verifier triggers. Load before dispatching to GPT, on provider failure/handoff, or when deciding if a claim needs a verifier.
+  觸發：「派給 GPT/Codex」「換 provider」「fallback」「要不要 verifier」「安全審查找誰」、跨 provider 交接。
+  不觸發：單一 provider 的直接工作。
 ---
 
 # Provider & Role Routing

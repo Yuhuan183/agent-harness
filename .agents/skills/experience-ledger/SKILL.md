@@ -1,6 +1,9 @@
 ---
 name: experience-ledger
-description: Dispatch experience ledger and analysis — log each outcome after QC, accumulate role × provider metrics (AR/CR/RB/FR/QS), and steer data-driven provider choice. Trigger — logging a dispatch outcome (記錄派工結果), choosing a provider from experience (依經驗選 provider), inspecting metrics (看指標). Not for the dispatch decision itself (baton-dispatch), provider rules (provider-routing), or token usage analysis (usage-report).
+description: |
+  Dispatch experience ledger and analysis — log each outcome after QC, accumulate role × provider metrics (AR/CR/RB/FR/QS), and steer data-driven provider choice.
+  觸發：記錄派工結果、依經驗選 provider、看派工指標、"log this dispatch"、"which provider is winning"。
+  不觸發：派工決策本身（baton-dispatch）、provider 規則（provider-routing）、token 用量分析（usage-report）。
 ---
 
 # Experience Ledger

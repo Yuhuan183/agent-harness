@@ -4,6 +4,7 @@ description: |
   繁體中文去 AI 味改寫：審查與改寫對外文字，去除 AI 腔、校正中國用語與半形標點，讓文字讀起來像真人寫的。
   觸發：「去 AI 味」「說人話」「這段好 AI」「改自然一點」「校對再發」，或檢查電子報、社群貼文、銷售頁、文案、客服信、簡報、公告的語感。
   不觸發：逐字翻譯、模仿特定品牌／個人 voice、事實查核、程式碼／log／設定檔。本 skill 只去 AI 味、不加個人風格。
+  Triggers: "de-AI this text", "make it sound human", "polish this zh-TW copy before publishing". Not for: literal translation, brand-voice mimicry, fact-checking, code/log/config.
 user-invocable: true
 license: MIT
 ---

@@ -1,6 +1,9 @@
 ---
 name: harness-review
-description: Repo-internal deep design review of agent-harness across six fixed dimensions (logic chain, flow, language, wording, modularity, fixed overhead). Trigger — "深度 review", "harness review", auditing this repo's contracts/routing/mechanisms before or after a large merge. Not for reviewing product code in other repos, single-file edits, or routine test runs. Dev-only: lives in dev/, never deployed by the manifest.
+description: |
+  Repo-internal deep design review of agent-harness across six fixed dimensions (logic chain, flow, language, wording, modularity, fixed overhead).
+  觸發：「深度 review」「harness review」「審一下這個 repo 的設計」、大型 merge 前後的契約／routing／機制稽核。
+  不觸發：其他 repo 的產品程式碼 review、單檔修改、例行測試。Dev-only: lives in dev/, never deployed by the manifest.
 ---
 
 # Harness Deep Review
