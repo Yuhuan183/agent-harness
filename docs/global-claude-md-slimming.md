@@ -1,7 +1,7 @@
 # 全域 CLAUDE.md 瘦身計畫
 
 目標：`~/.claude/CLAUDE.md` 約 2k tokens → 約 600，遵循度優先。
-基線快照：本專案 `.claude/CLAUDE.md`（2026-07-20）。
+基線快照：本專案 `.claude/CLAUDE.contract.md`（2026-07-20；源檔改名見下）。
 
 ## 逐區塊判定
 
@@ -22,6 +22,6 @@
 
 ## 回寫流程
 
-1. 在本專案 `.claude/CLAUDE.md` 編修並 review diff。
+1. 在本專案 `.claude/CLAUDE.contract.md` 編修並 review diff（源檔不叫 CLAUDE.md，避免在本 repo 開 session 時與全域版重複載入；sync 時改名部署為 `~/.claude/CLAUDE.md`）。
 2. 建立 `provider-routing` skill 於 `.claude/skills/`。
 3. 兩者一併複製回 `~/.claude/`，跑驗收任務。

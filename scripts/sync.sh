@@ -68,7 +68,13 @@ sync_path ".agents/docs"                      "$HOME/.agents/docs"
 sync_path ".agents/README.md"                 "$HOME/.agents/README.md"
 
 # --- .claude：可攜契約（mcp_servers.json 為機器狀態，僅提示手動 merge） ---
-for p in CLAUDE.md README.md RTK.md settings.json model-routing.toml \
+# CLAUDE.md 的 repo 源檔叫 CLAUDE.contract.md：避免在本 repo 開 session 時
+# 專案版與全域 ~/.claude/CLAUDE.md 同內容重複載入；sync 時改名部署。
+if [[ -e "$HOME/.claude/CLAUDE.md" && $APPLY -eq 1 ]]; then
+  mkdir -p "$BACKUP/.claude"; cp "$HOME/.claude/CLAUDE.md" "$BACKUP/.claude/CLAUDE.md"
+fi
+run cp "$REPO/.claude/CLAUDE.contract.md" "$HOME/.claude/CLAUDE.md"
+for p in README.md RTK.md settings.json model-routing.toml \
          agents hooks prompts scripts sh tests examples; do
   sync_path ".claude/$p" "$HOME/.claude/$p"
 done
@@ -98,6 +104,8 @@ if [[ $APPLY -eq 1 ]]; then
   done
   # 每個同步路徑與 repo 一致（含 repo 已刪檔案已被移除）
   FAIL=0
+  cmp -s "$REPO/.claude/CLAUDE.contract.md" "$HOME/.claude/CLAUDE.md" \
+    || { log "ERROR: ~/.claude/CLAUDE.md 與 CLAUDE.contract.md 不一致"; FAIL=1; }
   for i in "${!SYNCED_SRC[@]}"; do
     diffout="$(rsync -an --links --force --delete --itemize-changes "${SYNCED_SRC[$i]}" "$(dirname "${SYNCED_DST[$i]}")/")"
     if [[ -n "$diffout" ]]; then

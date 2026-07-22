@@ -8,7 +8,7 @@
 
 | 路徑 | 職責 |
 |---|---|
-| `CLAUDE.md` | Claude Code 執行契約；僅主 agent 使用的精簡協調規則（~600 tokens） |
+| `CLAUDE.contract.md` | Claude Code 執行契約源檔（部署為 `~/.claude/CLAUDE.md`；改名避免本 repo 內 session 重複載入）；僅主 agent 使用的精簡協調規則（~600 tokens） |
 | `agents/` | 七個自足的 Claude leaf roles；model 與 effort 全由 frontmatter 依現行 profile pin 住（矩陣見 `model-routing.toml`）；不讀取主 agent 協調文件；各有 Codex 對應版於 `../.codex/agents/` |
 | `skills/` | 依需求載入的工作流；`baton-dispatch`、`provider-routing` 為自有，`headroom-protocol`、`speak-human-tw`、`experience-ledger` symlink 至 `../.agents/skills/` |
 | `settings.json` | Hooks、最小唯讀 allowlist、codex plugin（唯一強依賴）與介面設定；不指定主模型、effort 或 fallback。其他 plugin 屬本機自理，enable 寫 `settings.local.json`（不入庫、sync 不覆蓋） |

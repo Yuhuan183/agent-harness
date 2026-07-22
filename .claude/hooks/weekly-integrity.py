@@ -47,8 +47,10 @@ try:
                     + r.stdout.rstrip()
                 )
         elif os.path.isdir(os.path.join(harness_repo, ".claude")):
+            # repo source basenames may differ from the deployed name;
+            # (repo_relpath, deployed_relpath) pairs.
             synced = [
-                "CLAUDE.md", "README.md", "RTK.md", "settings.json",
+                ("CLAUDE.contract.md", "CLAUDE.md"), "README.md", "RTK.md", "settings.json",
                 "agents", "hooks", "prompts", "scripts", "sh", "tests",
                 "examples", "plans/orchestration-plan.md",
                 "skills/baton-dispatch", "skills/provider-routing",
@@ -56,13 +58,14 @@ try:
                 "skills/experience-ledger",
             ]
             drift = []
-            for p in synced:
-                src = os.path.join(harness_repo, ".claude", p)
+            for entry in synced:
+                rp, p = entry if isinstance(entry, tuple) else (entry, entry)
+                src = os.path.join(harness_repo, ".claude", rp)
                 if not os.path.exists(src):
                     continue
                 r = subprocess.run(
                     ["rsync", "-a", "--links", "-n", "--itemize-changes",
-                     src, os.path.dirname(os.path.join(claude_dir, p)) + "/"],
+                     src, os.path.dirname(os.path.join(claude_dir, p)) + "/",],
                     capture_output=True,
                     text=True,
                     timeout=10,

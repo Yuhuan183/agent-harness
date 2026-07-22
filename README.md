@@ -9,7 +9,7 @@
 
 | 目錄 | 內容 | 對應全域位置 | 說明 |
 | --- | --- | --- | --- |
-| [`.claude/`](.claude/README.md) | Claude Code 契約：`CLAUDE.md`、`agents/`、自有 skills、`hooks/`、`prompts/`、`settings.json`… | `~/.claude/` | 見 `.claude/README.md` |
+| [`.claude/`](.claude/README.md) | Claude Code 契約：`CLAUDE.contract.md`（部署為 `~/.claude/CLAUDE.md`）、`agents/`、自有 skills、`hooks/`、`prompts/`、`settings.json`… | `~/.claude/` | 見 `.claude/README.md` |
 | [`.codex/`](.codex/README.md) | Codex 契約：`AGENTS.md`、`prompts/`、`agents/`、可攜 `config.merge.toml` | `~/.codex/` | 見 `.codex/README.md` |
 | [`.agents/`](.agents/README.md) | 跨 agent 共用層：共用 skill 本體、跨 agent runtime 知識、第三方套件清單 | `~/.agents/` | 見 `.agents/README.md` |
 | [`docs/`](docs/) | 專案知識層：方法論、研究、決策紀錄、套用說明 | —（不回寫全域） | 見下 |

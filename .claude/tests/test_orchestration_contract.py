@@ -151,7 +151,7 @@ class AgentRosterTests(unittest.TestCase):
 
 class ClaudeContractTests(unittest.TestCase):
     def test_claude_md_is_slim_and_outcome_first(self) -> None:
-        policy = read(".claude/CLAUDE.md")
+        policy = read(".claude/CLAUDE.contract.md")
         self.assertLessEqual(len(policy.splitlines()), 40)
         for phrase in (
             "Lead with the outcome",
@@ -165,7 +165,7 @@ class ClaudeContractTests(unittest.TestCase):
             self.assertIn(phrase, policy)
 
     def test_dispatch_reporting_and_leaf_boundary(self) -> None:
-        policy = read(".claude/CLAUDE.md")
+        policy = read(".claude/CLAUDE.contract.md")
         self.assertIn("Report every dispatch to the user", policy)
         self.assertIn("quality-check each subagent's output", policy)
         self.assertIn("Never brief a subagent to delegate further", policy)
@@ -187,7 +187,7 @@ class ClaudeContractTests(unittest.TestCase):
             self.assertNotIn("xhigh", text, path)
 
     def test_claude_md_delegates_detail_to_skills(self) -> None:
-        policy = read(".claude/CLAUDE.md")
+        policy = read(".claude/CLAUDE.contract.md")
         for skill in ("baton-dispatch", "provider-routing", "headroom-protocol"):
             self.assertIn(skill, policy)
         # Routing detail and the version gate live in skills / the runtime-guard hook,
@@ -207,7 +207,7 @@ class ClaudeContractTests(unittest.TestCase):
         # Cost test: high-tier pinned delegation saves no compute; payoff must beat overhead.
         self.assertIn("## Cost test", skill)
         self.assertIn("delegation saves no compute", skill)
-        self.assertIn("clearly exceeds dispatch overhead", read(".claude/CLAUDE.md"))
+        self.assertIn("clearly exceeds dispatch overhead", read(".claude/CLAUDE.contract.md"))
         self.assertIn("clearly exceeds dispatch overhead", read(".codex/AGENTS.md"))
         self.assertIn("cablate/baton v0.1.1", skill)
         self.assertIn("scope fix `0ab4d2e`", skill)
@@ -264,7 +264,7 @@ class ClaudeContractTests(unittest.TestCase):
 
 class MachineStateHygieneTests(unittest.TestCase):
     PORTABLE_TEXT_FILES = (
-        ".claude/CLAUDE.md",
+        ".claude/CLAUDE.contract.md",
         ".claude/README.md",
         ".claude/settings.json",
         ".claude/examples/headroom-mcp.merge.json",
@@ -818,7 +818,7 @@ class SharedSkillTests(unittest.TestCase):
 class DocumentationBudgetTests(unittest.TestCase):
     def test_docs_stay_distilled(self) -> None:
         budgets = {
-            ".claude/CLAUDE.md": 40,
+            ".claude/CLAUDE.contract.md": 40,
             "README.md": 70,
             "docs/harness-engineering.md": 130,
             ".claude/plans/orchestration-plan.md": 80,
@@ -909,8 +909,8 @@ class MechanismTests(unittest.TestCase):
             # reported, but the check completes and the throttle advances.
             repo = Path(temp_home) / "repo"
             (repo / ".claude").mkdir(parents=True)
-            (repo / ".claude" / "CLAUDE.md").write_text("contract\n",
-                                                        encoding="utf-8")
+            (repo / ".claude" / "CLAUDE.contract.md").write_text("contract\n",
+                                                                 encoding="utf-8")
             env["AGENT_HARNESS_REPO"] = str(repo)
             drifted = subprocess.run([sys.executable, str(hook)], env=env,
                                      check=True, capture_output=True, text=True)
