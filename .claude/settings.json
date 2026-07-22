@@ -34,6 +34,16 @@
             "command": "command -v rtk >/dev/null 2>&1 && rtk hook claude || true"
           }
         ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/runtime-guard.py\" --gate",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -106,9 +116,5 @@
         "url": "https://github.com/openai/codex-plugin-cc.git"
       }
     }
-  },
-  "tui": "fullscreen",
-  "theme": "dark-daltonized",
-  "agentPushNotifEnabled": true,
-  "inputNeededNotifEnabled": true
+  }
 }

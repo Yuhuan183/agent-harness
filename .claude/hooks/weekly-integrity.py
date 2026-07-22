@@ -77,7 +77,17 @@ try:
                     "contract-repo drift (uncommitted changes in ~/.claude):\n"
                     + r.stdout.rstrip()
                 )
-        if os.path.isdir(os.path.join(harness_repo, ".claude")):
+        if not os.path.isdir(os.path.join(harness_repo, ".claude")):
+            # A managed deployment without a reachable source checkout has no
+            # drift monitoring at all — that is a finding, not a silent skip,
+            # and the throttle must not advance past it.
+            checks_completed = False
+            findings.append(
+                "deployment drift check unavailable: harness checkout not found at "
+                f"{harness_repo}; set AGENT_HARNESS_REPO to the source checkout "
+                "(drift monitoring is suspended until then)"
+            )
+        else:
             drift = []
             for source_rel, target_rel in load_deployment_manifest(harness_repo):
                 src = os.path.join(harness_repo, source_rel)
@@ -120,8 +130,6 @@ try:
                     "run scripts/sync.sh --apply or commit repo changes):\n"
                     + "\n".join(drift)
                 )
-        # else: no git repo and no harness checkout — nothing to compare
-        # against; skip the drift check without blocking the throttle.
     except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
         checks_completed = False
         findings.append(f"contract-repo check failed: {exc}")
