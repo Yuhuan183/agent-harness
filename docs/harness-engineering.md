@@ -57,6 +57,10 @@ Subagent 可能仍收到全域指令，因此 main-only 段必須短且邊界清
 Fresh verifier 放在完整主張可反駁的最小整合邊界；特殊信任／資料邊界提前驗，但不重複堆 gate。
 未實質修改且沒有新證據的 Plan 不重送審；無法收斂就簡化、揭露 blocker 或延後 scope。
 
+**Bootstrap 自依賴禁令**：repo 內的工具與 preflight 不得依賴「部署後的 HOME 狀態」才能通過
+（resolver、manifest、checkout 路徑一律 env 可覆寫、預設落在 source checkout）；
+否則新機器會死鎖在「部署需要 preflight、preflight 需要部署」。
+
 **Hook 建置**：真實目錄先證明可跑 → 合成 stdin pipe-test（正常/略過/防循環/錯誤）→
 `jq -e` 驗設定 → 失敗訊息要回到模型 → 保持秒級 → 新 session 驗載入。
 
