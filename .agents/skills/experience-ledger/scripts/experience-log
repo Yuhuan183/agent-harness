@@ -215,9 +215,22 @@ def main() -> int:
             else "spot" if args.role in SPOT_QC_ROLES
             else "full"
         )
-    if args.fallback_hops is not None and args.fallback_hops > 1:
-        parser.error("single-hop fallback: fallback-hops > 1 is a routing violation; "
-                     "surface it instead of logging a second hop")
+    lineage = (args.origin_provider, args.parent_dispatch_id, args.fallback_hops)
+    if any(value is not None for value in lineage):
+        if args.fallback_hops != 1 or args.origin_provider is None:
+            parser.error("fallback lineage requires --origin-provider and "
+                         "--fallback-hops 1 exactly (single-hop policy; hops>1 "
+                         "is a routing violation — surface it, do not log it)")
+        if args.origin_provider == args.provider:
+            parser.error("--origin-provider must differ from --provider "
+                         "(a fallback hop crosses providers)")
+    import math
+    for field in ("tokens_in", "tokens_out", "cache_write_tokens",
+                  "cache_read_tokens", "secs", "review_secs", "rework_secs",
+                  "api_cost_usd"):
+        value = getattr(args, field)
+        if value is not None and (not math.isfinite(value) or value < 0):
+            parser.error(f"--{field.replace('_', '-')} must be finite and >= 0")
     args.route_source = ("explicit" if all(
         value is not None for value in (args.profile, args.model, args.effort))
         else None)
