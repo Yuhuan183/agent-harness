@@ -7,7 +7,7 @@
 
 | 路徑 | 職責 | 同步 |
 |---|---|---|
-| `AGENTS.md` | Codex 全域工作契約（outcome-first、最小 scope、direct-first dispatch、風險觸發的獨立驗證） | 自動 |
+| `AGENTS.contract.md` | Codex 全域工作契約源檔（部署為 `~/.codex/AGENTS.md`；改名避免在 .codex/ 內開 session 時重複載入）（outcome-first、最小 scope、direct-first dispatch、風險觸發的獨立驗證） | 自動 |
 | `agents/*.toml` | 七個 Codex leaf 角色定義（鏡像 Claude roles） | 自動 |
 | `model-routing.toml` | Codex main／leaf 的結構化 model-effort 先驗與 AA v4.1 快照 | 自動 |
 | `scripts/model-routing` | 驗證品質門檻並解析 profile；共用核心在 `../.agents/scripts/routing_core.py`（缺失時報部署錯誤） | 自動 |

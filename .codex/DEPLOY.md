@@ -16,7 +16,7 @@ Deployment writes outside the repository. Keep approval enabled; never use a san
 
 1. Resolve `CODEX_HOME` (default `$HOME/.codex`) and show source/target paths.
 2. Back up every changed target under `$CODEX_HOME/backups/<timestamp>/`. Never copy credentials, tokens, sessions, or secrets into the repo or output.
-3. Install `codex/AGENTS.md`. Diff an existing non-empty file; preserve unrelated guidance and stop on material conflict. Check higher-precedence `AGENTS.override.md`.
+3. Install `codex/AGENTS.contract.md` as `$CODEX_HOME/AGENTS.md` (the source is renamed so agent IDEs do not double-load it inside this repo). Diff an existing non-empty file; preserve unrelated guidance and stop on material conflict. Check higher-precedence `AGENTS.override.md`.
 4. Merge `codex/config.merge.toml`; never replace `config.toml`. Preserve GPT model/effort, auth, MCP, plugins, desktop, project trust, hooks, notifications, and unrelated keys.
 5. Install every `codex/agents/*.toml`, `codex/skills/`, `codex/model-routing.toml`, and `codex/scripts/*` (`model-routing`, `bridge-brief`), plus the shared core `.agents/scripts/routing_core.py` into `$HOME/.agents/scripts/` — the resolver imports it and reports a deployment error when it is missing. Back up same-name conflicts.
 6. Do not add or change Headroom routing, base URL, MCP, hook, or lifecycle state.

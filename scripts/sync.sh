@@ -86,7 +86,13 @@ for s in baton-dispatch provider-routing headroom-protocol speak-human-tw experi
 done
 
 # --- .codex：可攜契約（config.toml 為機器狀態，僅提示手動 merge） ---
-for p in AGENTS.md README.md ANALYSIS.md DEPLOY.md model-routing.toml prompts agents scripts; do
+# AGENTS.md 源檔叫 AGENTS.contract.md：Codex 與其他 IDE 會沿 cwd 收集 AGENTS.md，
+# 避免在本 repo 的 .codex/ 內工作時與全域 ~/.codex/AGENTS.md 重複載入；sync 時改名部署。
+if [[ -e "$HOME/.codex/AGENTS.md" && $APPLY -eq 1 ]]; then
+  mkdir -p "$BACKUP/.codex"; cp "$HOME/.codex/AGENTS.md" "$BACKUP/.codex/AGENTS.md"
+fi
+run cp "$REPO/.codex/AGENTS.contract.md" "$HOME/.codex/AGENTS.md"
+for p in README.md ANALYSIS.md DEPLOY.md model-routing.toml prompts agents scripts; do
   sync_path ".codex/$p" "$HOME/.codex/$p"
 done
 sync_path ".codex/skills/headroom-protocol" "$HOME/.codex/skills/headroom-protocol"
@@ -106,6 +112,8 @@ if [[ $APPLY -eq 1 ]]; then
   FAIL=0
   cmp -s "$REPO/.claude/CLAUDE.contract.md" "$HOME/.claude/CLAUDE.md" \
     || { log "ERROR: ~/.claude/CLAUDE.md 與 CLAUDE.contract.md 不一致"; FAIL=1; }
+  cmp -s "$REPO/.codex/AGENTS.contract.md" "$HOME/.codex/AGENTS.md" \
+    || { log "ERROR: ~/.codex/AGENTS.md 與 AGENTS.contract.md 不一致"; FAIL=1; }
   for i in "${!SYNCED_SRC[@]}"; do
     diffout="$(rsync -an --links --force --delete --itemize-changes "${SYNCED_SRC[$i]}" "$(dirname "${SYNCED_DST[$i]}")/")"
     if [[ -n "$diffout" ]]; then

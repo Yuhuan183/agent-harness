@@ -176,7 +176,7 @@ class ClaudeContractTests(unittest.TestCase):
             self.assertNotIn("xhigh", frontmatter(f".claude/agents/{role}.md"), role)
         for path in (
             ".claude/skills/provider-routing/SKILL.md",
-            ".codex/AGENTS.md",
+            ".codex/AGENTS.contract.md",
             ".codex/config.merge.toml",
         ):
             text = read(path)
@@ -208,7 +208,7 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertIn("## Cost test", skill)
         self.assertIn("delegation saves no compute", skill)
         self.assertIn("clearly exceeds dispatch overhead", read(".claude/CLAUDE.contract.md"))
-        self.assertIn("clearly exceeds dispatch overhead", read(".codex/AGENTS.md"))
+        self.assertIn("clearly exceeds dispatch overhead", read(".codex/AGENTS.contract.md"))
         self.assertIn("cablate/baton v0.1.1", skill)
         self.assertIn("scope fix `0ab4d2e`", skill)
         self.assertNotIn("pilotfish", skill.lower())
@@ -270,7 +270,7 @@ class MachineStateHygieneTests(unittest.TestCase):
         ".claude/examples/headroom-mcp.merge.json",
         ".claude/skills/baton-dispatch/SKILL.md",
         ".claude/skills/provider-routing/SKILL.md",
-        ".codex/AGENTS.md",
+        ".codex/AGENTS.contract.md",
         ".codex/ANALYSIS.md",
         ".codex/DEPLOY.md",
         ".codex/config.merge.toml",
@@ -318,7 +318,7 @@ class MachineStateHygieneTests(unittest.TestCase):
 
 class CodexBundleTests(unittest.TestCase):
     def test_agents_md_mirrors_the_main_only_boundary(self) -> None:
-        agents = read(".codex/AGENTS.md")
+        agents = read(".codex/AGENTS.contract.md")
         for phrase in (
             "Main task only — orchestration",
             "Direct execution is the default",
@@ -335,11 +335,11 @@ class CodexBundleTests(unittest.TestCase):
 
     def test_codex_bundle_avoids_claude_routing_vocabulary(self) -> None:
         # The Codex contract must not carry Claude-specific model routing.
-        lowered = read(".codex/AGENTS.md").lower()
+        lowered = read(".codex/AGENTS.contract.md").lower()
         for forbidden in ("fable", "opus", "dispatch gpt +", "dispatch claude"):
             self.assertNotIn(forbidden, lowered)
-        self.assertIn("GPT-5.6 Sol/high", read(".codex/AGENTS.md"))
-        self.assertIn("The user owns the Codex GPT model", read(".codex/AGENTS.md"))
+        self.assertIn("GPT-5.6 Sol/high", read(".codex/AGENTS.contract.md"))
+        self.assertIn("The user owns the Codex GPT model", read(".codex/AGENTS.contract.md"))
 
     def test_config_merge_and_verifier_are_leaf_bounded(self) -> None:
         config = tomllib.loads(read(".codex/config.merge.toml"))
@@ -615,12 +615,12 @@ class CodexBundleTests(unittest.TestCase):
             self.assertIn(artifact, readme)
             self.assertIn(artifact, deploy)
         self.assertIn("model-routing.toml prompts agents scripts", sync)
-        agents = read(".codex/AGENTS.md")
+        agents = read(".codex/AGENTS.contract.md")
         self.assertIn("${CODEX_HOME:-$HOME/.codex}/scripts/model-routing", agents)
         self.assertIn("session-start recommendations", agents)
 
     def test_codex_dispatch_reporting_matches_claude(self) -> None:
-        agents = read(".codex/AGENTS.md")
+        agents = read(".codex/AGENTS.contract.md")
         self.assertIn("Report every dispatch to the user", agents)
         self.assertIn("quality-check it against the brief", agents)
         self.assertIn("Never brief a subagent to delegate further", agents)
@@ -822,7 +822,7 @@ class DocumentationBudgetTests(unittest.TestCase):
             "README.md": 70,
             "docs/harness-engineering.md": 130,
             ".claude/plans/orchestration-plan.md": 80,
-            ".codex/AGENTS.md": 60,
+            ".codex/AGENTS.contract.md": 60,
             ".codex/ANALYSIS.md": 70,
             ".codex/DEPLOY.md": 60,
             ".claude/skills/baton-dispatch/SKILL.md": 55,

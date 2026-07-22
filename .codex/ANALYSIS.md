@@ -14,8 +14,8 @@ Codex receives a global contract, seven custom leaf agents mirroring the Claude 
 
 | Concern | Codex target | ChatGPT target |
 |---|---|---|
-| Working agreement | `codex/AGENTS.md` | `chatgpt/custom-instructions.md` |
-| Main-only orchestration | `codex/AGENTS.md` main-task section | Not ported |
+| Working agreement | `codex/AGENTS.contract.md` | `chatgpt/custom-instructions.md` |
+| Main-only orchestration | `codex/AGENTS.contract.md` main-task section | Not ported |
 | Leaf execution | Seven custom leaf agents (`agents/*.toml`) | Not available |
 | Optional compression | `codex/skills/headroom-protocol` | Not ported |
 | GPT model/effort | Machine config or task selector | Product selector |
@@ -46,7 +46,7 @@ The bundle does not pin or silently switch the GPT model or reasoning effort. Ma
 
 | File | Target |
 |---|---|
-| `codex/AGENTS.md` | `$CODEX_HOME/AGENTS.md` |
+| `codex/AGENTS.contract.md` | `$CODEX_HOME/AGENTS.md` |
 | `codex/config.merge.toml` | Merge into `$CODEX_HOME/config.toml` |
 | `codex/agents/verifier.toml` | `$CODEX_HOME/agents/verifier.toml` |
 | `codex/skills/headroom-protocol/` | `$HOME/.agents/skills/headroom-protocol/` |
