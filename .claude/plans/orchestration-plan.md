@@ -62,15 +62,13 @@
 
 ## Decision log
 
-- **2026-07-22 (later)** — Token-overhead pass: descriptions trimmed (~350 tok/session), provider-routing prose no longer restates the matrix, repo contract source renamed to `CLAUDE.contract.md` to stop in-repo double-loading (~900 tok/session). Resolver logic unified into `.agents/scripts/routing_core.py`; added `bridge-brief` composer, `smoke` task class, backup rotation (keep 10).
-
 - **2026-07-12** — Fail-open local monitoring and nested-delegation detection.
 - **2026-07-15** — Direct-first cost-aware dispatch replaced fixed pipelines; Headroom wrap ownership; no routine stacked verification.
 - **2026-07-17** — Single-hop cross-provider routing, GPT-primary security, approved-scope boundary; removed tracked main model/effort/fallback. Distilled docs: one authoritative location per concern.
 - **2026-07-18** — Headroom verified against upstream v0.32; base URL stays machine-local.
 - **2026-07-20** — Two-tier role effort (capped at high); per-dispatch reporting and QC; Codex counterparts for each leaf role via the codex-rescue bridge. Added `experience-ledger` skill (AR/CR/RB/FR/QS, explore/prefer rule).
 - **2026-07-21** — External rankings (AA v4.1, Coding Agent Index v1.2) demoted to priors; route on local acceptable-outcome cost. Experience schema v2 (tokens, review/rework, API cost).
-- **2026-07-22** — X profile allows main-session xhigh. Added `.claude/model-routing.toml` (quality floors + profiles mirroring the Codex file; ledger-driven revision policy). Bridge smoke-tested end-to-end (Sol/low, Luna/low; Luna evidence upgraded). User-directed repins: `executor` sonnet/medium, `plan-verifier` opus/high. Claude resolver added and wired into weekly integrity; mech-executor bridge smoke rollout-verified; first ledger record logged. User-directed: plan goals categorized (for all / for claude / for codex); quota discipline treats the 5h short window as overriding the weekly window. User-directed profile overhaul: follow-tier abolished (all roles pin effort from the profile); new matrix — balanced S/low S/med S/high O/med O/high O/high O/high, fast S/low S/low O/low O/med O/med O/high O/high, economy S/low S/med O/low O/med O/med O/high O/high, quality_guarded S/med S/med O/med O/high×4 (order: Explore, mech-executor, executor, plan-verifier, verifier, security-reviewer, security-executor); Haiku unrouted; critical tier admits opus/medium for verifier only.
+- **2026-07-22** — X profile allows main-session xhigh. Claude routing made operative: `.claude/model-routing.toml` + resolver (validate/resolve/check-pins) wired into weekly integrity; resolver core shared in `.agents/scripts/routing_core.py`. Bridge smoke-tested end-to-end (Sol/low incl. mech-executor, Luna/low; rollout-verified); first ledger record logged. User-directed: follow-tier abolished — all roles pin effort from the profile matrix (see `model-routing.toml`; Haiku unrouted; critical admits opus/medium for verifier only); plan goals categorized (all/claude/codex); 5h short quota window overrides the weekly one. Token-overhead pass: descriptions trimmed, matrix prose deduplicated, contract source renamed `CLAUDE.contract.md` (no in-repo double load); added `bridge-brief`, `smoke` class, backup rotation.
 
 ## Verification
 

@@ -8,9 +8,10 @@
 | 路徑 | 職責 | 同步 |
 |---|---|---|
 | `AGENTS.md` | Codex 全域工作契約（outcome-first、最小 scope、direct-first dispatch、風險觸發的獨立驗證） | 自動 |
-| `agents/verifier.toml` | Codex 獨立 verifier 角色定義 | 自動 |
+| `agents/*.toml` | 七個 Codex leaf 角色定義（鏡像 Claude roles） | 自動 |
 | `model-routing.toml` | Codex main／leaf 的結構化 model-effort 先驗與 AA v4.1 快照 | 自動 |
-| `scripts/model-routing` | 驗證品質門檻，並依快速、風險防護、最省或均衡優先解析 profile | 自動 |
+| `scripts/model-routing` | 驗證品質門檻並解析 profile；共用核心在 `../.agents/scripts/routing_core.py`（缺失時報部署錯誤） | 自動 |
+| `scripts/bridge-brief` | 從 Claude 派 Codex twin 時，產出含 resolved model/effort 與角色契約的 brief 骨架 | 自動 |
 | `skills/headroom-protocol` | symlink → `../.agents/skills/headroom-protocol`（與 Claude 共用同一本體） | 自動 |
 | `skills/experience-ledger` | symlink → `../.agents/skills/experience-ledger`（派工經驗記帳與分析，與 Claude 共用） | 自動 |
 | `skills/speak-human-tw` | symlink → `../.agents/skills/speak-human-tw`（繁中去 AI 味，與 Claude 共用同一本體） | 自動 |
