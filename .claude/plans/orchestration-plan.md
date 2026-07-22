@@ -18,7 +18,7 @@
 ## Routing policy (summary)
 
 - **Main session**: model and effort are user-selected; tracked settings pin neither. Reference profiles: H = Fable/low or Opus/high; X = Fable at medium–xhigh or Opus/high (xhigh is main-session-only).
-- **Role tiers**: pinned — `Explore` haiku/low, `mech-executor` sonnet/low, `executor` sonnet/medium, `plan-verifier` opus/high; follow — `verifier`, `security-reviewer`, `security-executor` inherit main-session effort, capped at high.
+- **Role pins**: every role pins model and effort from the active profile (no follow-tier). Balanced: `Explore` sonnet/low, `mech-executor` sonnet/medium, `executor` sonnet/high, `plan-verifier` opus/medium, `verifier`/`security-*` opus/high. Full matrix in `model-routing.toml`; profiles are user-directed priors maintained from ledger and benchmark data.
 - **Codex bridge**: every leaf dispatch resolves model/effort via `~/.codex/scripts/model-routing` (single source of truth); Sol and Luna bridge overrides are smoke-tested (2026-07-22, rollout-verified).
 - **Cross-provider**: single-hop fallback from the task's origin, never circular; security is GPT-primary at Sol/high with one Claude Opus fallback; dual-provider implementation always has one writer. High-complexity or uncertain provider choice uses the three-option user gate.
 - **Experience loop**: every dispatch is reported (`dispatch: <task> — <role>@<provider> <model>/<effort>`), quality-checked, and logged to the experience ledger (AR/CR/RB/FR/QS; explore until n>=5 per provider, prefer at decayed Beta P(win)>=0.85). Hints are directional; main session keeps final judgment.
@@ -31,24 +31,34 @@
 - Runtime guard blocks capability-sensitive reviewers below Claude Code 2.1.207 or when version is unknown.
 - Usage report separates main/subagent/historical traffic without claiming subscription-quota equivalence; Codex tokens/quota come from local rollouts (`codex-usage`).
 - Claude→Codex bridge verified end-to-end: resolver JSON → `codex:codex-rescue` dispatch → rollout telemetry confirms the model/effort override (Sol/low, Luna/low).
-- Contract tests (42) cover role ownership, main/leaf separation, routing, scope boundaries, hooks, Headroom, usage reporting, and platform bundle invariants.
+- Claude routing file is operative: `.claude/scripts/model-routing` validates the TOML, resolves role routes, and `check-pins` cross-checks agent frontmatter (also run weekly by the integrity hook, fail-open when the resolver is absent).
+- Experience-ledger pipeline verified end-to-end on a real bridge dispatch: hook-staged stub → `--from-pending` → tokens/secs auto-captured from rollout delta.
+- Quota discipline is short-window-first: `codex-usage --quota` lists the shorter window (e.g. 5h) before the weekly one and warns to hold Codex dispatch when it nears exhaustion.
+- Contract tests (46) cover role ownership, main/leaf separation, routing, scope boundaries, hooks, Headroom, usage reporting, and platform bundle invariants.
 
 ## Next goals
 
-1. **完善 Claude 模型分派策略（比照 Codex 版本思路）**
-   - Fill the experience ledger: log every dispatch outcome; reach n>=5 per role x provider cell.
-   - Re-derive `.claude/model-routing.toml` profiles from ledger data per its `revision_policy` (AA aggregates stay priors only).
-   - Consider a resolver-style consumer so the Claude routing file becomes operative rather than documentary.
-2. **Provider 完善**
-   - Extend bridge smoke coverage beyond explore (remaining roles and priorities); keep availability evidence dated and rollout-verified.
-   - Quota-aware dispatch discipline: check `codex-usage --quota` before heavy Codex dispatch; prefer Claude roles when the window is tight.
-   - Close remaining live probes: permission matching around `rtk` rewrite; GPT-origin failure handoff and fallback-stop behavior.
+> 分類規則：**for all** = 跨 provider 的機制與紀律;**for claude** = 只動 `.claude/` 契約、roles、routing;**for codex** = 只動 `.codex/` 契約、bridge、rollout 佐證。
+
+### For all
+
+- Fill the experience ledger: log every dispatch outcome after QC; reach n>=5 per role x provider cell (sampling live since 2026-07-22).
+- Quota-aware dispatch discipline: check `codex-usage --quota` before heavy Codex dispatch. The short window (5h) outranks the weekly window — exhausting it stalls tasks immediately; near its limit, dispatch Claude or wait for reset regardless of weekly headroom.
+
+### For Claude
+
+- Re-derive `.claude/model-routing.toml` profiles from ledger data per its `revision_policy` (AA aggregates stay priors only).
+- Live probe: permission matching around the `rtk` PreToolUse rewrite.
+
+### For Codex
+
+- Extend bridge smoke coverage to remaining roles and priorities as real dispatches occur (no dedicated quota burn); keep availability evidence dated and rollout-verified.
+- Live probe: GPT-origin failure handoff and fallback-stop behavior.
 
 ## Open items
 
-- Experience ledger has zero reviewed outcomes; external benchmarks remain priors until sampled.
-- OTel stays deferred unless JSONL/transcript telemetry cannot answer a concrete real-time routing question.
-- Codex App may rewrite machine `config.toml`; deployment must merge and recheck local state instead of replacing it.
+- **All**: OTel stays deferred unless JSONL/transcript telemetry cannot answer a concrete real-time routing question.
+- **Codex**: Codex App may rewrite machine `config.toml`; deployment must merge and recheck local state instead of replacing it.
 
 ## Decision log
 
@@ -58,7 +68,7 @@
 - **2026-07-18** — Headroom verified against upstream v0.32; base URL stays machine-local.
 - **2026-07-20** — Two-tier role effort (capped at high); per-dispatch reporting and QC; Codex counterparts for each leaf role via the codex-rescue bridge. Added `experience-ledger` skill (AR/CR/RB/FR/QS, explore/prefer rule).
 - **2026-07-21** — External rankings (AA v4.1, Coding Agent Index v1.2) demoted to priors; route on local acceptable-outcome cost. Experience schema v2 (tokens, review/rework, API cost).
-- **2026-07-22** — X profile allows main-session xhigh. Added `.claude/model-routing.toml` (quality floors + profiles mirroring the Codex file; ledger-driven revision policy). Bridge smoke-tested end-to-end (Sol/low, Luna/low; Luna evidence upgraded). User-directed repins: `executor` sonnet/medium, `plan-verifier` opus/high.
+- **2026-07-22** — X profile allows main-session xhigh. Added `.claude/model-routing.toml` (quality floors + profiles mirroring the Codex file; ledger-driven revision policy). Bridge smoke-tested end-to-end (Sol/low, Luna/low; Luna evidence upgraded). User-directed repins: `executor` sonnet/medium, `plan-verifier` opus/high. Claude resolver added and wired into weekly integrity; mech-executor bridge smoke rollout-verified; first ledger record logged. User-directed: plan goals categorized (for all / for claude / for codex); quota discipline treats the 5h short window as overriding the weekly window. User-directed profile overhaul: follow-tier abolished (all roles pin effort from the profile); new matrix — balanced S/low S/med S/high O/med O/high O/high O/high, fast S/low S/low O/low O/med O/med O/high O/high, economy S/low S/med O/low O/med O/med O/high O/high, quality_guarded S/med S/med O/med O/high×4 (order: Explore, mech-executor, executor, plan-verifier, verifier, security-reviewer, security-executor); Haiku unrouted; critical tier admits opus/medium for verifier only.
 
 ## Verification
 

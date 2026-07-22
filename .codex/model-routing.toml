@@ -31,6 +31,9 @@ main_selector = "documented"
 native_leaf_override = "spawn_argument"
 claude_bridge_override = "configured"
 
+[models."gpt-5.6-sol".evidence]
+claude_bridge = "smoke-tested 2026-07-22 via codex:codex-rescue --model gpt-5.6-sol --effort low (explore and mech-executor briefs); rollout recorded gpt-5.6-sol/low"
+
 [models."gpt-5.6-sol".efforts.low]
 score = 49.4440
 cost_usd_per_index_task = 0.19747
