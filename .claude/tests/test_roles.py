@@ -23,13 +23,14 @@ class AgentRosterTests(unittest.TestCase):
     def test_model_tiers_are_pinned(self) -> None:
         self.assertIn("model: sonnet", frontmatter(".claude/agents/Explore.md"))
         self.assertIn("model: sonnet", frontmatter(".claude/agents/mech-executor.md"))
-        self.assertIn("model: sonnet", frontmatter(".claude/agents/executor.md"))
-        for role in ("plan-verifier", "verifier",
+        # User-directed 2026-07-23: sonnet/high left the effort-curve Pareto
+        # frontier, so executor joined the Opus tier.
+        for role in ("executor", "plan-verifier", "verifier",
                      "security-reviewer", "security-executor"):
             self.assertIn("model: opus", frontmatter(f".claude/agents/{role}.md"), role)
 
     PINNED_EFFORTS = {"Explore": "low", "mech-executor": "medium",
-                      "executor": "high", "plan-verifier": "medium",
+                      "executor": "medium", "plan-verifier": "medium",
                       "verifier": "high", "security-reviewer": "high",
                       "security-executor": "high"}
 

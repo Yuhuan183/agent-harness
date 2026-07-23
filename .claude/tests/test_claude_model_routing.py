@@ -32,8 +32,8 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         route = json.loads(result.stdout)
         self.assertEqual(route["profile"], "balanced")
         self.assertEqual(route["application"], "frontmatter_pin")
-        self.assertEqual(route["model"], "claude-sonnet-5")
-        self.assertEqual(route["effort"], "high")
+        self.assertEqual(route["model"], "claude-opus-4-8")
+        self.assertEqual(route["effort"], "medium")
         self.assertEqual(route["invocation"]["effort_delivery"], "frontmatter_pin")
 
         verifier = json.loads(run("resolve", "--role", "verifier").stdout)
@@ -62,7 +62,7 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
             executor = drifted / "executor.md"
             executor.write_text(
                 executor.read_text(encoding="utf-8").replace(
-                    "model: sonnet", "model: haiku"
+                    "model: opus", "model: haiku"
                 ),
                 encoding="utf-8",
             )
@@ -153,8 +153,8 @@ class ExperienceReviseTests(unittest.TestCase):
             # current executor route performs poorly...
             rows += [{"ts": "2026-07-20T00:00:00+00:00", "schema": 3,
                       "role": "executor", "profile": "balanced",
-                      "provider": "claude", "model": "claude-sonnet-5",
-                      "effort": "high", "task_class": "impl",
+                      "provider": "claude", "model": "claude-opus-4-8",
+                      "effort": "medium", "task_class": "impl",
                       "request_source": "claude-code", "outcome": "failed"}] * 10
             # ...opus/high (meets the judgment floor) performs well...
             rows += [{"ts": "2026-07-20T00:00:00+00:00", "schema": 3,
@@ -210,8 +210,8 @@ class ExperienceReviseTests(unittest.TestCase):
                 rows += [{
                     "ts": "2026-07-20T00:00:00+00:00", "schema": 3,
                     "role": "executor", "profile": profile,
-                    "provider": "claude", "model": "claude-sonnet-5",
-                    "effort": "high", "task_class": "impl",
+                    "provider": "claude", "model": "claude-opus-4-8",
+                    "effort": "medium", "task_class": "impl",
                     "request_source": "claude-code", "outcome": "failed",
                 }] * 5
             rows += [{

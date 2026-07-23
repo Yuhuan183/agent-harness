@@ -301,9 +301,9 @@ class SharedSkillTests(unittest.TestCase):
                         "provider": provider, "request_source": source,
                         "outcome": "accepted", "tokens_out": 20,
                         "profile": "balanced",
-                        "model": ("claude-sonnet-5" if provider == "claude"
+                        "model": ("claude-opus-4-8" if provider == "claude"
                                   else "gpt-5.6-sol"),
-                        "effort": "high" if provider == "claude" else "medium",
+                        "effort": "medium",
                     }
                     if provider == "claude":
                         row.update({"tokens_in": 100, "cache_write_tokens": 10,

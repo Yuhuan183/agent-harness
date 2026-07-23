@@ -1,8 +1,8 @@
 ---
 name: executor
 description: Judgment-heavy implementation when isolation or context protection repays reconstruction cost. Brief goal, constraints, scope, and done-criteria; never expands the task.
-model: sonnet
-effort: high
+model: opus
+effort: medium
 disallowedTools: Agent, Workflow
 ---
 

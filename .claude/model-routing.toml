@@ -4,7 +4,8 @@ benchmark = "Artificial Analysis Intelligence Index v4.1"
 metric_scope = "English text benchmark prior; not local coding-agent success rate"
 availability_scope = "Per-surface status; benchmark data is retained even when a dispatch override is unverified"
 availability_semantics = "configured means router-permitted, not necessarily smoke-tested; evidence records verification level"
-evidence_caveat = "AA publishes only single-configuration (adaptive reasoning, max effort) aggregates for Claude models; per-effort curves are unavailable. Scores are priors for model ranking, not effort selection. Effort choices below are user-directed deployment presets pending comparable local data; revision_policy requires n>=10 per role/task_class route cell."
+evidence_caveat = "AA publishes only single-configuration (adaptive reasoning, max effort) aggregates for Claude models; the only per-effort curve on file is BrowseComp agentic search (community-shared chart, 2026-07) - a direction prior, not a coding success rate. Scores are priors for model ranking, not effort selection. Effort choices below are user-directed deployment presets pending comparable local data; revision_policy requires n>=10 per role/task_class route cell."
+effort_curve_prior = "BrowseComp pass-rate/cost per effort (2026-07): Sonnet 5 leaves the Pareto frontier at high (~64.8% @ ~$6.8 vs Opus med ~68.8% @ ~$6.2 and Opus high ~69.9% @ ~$6.6); sonnet/low and sonnet/medium remain on the frontier. Cross-checked by AA max-effort telemetry: Sonnet 69k output tokens/task (56k reasoning) vs Opus 41k, with lower score at higher measured eval cost."
 
 [selection]
 default = "balanced"
@@ -55,6 +56,7 @@ role_frontmatter = "smoke-tested in named roles: plan-verifier/verifier/security
 score_max_effort = 56
 total_eval_cost_usd = 3752.55
 eval_output_tokens = 120000000
+output_tokens_per_index_task = 41000
 
 [models."claude-sonnet-5"]
 source = "https://artificialanalysis.ai/models/claude-sonnet-5"
@@ -72,6 +74,7 @@ score_max_effort = 53
 output_tokens_per_sec = 83.9
 total_eval_cost_usd = 4010.12
 eval_output_tokens = 300000000
+output_tokens_per_index_task = 69000
 
 [models."claude-haiku-4-5"]
 source = "https://artificialanalysis.ai/models/claude-4-5-haiku"
@@ -103,7 +106,7 @@ security-executor = "critical"
 
 [quality_floor.allowed]
 support = ["claude-sonnet-5/low", "claude-sonnet-5/medium", "claude-opus-4-8/low"]
-judgment = ["claude-sonnet-5/medium", "claude-sonnet-5/high", "claude-opus-4-8/low", "claude-opus-4-8/medium", "claude-opus-4-8/high", "claude-fable-5/medium", "claude-fable-5/high", "claude-fable-5/xhigh"]
+judgment = ["claude-sonnet-5/medium", "claude-opus-4-8/low", "claude-opus-4-8/medium", "claude-opus-4-8/high", "claude-fable-5/medium", "claude-fable-5/high", "claude-fable-5/xhigh"]
 critical = ["claude-opus-4-8/medium", "claude-opus-4-8/high"]
 
 [quality_floor.notes]
@@ -131,9 +134,9 @@ effort = "medium"
 reason = "User-directed: medium effort raises pattern fidelity on mechanical work."
 
 [profiles.balanced.roles.executor]
-model = "claude-sonnet-5"
-effort = "high"
-reason = "User-directed: Sonnet/high for judgment-heavy implementation; escalate to Opus on the pin's first quality miss."
+model = "claude-opus-4-8"
+effort = "medium"
+reason = "User-directed 2026-07-23: sonnet/high left the effort-curve Pareto frontier (BrowseComp prior + AA reasoning-token telemetry); opus/medium is cheaper and stronger there. Escalate to high on the pin's first quality miss."
 
 [profiles.balanced.roles.plan-verifier]
 model = "claude-opus-4-8"
@@ -213,8 +216,8 @@ reason = "A complete specification and stop-on-exception contract provide the qu
 
 [profiles.quality_guarded.roles.executor]
 model = "claude-opus-4-8"
-effort = "medium"
-reason = "User-directed: Opus/medium for high-impact implementation; escalate to high on the first quality miss."
+effort = "high"
+reason = "User-directed 2026-07-23: opus/high is a cheap upgrade over medium on the effort curve and keeps the fast/balanced/quality_guarded executor ladder monotone (low/medium/high)."
 
 [profiles.quality_guarded.roles.plan-verifier]
 model = "claude-opus-4-8"

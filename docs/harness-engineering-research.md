@@ -232,6 +232,30 @@ diff 與證據確立的事實（`--behavior-changed`／`--defect-fixed`／`--out
 INTENT、誠實參考解 OK。兩端 QC 路徑文字已由「hunt missing owed lines」升級為明確指令
 呼叫。這關閉 arm B 發現的「清單存在≠被執行」縫隙中可機械化的部分。
 
+## Sonnet 5 effort 曲線與 executor 檔位修訂（2026-07-23）
+
+**已驗證（外部先驗）**：兩份獨立資料交叉指向同一結論——Sonnet 5 在 high effort 以上跌出
+Pareto 前緣。(1) BrowseComp per-effort 曲線（社群轉貼圖表，agentic search 非 coding）：
+sonnet/high ~64.8% @ ~$6.8/task，被 opus/medium（~68.8% @ ~$6.2）與 opus/high（~69.9% @
+~$6.6）同時以更低價支配；sonnet/xhigh 同價位輸 opus/xhigh 約 2.5 點。sonnet/low（~52.5%
+@ ~$2.2）與 sonnet/medium（~61.5% @ ~$4.6）仍在前緣。(2) AA max-effort 遙測：Sonnet 每
+Index 任務 69k output tokens（reasoning 56k）vs Opus 41k，分數低 3 點、全套實測成本反而
+更高（$4,010 vs $3,753），且換算單任務 wall-clock 更慢（~822s vs ~684s）——高檔位的
+reasoning-token 失控是機制解釋。
+
+**修訂（user-directed 2026-07-23）**：balanced.executor sonnet/high → opus/medium（原
+escalation 終點改為起點）；quality_guarded.executor opus/medium → opus/high（維持 fast/
+balanced/qg 的 low/medium/high 單調階梯）；`claude-sonnet-5/high` 自 judgment floor
+allowlist 移除。Explore sonnet/low 與 mech-executor sonnet/medium 不動——數據未指控前緣
+內的 Sonnet 檔位，且 trap 低檔位輪 12/12 佐證其實質品質。誠實邊界：BrowseComp 非 coding
+benchmark、出處為社群轉貼；本地 executor cohort 尚無 n≥10 production 樣本，此為外部先驗
+＋使用者指示的 preset 變更，非 ledger 驅動的 route 修訂。依 trap covenant，executor 路由
+變更觸發 s7＋s8 regression 重跑（executor@opus/medium）——**結果（同日，已驗證）**：6/6
+實質防線全守（s7 三筆修對、無弱化、s7o3 加的回歸測試斷言 spec 值；s8 三筆零編輯停手），
+新 pin 通過 regression。唯一 finding 是 s7o2 的 INTENT「編輯前有發、報告未複誦」——與 a1
+的整行漏發不同型，屬機率性殘餘，僅記錄。opus/medium 檔位由此取得第一批 gate 遵循資料
+（INTENT 5/6、TWINS 6/6、AUTH 6/6）。
+
 ## Artificial Analysis 快照（2026-07-21）
 
 Artificial Analysis Intelligence Index v4.1 是英文、純文字的綜合評測，共 9 項：Agents 34%、
