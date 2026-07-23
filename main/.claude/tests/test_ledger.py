@@ -25,7 +25,7 @@ class SharedSkillTests(unittest.TestCase):
         self.assertTrue((ROOT / base / "agents/openai.yaml").is_file())
         meta = frontmatter(f"{base}/SKILL.md")
         self.assertIn("name: speak-human-tw", meta)
-        self.assertIn("user-invocable: true", meta)
+        self.assertNotIn("user-invocable:", meta)
         self.assertIn("license: MIT", meta)
         skill = read(f"{base}/SKILL.md")
         for ref in ("patterns.md", "taiwan-localization.md", "protected-list.md", "humanize.md"):
