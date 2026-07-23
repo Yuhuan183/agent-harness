@@ -109,6 +109,43 @@ class SharedSkillTests(unittest.TestCase):
         self.assertEqual(codex["request_sources"], {"codex": 1})
         self.assertIn("explore codex", report["hints"]["executor/impl"])
 
+    def test_fallback_lineage_requires_all_three_fields(self) -> None:
+        # F-04: origin + parent dispatch id + exactly one hop, together.
+        base = ROOT / ".agents/skills/experience-ledger/scripts"
+        common = ["--role", "executor", "--provider", "codex",
+                  "--request-source", "codex", "--class", "impl",
+                  "--profile", "balanced", "--model", "gpt-5.6-sol",
+                  "--effort", "medium", "--outcome", "accepted"]
+        cases = {
+            "no parent": ["--origin-provider", "claude", "--fallback-hops", "1"],
+            "empty parent": ["--origin-provider", "claude", "--fallback-hops", "1",
+                             "--parent-dispatch-id", "  "],
+            "no origin": ["--parent-dispatch-id", "s:1", "--fallback-hops", "1"],
+            "hops 2": ["--origin-provider", "claude", "--fallback-hops", "2",
+                       "--parent-dispatch-id", "s:1"],
+            "hops 0": ["--origin-provider", "claude", "--fallback-hops", "0",
+                       "--parent-dispatch-id", "s:1"],
+            "same provider": ["--origin-provider", "codex", "--fallback-hops", "1",
+                              "--parent-dispatch-id", "s:1"],
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            env = {**os.environ,
+                   "AGENT_EXPERIENCE_LEDGER": os.path.join(temp_dir, "l.jsonl"),
+                   "AGENT_EXPERIENCE_PENDING": os.path.join(temp_dir, "p.jsonl")}
+            for label, extra in cases.items():
+                bad = subprocess.run(
+                    [sys.executable, str(base / "experience-log"), *common, *extra],
+                    env=env, capture_output=True, text=True,
+                )
+                self.assertNotEqual(bad.returncode, 0, label)
+            good = subprocess.run(
+                [sys.executable, str(base / "experience-log"), *common,
+                 "--origin-provider", "claude", "--fallback-hops", "1",
+                 "--parent-dispatch-id", "session:dispatch-1"],
+                env=env, capture_output=True, text=True,
+            )
+            self.assertEqual(good.returncode, 0, good.stderr)
+
     def test_experience_log_keeps_review_separate_from_recon(self) -> None:
         base = ROOT / ".agents/skills/experience-ledger/scripts"
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -116,6 +153,7 @@ class SharedSkillTests(unittest.TestCase):
             env = {**os.environ, "AGENT_EXPERIENCE_LEDGER": ledger,
                    "AGENT_CLAUDE_RESOLVER": str(ROOT / ".claude/scripts/model-routing")}
             common = [
+                # Legacy capitalized spelling: the alias must canonicalize it.
                 "--role", "Explore", "--provider", "claude",
                 "--request-source", "claude-code", "--profile", "balanced",
                 "--model", "claude-sonnet-5", "--effort", "low",
@@ -133,8 +171,8 @@ class SharedSkillTests(unittest.TestCase):
             )
             report = json.loads(result.stdout)
             records = [json.loads(line) for line in Path(ledger).read_text().splitlines()]
-        self.assertEqual(report["by_cohort_provider"]["Explore/recon/claude"]["n"], 1)
-        self.assertEqual(report["by_cohort_provider"]["Explore/review/claude"]["n"], 1)
+        self.assertEqual(report["by_cohort_provider"]["explore/recon/claude"]["n"], 1)
+        self.assertEqual(report["by_cohort_provider"]["explore/review/claude"]["n"], 1)
         self.assertEqual({row["task_class"]: row["tier"] for row in records},
                          {"recon": "spot", "review": "full"})
 
@@ -446,7 +484,9 @@ class SharedSkillTests(unittest.TestCase):
                 capture_output=True, text=True,
             )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("Explore", result.stdout)
+        # Legacy schema-2 rows spell the role "Explore"; the report renders the
+        # canonical lowercase cohort.
+        self.assertIn("explore", result.stdout)
         self.assertIn("mech-executor", result.stdout)
         self.assertIn("legacy-unknown", result.stdout)
         self.assertNotIn("TypeError", result.stderr)

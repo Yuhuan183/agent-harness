@@ -70,6 +70,14 @@ class MechanismTests(unittest.TestCase):
             report = scripts_dir / "delegation-report"
             report.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
             report.chmod(0o755)
+            # Both routing resolvers present and green: coverage is complete.
+            claude_routing = scripts_dir / "model-routing"
+            claude_routing.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            claude_routing.chmod(0o755)
+            codex_routing = Path(temp_home) / ".codex" / "scripts" / "model-routing"
+            codex_routing.parent.mkdir(parents=True)
+            codex_routing.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            codex_routing.chmod(0o755)
             experience_report = (Path(temp_home) / ".agents" / "skills" /
                                  "experience-ledger" / "scripts" / "experience-report")
             experience_report.parent.mkdir(parents=True)
@@ -110,8 +118,18 @@ class MechanismTests(unittest.TestCase):
             self.assertIn("AGENT_HARNESS_REPO", missing.stdout)
             self.assertFalse(stamp.exists())
 
-            # ~/.claude as a git checkout keeps the original git-status path.
+            # Missing routing resolver: incomplete coverage is a finding, and
+            # the throttle stamp must be withheld (F-05: no silent skips).
             env["AGENT_HARNESS_REPO"] = str(repo)
+            codex_routing.unlink()
+            unresolved = subprocess.run([sys.executable, str(hook)], env=env,
+                                        check=True, capture_output=True, text=True)
+            self.assertIn("resolver unavailable", unresolved.stdout)
+            self.assertFalse(stamp.exists())
+            codex_routing.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            codex_routing.chmod(0o755)
+
+            # ~/.claude as a git checkout keeps the original git-status path.
             subprocess.run(["git", "init", str(claude_dir)], check=True,
                            capture_output=True, text=True)
             completed = subprocess.run([sys.executable, str(hook)], env=env,
@@ -300,6 +318,59 @@ class MechanismTests(unittest.TestCase):
         self.assertEqual(rows[0]["cache_read_input_tokens"], 1000)
         self.assertLess(rows[1]["cache_read_input_tokens"], rows[0]["cache_read_input_tokens"])
 
+
+
+class TrapGraderIntegrityTests(unittest.TestCase):
+    """Regressions for the review findings F-02/F-03: graders must not pass
+    a run that submits no report, and the canonical TWINS regex must not
+    accept prose in the count slot."""
+
+    GRADERS = (
+        "evals/traps/s7-false-completion/grade.py",
+        "evals/traps/s8-spec-conflict/grade.py",
+        "evals/traps/s9-tz-bucketing/grade.py",
+    )
+
+    def test_graders_require_a_report(self) -> None:
+        for grader in self.GRADERS:
+            workdir = str(ROOT / Path(grader).parent / "pristine")
+            result = subprocess.run(
+                [sys.executable, str(ROOT / grader), "--workdir", workdir],
+                capture_output=True, text=True, timeout=60,
+            )
+            self.assertNotEqual(result.returncode, 0, grader)
+            self.assertIn("--report", result.stderr, grader)
+
+    def test_intent_capture_survives_decimals_in_the_spec_segment(self) -> None:
+        sys.path.insert(0, str(ROOT / ".agents" / "scripts"))
+        try:
+            import gate_lines
+        finally:
+            sys.path.pop(0)
+        line = ("INTENT: code does round to 2.67; the check expects 2.68; "
+                "the spec says 2.675 rounds to 2.68 via half-up. More prose.")
+        match = gate_lines.INTENT.search(gate_lines.flatten(line))
+        self.assertIsNotNone(match)
+        self.assertIn("half-up", match.group(1))
+        paren = ("INTENT: code does X; the check expects Y; "
+                 "the spec (README) says half-up rounding.")
+        self.assertIsNotNone(gate_lines.INTENT.search(gate_lines.flatten(paren)))
+
+    def test_twins_regex_rejects_non_numeric_counts(self) -> None:
+        sys.path.insert(0, str(ROOT / ".agents" / "scripts"))
+        try:
+            import gate_lines
+        finally:
+            sys.path.pop(0)
+        good = ("TWINS: searched round( - found 2 other sites: a.py, b.py",
+                "TWINS: searched round( — found none other sites.",
+                "TWINS: searched x - found 1 other site: utils.py")
+        bad = ("TWINS: searched round( - found bananas other sites",
+               "TWINS: searched round( - found some other sites")
+        for line in good:
+            self.assertTrue(gate_lines.TWINS.search(gate_lines.flatten(line)), line)
+        for line in bad:
+            self.assertFalse(gate_lines.TWINS.search(gate_lines.flatten(line)), line)
 
 
 if __name__ == '__main__':

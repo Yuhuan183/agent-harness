@@ -17,7 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 ROLES = (
-    "Explore",
+    "explore",
     "plan-verifier",
     "security-reviewer",
     "mech-executor",
@@ -25,9 +25,10 @@ ROLES = (
     "verifier",
     "security-executor",
 )
-CODEX_ROLES = tuple(role.lower() if role == "Explore" else role for role in ROLES)
+# Role spelling is lowercase on both providers since the 2026-07-23 rename.
+CODEX_ROLES = ROLES
 READ_ONLY_ROLES = (
-    "Explore",
+    "explore",
     "plan-verifier",
     "security-reviewer",
 )

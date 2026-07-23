@@ -91,6 +91,14 @@ class MachineStateHygieneTests(unittest.TestCase):
                 run_hook("AGENT_SKIP_TEST_GATE=1 git commit -m x", str(repo)).returncode, 0
             )
             self.assertEqual(run_hook("git status", str(repo)).returncode, 0)
+            # Repo-switching forms must gate on the command's target, not cwd
+            # (F-01: `git -C` and `cd &&` both bypassed the gate from cwd=/).
+            dash_c = run_hook(f"git -C {repo} commit -m x", "/")
+            self.assertEqual(dash_c.returncode, 2)
+            self.assertIn("commit blocked", dash_c.stderr)
+            cd_form = run_hook(f"cd {repo} && git commit -m x", "/")
+            self.assertEqual(cd_form.returncode, 2)
+            self.assertIn("commit blocked", cd_form.stderr)
 
 
 

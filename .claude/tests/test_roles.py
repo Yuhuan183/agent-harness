@@ -21,7 +21,7 @@ class AgentRosterTests(unittest.TestCase):
                 self.assertNotIn(forbidden, body, f"{role} leaks {forbidden}")
 
     def test_model_tiers_are_pinned(self) -> None:
-        self.assertIn("model: sonnet", frontmatter(".claude/agents/Explore.md"))
+        self.assertIn("model: sonnet", frontmatter(".claude/agents/explore.md"))
         self.assertIn("model: sonnet", frontmatter(".claude/agents/mech-executor.md"))
         # User-directed 2026-07-23: sonnet/high left the effort-curve Pareto
         # frontier, so executor joined the Opus tier.
@@ -29,7 +29,7 @@ class AgentRosterTests(unittest.TestCase):
                      "security-reviewer", "security-executor"):
             self.assertIn("model: opus", frontmatter(f".claude/agents/{role}.md"), role)
 
-    PINNED_EFFORTS = {"Explore": "low", "mech-executor": "medium",
+    PINNED_EFFORTS = {"explore": "low", "mech-executor": "medium",
                       "executor": "medium", "plan-verifier": "medium",
                       "verifier": "high", "security-reviewer": "high",
                       "security-executor": "high"}
@@ -51,7 +51,7 @@ class AgentRosterTests(unittest.TestCase):
             self.assertRegex(meta, r"(?m)^disallowedTools:.*\bAgent\b.*\bWorkflow\b")
 
     def test_explore_separates_recon_from_adversarial_review(self) -> None:
-        for path in (".claude/agents/Explore.md", ".codex/agents/explore.toml"):
+        for path in (".claude/agents/explore.md", ".codex/agents/explore.toml"):
             body = read(path)
             self.assertIn("task_class: recon", body, path)
             self.assertIn("task_class: review", body, path)
@@ -185,7 +185,7 @@ class LeafArtifactGateTests(unittest.TestCase):
         # the shared semantic core that must not drift apart. Platform wording
         # may differ, but every clause must exist on both sides (case-folded).
         shared = {
-            "Explore": ["read-only leaf agent", "never delegate",
+            "explore": ["read-only leaf agent", "never delegate",
                         "file:line evidence", "genuinely new or redirected work"],
             "mech-executor": ["never delegate", "weaken", "stop and report",
                               "auth: user said"],
@@ -198,12 +198,10 @@ class LeafArtifactGateTests(unittest.TestCase):
             "security-executor": ["weaken", "abuse", "intent: code does",
                                   "auth: user said"],
         }
-        self.assertEqual(sorted(shared), sorted(r if r != "Explore" else "Explore"
-                                                for r in ROLES))
+        self.assertEqual(sorted(shared), sorted(ROLES))
         for role, clauses in shared.items():
-            codex_role = "explore" if role == "Explore" else role
             claude = read(f".claude/agents/{role}.md").lower()
-            codex = read(f".codex/agents/{codex_role}.toml").lower()
+            codex = read(f".codex/agents/{role}.toml").lower()
             for clause in clauses:
                 self.assertIn(clause, claude, f"{role} (claude): {clause}")
                 self.assertIn(clause, codex, f"{role} (codex): {clause}")
@@ -215,12 +213,59 @@ class LeafArtifactGateTests(unittest.TestCase):
                           agent["developer_instructions"], role)
 
     def test_qc_fraud_checklist_in_both_main_qc_paths(self) -> None:
-        for path in (".claude/skills/provider-routing/SKILL.md",
+        for path in (".claude/skills/baton-dispatch/SKILL.md",
                      ".codex/skills/leaf-dispatch/SKILL.md"):
             body = " ".join(read(path).split())
             self.assertIn("false-completion frauds", body, path)
             self.assertIn("leftover leaf-created scratch files", body, path)
             self.assertIn("pre-existing dirty-worktree files are not debris", body, path)
+            # s9 evidence: 4/10 leaves under-reported real twins — a found-0
+            # claim is verified by QC's own grep, never accepted on the word.
+            self.assertIn("`found 0/none` TWINS claim", body, path)
+            self.assertIn("grep the fixed construct across the scope", body, path)
+
+    def test_qc_gate_lines_flags_twins_none_claims_for_grep(self) -> None:
+        script = ROOT / ".agents/scripts/qc-gate-lines"
+
+        def run(report: str) -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                [sys.executable, str(script), "-", "--defect-fixed"],
+                input=report, capture_output=True, text=True, timeout=30,
+            )
+
+        none_claim = run("TWINS: searched round( - found 0 other sites: none")
+        self.assertEqual(none_claim.returncode, 0)
+        self.assertIn("VERIFY TWINS", none_claim.stdout)
+        counted = run("TWINS: searched round( - found 2 other sites: a.py, b.py")
+        self.assertEqual(counted.returncode, 0)
+        self.assertNotIn("VERIFY TWINS", counted.stdout)
+        self.assertIn("OK", counted.stdout)
+
+    def test_qc_gate_lines_derives_intent_owed_from_the_diff(self) -> None:
+        # s9: 4/10 leaves omitted INTENT entirely; the flag must come from the
+        # diff mechanically, not from the reviewer remembering to set it.
+        script = ROOT / ".agents/scripts/qc-gate-lines"
+        code_diff = ("--- a/pricebook.py\n+++ b/pricebook.py\n@@ -1 +1 @@\n"
+                     "-old\n+new\n")
+        docs_diff = ("--- a/README.md\n+++ b/README.md\n@@ -1 +1 @@\n"
+                     "-old\n+new\n")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for name, diff, expect_missing in (
+                ("code", code_diff, True), ("docs", docs_diff, False),
+            ):
+                path = Path(temp_dir) / f"{name}.diff"
+                path.write_text(diff, encoding="utf-8")
+                result = subprocess.run(
+                    [sys.executable, str(script), "-", "--diff", str(path)],
+                    input="Report with no gate lines at all.",
+                    capture_output=True, text=True, timeout=30,
+                )
+                if expect_missing:
+                    self.assertEqual(result.returncode, 1, name)
+                    self.assertIn("MISSING INTENT", result.stdout, name)
+                    self.assertIn("derived from --diff", result.stdout, name)
+                else:
+                    self.assertEqual(result.returncode, 0, name)
 
     def test_brief_carries_stop_defaults_and_auth_provenance(self) -> None:
         for path in (

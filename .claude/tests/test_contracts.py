@@ -18,15 +18,19 @@ class ClaudeContractTests(unittest.TestCase):
             self.assertIn(phrase, policy)
 
     def test_dispatch_reporting_and_leaf_boundary(self) -> None:
+        # The resident contract keeps the record names and the leaf boundary;
+        # the field-level template lives in baton-dispatch (single source,
+        # mirroring the Codex leaf-dispatch pattern).
         policy = read(".claude/CLAUDE.contract.md")
         self.assertIn("[LEAF_DISPATCH]", policy)
         self.assertIn("[LEAF_RESULT]", policy)
+        self.assertIn("Never brief a subagent to delegate further", policy)
+        self.assertIn("agent-to-agent briefs stay in precise, concise English", policy)
+        skill = read(".claude/skills/baton-dispatch/SKILL.md")
         for field in ("task=<label>", "role=<role>", "class=<class>",
                       "request_source=<request_source>", "route=<profile>/<provider>/<model>/<effort>",
                       "ledger=<logged|skipped(reason)>"):
-            self.assertIn(field, policy)
-        self.assertIn("Never brief a subagent to delegate further", policy)
-        self.assertIn("agent-to-agent briefs stay in precise, concise English", policy)
+            self.assertIn(field, skill)
 
     def test_effort_is_capped_at_high(self) -> None:
         for role in ROLES:
@@ -113,7 +117,10 @@ class ClaudeContractTests(unittest.TestCase):
             self.assertIn("intermediate evidence", text)
             self.assertIn("cross-language or FFI", text)
             self.assertIn("serialization or pre-aggregation", text)
-        for text in (skill, claude, codex_policy):
+        # Plan anti-churn moved from the resident Claude contract into the
+        # mandatory-pre-dispatch baton skill (union assertion, like codex).
+        claude_policy = claude + "\n" + skill
+        for text in (claude_policy, codex_policy):
             self.assertIn("substantially unchanged Plan", text)
             self.assertIn("material revision or new evidence", text)
             self.assertRegex(text, r"silently (overrule|overriding)")
@@ -215,9 +222,10 @@ class CodexBundleTests(unittest.TestCase):
         self.assertIn("routine low-risk work", verifier["description"])
 
     def test_every_leaf_role_has_a_codex_counterpart(self) -> None:
-        # Claude role -> codex agent file (Explore is lowercase on the codex side).
+        # Claude role -> codex agent file (same lowercase spelling since the
+        # 2026-07-23 rename).
         counterparts = {
-            "Explore": "explore",
+            "explore": "explore",
             "plan-verifier": "plan-verifier",
             "security-reviewer": "security-reviewer",
             "mech-executor": "mech-executor",
@@ -509,7 +517,10 @@ class DocumentationBudgetTests(unittest.TestCase):
             ".codex/AGENTS.contract.md": 590,
             ".codex/ANALYSIS.md": 500,
             ".codex/DEPLOY.md": 550,
-            ".claude/skills/baton-dispatch/SKILL.md": 890,
+            # +90 (2026-07-23): record template and QC fraud checklist moved
+            # in from the resident contract / provider-routing (net resident
+            # payload down; skill is mandatory before every dispatch).
+            ".claude/skills/baton-dispatch/SKILL.md": 980,
             ".claude/skills/provider-routing/SKILL.md": 1480,
             ".codex/skills/leaf-dispatch/SKILL.md": 720,
         }
