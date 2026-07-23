@@ -29,8 +29,9 @@ def load_deployment_manifest(repo):
             if len(fields) != 2 or not all(fields):
                 raise ValueError(f"malformed deployment manifest line {line_number}")
             source, target = fields
-            prefixes = (".agents/", ".claude/", ".codex/")
-            if not source.startswith(prefixes) or not target.startswith(prefixes):
+            source_prefixes = ("main/.agents/", "main/.claude/", "main/.codex/")
+            target_prefixes = (".agents/", ".claude/", ".codex/")
+            if not source.startswith(source_prefixes) or not target.startswith(target_prefixes):
                 raise ValueError(f"unsafe deployment manifest line {line_number}")
             if any(part in ("", ".", "..") for part in source.split("/")) \
                     or any(part in ("", ".", "..") for part in target.split("/")):
@@ -82,7 +83,7 @@ try:
                     "contract-repo drift (uncommitted changes in ~/.claude):\n"
                     + r.stdout.rstrip()
                 )
-        if not os.path.isdir(os.path.join(harness_repo, ".claude")):
+        if not os.path.isdir(os.path.join(harness_repo, "main", ".claude")):
             # A managed deployment without a reachable source checkout has no
             # manifest drift monitoring — that is a finding, not a silent skip,
             # and the throttle must not advance past it.

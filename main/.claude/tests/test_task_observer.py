@@ -8,7 +8,7 @@ import uuid
 from support import *  # noqa: F401,F403
 
 
-SCRIPT = ROOT / ".agents/skills/task-observer/scripts/observation-log"
+SCRIPT = ROOT / "main/.agents/skills/task-observer/scripts/observation-log"
 
 
 def run_observer(
@@ -40,8 +40,8 @@ class TaskObserverTests(unittest.TestCase):
         self.assertTrue(SCRIPT.is_file())
         self.assertTrue(os.access(SCRIPT, os.X_OK))
         for stub in (
-            ROOT / ".claude/skills/task-observer",
-            ROOT / ".codex/skills/task-observer",
+            ROOT / "main/.claude/skills/task-observer",
+            ROOT / "main/.codex/skills/task-observer",
         ):
             self.assertTrue(stub.is_symlink(), stub)
             self.assertEqual(
@@ -49,9 +49,9 @@ class TaskObserverTests(unittest.TestCase):
             )
             self.assertTrue((stub / "SKILL.md").is_file())
         for pair in (
-            (".agents/skills/task-observer", ".agents/skills/task-observer"),
-            (".claude/skills/task-observer", ".claude/skills/task-observer"),
-            (".codex/skills/task-observer", ".codex/skills/task-observer"),
+            ("main/.agents/skills/task-observer", ".agents/skills/task-observer"),
+            ("main/.claude/skills/task-observer", ".claude/skills/task-observer"),
+            ("main/.codex/skills/task-observer", ".codex/skills/task-observer"),
         ):
             self.assertIn(pair, deployment_manifest())
         skill = read(".agents/skills/task-observer/SKILL.md")

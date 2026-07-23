@@ -65,7 +65,7 @@ methodology. See `ATTRIBUTION.md` for licence and modification details.
 ```
 
 Use the source-checkout path
-`.agents/skills/task-observer/scripts/observation-log` before deployment.
+`main/.agents/skills/task-observer/scripts/observation-log` before deployment.
 Add `--session-context` or `--reference-file` only when needed. The script
 returns the immutable observation ID; cite that ID exactly.
 

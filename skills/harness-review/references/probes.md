@@ -5,13 +5,13 @@ Concrete, reproducible probes per dimension. All read-only.
 ## Inventory (run first)
 
 ```bash
-# Resident/doc sizes vs budgets (word budgets live in .claude/tests/test_contracts.py)
-wc -l .claude/CLAUDE.contract.md .codex/AGENTS.contract.md \
-      .claude/agents/*.md .claude/skills/*/SKILL.md
+# Resident/doc sizes vs budgets (word budgets live in main/.claude/tests/test_contracts.py)
+wc -l main/.claude/CLAUDE.contract.md main/.codex/AGENTS.contract.md \
+      main/.claude/agents/*.md main/.claude/skills/*/SKILL.md
 
 # Chinese-content ratio per file (zh lines / total) — grounds dimension 3
-for f in .claude/CLAUDE.contract.md .codex/AGENTS.contract.md \
-         .claude/agents/*.md .claude/skills/*/SKILL.md README.md docs/*.md; do
+for f in main/.claude/CLAUDE.contract.md main/.codex/AGENTS.contract.md \
+         main/.claude/agents/*.md main/.claude/skills/*/SKILL.md README.md docs/*.md; do
   echo "$(grep -c '[一-龥]' "$f" 2>/dev/null || echo 0)/$(wc -l < "$f") $f"
 done
 ```
@@ -20,14 +20,15 @@ done
 
 ```bash
 # Enforcement verbs that must map to a real mechanism
-rg -in 'block|reject|refuse|prevent|enforce|guard' --type md .claude .codex README.md
+rg -in 'block|reject|refuse|prevent|enforce|guard' --type md \
+  main/.claude main/.codex README.md
 
 # For each hit inside a hook/script claim: verify the mechanism can actually fail
-rg -n 'sys.exit|parser.error|raise|returncode' .claude/hooks/*.py .claude/scripts/* .codex/scripts/*
+rg -n 'sys.exit|parser.error|raise|returncode' main/.claude/hooks/*.py main/.claude/scripts/* main/.codex/scripts/*
 # A "guard" with no non-zero exit path is a warning, not a guard.
 
 # Bootstrap self-dependency: repo tooling that resolves $HOME-deployed state
-rg -n 'expanduser|HOME' .agents/skills/*/scripts/* .claude/hooks/*.py | rg -v 'AGENT_[A-Z_]+'
+rg -n 'expanduser|HOME' main/.agents/skills/*/scripts/* main/.claude/hooks/*.py | rg -v 'AGENT_[A-Z_]+'
 # Rule: repo-internal callers must be overridable by env and default sanely inside the checkout.
 ```
 
@@ -64,9 +65,9 @@ places, claims a validator does not actually check.
 # Deployment surface: everything deployed should be read by some runtime
 cat scripts/deployment-manifest.tsv
 # Twin parity: diff role semantics, not just registration
-diff <(sed -n '/^---$/,$p' .claude/agents/verifier.md) <(cat .codex/agents/verifier.toml)
+diff <(sed -n '/^---$/,$p' main/.claude/agents/verifier.md) <(cat main/.codex/agents/verifier.toml)
 # Ownership: personal prefs (theme/tui/notifications) must not sit in tracked settings
-jq 'keys' .claude/settings.json
+jq 'keys' main/.claude/settings.json
 ```
 
 ## Dimension 6 — overhead
@@ -106,7 +107,7 @@ policy content.
 # CJK budget check — split() counts a zh sentence as 1; word_count() must not:
 python3 -c "print(len('常駐指令檔縮到只剩模型推不出來的東西'.split()))"   # 1 == gameable
 # Punctuation policy (zh-TW full-width) — should return nothing:
-rg -n '[一-鿿][,;:]' --glob '*.md' README.md docs .claude .agents
+rg -n '[一-鿿][,;:]' --glob '*.md' README.md docs main/.claude main/.agents
 ```
 
 ## Route/latency calibration (observed 2026-07-22)

@@ -14,7 +14,7 @@ class MechanismTests(unittest.TestCase):
         }
         with tempfile.TemporaryDirectory() as other_cwd:
             result = subprocess.run(
-                ["bash", str(ROOT / ".claude/sh/statusline.sh")],
+                ["bash", str(ROOT / "main/.claude/sh/statusline.sh")],
                 cwd=other_cwd,
                 input=json.dumps(payload),
                 check=True,
@@ -28,7 +28,7 @@ class MechanismTests(unittest.TestCase):
             self.assertIn(f"({branch})", result.stdout)
 
     def test_runtime_guard_rejects_old_or_unknown_versions(self) -> None:
-        guard = ROOT / ".claude/hooks/runtime-guard.py"
+        guard = ROOT / "main/.claude/hooks/runtime-guard.py"
         old = subprocess.run([sys.executable, str(guard), "2.1.197 (Claude Code)"],
                              check=True, capture_output=True, text=True)
         current = subprocess.run([sys.executable, str(guard), "2.1.207 (Claude Code)"],
@@ -41,7 +41,7 @@ class MechanismTests(unittest.TestCase):
         self.assertIn("version unknown", unknown.stdout)
 
     def test_runtime_guard_gate_blocks_restricted_dispatch(self) -> None:
-        guard = ROOT / ".claude/hooks/runtime-guard.py"
+        guard = ROOT / "main/.claude/hooks/runtime-guard.py"
 
         def run_gate(version: str, payload: str) -> subprocess.CompletedProcess:
             return subprocess.run(
@@ -62,7 +62,7 @@ class MechanismTests(unittest.TestCase):
         self.assertEqual(run_gate("2.1.197 (Claude Code)", "not json").returncode, 0)
 
     def test_weekly_integrity_stamps_only_after_completed_checks(self) -> None:
-        hook = ROOT / ".claude/hooks/weekly-integrity.py"
+        hook = ROOT / "main/.claude/hooks/weekly-integrity.py"
         with tempfile.TemporaryDirectory() as temp_home:
             claude_dir = Path(temp_home) / ".claude"
             scripts_dir = claude_dir / "scripts"
@@ -92,12 +92,12 @@ class MechanismTests(unittest.TestCase):
             # rsync-deployed ~/.claude (no .git): drift vs the repo copy is
             # reported, but the check completes and the throttle advances.
             repo = Path(temp_home) / "repo"
-            (repo / ".claude").mkdir(parents=True)
-            (repo / ".claude" / "CLAUDE.contract.md").write_text("contract\n",
-                                                                 encoding="utf-8")
+            (repo / "main" / ".claude").mkdir(parents=True)
+            (repo / "main" / ".claude" / "CLAUDE.contract.md").write_text(
+                "contract\n", encoding="utf-8")
             (repo / "scripts").mkdir()
             (repo / "scripts/deployment-manifest.tsv").write_text(
-                ".claude/CLAUDE.contract.md\t.claude/CLAUDE.md\n",
+                "main/.claude/CLAUDE.contract.md\t.claude/CLAUDE.md\n",
                 encoding="utf-8",
             )
             env["AGENT_HARNESS_REPO"] = str(repo)
@@ -141,12 +141,12 @@ class MechanismTests(unittest.TestCase):
             # targets; .codex/.agents manifest parity must still run and catch
             # drift instead of being skipped wholesale (review F-05).
             stamp.unlink()
-            (repo / ".codex").mkdir()
-            (repo / ".codex" / "AGENTS.contract.md").write_text(
+            (repo / "main" / ".codex").mkdir()
+            (repo / "main" / ".codex" / "AGENTS.contract.md").write_text(
                 "agents contract\n", encoding="utf-8")
             (repo / "scripts/deployment-manifest.tsv").write_text(
-                ".claude/CLAUDE.contract.md\t.claude/CLAUDE.md\n"
-                ".codex/AGENTS.contract.md\t.codex/AGENTS.md\n",
+                "main/.claude/CLAUDE.contract.md\t.claude/CLAUDE.md\n"
+                "main/.codex/AGENTS.contract.md\t.codex/AGENTS.md\n",
                 encoding="utf-8",
             )
             (Path(temp_home) / ".codex" / "AGENTS.md").write_text(
@@ -170,8 +170,8 @@ class MechanismTests(unittest.TestCase):
         self.assertIn("deployment-manifest.tsv", hook)
         self.assertIn("deployment-manifest.tsv", sync)
         self.assertNotIn("cross_platform =", hook)
-        self.assertIn((".claude/CLAUDE.contract.md", ".claude/CLAUDE.md"), pairs)
-        self.assertIn((".codex/AGENTS.contract.md", ".codex/AGENTS.md"), pairs)
+        self.assertIn(("main/.claude/CLAUDE.contract.md", ".claude/CLAUDE.md"), pairs)
+        self.assertIn(("main/.codex/AGENTS.contract.md", ".codex/AGENTS.md"), pairs)
         for source, target in pairs:
             self.assertTrue((ROOT / source).exists(), source)
             self.assertRegex(target, r"^\.(agents|claude|codex)/")
@@ -334,7 +334,7 @@ class MechanismTests(unittest.TestCase):
             observer.write_text(record("2026-07-15T08:00:00Z", "claude-sonnet-4-5", 40) + "\n",
                                 encoding="utf-8")
             result = subprocess.run(
-                [sys.executable, str(ROOT / ".claude/scripts/usage-report"),
+                [sys.executable, str(ROOT / "main/.claude/scripts/usage-report"),
                  "--root", str(root), "--days", "2",
                  "--now", "2026-07-16T00:00:00Z", "--json"],
                 check=True, capture_output=True, text=True)
@@ -366,7 +366,7 @@ class MechanismTests(unittest.TestCase):
                              + record("2026-07-15T01:00:00Z", 500) + "\n", encoding="utf-8")
             light.write_text(record("2026-07-15T00:00:00Z", 10) + "\n", encoding="utf-8")
             result = subprocess.run(
-                [sys.executable, str(ROOT / ".claude/scripts/usage-report"),
+                [sys.executable, str(ROOT / "main/.claude/scripts/usage-report"),
                  "--root", str(root), "--days", "2",
                  "--now", "2026-07-16T00:00:00Z", "--by-session", "--json"],
                 check=True, capture_output=True, text=True)
@@ -402,7 +402,7 @@ class TrapGraderIntegrityTests(unittest.TestCase):
             self.assertIn("--report", result.stderr, grader)
 
     def test_intent_capture_survives_decimals_in_the_spec_segment(self) -> None:
-        sys.path.insert(0, str(ROOT / ".agents" / "scripts"))
+        sys.path.insert(0, str(ROOT / "main" / ".agents" / "scripts"))
         try:
             import gate_lines
         finally:
@@ -417,7 +417,7 @@ class TrapGraderIntegrityTests(unittest.TestCase):
         self.assertIsNotNone(gate_lines.INTENT.search(gate_lines.flatten(paren)))
 
     def test_twins_regex_rejects_non_numeric_counts(self) -> None:
-        sys.path.insert(0, str(ROOT / ".agents" / "scripts"))
+        sys.path.insert(0, str(ROOT / "main" / ".agents" / "scripts"))
         try:
             import gate_lines
         finally:

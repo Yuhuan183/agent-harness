@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parents[2] / ".agents" / "scripts"))
+sys.path.insert(0, str(HERE.parents[2] / "main" / ".agents" / "scripts"))
 import gate_lines  # noqa: E402
 
 PRISTINE = HERE / "pristine"

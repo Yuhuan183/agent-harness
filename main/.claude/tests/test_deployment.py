@@ -26,15 +26,20 @@ class MachineStateHygieneTests(unittest.TestCase):
 
     def test_machine_state_files_are_gitignored(self) -> None:
         ignore = read(".gitignore")
-        for entry in (".claude/mcp_servers.json", ".codex/config.toml", "__pycache__/", "*.pyc"):
+        for entry in ("main/.claude/mcp_servers.json", "main/.codex/config.toml",
+                      "__pycache__/", "*.pyc"):
             self.assertIn(entry, ignore)
         # Confirmed ignored by git itself (exit 0 == path is ignored).
-        for path in (".claude/mcp_servers.json", ".codex/config.toml"):
+        for path in ("main/.claude/mcp_servers.json", "main/.codex/config.toml"):
             self.assertEqual(git("check-ignore", path).returncode, 0, path)
+        # Root-level agent directories are reserved for project-specific
+        # configuration and must not inherit the deployable bundle ignores.
+        for path in (".claude/mcp_servers.json", ".codex/config.toml"):
+            self.assertEqual(git("check-ignore", path).returncode, 1, path)
         # And not tracked.
         tracked = git("ls-files").stdout.splitlines()
-        self.assertNotIn(".claude/mcp_servers.json", tracked)
-        self.assertNotIn(".codex/config.toml", tracked)
+        self.assertNotIn("main/.claude/mcp_servers.json", tracked)
+        self.assertNotIn("main/.codex/config.toml", tracked)
 
     def test_settings_are_user_owned_and_portable(self) -> None:
         settings = json.loads(read(".claude/settings.json"))
@@ -61,7 +66,7 @@ class MachineStateHygieneTests(unittest.TestCase):
         # Behavioral proof with a planted failure — a gate that cannot catch a
         # deliberate error does not exist. Uses a synthetic repo so the check
         # never recurses into this suite.
-        hook = ROOT / ".claude/hooks/commit-test-gate.py"
+        hook = ROOT / "main/.claude/hooks/commit-test-gate.py"
 
         def run_hook(command: str, cwd: str) -> subprocess.CompletedProcess[str]:
             payload = json.dumps({"tool_input": {"command": command}, "cwd": cwd})

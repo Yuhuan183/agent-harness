@@ -1,7 +1,7 @@
 # `.agents/` — 跨 Agent 共用層
 
-> 專案全貌與跨平台資料流見[根 README](../README.md)；方法、研究與部署指引見
-> [docs/README.md](../docs/README.md)。
+> 專案全貌與跨平台資料流見[根 README](../../README.md)；方法、研究與部署指引見
+> [docs/README.md](../../docs/README.md)。
 
 不綁定單一 agent 的通用配置：共用 skill 本體、跨 agent runtime 知識、第三方套件清單。
 回寫到 `~/.agents/`。`.claude/` 與 `.codex/` 以相對 symlink 引用此處，達到「一份本體、
@@ -27,7 +27,7 @@
 
 ## 新增共用 skill 的方式
 
-1. skill 本體放 `.agents/skills/<name>/`。
-2. 在 `.claude/skills/` 與需要的 `.codex/skills/` 各建相對 symlink：
+1. skill 本體放 `main/.agents/skills/<name>/`。
+2. 在 `main/.claude/skills/` 與需要的 `main/.codex/skills/` 各建相對 symlink：
    `ln -s ../../.agents/skills/<name> <name>`。
 3. `scripts/sync.sh` 以 `rsync --links` 原樣複製連結；全域佈局同構故連結續存。

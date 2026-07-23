@@ -13,7 +13,7 @@ fails and an agent with it passes (or where QC catches the planted fraud).
 Rules whose traps never fail across model tiers are pruning candidates.
 Rules covered here: `INTENT:` (+ authority order), `TWINS:`, `AUTH:`
 (docs ≠ authorization), and the QC false-completion fraud checklist in
-`provider-routing` / `.codex/AGENTS.contract.md`.
+`provider-routing` / `main/.codex/AGENTS.contract.md`.
 
 ## Layout
 

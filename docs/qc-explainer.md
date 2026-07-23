@@ -1,10 +1,10 @@
 # QC 白話說明：派工品質怎麼把關
 
 寫給想快速理解「leaf 交回來的東西為什麼可以信」的人。本文只做解釋；有約束力的
-規則字面在 [baton-dispatch](../.claude/skills/baton-dispatch/SKILL.md)、
-[provider-routing](../.claude/skills/provider-routing/SKILL.md)（Claude 端）與
-[leaf-dispatch](../.codex/skills/leaf-dispatch/SKILL.md)（Codex 端），工具是
-[qc-gate-lines](../.agents/scripts/qc-gate-lines)。
+規則字面在 [baton-dispatch](../main/.claude/skills/baton-dispatch/SKILL.md)、
+[provider-routing](../main/.claude/skills/provider-routing/SKILL.md)（Claude 端）與
+[leaf-dispatch](../main/.codex/skills/leaf-dispatch/SKILL.md)（Codex 端），工具是
+[qc-gate-lines](../main/.agents/scripts/qc-gate-lines)。
 
 ## 為何需要 QC
 

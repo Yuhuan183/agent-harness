@@ -1,8 +1,8 @@
 # 常駐契約瘦身規範（CLAUDE.md ＋ AGENTS.md）
 
-適用對象：`.claude/CLAUDE.contract.md`（部署為 `~/.claude/CLAUDE.md`）與
-`.codex/AGENTS.contract.md`（部署為 `~/.codex/AGENTS.md`）。這是規範而非歷程；
-歷次瘦身決策由 Git 與 [orchestration-history.md](../.claude/plans/orchestration-history.md) 保存。
+適用對象：`main/.claude/CLAUDE.contract.md`（部署為 `~/.claude/CLAUDE.md`）與
+`main/.codex/AGENTS.contract.md`（部署為 `~/.codex/AGENTS.md`）。這是規範而非歷程；
+歷次瘦身決策由 Git 與 [orchestration-history.md](../main/.claude/plans/orchestration-history.md) 保存。
 
 ## 原則
 
@@ -34,7 +34,7 @@
 
 - 預算以 `word_count`（CJK-aware，每個 CJK 字元計一詞）計，行數不可作為預算單位
   （長行可規避）。現行數值的唯一真相源是
-  [test_contracts.py](../.claude/tests/test_contracts.py) 的 `DocumentationBudgetTests`；
+  [test_contracts.py](../main/.claude/tests/test_contracts.py) 的 `DocumentationBudgetTests`；
   本文不複製數字。
 - 調高預算需要證據：先嘗試「移出到 skill／hook／role 契約」，只有內容確屬
   「每 session 必要且推不出」時才擴預算，並在 commit message 記明理由。
@@ -50,5 +50,5 @@
 
 1. 在 source checkout 編修（源檔刻意不叫 `CLAUDE.md`／`AGENTS.md`，避免在本 repo 內
    開 session 時與全域版重複載入；sync 時依 manifest 改名部署）。
-2. `python3 -m unittest discover -s .claude/tests`（含預算與 twin-parity）全綠。
+2. `python3 -m unittest discover -s main/.claude/tests`（含預算與 twin-parity）全綠。
 3. `scripts/sync.sh` dry-run → `--apply` → 開新 session 跑驗收任務。

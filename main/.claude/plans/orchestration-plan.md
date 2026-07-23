@@ -7,13 +7,13 @@
 | Surface | Current design | Evidence |
 |---|---|---|
 | CLI output | `rtk` PreToolUse rewrite, fail-open | `settings.json`, `RTK.md` |
-| Context compression | Headroom wrap mode (recommended default) + optional persistent install; no durable proxy routing in tracked settings | `../.agents/docs/headroom-runtime.md` |
+| Context compression | Headroom wrap mode (recommended default) + optional persistent install; no durable proxy routing in tracked settings | `../../.agents/docs/headroom-runtime.md` |
 | Orchestration | Direct-first brake from Baton `0ab4d2e`, plus Pilotfish v1.3 shape-based batching and Plan anti-churn | `CLAUDE.md`, `skills/baton-dispatch/` |
 | Roles | Seven self-contained capability contracts; task class and scenario refine work without role proliferation | `agents/`, `skills/baton-dispatch/` |
-| Routing data | Per-provider routing files with quality floors and priority profiles | `model-routing.toml`, `../.codex/model-routing.toml` |
+| Routing data | Per-provider routing files with quality floors and priority profiles | `../model-routing.toml`, `../../.codex/model-routing.toml` |
 | Verification | Plan/outcome roles stay capability-separated; fresh outcome verification uses the smallest coherent integration boundary | `agents/plan-verifier.md`, `agents/verifier.md` |
 | Monitoring | Delegation audit, weekly drift check, usage metadata report, runtime guard | `hooks/`, `scripts/` |
-| Portability | Claude source of truth distilled into Codex and ChatGPT bundles after local review | `../.codex/` |
+| Portability | Claude source of truth distilled into Codex and ChatGPT bundles after local review | `../../.codex/` |
 
 ## Routing policy (summary)
 
@@ -31,14 +31,14 @@
 - Runtime guard warns at SessionStart and actually blocks restricted reviewer dispatch via a PreToolUse Agent gate (exit 2) below Claude Code 2.1.207 or when version is unknown; the version probe is cached by binary mtime.
 - Usage report separates main/subagent/historical traffic without claiming subscription-quota equivalence; Codex tokens/quota come from local rollouts (`codex-usage`).
 - Claude→Codex bridge verified end-to-end: resolver JSON → `codex:codex-rescue` dispatch → rollout telemetry confirms the model/effort override (Sol/low, Luna/low).
-- Claude routing file is operative: `.claude/scripts/model-routing` validates the TOML, resolves role routes, and `check-pins` cross-checks agent frontmatter (also run weekly by the integrity hook, fail-open when the resolver is absent).
+- Claude routing file is operative: `main/.claude/scripts/model-routing` validates the TOML, resolves role routes, and `check-pins` cross-checks agent frontmatter (also run weekly by the integrity hook, fail-open when the resolver is absent).
 - Experience schema v3 records dispatch/rollout identity and request source; ambiguous bridge rollout windows retain a warning instead of adding unrelated token totals.
 - Quota discipline is short-window-first: `codex-usage --quota` lists the shorter window (e.g. 5h) before the weekly one and warns to hold Codex dispatch when it nears exhaustion.
 - Contract tests are split by concern (roles/contracts/deployment/mechanisms/ledger) with word-based doc budgets and twin-role semantic parity checks; coverage spans role ownership, preset atomicity, routing, policy validation, ledger concurrency, deployment preflight, hooks, and platform bundles.
 
 ## Next goals
 
-> 分類規則：**for all** = 跨 provider 的機制與紀律；**for claude** = 只動 `.claude/` 契約、roles、routing；**for codex** = 只動 `.codex/` 契約、bridge、rollout 佐證。
+> 分類規則：**for all** = 跨 provider 的機制與紀律；**for claude** = 只動 `main/.claude/` 契約、roles、routing；**for codex** = 只動 `main/.codex/` 契約、bridge、rollout 佐證。
 
 ### For all
 

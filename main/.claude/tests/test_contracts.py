@@ -334,7 +334,7 @@ class CodexBundleTests(unittest.TestCase):
         )
 
     def test_model_routing_cli_validates_and_resolves_quality_first_priority(self) -> None:
-        script = ROOT / ".codex/scripts/model-routing"
+        script = ROOT / "main/.codex/scripts/model-routing"
         self.assertTrue(os.access(script, os.X_OK))
         validated = subprocess.run(
             [str(script), "validate"], check=True, capture_output=True, text=True,
@@ -466,8 +466,8 @@ class CodexBundleTests(unittest.TestCase):
         for artifact in ("model-routing.toml", "scripts/model-routing"):
             self.assertIn(artifact, readme)
             self.assertIn(artifact, deploy)
-        self.assertIn((".codex/model-routing.toml", ".codex/model-routing.toml"), managed)
-        self.assertIn((".codex/scripts", ".codex/scripts"), managed)
+        self.assertIn(("main/.codex/model-routing.toml", ".codex/model-routing.toml"), managed)
+        self.assertIn(("main/.codex/scripts", ".codex/scripts"), managed)
         agents = read(".codex/AGENTS.contract.md")
         self.assertIn("${CODEX_HOME:-$HOME/.codex}/scripts/model-routing", agents)
         self.assertIn("session-start recommendations", agents)
@@ -545,8 +545,8 @@ class DocumentationBudgetTests(unittest.TestCase):
 
     def test_documentation_navigation_links_resolve_locally(self) -> None:
         paths = [
-            "README.md", "docs/README.md", ".claude/README.md",
-            ".codex/README.md", ".agents/README.md",
+            "README.md", "docs/README.md", "main/.claude/README.md",
+            "main/.codex/README.md", "main/.agents/README.md",
         ]
         missing = []
         for path in paths:

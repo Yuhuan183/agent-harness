@@ -5,7 +5,7 @@ from support import *  # noqa: F401,F403
 class AgentRosterTests(unittest.TestCase):
     def test_roster_matches_expected_roles(self) -> None:
         self.assertEqual(
-            {p.stem for p in (ROOT / ".claude/agents").glob("*.md")},
+            {p.stem for p in (ROOT / "main/.claude/agents").glob("*.md")},
             set(ROLES),
         )
 
@@ -137,11 +137,11 @@ class LeafArtifactGateTests(unittest.TestCase):
     def test_owed_line_audit_is_mechanized_in_both_qc_paths(self) -> None:
         # One shared implementation in .agents/scripts; both trees symlink it
         # (same relative depth in the repo and in HOME, synced with --links).
-        shared = ROOT / ".agents/scripts/qc-gate-lines"
+        shared = ROOT / "main/.agents/scripts/qc-gate-lines"
         self.assertTrue(shared.is_file(), shared)
         self.assertTrue(os.access(shared, os.X_OK), f"{shared} must be executable")
         for tree in (".claude", ".codex"):
-            link = ROOT / tree / "scripts/qc-gate-lines"
+            link = ROOT / "main" / tree / "scripts/qc-gate-lines"
             self.assertTrue(link.is_symlink(), f"{link} must be a symlink")
             self.assertEqual(
                 os.readlink(link), "../../.agents/scripts/qc-gate-lines", link
@@ -229,7 +229,7 @@ class LeafArtifactGateTests(unittest.TestCase):
             self.assertIn("grep the fixed construct across the scope", body, path)
 
     def test_qc_gate_lines_flags_twins_none_claims_for_grep(self) -> None:
-        script = ROOT / ".agents/scripts/qc-gate-lines"
+        script = ROOT / "main/.agents/scripts/qc-gate-lines"
 
         def run(report: str) -> subprocess.CompletedProcess[str]:
             return subprocess.run(
@@ -248,7 +248,7 @@ class LeafArtifactGateTests(unittest.TestCase):
     def test_qc_gate_lines_derives_intent_owed_from_the_diff(self) -> None:
         # s9: 4/10 leaves omitted INTENT entirely; the flag must come from the
         # diff mechanically, not from the reviewer remembering to set it.
-        script = ROOT / ".agents/scripts/qc-gate-lines"
+        script = ROOT / "main/.agents/scripts/qc-gate-lines"
         code_diff = ("--- a/pricebook.py\n+++ b/pricebook.py\n@@ -1 +1 @@\n"
                      "-old\n+new\n")
         docs_diff = ("--- a/README.md\n+++ b/README.md\n@@ -1 +1 @@\n"

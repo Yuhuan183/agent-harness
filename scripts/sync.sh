@@ -46,7 +46,7 @@ validate_manifest() {
       return 1
     fi
     case "$src_rel:$dst_rel" in
-      .agents/*:.agents/*|.claude/*:.claude/*|.codex/*:.codex/*) ;;
+      main/.agents/*:.agents/*|main/.claude/*:.claude/*|main/.codex/*:.codex/*) ;;
       *) log "ERROR: unsafe deployment mapping: $src_rel -> $dst_rel"; return 1 ;;
     esac
     case "/$src_rel/:/$dst_rel/" in
@@ -76,19 +76,19 @@ preflight() {
   # macOS system /usr/bin/python3 (3.9) fails deep inside otherwise.
   python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' \
     || { log "ERROR: python3 >= 3.11 required (tomllib); found $(python3 -V 2>&1)"; return 1; }
-  python3 -m json.tool "$REPO/.claude/settings.json" >/dev/null
-  python3 -m json.tool "$REPO/.claude/examples/headroom-mcp.merge.json" >/dev/null
-  bash -n "$REPO/scripts/sync.sh" "$REPO/.claude/sh/statusline.sh"
+  python3 -m json.tool "$REPO/main/.claude/settings.json" >/dev/null
+  python3 -m json.tool "$REPO/main/.claude/examples/headroom-mcp.merge.json" >/dev/null
+  bash -n "$REPO/scripts/sync.sh" "$REPO/main/.claude/sh/statusline.sh"
   validate_manifest
-  "$REPO/.claude/scripts/model-routing" validate >/dev/null
-  "$REPO/.claude/scripts/model-routing" check-pins >/dev/null
-  "$REPO/.codex/scripts/model-routing" validate >/dev/null
+  "$REPO/main/.claude/scripts/model-routing" validate >/dev/null
+  "$REPO/main/.claude/scripts/model-routing" check-pins >/dev/null
+  "$REPO/main/.codex/scripts/model-routing" validate >/dev/null
   git -C "$REPO" diff --check
   # Tests exercise sync.sh itself. The sentinel prevents recursive suites while
   # preserving every non-recursive preflight check in nested dry-runs.
   if [[ "${AGENT_HARNESS_PREFLIGHT_ACTIVE:-0}" != "1" ]]; then
     AGENT_HARNESS_PREFLIGHT_ACTIVE=1 PYTHONDONTWRITEBYTECODE=1 \
-      python3 -m unittest discover -s "$REPO/.claude/tests" -q
+      python3 -m unittest discover -s "$REPO/main/.claude/tests" -q
   fi
   log "preflight: passed"
 }
@@ -125,7 +125,7 @@ log "== agent-harness sync (apply=$APPLY) =="
 # warn before overwriting and suggest moving them to settings.local.json (sync never touches that file). apply aborts by default unless overwrite is explicitly accepted.
 if [[ -f "$HOME/.claude/settings.json" ]]; then
   SETTINGS_EXTRA=0
-  python3 - "$REPO/.claude/settings.json" "$HOME/.claude/settings.json" <<'EOF' || SETTINGS_EXTRA=1
+  python3 - "$REPO/main/.claude/settings.json" "$HOME/.claude/settings.json" <<'EOF' || SETTINGS_EXTRA=1
 import json, sys
 repo = json.load(open(sys.argv[1])); glb = json.load(open(sys.argv[2]))
 def extra_values(a, b, prefix=""):
@@ -177,8 +177,11 @@ while IFS=$'\t' read -r src_rel dst_rel extra; do
   [[ -s "$dst" ]] || continue
   cmp -s "$REPO/$src_rel" "$dst" && continue
   dst_hash="$(git -C "$REPO" hash-object "$dst")"
-  git -C "$REPO" rev-list --all --objects -- "$src_rel" | grep -q "^$dst_hash " \
-    || FOREIGN_CONTRACTS+=("$dst_rel")
+  legacy_src_rel="${src_rel#main/}"
+  {
+    git -C "$REPO" rev-list --all --objects -- "$src_rel"
+    git -C "$REPO" rev-list --all --objects -- "$legacy_src_rel"
+  } | grep -q "^$dst_hash " || FOREIGN_CONTRACTS+=("$dst_rel")
 done < "$MANIFEST"
 for dst_rel in "${FOREIGN_CONTRACTS[@]}"; do
   [[ -z "$dst_rel" ]] && continue
@@ -211,8 +214,8 @@ for row in "${DEFERRED_SETTINGS_ROWS[@]}"; do
 done
 
 # Machine state remains deliberately outside the manifest.
-log "note: .claude/mcp_servers.json is machine state (contains local paths) and is not auto-overwritten; when adding the headroom MCP, manually merge .claude/examples/headroom-mcp.merge.json."
-log "note: .codex/config.merge.toml must be manually merged into ~/.codex/config.toml (see DEPLOY.md); it is not auto-overwritten."
+log "note: ~/.claude/mcp_servers.json is machine state (contains local paths) and is not auto-overwritten; when adding the headroom MCP, manually merge main/.claude/examples/headroom-mcp.merge.json."
+log "note: main/.codex/config.merge.toml must be manually merged into ~/.codex/config.toml (see DEPLOY.md); it is not auto-overwritten."
 
 # --- Verification ---
 if [[ $APPLY -eq 1 ]]; then
@@ -225,9 +228,9 @@ if [[ $APPLY -eq 1 ]]; then
   done
   # Every synced path matches the repo (including removal of files already deleted from the repo)
   FAIL=0
-  cmp -s "$REPO/.claude/CLAUDE.contract.md" "$HOME/.claude/CLAUDE.md" \
+  cmp -s "$REPO/main/.claude/CLAUDE.contract.md" "$HOME/.claude/CLAUDE.md" \
     || { log "ERROR: ~/.claude/CLAUDE.md does not match CLAUDE.contract.md"; FAIL=1; }
-  cmp -s "$REPO/.codex/AGENTS.contract.md" "$HOME/.codex/AGENTS.md" \
+  cmp -s "$REPO/main/.codex/AGENTS.contract.md" "$HOME/.codex/AGENTS.md" \
     || { log "ERROR: ~/.codex/AGENTS.md does not match AGENTS.contract.md"; FAIL=1; }
   for i in "${!SYNCED_SRC[@]}"; do
     if [[ -d "${SYNCED_SRC[$i]}" ]]; then

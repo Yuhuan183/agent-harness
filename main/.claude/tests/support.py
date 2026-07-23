@@ -13,8 +13,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
-# Repo root: the tracked harness spans .claude/, .codex/, .agents/, and docs/.
-ROOT = Path(__file__).resolve().parents[2]
+# Repo root: deployable harness sources live under main/; docs and evals stay
+# at the project root.
+ROOT = Path(__file__).resolve().parents[3]
 
 ROLES = (
     "explore",
@@ -49,7 +50,10 @@ DISPATCH_OPTIONS = ("Dispatch GPT + Claude", "Dispatch GPT", "Dispatch Claude")
 
 
 def read(path: str) -> str:
-    return (ROOT / path).read_text(encoding="utf-8")
+    source = Path(path)
+    if source.parts and source.parts[0] in {".claude", ".codex", ".agents"}:
+        source = Path("main") / source
+    return (ROOT / source).read_text(encoding="utf-8")
 
 
 def deployment_manifest() -> list[tuple[str, str]]:

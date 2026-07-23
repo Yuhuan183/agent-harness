@@ -4,9 +4,9 @@ from support import *  # noqa: F401,F403
 
 class SharedSkillTests(unittest.TestCase):
     def _assert_symlinked_body(self, name: str) -> None:
-        body = ROOT / ".agents/skills" / name
+        body = ROOT / "main/.agents/skills" / name
         self.assertTrue((body / "SKILL.md").is_file(), f"{name} body missing")
-        for stub in (f".claude/skills/{name}", f".codex/skills/{name}"):
+        for stub in (f"main/.claude/skills/{name}", f"main/.codex/skills/{name}"):
             link = ROOT / stub
             self.assertTrue(link.is_symlink(), f"{stub} is not a symlink")
             self.assertEqual(os.readlink(link), f"../../.agents/skills/{name}")
@@ -19,7 +19,7 @@ class SharedSkillTests(unittest.TestCase):
         self._assert_symlinked_body("speak-human-tw")
 
     def test_speak_human_tw_layout_and_attribution(self) -> None:
-        base = ".agents/skills/speak-human-tw"
+        base = "main/.agents/skills/speak-human-tw"
         for ref in ("patterns", "taiwan-localization", "protected-list", "humanize"):
             self.assertTrue((ROOT / base / "references" / f"{ref}.md").is_file(), ref)
         self.assertTrue((ROOT / base / "agents/openai.yaml").is_file())
@@ -44,7 +44,7 @@ class SharedSkillTests(unittest.TestCase):
 
     def test_experience_ledger_is_shared_and_wired(self) -> None:
         self._assert_symlinked_body("experience-ledger")
-        base = ROOT / ".agents/skills/experience-ledger"
+        base = ROOT / "main/.agents/skills/experience-ledger"
         for script in ("experience-log", "experience-report", "experience-revise"):
             path = base / "scripts" / script
             self.assertTrue(path.is_file(), script)
@@ -56,11 +56,11 @@ class SharedSkillTests(unittest.TestCase):
         self.assertIn("log every dispatch outcome after QC", routing)
 
     def test_experience_scripts_log_and_report(self) -> None:
-        base = ROOT / ".agents/skills/experience-ledger/scripts"
+        base = ROOT / "main/.agents/skills/experience-ledger/scripts"
         with tempfile.TemporaryDirectory() as temp_dir:
             ledger = os.path.join(temp_dir, "experience.jsonl")
             env = {**os.environ, "AGENT_EXPERIENCE_LEDGER": ledger,
-                   "AGENT_CLAUDE_RESOLVER": str(ROOT / ".claude/scripts/model-routing")}
+                   "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/.claude/scripts/model-routing")}
 
             def log(*extra: str) -> None:
                 subprocess.run(
@@ -111,7 +111,7 @@ class SharedSkillTests(unittest.TestCase):
 
     def test_fallback_lineage_requires_all_three_fields(self) -> None:
         # F-04: origin + parent dispatch id + exactly one hop, together.
-        base = ROOT / ".agents/skills/experience-ledger/scripts"
+        base = ROOT / "main/.agents/skills/experience-ledger/scripts"
         common = ["--role", "executor", "--provider", "codex",
                   "--request-source", "codex", "--class", "impl",
                   "--profile", "balanced", "--model", "gpt-5.6-sol",
@@ -147,11 +147,11 @@ class SharedSkillTests(unittest.TestCase):
             self.assertEqual(good.returncode, 0, good.stderr)
 
     def test_experience_log_keeps_review_separate_from_recon(self) -> None:
-        base = ROOT / ".agents/skills/experience-ledger/scripts"
+        base = ROOT / "main/.agents/skills/experience-ledger/scripts"
         with tempfile.TemporaryDirectory() as temp_dir:
             ledger = os.path.join(temp_dir, "experience.jsonl")
             env = {**os.environ, "AGENT_EXPERIENCE_LEDGER": ledger,
-                   "AGENT_CLAUDE_RESOLVER": str(ROOT / ".claude/scripts/model-routing")}
+                   "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/.claude/scripts/model-routing")}
             common = [
                 # Legacy capitalized spelling: the alias must canonicalize it.
                 "--role", "Explore", "--provider", "claude",
@@ -177,8 +177,8 @@ class SharedSkillTests(unittest.TestCase):
                          {"recon": "spot", "review": "full"})
 
     def test_experience_pending_pairs_by_session_and_consumes_one_dispatch(self) -> None:
-        hook = ROOT / ".claude/hooks/experience-pending.py"
-        log_script = ROOT / ".agents/skills/experience-ledger/scripts/experience-log"
+        hook = ROOT / "main/.claude/hooks/experience-pending.py"
+        log_script = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-log"
         with tempfile.TemporaryDirectory() as temp_dir:
             pending = Path(temp_dir) / "pending.jsonl"
             ledger = Path(temp_dir) / "experience.jsonl"
@@ -208,7 +208,7 @@ class SharedSkillTests(unittest.TestCase):
                 **os.environ,
                 "AGENT_EXPERIENCE_PENDING": str(pending),
                 "AGENT_EXPERIENCE_LEDGER": str(ledger),
-               "AGENT_CLAUDE_RESOLVER": str(ROOT / ".claude/scripts/model-routing"),
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/.claude/scripts/model-routing"),
             }
             before_system_spawn = pending.read_text()
             subprocess.run(
@@ -255,7 +255,7 @@ class SharedSkillTests(unittest.TestCase):
             self.assertEqual(remaining[0]["session_id"], "session-a")
 
     def test_experience_log_requires_dispatch_id_for_overlapping_completions(self) -> None:
-        log_script = ROOT / ".agents/skills/experience-ledger/scripts/experience-log"
+        log_script = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-log"
         with tempfile.TemporaryDirectory() as temp_dir:
             pending = Path(temp_dir) / "pending.jsonl"
             ledger = Path(temp_dir) / "experience.jsonl"
@@ -275,7 +275,7 @@ class SharedSkillTests(unittest.TestCase):
                 **os.environ,
                 "AGENT_EXPERIENCE_PENDING": str(pending),
                 "AGENT_EXPERIENCE_LEDGER": str(ledger),
-               "AGENT_CLAUDE_RESOLVER": str(ROOT / ".claude/scripts/model-routing"),
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/.claude/scripts/model-routing"),
             }
             ambiguous = subprocess.run(
                 [sys.executable, str(log_script), "--from-pending",
@@ -297,7 +297,7 @@ class SharedSkillTests(unittest.TestCase):
             self.assertEqual(logged["request_source"], "claude-code")
 
     def test_invalid_bridge_log_does_not_consume_pending_completion(self) -> None:
-        log_script = ROOT / ".agents/skills/experience-ledger/scripts/experience-log"
+        log_script = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-log"
         with tempfile.TemporaryDirectory() as temp_dir:
             pending = Path(temp_dir) / "pending.jsonl"
             ledger = Path(temp_dir) / "experience.jsonl"
@@ -318,7 +318,7 @@ class SharedSkillTests(unittest.TestCase):
                  "--outcome", "accepted"],
                 env={**os.environ, "AGENT_EXPERIENCE_PENDING": str(pending),
                      "AGENT_EXPERIENCE_LEDGER": str(ledger),
-               "AGENT_CLAUDE_RESOLVER": str(ROOT / ".claude/scripts/model-routing")},
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/.claude/scripts/model-routing")},
                 capture_output=True, text=True,
             )
             self.assertNotEqual(result.returncode, 0)
@@ -327,7 +327,7 @@ class SharedSkillTests(unittest.TestCase):
             self.assertFalse(ledger.exists())
 
     def test_experience_report_never_mixes_total_and_output_only_cost(self) -> None:
-        report_script = ROOT / ".agents/skills/experience-ledger/scripts/experience-report"
+        report_script = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-report"
         with tempfile.TemporaryDirectory() as temp_dir:
             ledger = Path(temp_dir) / "experience.jsonl"
             rows = []
@@ -356,7 +356,7 @@ class SharedSkillTests(unittest.TestCase):
                 [sys.executable, str(report_script), "--json",
                  "--now", "2026-07-22T00:00:00+00:00"],
                 env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger),
-               "AGENT_CLAUDE_RESOLVER": str(ROOT / ".claude/scripts/model-routing")},
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/.claude/scripts/model-routing")},
                 check=True, capture_output=True, text=True,
             )
         report = json.loads(result.stdout)
@@ -371,7 +371,7 @@ class SharedSkillTests(unittest.TestCase):
         )
 
     def test_experience_report_does_not_pool_routes_to_reach_sample_floor(self) -> None:
-        report_script = ROOT / ".agents/skills/experience-ledger/scripts/experience-report"
+        report_script = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-report"
         with tempfile.TemporaryDirectory() as temp_dir:
             ledger = Path(temp_dir) / "experience.jsonl"
             rows = []
@@ -404,7 +404,7 @@ class SharedSkillTests(unittest.TestCase):
                 [sys.executable, str(report_script), "--json",
                  "--now", "2026-07-22T00:00:00+00:00"],
                 env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger),
-               "AGENT_CLAUDE_RESOLVER": str(ROOT / ".claude/scripts/model-routing")},
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/.claude/scripts/model-routing")},
                 check=True, capture_output=True, text=True,
             )
         report = json.loads(result.stdout)
@@ -425,7 +425,7 @@ class SharedSkillTests(unittest.TestCase):
         self.assertIn("explore claude, codex", report["hints"]["executor/impl"])
 
     def test_experience_report_excludes_smoke_and_other_from_decision_counts(self) -> None:
-        report_script = ROOT / ".agents/skills/experience-ledger/scripts/experience-report"
+        report_script = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-report"
         with tempfile.TemporaryDirectory() as temp_dir:
             ledger = Path(temp_dir) / "experience.jsonl"
             rows = []
@@ -444,7 +444,7 @@ class SharedSkillTests(unittest.TestCase):
                 [sys.executable, str(report_script), "--json",
                  "--now", "2026-07-22T00:00:00+00:00"],
                 env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger),
-               "AGENT_CLAUDE_RESOLVER": str(ROOT / ".claude/scripts/model-routing")},
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/.claude/scripts/model-routing")},
                 check=True, capture_output=True, text=True,
             )
         report = json.loads(result.stdout)
@@ -457,7 +457,7 @@ class SharedSkillTests(unittest.TestCase):
             self.assertEqual(row["n"], 0)
 
     def test_experience_report_renders_all_legacy_cohorts(self) -> None:
-        report_script = ROOT / ".agents/skills/experience-ledger/scripts/experience-report"
+        report_script = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-report"
         with tempfile.TemporaryDirectory() as temp_dir:
             ledger = Path(temp_dir) / "experience.jsonl"
             rows = [
@@ -480,7 +480,7 @@ class SharedSkillTests(unittest.TestCase):
                 [sys.executable, str(report_script),
                  "--now", "2026-07-22T00:00:00+00:00"],
                 env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger),
-               "AGENT_CLAUDE_RESOLVER": str(ROOT / ".claude/scripts/model-routing")},
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/.claude/scripts/model-routing")},
                 capture_output=True, text=True,
             )
         self.assertEqual(result.returncode, 0, result.stderr)

@@ -8,15 +8,15 @@
 | 你要做什麼 | 從哪裡開始 | 接著看 |
 |---|---|---|
 | 理解整體架構與資料流 | [根 README](../README.md) | [Harness Engineering Playbook](harness-engineering.md) |
-| 安裝、同步或回滾 | [配置與部署](setup.md) | [Claude README](../.claude/README.md)、[Codex README](../.codex/README.md) |
-| 修改 leaf role 或派工契約 | [Playbook：Leaf 分派](harness-engineering.md#leaf-分派的三層契約) | [Briefs](../.claude/skills/baton-dispatch/references/briefs-and-stops.md) |
-| 評估 model／effort／provider | [研究摘要](harness-engineering-research.md) | [Claude routing](../.claude/model-routing.toml)、[Codex routing](../.codex/model-routing.toml) |
-| 查 experience-ledger 指標 | [Metrics](../.agents/skills/experience-ledger/references/metrics.md) | [skill 本體](../.agents/skills/experience-ledger/SKILL.md) |
-| 診斷 context 或工具輸出 | [Headroom runtime](../.agents/docs/headroom-runtime.md) | [RTK](../.claude/RTK.md) |
-| 理解 QC 怎麼把關 | [QC 白話說明](qc-explainer.md) | [baton-dispatch](../.claude/skills/baton-dispatch/SKILL.md) |
+| 安裝、同步或回滾 | [配置與部署](setup.md) | [Claude README](../main/.claude/README.md)、[Codex README](../main/.codex/README.md) |
+| 修改 leaf role 或派工契約 | [Playbook：Leaf 分派](harness-engineering.md#leaf-分派的三層契約) | [Briefs](../main/.claude/skills/baton-dispatch/references/briefs-and-stops.md) |
+| 評估 model／effort／provider | [研究摘要](harness-engineering-research.md) | [Claude routing](../main/.claude/model-routing.toml)、[Codex routing](../main/.codex/model-routing.toml) |
+| 查 experience-ledger 指標 | [Metrics](../main/.agents/skills/experience-ledger/references/metrics.md) | [skill 本體](../main/.agents/skills/experience-ledger/SKILL.md) |
+| 診斷 context 或工具輸出 | [Headroom runtime](../main/.agents/docs/headroom-runtime.md) | [RTK](../main/.claude/RTK.md) |
+| 理解 QC 怎麼把關 | [QC 白話說明](qc-explainer.md) | [baton-dispatch](../main/.claude/skills/baton-dispatch/SKILL.md) |
 | 跑行為 trap eval | [evals/traps/](../evals/traps/) 各 README | [QC 說明](qc-explainer.md)取證段 |
-| 深度審查本 repo 設計 | [harness-review](../skills/harness-review/SKILL.md)（dev-only） | [plan](../.claude/plans/orchestration-plan.md) |
-| 理解目前決策與下一步 | [Orchestration plan](../.claude/plans/orchestration-plan.md) | [仍待驗證](harness-engineering-research.md#仍待本機驗證) |
+| 深度審查本 repo 設計 | [harness-review](../skills/harness-review/SKILL.md)（dev-only） | [plan](../main/.claude/plans/orchestration-plan.md) |
+| 理解目前決策與下一步 | [Orchestration plan](../main/.claude/plans/orchestration-plan.md) | [仍待驗證](harness-engineering-research.md#仍待本機驗證) |
 
 ## 文件責任
 
@@ -26,17 +26,17 @@
 | [研究摘要](harness-engineering-research.md) | benchmark 快照、成本口徑、案例取捨、研究缺口 | runtime 強制規則、現行 route pins |
 | [配置與部署](setup.md) | bootstrap、apply、驗收與回滾步驟 | 模型選擇理由 |
 | [契約瘦身規範](contract-slimming.md) | CLAUDE.md／AGENTS.md 的內容判定、預算原則與驗收 | 歷史歷程、當前 orchestration 狀態 |
-| [Orchestration plan](../.claude/plans/orchestration-plan.md)＋[history](../.claude/plans/orchestration-history.md) | 當前最新方案；append-only 決策歷程 | 完整方法論與研究全文 |
+| [Orchestration plan](../main/.claude/plans/orchestration-plan.md)＋[history](../main/.claude/plans/orchestration-history.md) | 當前最新方案；append-only 決策歷程 | 完整方法論與研究全文 |
 
 ## Runtime 真相源
 
 實際執行行為不由本目錄決定：
 
-- Claude main contract：[`.claude/CLAUDE.contract.md`](../.claude/CLAUDE.contract.md)
-- Codex main contract：[`.codex/AGENTS.contract.md`](../.codex/AGENTS.contract.md)
-- Claude leaf roles：[`.claude/agents/`](../.claude/agents/)
-- Codex leaf roles：[`.codex/agents/`](../.codex/agents/)
-- 共用 skills：[`.agents/skills/`](../.agents/skills/)
+- Claude main contract：[`main/.claude/CLAUDE.contract.md`](../main/.claude/CLAUDE.contract.md)
+- Codex main contract：[`main/.codex/AGENTS.contract.md`](../main/.codex/AGENTS.contract.md)
+- Claude leaf roles：[`main/.claude/agents/`](../main/.claude/agents/)
+- Codex leaf roles：[`main/.codex/agents/`](../main/.codex/agents/)
+- 共用 skills：[`main/.agents/skills/`](../main/.agents/skills/)
 - 部署映射：[`scripts/deployment-manifest.tsv`](../scripts/deployment-manifest.tsv)
 
 ## 維護規則

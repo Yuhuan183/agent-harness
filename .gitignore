@@ -1,9 +1,11 @@
 backups/
 .DS_Store
 
-# Machine state — never commit (portable equivalents are tracked; see docs/setup.md, .codex/DEPLOY.md)
-.claude/mcp_servers.json
-.codex/config.toml
+# Deployable bundle machine state — never commit (portable equivalents are
+# tracked; see docs/setup.md and main/.codex/DEPLOY.md). Root-level .claude/
+# and .codex/ are intentionally free for project-specific configuration.
+main/.claude/mcp_servers.json
+main/.codex/config.toml
 
 # Python bytecode
 __pycache__/

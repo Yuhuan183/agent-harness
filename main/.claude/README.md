@@ -1,7 +1,7 @@
 # `.claude/` — Claude Code Harness 契約
 
-> 專案全貌與跨平台資料流見[根 README](../README.md)；方法、研究與部署指引見
-> [docs/README.md](../docs/README.md)。
+> 專案全貌與跨平台資料流見[根 README](../../README.md)；方法、研究與部署指引見
+> [docs/README.md](../../docs/README.md)。
 
 可跨機器共用的 Claude Code／Cowork 配置，回寫到 `~/.claude/`。Git 僅保存規則與可攜機制；
 憑證、對話紀錄、遙測、快取、MCP 執行狀態與機器路徑皆留在本機。
