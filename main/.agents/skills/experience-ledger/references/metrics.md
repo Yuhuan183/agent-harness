@@ -42,6 +42,8 @@ Outcome definitions: `accepted` = passed on the first try, integrated as-is; `co
 | `avg_total_secs` | mean of subagent + review + rework time | Included only when all three time fields are present; closer to end-to-end |
 | `avg_api_cost_usd` | mean verifiable API cost | Compare only within the same pricing scope; not interchangeable with subscription allowances |
 
+Coverage and averages ignore malformed legacy telemetry, including negative values, non-finite floats, out-of-range quality scores, and Boolean values masquerading as integers. The record remains visible in `observed_n`; only the invalid metric is excluded.
+
 ## Decision rules (standardized model for provider selection)
 
 1. **Time decay**: each record is weighted `0.5^(age_days / half_life)` (current half-life: 45 days); AR/CR/RB/FR/QS/averages are all weighted values, so old evidence naturally fades as providers are upgraded. Window, sample size, half-life, and preference probability are read only from a `revision_policy` identical on both sides; a missing field or mismatched value halts the process.

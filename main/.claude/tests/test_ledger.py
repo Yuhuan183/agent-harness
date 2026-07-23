@@ -14,6 +14,9 @@ class SharedSkillTests(unittest.TestCase):
 
     def test_headroom_protocol_is_shared_via_symlink(self) -> None:
         self._assert_symlinked_body("headroom-protocol")
+        skill = read(".agents/skills/headroom-protocol/SKILL.md")
+        self.assertIn("headroom doctor", skill)
+        self.assertNotIn("/livez", skill)
 
     def test_speak_human_tw_is_shared_via_symlink(self) -> None:
         self._assert_symlinked_body("speak-human-tw")
@@ -30,6 +33,9 @@ class SharedSkillTests(unittest.TestCase):
         skill = read(f"{base}/SKILL.md")
         for ref in ("patterns.md", "taiwan-localization.md", "protected-list.md", "humanize.md"):
             self.assertIn(ref, skill)
+        self.assertIn("## 選擇工作模式", skill)
+        self.assertIn("改寫模式（預設）", skill)
+        self.assertNotIn("先列清單、等確認", skill)
         # MIT derivative must carry the upstream notice.
         attribution = read(f"{base}/ATTRIBUTION.md")
         self.assertIn("MIT", attribution)
@@ -62,6 +68,7 @@ class SharedSkillTests(unittest.TestCase):
             self.assertTrue(path.is_file(), script)
             self.assertTrue(os.access(path, os.X_OK), f"{script} not executable")
         self.assertTrue((base / "references/metrics.md").is_file())
+        self.assertTrue((base / "agents/openai.yaml").is_file())
         # baton-dispatch owns the post-QC write; provider-routing retains route evidence.
         baton = read(".claude/skills/baton-dispatch/SKILL.md")
         routing = read(".claude/skills/provider-routing/SKILL.md")
@@ -468,6 +475,51 @@ class SharedSkillTests(unittest.TestCase):
             self.assertEqual(row["observed_n"], 1)
             self.assertEqual(row["ineligible_n"], 1)
             self.assertEqual(row["n"], 0)
+
+    def test_experience_report_ignores_invalid_legacy_telemetry(self) -> None:
+        report_script = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-report"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ledger = Path(temp_dir) / "experience.jsonl"
+            valid = {
+                "ts": "2026-07-20T00:00:00+00:00", "schema": 3,
+                "role": "executor", "task_class": "impl",
+                "provider": "codex", "request_source": "codex",
+                "outcome": "accepted", "profile": "balanced",
+                "model": "gpt-5.6-sol", "effort": "medium",
+                "quality": 4, "tokens_in": 100, "tokens_out": 20,
+                "cache_write_tokens": 10, "cache_read_tokens": 70,
+                "secs": 5.0, "review_secs": 1.0, "rework_secs": 0.0,
+                "api_cost_usd": 0.25,
+            }
+            invalid = {
+                **valid, "ts": "2026-07-20T01:00:00+00:00",
+                "quality": 99, "tokens_in": -1, "tokens_out": -20,
+                "cache_write_tokens": 10, "cache_read_tokens": 70,
+                "secs": float("nan"), "review_secs": 1.0, "rework_secs": 0.0,
+                "api_cost_usd": float("inf"),
+            }
+            ledger.write_text(
+                json.dumps(valid) + "\n" + json.dumps(invalid) + "\n",
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [sys.executable, str(report_script), "--json",
+                 "--now", "2026-07-22T00:00:00+00:00"],
+                env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger)},
+                check=True, capture_output=True, text=True,
+            )
+        row = json.loads(result.stdout)["by_cohort_provider"]["executor/impl/codex"]
+        self.assertEqual(row["n"], 2)
+        self.assertEqual(row["QS"], 4.0)
+        self.assertEqual(row["avg_tokens_out"], 20.0)
+        self.assertEqual(row["avg_total_tokens"], 200.0)
+        self.assertEqual(row["avg_secs"], 5.0)
+        self.assertEqual(row["avg_total_secs"], 6.0)
+        self.assertEqual(row["avg_api_cost_usd"], 0.25)
+        self.assertEqual(row["coverage"], {
+            "tokens_out": 1, "total_tokens": 1, "secs": 1,
+            "total_secs": 1, "api_cost_usd": 1,
+        })
 
     def test_experience_report_renders_all_legacy_cohorts(self) -> None:
         report_script = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-report"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Experience Ledger"
+  short_description: "Log and compare dispatch quality across providers"
+  default_prompt: "Use $experience-ledger to record a checked dispatch outcome or compare provider evidence."

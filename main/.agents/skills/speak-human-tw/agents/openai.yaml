@@ -1,4 +1,4 @@
 interface:
   display_name: "Speak Human TW"
-  short_description: "Traditional-Chinese de-AI rewrite: strip AI-slop, fix China-Mandarin usage and half-width punctuation."
-  default_prompt: "Use $speak-human-tw to review outbound Traditional-Chinese text: list every suggested edit first (original / why / fix), then apply only what the user picks. In a non-interactive run, apply all and output a summary."
+  short_description: "Polish zh-TW copy into natural, Taiwan-localized prose"
+  default_prompt: "Use $speak-human-tw to rewrite this zh-TW copy naturally while preserving every fact and the author's voice."
