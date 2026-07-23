@@ -21,8 +21,10 @@ methodology. See `ATTRIBUTION.md` for licence and modification details.
   Generalise the principle; use `internal` when project-specific context remains.
 - Never edit, install, deploy, commit, publish, or delete a skill from an
   observation alone.
-- Treat the Git source checkout as the authoritative skill source. The ledger is
-  machine-local evidence, not a source tree or staging area.
+- Treat the Git source checkout as the authoritative skill source. Never edit a
+  project-managed copy under `~/.agents/skills`, `~/.claude/skills`, or
+  `~/.codex/skills`; deployment replaces it. The ledger is machine-local
+  evidence, not a source tree or staging area.
 - Keep dispatch-quality metrics in `experience-ledger`; this skill records
   qualitative workflow and skill-design feedback only.
 
@@ -95,8 +97,19 @@ Resolution appends an event; it never rewrites or archives prior evidence.
 ## Review and change skills
 
 For backlog review or any skill change, read `references/review.md` first.
-Use `skill-creator` for the actual skill authoring workflow. Present the proposed
-scope and obtain explicit approval before modifying the source checkout.
+Resolve the target before proposing or applying a change:
+
+```bash
+~/.agents/skills/task-observer/scripts/observation-log target \
+  --skill "<skill>" --json
+```
+
+For a project-managed skill, use only the returned `source_path`; the command
+fails closed when it cannot verify the source checkout. For
+`local-or-third-party`, establish ownership separately and do not treat the
+installed path as editable merely because it exists. Use `skill-creator` for
+the actual authoring workflow. Present the proposed scope and obtain explicit
+approval before modifying the resolved source.
 
 ## Storage
 

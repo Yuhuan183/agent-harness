@@ -141,7 +141,7 @@ backup_target() { # $1 = absolute target  $2 = HOME-relative target
 }
 
 sync_skill_root() { # $1 = repo-relative skill root  $2 = HOME-relative skill root
-  local src="$REPO/$1" dst_rel="$2" dst="$HOME/$2" name child_src child_dst child_rel
+  local src="$REPO/$1" dst_rel="$2" dst="$HOME/$2" name child_src child_dst child_rel source_marker
   validate_project_skill_inventory "$src"
   run mkdir -p "$dst"
   while IFS= read -r name || [[ -n "$name" ]]; do
@@ -161,6 +161,16 @@ sync_skill_root() { # $1 = repo-relative skill root  $2 = HOME-relative skill ro
     backup_target "$dst/INSTALLED.txt" "$dst_rel/INSTALLED.txt"
   fi
   run rsync -a --links --force "$src/INSTALLED.txt" "$dst/INSTALLED.txt"
+
+  # Machine-local provenance lets maintenance tools find the authoritative
+  # checkout instead of editing a deployed copy that the next sync replaces.
+  source_marker="$dst/.agent-harness-source"
+  if [[ $APPLY -eq 1 ]]; then
+    backup_target "$source_marker" "$dst_rel/.agent-harness-source"
+    printf '%s\n' "$REPO" > "$source_marker"
+  else
+    log "[dry-run] write source checkout $REPO -> $source_marker"
+  fi
 }
 
 sync_path() { # $1 = repo-relative source  $2 = HOME-relative target  $3 = optional mode
@@ -298,6 +308,9 @@ if [[ $APPLY -eq 1 ]]; then
     || { log "ERROR: ~/.claude/CLAUDE.md does not match CLAUDE.contract.md"; FAIL=1; }
   cmp -s "$REPO/main/.codex/AGENTS.contract.md" "$HOME/.codex/AGENTS.md" \
     || { log "ERROR: ~/.codex/AGENTS.md does not match AGENTS.contract.md"; FAIL=1; }
+  [[ -f "$HOME/.agents/skills/.agent-harness-source" \
+        && "$(<"$HOME/.agents/skills/.agent-harness-source")" == "$REPO" ]] \
+    || { log "ERROR: ~/.agents/skills/.agent-harness-source does not identify this checkout"; FAIL=1; }
   for i in "${!SYNCED_SRC[@]}"; do
     if [[ -d "${SYNCED_SRC[$i]}" ]]; then
       diffout="$(rsync -an --links --force --delete --delete-excluded \

@@ -3,11 +3,31 @@
 Load this file before reviewing the backlog, proposing skill changes, or
 resolving observations.
 
+## Resolve target ownership
+
+Before proposing or applying a skill change, run:
+
+```bash
+observation-log target --skill "<skill>" --json
+```
+
+- `project-managed`: edit only the returned `source_path`, which must resolve to
+  `<checkout>/main/.agents/skills/<skill>`. Never edit the deployed HOME copy;
+  the next managed merge replaces it.
+- `local-or-third-party`: `source_verified` is false and `source_path` is null.
+  Determine whether the installed path is a personal source, installer output,
+  plugin cache, or another project's deployment, then obtain authority for that
+  actual source.
+- Resolution failure is a stop condition. Supply `--checkout <path>` or
+  `AGENT_HARNESS_CHECKOUT` after locating the checkout; never fall back to the
+  deployed copy.
+
 ## Review queue
 
 1. Run `observation-log list --status open --json`.
-2. Reconstruct scope from the current Git checkout, not from deployed HOME
-   copies, prior drafts, or observation wording alone.
+2. Resolve every target's ownership and include its authoritative source path.
+   Reconstruct scope from that source, not from deployed HOME copies, prior
+   drafts, or observation wording alone.
 3. Group observations by target skill. Keep these categories distinct:
    - improvement to an existing skill
    - simplification or removal candidate
@@ -27,8 +47,8 @@ Do not apply changes until the user explicitly approves the proposal.
 ## Applying an approved observation
 
 1. Load `skill-creator`.
-2. Read the live source skill and every directly referenced resource required
-   by the change.
+2. Re-run `observation-log target`; read the returned source skill and every
+   directly referenced resource required by the change.
 3. Make the smallest source-checkout change that implements the approved
    behaviour. Preserve unrelated user work.
 4. Keep fragile operations in deterministic scripts. Keep SKILL.md limited to

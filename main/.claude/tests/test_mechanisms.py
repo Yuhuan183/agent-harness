@@ -293,6 +293,12 @@ class MechanismTests(unittest.TestCase):
                 (skill_root / "INSTALLED.txt").read_text(encoding="utf-8"),
                 read(".agents/skills/INSTALLED.txt"),
             )
+            self.assertEqual(
+                (skill_root / ".agent-harness-source").read_text(
+                    encoding="utf-8"
+                ).strip(),
+                str(ROOT),
+            )
 
     def test_sync_refuses_to_drop_global_settings_array_items(self) -> None:
         sync = ROOT / "scripts/sync.sh"

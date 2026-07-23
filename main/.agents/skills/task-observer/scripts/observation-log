@@ -7,6 +7,7 @@ import argparse
 import fcntl
 import json
 import os
+import re
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -18,6 +19,8 @@ SCHEMA_VERSION = 1
 DEFAULT_LEDGER = Path.home() / ".agents" / "telemetry" / "skill-observations.jsonl"
 VALID_TYPES = ("open-source", "internal")
 VALID_RESOLUTIONS = ("actioned", "declined")
+SKILL_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+SOURCE_MARKER = ".agent-harness-source"
 CREATED_TEXT_FIELDS = (
     "skill",
     "area",
@@ -38,6 +41,125 @@ def now() -> str:
 def ledger_path() -> Path:
     override = os.environ.get("AGENT_SKILL_OBSERVATIONS")
     return Path(override).expanduser() if override else DEFAULT_LEDGER
+
+
+def skill_root(override: str | None = None) -> Path:
+    configured = override or os.environ.get("AGENT_SKILLS_ROOT")
+    return (
+        Path(configured).expanduser()
+        if configured
+        else Path.home() / ".agents" / "skills"
+    )
+
+
+def read_skill_inventory(root: Path, *, required: bool = False) -> set[str]:
+    inventory = root / "INSTALLED.txt"
+    if not inventory.exists():
+        if required:
+            raise LedgerError(f"project skill inventory does not exist: {inventory}")
+        return set()
+    names = inventory.read_text(encoding="utf-8").splitlines()
+    if not names or any(not SKILL_NAME.fullmatch(name) for name in names):
+        raise LedgerError(f"invalid project skill inventory: {inventory}")
+    if len(names) != len(set(names)):
+        raise LedgerError(f"duplicate project skill in inventory: {inventory}")
+    return set(names)
+
+
+def source_in_checkout(checkout: Path, skill: str) -> Path | None:
+    checkout = checkout.expanduser().resolve()
+    if not (checkout / ".git").exists():
+        return None
+    source_root = checkout / "main" / ".agents" / "skills"
+    try:
+        names = read_skill_inventory(source_root, required=True)
+    except (LedgerError, OSError):
+        return None
+    manifest = checkout / "scripts" / "deployment-manifest.tsv"
+    try:
+        rows = {
+            tuple(line.split("\t"))
+            for line in manifest.read_text(encoding="utf-8").splitlines()
+            if line and not line.startswith("#")
+        }
+    except OSError:
+        return None
+    source = source_root / skill
+    if (
+        skill in names
+        and ("main/.agents/skills", ".agents/skills", "merge") in rows
+        and (source / "SKILL.md").is_file()
+    ):
+        return source
+    return None
+
+
+def candidate_checkouts(
+    deployed_root: Path, explicit: str | None
+) -> tuple[list[Path], bool]:
+    if explicit:
+        return [Path(explicit)], True
+    configured = os.environ.get("AGENT_HARNESS_CHECKOUT")
+    if configured:
+        return [Path(configured)], True
+
+    candidates: list[Path] = []
+    marker = deployed_root / SOURCE_MARKER
+    if marker.exists():
+        lines = marker.read_text(encoding="utf-8").splitlines()
+        if len(lines) != 1 or not lines[0].strip():
+            raise LedgerError(f"invalid source checkout marker: {marker}")
+        candidates.append(Path(lines[0]))
+    for start in (Path.cwd().resolve(), Path(__file__).resolve()):
+        candidates.extend((start, *start.parents))
+    return candidates, False
+
+
+def command_target(args: argparse.Namespace) -> int:
+    if not SKILL_NAME.fullmatch(args.skill):
+        raise LedgerError("skill must use lowercase hyphen-case")
+    deployed_root = skill_root(args.skill_root)
+    deployed = deployed_root / args.skill
+    installed_names = read_skill_inventory(deployed_root)
+    candidates, authoritative = candidate_checkouts(deployed_root, args.checkout)
+
+    source = None
+    seen: set[Path] = set()
+    for candidate in candidates:
+        resolved = candidate.expanduser().resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        source = source_in_checkout(resolved, args.skill)
+        if source is not None:
+            break
+
+    managed = args.skill in installed_names or source is not None
+    if managed and source is None:
+        qualifier = "configured" if authoritative else "recorded or discoverable"
+        raise LedgerError(
+            f"{args.skill} is project-managed but no valid {qualifier} source checkout "
+            f"was found; do not edit deployed copy {deployed}"
+        )
+    if not managed and not (deployed / "SKILL.md").is_file():
+        raise LedgerError(f"skill is not installed: {deployed}")
+
+    result = {
+        "skill": args.skill,
+        "ownership": "project-managed" if managed else "local-or-third-party",
+        "source_path": str(source) if source is not None else None,
+        "deployed_path": str(deployed),
+        "source_verified": source is not None,
+    }
+    if source is not None:
+        result["checkout"] = str(source.parents[3])
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        print(result["source_path"] or "source unresolved")
+        print(f"ownership: {result['ownership']}")
+        print(f"source_verified: {str(result['source_verified']).lower()}")
+    return 0
 
 
 def validate_text_field(
@@ -286,6 +408,15 @@ def parser() -> argparse.ArgumentParser:
 
     review = commands.add_parser("review", help="render a read-only Markdown review")
     review.set_defaults(run=command_review)
+
+    target = commands.add_parser(
+        "target", help="resolve the authoritative source of a target skill"
+    )
+    target.add_argument("--skill", required=True)
+    target.add_argument("--checkout", help="explicit agent-harness checkout")
+    target.add_argument("--skill-root", help="installed shared skill root")
+    target.add_argument("--json", action="store_true")
+    target.set_defaults(run=command_target)
 
     resolve = commands.add_parser("resolve", help="append a resolution event")
     resolve.add_argument("--id", required=True)

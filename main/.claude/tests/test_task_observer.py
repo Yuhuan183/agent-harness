@@ -85,6 +85,72 @@ class TaskObserverTests(unittest.TestCase):
             self.assertFalse(ledger.exists())
             self.assertFalse(ledger.parent.exists())
 
+    def test_target_resolves_project_skill_to_checkout_source(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            installed_root = Path(temp_dir) / ".agents" / "skills"
+            deployed = installed_root / "task-observer"
+            deployed.mkdir(parents=True)
+            (deployed / "SKILL.md").write_text("deployed copy\n", encoding="utf-8")
+            (installed_root / "INSTALLED.txt").write_text(
+                "task-observer\n", encoding="utf-8"
+            )
+            (installed_root / ".agent-harness-source").write_text(
+                str(ROOT) + "\n", encoding="utf-8"
+            )
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "target",
+                 "--skill", "task-observer", "--skill-root", str(installed_root),
+                 "--json"],
+                cwd=temp_dir, capture_output=True, text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            target = json.loads(result.stdout)
+            self.assertEqual(target["ownership"], "project-managed")
+            self.assertTrue(target["source_verified"])
+            self.assertEqual(
+                Path(target["source_path"]),
+                ROOT / "main/.agents/skills/task-observer",
+            )
+            self.assertNotEqual(Path(target["source_path"]), deployed)
+
+    def test_target_refuses_managed_deployed_copy_without_valid_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            installed_root = Path(temp_dir) / ".agents" / "skills"
+            deployed = installed_root / "task-observer"
+            deployed.mkdir(parents=True)
+            (deployed / "SKILL.md").write_text("deployed copy\n", encoding="utf-8")
+            (installed_root / "INSTALLED.txt").write_text(
+                "task-observer\n", encoding="utf-8"
+            )
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "target",
+                 "--skill", "task-observer", "--skill-root", str(installed_root),
+                 "--checkout", str(Path(temp_dir) / "missing"), "--json"],
+                cwd=temp_dir, capture_output=True, text=True,
+            )
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("do not edit deployed copy", result.stderr)
+            self.assertIn(str(deployed), result.stderr)
+
+    def test_target_does_not_claim_unmanaged_install_as_verified_source(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            installed_root = Path(temp_dir) / ".agents" / "skills"
+            deployed = installed_root / "personal-skill"
+            deployed.mkdir(parents=True)
+            (deployed / "SKILL.md").write_text("local candidate\n", encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "target",
+                 "--skill", "personal-skill", "--skill-root", str(installed_root),
+                 "--json"],
+                cwd=temp_dir, capture_output=True, text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            target = json.loads(result.stdout)
+            self.assertEqual(target["ownership"], "local-or-third-party")
+            self.assertFalse(target["source_verified"])
+            self.assertIsNone(target["source_path"])
+            self.assertEqual(Path(target["deployed_path"]), deployed)
+
     def test_add_list_review_and_resolve_are_event_sourced(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             ledger = Path(temp_dir) / "observations.jsonl"
