@@ -13,7 +13,7 @@
 |---|---|
 | `CLAUDE.contract.md` | Claude Code 執行契約源檔（部署為 `~/.claude/CLAUDE.md`；改名避免本 repo 內 session 重複載入）；僅主 agent 使用的精簡協調規則（~600 tokens） |
 | `agents/` | 七個自足的 Claude leaf roles；model 與 effort 由 active deployment preset 的 frontmatter pins 決定；各有 Codex 對應版於 `../.codex/agents/` |
-| `skills/` | 依需求載入的工作流；`baton-dispatch`、`provider-routing` 為自有，`headroom-protocol`、`speak-human-tw`、`experience-ledger`、`task-observer` symlink 至 `../.agents/skills/` |
+| `skills/` | 依需求載入的工作流；`baton-dispatch`、`provider-routing` 為自有，`headroom-protocol`、`speak-human-tw`、`experience-ledger`、`task-observer` symlink 至 `../.agents/skills/`；`task-observer` 可在 skill 使用受挫後主動詢問是否記錄改善觀察 |
 | `settings.json` | Hooks、最小唯讀 allowlist、codex plugin（唯一強依賴）與介面設定；不指定主模型、effort 或 fallback。其他 plugin 屬本機自理，enable 寫 `settings.local.json`（不入庫、sync 不覆蓋） |
 | `examples/headroom-mcp.merge.json` | 可攜的 MCP 宣告片段；手動 merge 進本機 `mcp_servers.json`（後者含機器路徑，不入庫） |
 | `hooks/`, `scripts/`, `sh/` | 監控、用量診斷、路由檢核（`scripts/model-routing`）、執行版本防護、紅測試 commit 閘（`hooks/commit-test-gate.py`，逃生口 `AGENT_SKIP_TEST_GATE=1`）與 statusline |

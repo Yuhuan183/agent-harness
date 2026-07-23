@@ -19,7 +19,7 @@
 | `skills/headroom-protocol/` | 共用 skill 本體（含 Codex 端 `agents/openai.yaml`）；`.claude/skills` 與 `.codex/skills` 各以 symlink 引用 |
 | `skills/experience-ledger/` | 共用 skill 本體：派工經驗記帳與指標分析（含 `scripts/`）；帳本在 `~/.agents/telemetry/`（machine-local 不入庫） |
 | `skills/speak-human-tw/` | 共用 skill 本體：繁中去 AI 味改寫（蒸餾自上游，見其 `ATTRIBUTION.md`）；同以 symlink 雙端引用 |
-| `skills/task-observer/` | 明確 opt-in 的 skill 改進觀察與審查；append-only JSONL 帳本在 `~/.agents/telemetry/`，不會自動修改 skill |
+| `skills/task-observer/` | skill 使用受挫時主動詢問、明確同意後才記錄改善觀察；append-only JSONL 帳本在 `~/.agents/telemetry/`，不會自動修改 skill |
 | `skills/INSTALLED.txt` | 第三方安裝 skill 清單（lark 全套等）；只記錄不複製本體 |
 | `.skill-lock.json` | 第三方 skill 版本鎖 |
 | `scripts/` | 跨端共用腳本：gate-line 正則的單一來源（`gate_lines.py`，供部署版 `qc-gate-lines` 稽核與 repo 內 trap graders 共用） |
