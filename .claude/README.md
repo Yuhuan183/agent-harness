@@ -16,7 +16,7 @@
 | `skills/` | 依需求載入的工作流；`baton-dispatch`、`provider-routing` 為自有，`headroom-protocol`、`speak-human-tw`、`experience-ledger` symlink 至 `../.agents/skills/` |
 | `settings.json` | Hooks、最小唯讀 allowlist、codex plugin（唯一強依賴）與介面設定；不指定主模型、effort 或 fallback。其他 plugin 屬本機自理，enable 寫 `settings.local.json`（不入庫、sync 不覆蓋） |
 | `examples/headroom-mcp.merge.json` | 可攜的 MCP 宣告片段；手動 merge 進本機 `mcp_servers.json`（後者含機器路徑，不入庫） |
-| `hooks/`, `scripts/`, `sh/` | 監控、用量診斷、路由檢核（`scripts/model-routing`）、執行版本防護與 statusline |
+| `hooks/`, `scripts/`, `sh/` | 監控、用量診斷、路由檢核（`scripts/model-routing`）、執行版本防護、紅測試 commit 閘（`hooks/commit-test-gate.py`，逃生口 `AGENT_SKIP_TEST_GATE=1`）與 statusline |
 | `plans/orchestration-plan.md` | 現況、待觀察事項與精簡決策紀錄 |
 | `prompts/` | Claude App 與 Cowork 可直接貼用的配置 |
 | `tests/` | 不需額外相依套件的契約與機制測試 |

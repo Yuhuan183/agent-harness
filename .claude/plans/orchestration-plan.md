@@ -1,6 +1,6 @@
 # Orchestration and Monitoring — Current Plan
 
-> 現況、目標與決策紀錄。Runtime 規則以 `CLAUDE.md` 為準；使用方式以 `README.md` 與 `docs/` 為準；完整歷史由 Git 保存。
+> 只保留當前最新方案。Runtime 規則以 `CLAUDE.md` 為準；使用方式以 `README.md` 與 `docs/` 為準；決策歷程見 [orchestration-history.md](orchestration-history.md)，完整差異由 Git 保存。
 
 ## Current architecture — 2026-07-22
 
@@ -18,7 +18,7 @@
 ## Routing policy (summary)
 
 - **Main session**: model and effort are user-selected; tracked settings pin neither. Reference profiles: H = Fable/low or Opus/high; X = Fable at medium–xhigh or Opus/high (xhigh is main-session-only).
-- **Role pins**: Claude profiles are deployment presets, not per-dispatch routes. Balanced pins `Explore` sonnet/low, `mech-executor` sonnet/medium, `executor` opus/medium, `plan-verifier` opus/medium, and `verifier`/`security-*` opus/high. `activate-profile` updates all frontmatter pins and `selection.default` transactionally in source before sync.
+- **Role pins**: Claude profiles are deployment presets, not per-dispatch routes. Balanced pins `explore` sonnet/low, `mech-executor` sonnet/medium, `executor` opus/medium, `plan-verifier` opus/medium, and `verifier`/`security-*` opus/high. `activate-profile` updates all frontmatter pins and `selection.default` transactionally in source before sync.
 - **Codex bridge**: every leaf dispatch resolves model/effort via `~/.codex/scripts/model-routing` (single source of truth); Sol and Luna bridge overrides are smoke-tested (2026-07-22, rollout-verified).
 - **Cross-provider**: provider choice is CP-first (local reports + external priors + ledger; usage alarm switches to the provider with headroom, asking the user when material). Single-hop fallback from the task's origin, never circular; security routes like any role at its critical floor; dual-provider implementation always has one writer. Uncertain choice uses the three-option user gate.
 - **Experience loop**: every dispatch uses separate `LEAF_DISPATCH` and post-QC `LEAF_RESULT` records, then logs the same neutral task label, task class, source (`claude-code`, `codex`, or `claude-code-plugin-codex`), and route. `recon` and adversarial `review` are separate cohorts. Policy is config-driven: 90d window, 45d half-life, n>=10 per role/task-class route cell, P(win)>=0.90; smoke/other and mismatched token scopes cannot drive preference.
@@ -61,19 +61,9 @@
 - **All**: OTel stays deferred unless JSONL/transcript telemetry cannot answer a concrete real-time routing question.
 - **Codex**: Codex App may rewrite machine `config.toml`; deployment must merge and recheck local state instead of replacing it.
 
-## Decision log
+## Decision history
 
-- **2026-07-22 (review remediation)** — Dual-provider six-dimension review (22 findings) remediated: runtime guard truly blocks via a cached PreToolUse gate; weekly integrity refuses silent skips; ledger gained `route_source`, fallback lineage (hops>1 rejected), `--profile` hints, availability-guarded revise; Codex dispatch detail moved to `leaf-dispatch`; manifest/settings shed non-runtime content; terminology unified; runtime docs anglicized; word-based doc budgets; test monolith split. Method: dev-only `harness-review`.
-
-- **2026-07-12** — Fail-open local monitoring and nested-delegation detection.
-- **2026-07-15** — Direct-first cost-aware dispatch replaced fixed pipelines; Headroom wrap ownership; no routine stacked verification.
-- **2026-07-17** — Single-hop cross-provider routing and approved-scope boundary; removed tracked main model/effort/fallback. Distilled docs: one authoritative location per concern.
-- **2026-07-18** — Headroom verified against upstream v0.32; base URL stays machine-local.
-- **2026-07-20** — Two-tier role effort (capped at high); per-dispatch reporting and QC; Codex counterparts for each leaf role via the codex-rescue bridge. Added `experience-ledger` skill (AR/CR/RB/FR/QS, explore/prefer rule).
-- **2026-07-21** — External rankings (AA v4.1, Coding Agent Index v1.2) demoted to priors; route on local acceptable-outcome cost. Added token, review/rework, and API-cost coverage.
-- **2026-07-22** — Three quality-first profiles standardized; Claude atomic deployment presets vs Codex per-dispatch. Sol/Terra/Luna availability verified (Luna unrouted); experience schema v3 added source and dispatch/rollout identity. Sync preflight and drift guards expanded. Pilotfish v1.3 batching and Plan anti-churn adopted. Fable-method INTENT/TWINS/AUTH gates and QC fraud checklist added to both providers; behavioral trap fixtures remain open.
-- **2026-07-23** — Behavioral trap program (`evals/traps/`): s7 false-completion and s8 spec-conflict fixtures with mechanical graders; 37 valid runs across both providers and two tiers hit zero substantive traps. Three gate-line failure modes each closed by a one-sentence clause and A/B-verified (verbatim-English 1/4→3/3; stop-branch INTENT 2/3→3/3; mech clause scoped to AUTH). Owed-line QC audit mechanized via dual-deployed `qc-gate-lines` with byte-parity locked by test; bridge workdirs must sit inside the project root. Traps now serve as regression assets.
-- **2026-07-23** — Executor left Sonnet: effort curves show Sonnet 5 off the Pareto frontier at high effort, so balanced.executor → opus/medium, quality_guarded.executor → opus/high, sonnet-5/high out of the judgment allowlist; Explore/mech pins unchanged (evidence in research log; regression 6/6). New `commit-test-gate` hook blocks red-suite commits (escape: `AGENT_SKIP_TEST_GATE=1`).
+完整依時間序的決策紀錄在 [orchestration-history.md](orchestration-history.md)（append-only）；本檔只保留當前方案。
 
 ## Verification
 

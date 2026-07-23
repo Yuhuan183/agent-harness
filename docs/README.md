@@ -13,6 +13,8 @@
 | 評估 model／effort／provider | [研究摘要](harness-engineering-research.md) | [Claude routing](../.claude/model-routing.toml)、[Codex routing](../.codex/model-routing.toml) |
 | 查 experience-ledger 指標 | [Metrics](../.agents/skills/experience-ledger/references/metrics.md) | [Experience Ledger skill](../.agents/skills/experience-ledger/SKILL.md) |
 | 診斷 context 或工具輸出 | [Headroom runtime](../.agents/docs/headroom-runtime.md) | [RTK](../.claude/RTK.md) |
+| 跑行為 trap eval | [evals/traps/](../evals/traps/) 各 trap 的 README | [研究摘要](harness-engineering-research.md)的 trap 段 |
+| 深度審查本 repo 設計 | [harness-review skill](../skills/harness-review/SKILL.md)（dev-only） | [Orchestration plan](../.claude/plans/orchestration-plan.md) |
 | 理解目前決策與下一步 | [Orchestration plan](../.claude/plans/orchestration-plan.md) | [研究摘要：仍待驗證](harness-engineering-research.md#仍待本機驗證) |
 
 ## 文件責任
@@ -22,8 +24,8 @@
 | [Harness Engineering Playbook](harness-engineering.md) | 可跨專案複用的設計與驗證方法 | 當前 route pins、實驗原始數據 |
 | [研究摘要](harness-engineering-research.md) | benchmark 快照、成本口徑、案例取捨、研究缺口 | runtime 強制規則、現行 route pins |
 | [配置與部署](setup.md) | bootstrap、apply、驗收與回滾步驟 | 模型選擇理由 |
-| [CLAUDE.md 瘦身紀錄](global-claude-md-slimming.md) | 歷史決策與逐區塊驗收 | 當前 orchestration 狀態 |
-| [Orchestration plan](../.claude/plans/orchestration-plan.md) | 短期現況、未決項與決策紀錄 | 完整方法論與研究全文 |
+| [契約瘦身規範](contract-slimming.md) | CLAUDE.md／AGENTS.md 的內容判定、預算原則與驗收 | 歷史歷程、當前 orchestration 狀態 |
+| [Orchestration plan](../.claude/plans/orchestration-plan.md)＋[history](../.claude/plans/orchestration-history.md) | 當前最新方案；append-only 決策歷程 | 完整方法論與研究全文 |
 
 ## Runtime 真相源
 

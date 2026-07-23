@@ -15,6 +15,7 @@
 | `model-routing.toml` | Codex main／leaf 的結構化 model-effort 先驗與 AA v4.1 快照 | 自動 |
 | `scripts/model-routing` | 驗證品質門檻並解析 profile；共用核心在 `../.agents/scripts/routing_core.py`（缺失時報部署錯誤） | 自動 |
 | `scripts/bridge-brief` | 從 Claude 派 Codex twin 時，產出含 resolved model/effort 與角色契約的 brief 骨架 | 自動 |
+| `skills/leaf-dispatch` | Codex 原生派工細節（resolver 呼叫、brief 組裝、記帳）；主契約按需載入 | 自動 |
 | `skills/headroom-protocol` | symlink → `../.agents/skills/headroom-protocol`（與 Claude 共用同一本體） | 自動 |
 | `skills/experience-ledger` | symlink → `../.agents/skills/experience-ledger`（派工經驗記帳與分析，與 Claude 共用） | 自動 |
 | `skills/speak-human-tw` | symlink → `../.agents/skills/speak-human-tw`（繁中去 AI 味，與 Claude 共用同一本體） | 自動 |

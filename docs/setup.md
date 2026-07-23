@@ -72,7 +72,7 @@ dry-run 與 apply 都會先跑 JSON／shell／兩側 routing／Claude pins／con
   `headroom-protocol` 出現在可用 skill 清單且能按需載入。
 - `ls -la ~/.claude/skills/headroom-protocol ~/.codex/skills/headroom-protocol`
   均為指向 `~/.agents/skills/headroom-protocol` 的 symlink。
-- 跑 2–3 個真實任務比對遵循度與 token（方法見 `global-claude-md-slimming.md`）。
+- 跑 2–3 個真實任務比對遵循度與 token（方法見 `contract-slimming.md` 的驗收段）。
 
 ## 回滾
 

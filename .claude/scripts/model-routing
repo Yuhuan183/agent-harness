@@ -212,7 +212,7 @@ def command_resolve(
         invocation = {"model_delivery": "session_selector"}
     else:
         invocation = {
-            "agent_type": "Explore" if role == "explore" else role,
+            "agent_type": role,
             "model_delivery": "frontmatter_pin",
             "effort_delivery": "frontmatter_pin",
         }
