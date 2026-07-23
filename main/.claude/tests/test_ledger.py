@@ -12,11 +12,39 @@ class SharedSkillTests(unittest.TestCase):
             self.assertEqual(os.readlink(link), f"../../.agents/skills/{name}")
             self.assertTrue((link / "SKILL.md").is_file(), f"{stub} does not resolve")
 
-    def test_headroom_protocol_is_shared_via_symlink(self) -> None:
-        self._assert_symlinked_body("headroom-protocol")
+    def test_headroom_protocol_is_shared_with_explicit_auto_invocation(self) -> None:
+        shared = ROOT / "main/.agents/skills/headroom-protocol"
+        claude = ROOT / "main/.claude/skills/headroom-protocol"
+        codex = ROOT / "main/.codex/skills/headroom-protocol"
+        self.assertTrue((shared / "SKILL.md").is_file())
+        self.assertTrue(claude.is_dir())
+        self.assertFalse(claude.is_symlink())
+        claude_skill = (claude / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("disable-model-invocation: false", claude_skill)
+        claude_meta = frontmatter("main/.claude/skills/headroom-protocol/SKILL.md")
+        shared_meta = frontmatter("main/.agents/skills/headroom-protocol/SKILL.md")
+        claude_portable_meta = "\n".join(
+            line for line in claude_meta.splitlines()
+            if not line.startswith("disable-model-invocation:")
+        )
+        self.assertEqual(claude_portable_meta.rstrip(), shared_meta.rstrip())
+        shared_link = claude / "shared-instructions.md"
+        self.assertTrue(shared_link.is_symlink())
+        self.assertEqual(
+            os.readlink(shared_link),
+            "../../../.agents/skills/headroom-protocol/SKILL.md",
+        )
+        self.assertTrue(shared_link.is_file())
+        self.assertTrue(codex.is_symlink())
+        self.assertEqual(
+            os.readlink(codex), "../../.agents/skills/headroom-protocol"
+        )
         skill = read(".agents/skills/headroom-protocol/SKILL.md")
+        self.assertIn("selected automatically or explicitly", skill)
         self.assertIn("headroom doctor", skill)
         self.assertNotIn("/livez", skill)
+        openai = read(".agents/skills/headroom-protocol/agents/openai.yaml")
+        self.assertIn("allow_implicit_invocation: true", openai)
 
     def test_speak_human_tw_is_shared_via_symlink(self) -> None:
         self._assert_symlinked_body("speak-human-tw")

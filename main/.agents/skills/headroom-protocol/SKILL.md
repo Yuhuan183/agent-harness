@@ -1,14 +1,15 @@
 ---
 name: headroom-protocol
 description: |
-  Manually compress an unusually large read-only blob when Headroom MCP tools exist and proxy routing is absent.
+  Compress an unusually large read-only blob when Headroom MCP tools exist and proxy routing is absent. Invoke automatically or explicitly for disposable analysis input, typically over 200 lines or several KB.
   觸發：「壓縮這份輸出」「context 快爆了」、超大 JSON／log／表格／搜尋結果的唯讀處理。
   不觸發：一般 CLI 工作、小型輸出、需要編輯的內容、精確錯誤診斷。
 ---
 
 # Headroom Protocol
 
-Use this only as a manual compression path outside transparent proxy routing.
+Use this only as a direct compression path outside transparent proxy routing,
+whether selected automatically or explicitly.
 
 1. Confirm `headroom_compress` exists and proxy routing is absent. Run `headroom doctor` only when proxy or client-routing state is uncertain; a live proxy alone does not prove that the current client is routed through it.
 2. Compress disposable read-only analysis input, typically over 200 lines or several KB.
