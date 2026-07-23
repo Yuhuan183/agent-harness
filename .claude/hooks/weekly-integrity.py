@@ -154,12 +154,18 @@ try:
         checks_completed = False
         findings.append(f"delegation audit failed: {exc}")
 
-    # Pin-drift check is skipped when the deployment lacks the resolver
-    # (e.g. a partially synced ~/.claude); nothing to compare against.
+    # A deployment without the resolver (e.g. a partially synced ~/.claude)
+    # cannot run the pin-drift check; that is incomplete coverage, never a
+    # silent skip — report it and withhold the throttle stamp.
     routing_script = os.path.join(claude_dir, "scripts", "model-routing")
     try:
         if not os.access(routing_script, os.X_OK):
             pins = None
+            checks_completed = False
+            findings.append(
+                f"model-routing resolver unavailable at {routing_script}; "
+                "pin-drift check not run"
+            )
         else:
             pins = subprocess.run(
                 [routing_script, "check-pins"],
@@ -183,7 +189,13 @@ try:
 
     codex_routing = os.path.expanduser("~/.codex/scripts/model-routing")
     try:
-        if os.access(codex_routing, os.X_OK):
+        if not os.access(codex_routing, os.X_OK):
+            checks_completed = False
+            findings.append(
+                f"Codex model-routing resolver unavailable at {codex_routing}; "
+                "validation not run"
+            )
+        else:
             validated = subprocess.run(
                 [codex_routing, "validate"], capture_output=True, text=True, timeout=10
             )

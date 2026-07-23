@@ -8,12 +8,16 @@ that is present but drifts from the verbatim English template is malformed
 and counts as a finding even when not owed.
 
 Usage:
-    qc-gate-lines <report-file|-> [--behavior-changed] [--defect-fixed] [--outward-taken]
+    qc-gate-lines <report-file|-> [--behavior-changed] [--defect-fixed]
+                  [--outward-taken] [--diff <unified-diff-file>]
 
 Flags assert what the QC reviewer established from the diff and evidence —
-never from the report's own claims. Exit 0 when no findings, 1 otherwise.
-This audits line presence and shape only; whether the lines are *true*
-remains the reviewer's judgment.
+never from the report's own claims. `--diff` mechanizes the INTENT-owed
+derivation: any changed line in a code file (not docs) marks behavior as
+changed, so an omitted INTENT cannot slip through an unset flag (4/10
+sampled leaves omitted the line entirely, evals/traps/s9). Exit 0 when no
+findings, 1 otherwise. This audits line presence and shape only; whether the
+lines are *true* remains the reviewer's judgment.
 """
 
 from __future__ import annotations
@@ -24,7 +28,25 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from gate_lines import TEMPLATES, flatten  # noqa: E402
+from gate_lines import TEMPLATES, TWINS_NONE, flatten  # noqa: E402
+
+
+DOC_SUFFIXES = (".md", ".rst", ".txt")
+
+
+def diff_touches_code(diff_text: str) -> bool:
+    """True when a unified diff changes any line of a non-doc file."""
+    current_is_code = False
+    for line in diff_text.splitlines():
+        if line.startswith("+++ ") or line.startswith("--- "):
+            path = line[4:].strip()
+            path = path[2:] if path.startswith(("a/", "b/")) else path
+            current_is_code = (
+                path != "/dev/null" and not path.lower().endswith(DOC_SUFFIXES)
+            )
+        elif current_is_code and (line.startswith("+") or line.startswith("-")):
+            return True
+    return False
 
 
 def main() -> int:
@@ -33,10 +55,20 @@ def main() -> int:
     ap.add_argument("--behavior-changed", action="store_true", help="INTENT is owed")
     ap.add_argument("--defect-fixed", action="store_true", help="TWINS is owed")
     ap.add_argument("--outward-taken", action="store_true", help="AUTH is owed")
+    ap.add_argument("--diff", help="unified diff file; derives --behavior-changed "
+                                   "from code-file changes (report may be -, "
+                                   "so the diff must be a file path)")
     args = ap.parse_args()
 
     raw = sys.stdin.read() if args.report == "-" else open(args.report, encoding="utf-8").read()
     flat = flatten(raw)
+
+    derived_intent = False
+    if args.diff:
+        diff_text = open(args.diff, encoding="utf-8").read()
+        if diff_touches_code(diff_text) and not args.behavior_changed:
+            args.behavior_changed = True
+            derived_intent = True
 
     owed = {
         "INTENT": args.behavior_changed,
@@ -53,14 +85,26 @@ def main() -> int:
             findings.append(
                 f"MISSING {name}: owed line absent or off-template"
                 + (" (a drifted variant is present)" if mentioned else "")
+                + (" [owed derived from --diff: code files changed]"
+                   if name == "INTENT" and derived_intent else "")
             )
         elif mentioned:
             findings.append(f"MALFORMED {name}: present but off the verbatim English template")
 
+    verify_none = TWINS_NONE.search(flat) is not None
+
     for f in findings:
         print(f)
-    if not findings:
+    if verify_none:
+        print(
+            "VERIFY TWINS: the report claims found 0/none — do not accept on its "
+            "word; grep the fixed construct across the scope yourself "
+            "(sampled leaves under-reported real twins 4/10, evals/traps/s9)"
+        )
+    if not findings and not verify_none:
         print("OK: owed gate lines present and on-template")
+    elif not findings:
+        print("OK otherwise: gate lines on-template; TWINS none-claim pending your grep")
     return 1 if findings else 0
 
 

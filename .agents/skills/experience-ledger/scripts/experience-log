@@ -24,9 +24,12 @@ import sys
 from datetime import datetime, timezone
 
 ROLES = (
-    "Explore", "mech-executor", "executor",
+    "explore", "mech-executor", "executor",
     "plan-verifier", "verifier", "security-reviewer", "security-executor",
 )
+# Pre-rename records and callers spell the recon role "Explore"; accept and
+# canonicalize so cohorts stay comparable across the rename.
+LEGACY_ROLE_ALIASES = {"Explore": "explore"}
 PROVIDERS = ("claude", "codex")
 OUTCOMES = ("accepted", "corrected", "rebriefed", "failed")
 TIERS = ("spot", "full")  # QC tier by task shape
@@ -34,9 +37,9 @@ CLASSES = (
     "recon", "review", "plan", "impl", "verify", "security", "smoke", "other",
 )
 REQUEST_SOURCES = ("claude-code", "codex", "claude-code-plugin-codex")
-SPOT_QC_ROLES = ("Explore", "mech-executor")
+SPOT_QC_ROLES = ("explore", "mech-executor")
 DEFAULT_CLASSES = {
-    "Explore": "recon",
+    "explore": "recon",
     "mech-executor": "impl",
     "executor": "impl",
     "plan-verifier": "plan",
@@ -126,7 +129,8 @@ def main() -> int:
                         help="pre-fill from one hook-staged dispatch stub")
     parser.add_argument("--dispatch-id", default=None,
                         help="exact staged dispatch id; required when completions overlap")
-    parser.add_argument("--role", choices=ROLES, default=None)
+    parser.add_argument("--role", choices=ROLES + tuple(LEGACY_ROLE_ALIASES),
+                        default=None)
     parser.add_argument("--provider", choices=PROVIDERS, default=None)
     parser.add_argument("--outcome", required=True, choices=OUTCOMES,
                         help="main-session quality verdict after checking the deliverable")
@@ -175,6 +179,7 @@ def main() -> int:
         if stub is None:
             parser.error("--from-pending: no staged SubagentStop stub found")
         agent_type = stub.get("agent_type")
+        agent_type = LEGACY_ROLE_ALIASES.get(agent_type, agent_type)
         if args.role is None and agent_type in ROLES:
             args.role = agent_type
         if args.provider is None:
@@ -194,6 +199,7 @@ def main() -> int:
         for field in ("rollout_id", "telemetry_warning"):
             if getattr(args, field, None) is None and stub.get(field) is not None:
                 setattr(args, field, stub[field])
+    args.role = LEGACY_ROLE_ALIASES.get(args.role, args.role)
     if args.role is None or args.provider is None:
         parser.error("--role and --provider are required (or resolvable via --from-pending)")
     if args.request_source is None:
@@ -217,10 +223,12 @@ def main() -> int:
         )
     lineage = (args.origin_provider, args.parent_dispatch_id, args.fallback_hops)
     if any(value is not None for value in lineage):
-        if args.fallback_hops != 1 or args.origin_provider is None:
-            parser.error("fallback lineage requires --origin-provider and "
-                         "--fallback-hops 1 exactly (single-hop policy; hops>1 "
-                         "is a routing violation — surface it, do not log it)")
+        if (args.fallback_hops != 1 or args.origin_provider is None
+                or not (args.parent_dispatch_id or "").strip()):
+            parser.error("fallback lineage requires --origin-provider, "
+                         "--parent-dispatch-id, and --fallback-hops 1 together "
+                         "(single-hop policy; hops>1 is a routing violation — "
+                         "surface it, do not log it)")
         if args.origin_provider == args.provider:
             parser.error("--origin-provider must differ from --provider "
                          "(a fallback hop crosses providers)")

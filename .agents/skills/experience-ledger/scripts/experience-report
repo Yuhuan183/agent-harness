@@ -96,7 +96,8 @@ def summarize(records: list[dict], now: datetime, half_life: float,
     })
     for record in records:
         key = (
-            record.get("role", "?"),
+            # Canonical role spelling is lowercase; legacy records say "Explore".
+            (record.get("role") or "?").lower(),
             record.get("task_class", "other"),
             record.get("provider", "?"),
         )
