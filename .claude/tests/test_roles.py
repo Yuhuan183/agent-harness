@@ -193,7 +193,11 @@ class LeafArtifactGateTests(unittest.TestCase):
                          "stop and report"],
             "plan-verifier": ["ready", "revise", "replacement plan"],
             "verifier": ["confirmed", "refuted", "inconclusive",
-                         "reproducible counterexample", "never fix"],
+                         "reproducible counterexample", "never fix",
+                         # Independence guardrails must not drift apart again
+                         # (review F-06): isolation, state parity, no writes.
+                         "external state", "git status --short",
+                         "must be identical", "snapshot updates"],
             "security-reviewer": ["abuse", "trust boundar"],
             "security-executor": ["weaken", "abuse", "intent: code does",
                                   "auth: user said"],
@@ -249,9 +253,18 @@ class LeafArtifactGateTests(unittest.TestCase):
                      "-old\n+new\n")
         docs_diff = ("--- a/README.md\n+++ b/README.md\n@@ -1 +1 @@\n"
                      "-old\n+new\n")
+        # Whole-file deletions/additions pair a real path with /dev/null; the
+        # header pair must be judged together or deletions dodge the gate
+        # (review F-04).
+        deleted_code = "--- a/pricebook.py\n+++ /dev/null\n@@ -1 +0,0 @@\n-old\n"
+        added_code = "--- /dev/null\n+++ b/pricebook.py\n@@ -0,0 +1 @@\n+new\n"
+        deleted_docs = "--- a/README.md\n+++ /dev/null\n@@ -1 +0,0 @@\n-old\n"
         with tempfile.TemporaryDirectory() as temp_dir:
             for name, diff, expect_missing in (
                 ("code", code_diff, True), ("docs", docs_diff, False),
+                ("deleted-code", deleted_code, True),
+                ("added-code", added_code, True),
+                ("deleted-docs", deleted_docs, False),
             ):
                 path = Path(temp_dir) / f"{name}.diff"
                 path.write_text(diff, encoding="utf-8")

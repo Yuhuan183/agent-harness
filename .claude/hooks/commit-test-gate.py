@@ -26,6 +26,9 @@ import sys
 from pathlib import Path
 
 COMMIT_RE = re.compile(r"\bgit\b[^|;&\n]*\bcommit\b")
+# The escape hatch must be a real leading shell assignment. A bare substring
+# match let the token anywhere — e.g. inside a commit message — disarm the gate.
+SKIP_RE = re.compile(r"^\s*(?:env\s+)?AGENT_SKIP_TEST_GATE=1(?=\s)")
 DASH_C_RE = re.compile(r"\bgit\s+(?:[^|;&\n]*?\s)?-C[= ]\s*(\"[^\"]+\"|'[^']+'|\S+)")
 CD_RE = re.compile(r"\bcd\s+(\"[^\"]+\"|'[^']+'|\S+)")
 
@@ -45,7 +48,7 @@ def main() -> int:
     command = (payload.get("tool_input") or {}).get("command", "")
     if not isinstance(command, str) or not COMMIT_RE.search(command):
         return 0
-    if "AGENT_SKIP_TEST_GATE=1" in command:
+    if SKIP_RE.match(command):
         return 0
 
     cwd = payload.get("cwd") or "."

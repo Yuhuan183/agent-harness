@@ -90,6 +90,14 @@ class MachineStateHygieneTests(unittest.TestCase):
             self.assertEqual(
                 run_hook("AGENT_SKIP_TEST_GATE=1 git commit -m x", str(repo)).returncode, 0
             )
+            # The escape hatch is a leading shell assignment only — the token
+            # inside a commit message (or anywhere else) must not disarm the
+            # gate (review F-01).
+            msg_form = run_hook(
+                "git commit -m 'document AGENT_SKIP_TEST_GATE=1 behavior'", str(repo)
+            )
+            self.assertEqual(msg_form.returncode, 2)
+            self.assertIn("commit blocked", msg_form.stderr)
             self.assertEqual(run_hook("git status", str(repo)).returncode, 0)
             # Repo-switching forms must gate on the command's target, not cwd
             # (F-01: `git -C` and `cd &&` both bypassed the gate from cwd=/).

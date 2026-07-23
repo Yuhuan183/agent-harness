@@ -137,6 +137,28 @@ class MechanismTests(unittest.TestCase):
             self.assertNotIn("check failed", completed.stdout)
             self.assertTrue(stamp.exists())
 
+            # A git-managed ~/.claude answers drift only for the .claude
+            # targets; .codex/.agents manifest parity must still run and catch
+            # drift instead of being skipped wholesale (review F-05).
+            stamp.unlink()
+            (repo / ".codex").mkdir()
+            (repo / ".codex" / "AGENTS.contract.md").write_text(
+                "agents contract\n", encoding="utf-8")
+            (repo / "scripts/deployment-manifest.tsv").write_text(
+                ".claude/CLAUDE.contract.md\t.claude/CLAUDE.md\n"
+                ".codex/AGENTS.contract.md\t.codex/AGENTS.md\n",
+                encoding="utf-8",
+            )
+            (Path(temp_home) / ".codex" / "AGENTS.md").write_text(
+                "drifted\n", encoding="utf-8")
+            git_managed_drift = subprocess.run(
+                [sys.executable, str(hook)], env=env,
+                check=True, capture_output=True, text=True)
+            self.assertIn("deployment drift", git_managed_drift.stdout)
+            self.assertIn(".codex/AGENTS.md", git_managed_drift.stdout)
+            self.assertNotIn("check failed", git_managed_drift.stdout)
+            self.assertTrue(stamp.exists())
+
     def test_sync_and_weekly_integrity_share_one_deployment_manifest(self) -> None:
         hook = read(".claude/hooks/weekly-integrity.py")
         sync = read("scripts/sync.sh")
@@ -246,6 +268,44 @@ class MechanismTests(unittest.TestCase):
             self.assertIn("apply stopped to avoid losing local settings", result.stdout)
             self.assertEqual(settings_path.read_text(encoding="utf-8"), before)
             self.assertFalse((Path(temp_home) / ".codex").exists())
+
+    def test_sync_refuses_first_takeover_of_foreign_contracts(self) -> None:
+        # A pre-existing AGENTS.md/CLAUDE.md whose content never appeared in
+        # this repo's history is someone else's guidance; apply must stop
+        # without --accept-contract-takeover (review F-02).
+        sync = ROOT / "scripts/sync.sh"
+        with tempfile.TemporaryDirectory() as temp_home:
+            foreign = Path(temp_home) / ".codex/AGENTS.md"
+            foreign.parent.mkdir(parents=True)
+            foreign.write_text("someone else's guidance\n", encoding="utf-8")
+            env = {**os.environ, "HOME": temp_home,
+                   "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"}
+            dry = subprocess.run([str(sync)], capture_output=True, text=True, env=env)
+            self.assertEqual(dry.returncode, 0, dry.stderr)
+            self.assertIn("WARN: ~/.codex/AGENTS.md", dry.stdout)
+            blocked = subprocess.run([str(sync), "--apply"],
+                                     capture_output=True, text=True, env=env)
+            self.assertNotEqual(blocked.returncode, 0)
+            self.assertIn("--accept-contract-takeover", blocked.stdout)
+            self.assertEqual(foreign.read_text(encoding="utf-8"),
+                             "someone else's guidance\n")
+            accepted = subprocess.run(
+                [str(sync), "--apply", "--accept-contract-takeover"],
+                capture_output=True, text=True, env=env)
+            self.assertEqual(accepted.returncode, 0, accepted.stderr + accepted.stdout)
+            self.assertEqual(foreign.read_text(encoding="utf-8"),
+                             read(".codex/AGENTS.contract.md"))
+
+    def test_routing_wrappers_gate_python_version_before_tomllib(self) -> None:
+        # macOS system python3 is 3.9; tomllib needs 3.11+. The wrapper must
+        # fail with the real cause, not misreport routing_core as missing, and
+        # sync preflight must stop before anything deeper does (review F-03).
+        for path in (".claude/scripts/model-routing", ".codex/scripts/model-routing"):
+            body = read(path)
+            self.assertLess(body.index("version_info < (3, 11)"),
+                            body.index("import routing_core"), path)
+        self.assertIn("python3 >= 3.11", read("scripts/sync.sh"))
+        self.assertIn("3.11", read("docs/setup.md"))
 
     def test_usage_report_separates_sources_and_finds_rolling_peak(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

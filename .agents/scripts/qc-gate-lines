@@ -36,14 +36,21 @@ DOC_SUFFIXES = (".md", ".rst", ".txt")
 
 def diff_touches_code(diff_text: str) -> bool:
     """True when a unified diff changes any line of a non-doc file."""
+    def is_code(header_path: str) -> bool:
+        path = header_path[2:] if header_path.startswith(("a/", "b/")) else header_path
+        return path != "/dev/null" and not path.lower().endswith(DOC_SUFFIXES)
+
     current_is_code = False
+    old_is_code = False
     for line in diff_text.splitlines():
-        if line.startswith("+++ ") or line.startswith("--- "):
-            path = line[4:].strip()
-            path = path[2:] if path.startswith(("a/", "b/")) else path
-            current_is_code = (
-                path != "/dev/null" and not path.lower().endswith(DOC_SUFFIXES)
-            )
+        if line.startswith("--- "):
+            old_is_code = is_code(line[4:].strip())
+            current_is_code = False
+        elif line.startswith("+++ "):
+            # Judge the ---/+++ header pair together: a deletion pairs the real
+            # old path with `+++ /dev/null`, an addition the reverse. Either
+            # side naming a code file marks the file as behavior-affecting.
+            current_is_code = old_is_code or is_code(line[4:].strip())
         elif current_is_code and (line.startswith("+") or line.startswith("-")):
             return True
     return False

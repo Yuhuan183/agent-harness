@@ -5,6 +5,7 @@
 #   scripts/sync.sh          # dry-run, only lists the actions that would happen
 #   scripts/sync.sh --apply  # actually run it (backs up to backups/<timestamp>/ first)
 #   scripts/sync.sh --apply --accept-settings-overwrite  # explicitly allow deleting extra global settings keys
+#   scripts/sync.sh --apply --accept-contract-takeover   # explicitly allow overwriting a pre-existing foreign AGENTS.md/CLAUDE.md
 # Portable source -> HOME target mappings are defined only in scripts/deployment-manifest.tsv.
 set -euo pipefail
 
@@ -12,12 +13,14 @@ REPO="$(cd "$(dirname "$0")/.." && pwd)"
 MANIFEST="$REPO/scripts/deployment-manifest.tsv"
 APPLY=0
 ACCEPT_SETTINGS_OVERWRITE=0
+ACCEPT_CONTRACT_TAKEOVER=0
 for arg in "$@"; do
   case "$arg" in
     --apply) APPLY=1 ;;
     --accept-settings-overwrite) ACCEPT_SETTINGS_OVERWRITE=1 ;;
+    --accept-contract-takeover) ACCEPT_CONTRACT_TAKEOVER=1 ;;
     -h|--help)
-      sed -n '2,6p' "$0"
+      sed -n '2,7p' "$0"
       exit 0
       ;;
     *) printf 'ERROR: unknown argument: %s\n' "$arg" >&2; exit 2 ;;
@@ -69,6 +72,10 @@ validate_manifest() {
 
 preflight() {
   log "== preflight =="
+  # The routing toolchain and tests need stdlib tomllib (Python 3.11+); the
+  # macOS system /usr/bin/python3 (3.9) fails deep inside otherwise.
+  python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' \
+    || { log "ERROR: python3 >= 3.11 required (tomllib); found $(python3 -V 2>&1)"; return 1; }
   python3 -m json.tool "$REPO/.claude/settings.json" >/dev/null
   python3 -m json.tool "$REPO/.claude/examples/headroom-mcp.merge.json" >/dev/null
   bash -n "$REPO/scripts/sync.sh" "$REPO/.claude/sh/statusline.sh"
@@ -156,6 +163,30 @@ EOF
     log "ERROR: apply stopped to avoid losing local settings; move the extra keys or explicitly pass --accept-settings-overwrite."
     exit 1
   fi
+fi
+
+# First-takeover guard: the contract-file mappings (CLAUDE.md / AGENTS.md
+# targets) fully replace the deployed file. A pre-existing target whose content
+# never appeared in this repo's history is someone else's guidance, not a stale
+# copy of ours — never overwrite it silently; require explicit takeover.
+FOREIGN_CONTRACTS=("")
+while IFS=$'\t' read -r src_rel dst_rel extra; do
+  [[ -z "$src_rel" || "$src_rel" == \#* ]] && continue
+  case "$(basename "$dst_rel")" in CLAUDE.md|AGENTS.md) ;; *) continue ;; esac
+  dst="$HOME/$dst_rel"
+  [[ -s "$dst" ]] || continue
+  cmp -s "$REPO/$src_rel" "$dst" && continue
+  dst_hash="$(git -C "$REPO" hash-object "$dst")"
+  git -C "$REPO" rev-list --all --objects -- "$src_rel" | grep -q "^$dst_hash " \
+    || FOREIGN_CONTRACTS+=("$dst_rel")
+done < "$MANIFEST"
+for dst_rel in "${FOREIGN_CONTRACTS[@]}"; do
+  [[ -z "$dst_rel" ]] && continue
+  log "WARN: ~/$dst_rel has content unknown to this repo; apply would replace it (after backup)."
+done
+if [[ $APPLY -eq 1 && ${#FOREIGN_CONTRACTS[@]} -gt 1 && $ACCEPT_CONTRACT_TAKEOVER -ne 1 ]]; then
+  log "ERROR: apply stopped to avoid overwriting a contract file this repo never produced; merge the existing guidance manually or explicitly pass --accept-contract-takeover."
+  exit 1
 fi
 
 # Manifest order keeps shared .agents targets ahead of Claude/Codex symlinks.

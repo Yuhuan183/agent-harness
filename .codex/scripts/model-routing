@@ -8,6 +8,12 @@ import json
 import sys
 from pathlib import Path
 
+if sys.version_info < (3, 11):  # routing_core needs stdlib tomllib (3.11+)
+    sys.stderr.write(
+        "ERROR: Python 3.11+ required (tomllib); "
+        f"this is Python {sys.version.split()[0]}\n")
+    sys.exit(2)
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / ".agents" / "scripts"))
 try:
     import routing_core as core

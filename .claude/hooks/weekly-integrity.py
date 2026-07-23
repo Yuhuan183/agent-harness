@@ -53,16 +53,18 @@ try:
     claude_dir = os.path.expanduser("~/.claude")
     # ~/.claude is normally populated by scripts/sync.sh rsync from the harness
     # repo, not a git checkout. Drift check adapts to the deployment model:
-    # git status when ~/.claude is itself a repo, otherwise an rsync dry-run
-    # against the repo's tracked .claude/ copy (same paths sync.sh manages).
+    # git status covers the .claude targets when ~/.claude is itself a repo;
+    # every other manifest target is always compared via an rsync dry-run
+    # against the source checkout (same paths sync.sh manages).
     harness_repo = os.environ.get(
         "AGENT_HARNESS_REPO", os.path.expanduser("~/WorkSpace/agent-harness")
     )
     try:
-        # The two drift models are mutually exclusive: a git-managed ~/.claude
-        # answers drift itself; only rsync-managed deployments compare against
-        # the source checkout via the manifest.
-        if os.path.isdir(os.path.join(claude_dir, ".git")):
+        # A git-managed ~/.claude answers drift for the .claude targets itself,
+        # but only for them: the other manifest targets (.codex, .agents) still
+        # need the rsync comparison against the source checkout.
+        claude_git_managed = os.path.isdir(os.path.join(claude_dir, ".git"))
+        if claude_git_managed:
             r = subprocess.run(
                 ["git", "-C", claude_dir, "status", "--porcelain"],
                 capture_output=True,
@@ -80,9 +82,9 @@ try:
                     "contract-repo drift (uncommitted changes in ~/.claude):\n"
                     + r.stdout.rstrip()
                 )
-        elif not os.path.isdir(os.path.join(harness_repo, ".claude")):
+        if not os.path.isdir(os.path.join(harness_repo, ".claude")):
             # A managed deployment without a reachable source checkout has no
-            # drift monitoring at all — that is a finding, not a silent skip,
+            # manifest drift monitoring — that is a finding, not a silent skip,
             # and the throttle must not advance past it.
             checks_completed = False
             findings.append(
@@ -93,6 +95,8 @@ try:
         else:
             drift = []
             for source_rel, target_rel in load_deployment_manifest(harness_repo):
+                if claude_git_managed and target_rel.startswith(".claude/"):
+                    continue  # covered by the git status check above
                 src = os.path.join(harness_repo, source_rel)
                 if not os.path.lexists(src):
                     raise ValueError(f"deployment source missing: {source_rel}")

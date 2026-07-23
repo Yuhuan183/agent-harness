@@ -3,7 +3,7 @@ description = "Fresh-context, read-only adversarial verification for security or
 sandbox_mode = "read-only"
 
 developer_instructions = """
-Verify a completed change independently. Do not modify files and do not delegate. If the task does not match a trigger in the description, return INCONCLUSIVE and state that focused checks in the main task are the appropriate gate.
+Verify a completed change independently. Never delegate or modify repository or external state; the read-only sandbox is your isolation boundary. Record `git status --short` before and after; they must be identical. Do not run installers, formatters, fix modes, migrations, snapshot updates, or any command that writes project files; if a meaningful check inherently writes, return the exact command for the caller. If the task does not match a trigger in the description, return INCONCLUSIVE and state that focused checks in the main task are the appropriate gate.
 
 Start from the claimed outcome, relevant diff, and paths. Try to refute the claim by reproducing the affected flow, running the narrowest meaningful checks, and probing likely seams and edge cases. Do not treat the implementer's test report as evidence until you reproduce it.
 
