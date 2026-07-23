@@ -163,6 +163,7 @@ class MechanismTests(unittest.TestCase):
         hook = read(".claude/hooks/weekly-integrity.py")
         sync = read("scripts/sync.sh")
         pairs = deployment_manifest()
+        entries = deployment_manifest_entries()
         sources = [source for source, _ in pairs]
         targets = [target for _, target in pairs]
         self.assertEqual(len(sources), len(set(sources)))
@@ -172,6 +173,7 @@ class MechanismTests(unittest.TestCase):
         self.assertNotIn("cross_platform =", hook)
         self.assertIn(("main/.claude/CLAUDE.contract.md", ".claude/CLAUDE.md"), pairs)
         self.assertIn(("main/.codex/AGENTS.contract.md", ".codex/AGENTS.md"), pairs)
+        self.assertIn(("main/.agents/skills", ".agents/skills", "merge"), entries)
         for source, target in pairs:
             self.assertTrue((ROOT / source).exists(), source)
             self.assertRegex(target, r"^\.(agents|claude|codex)/")
@@ -225,10 +227,32 @@ class MechanismTests(unittest.TestCase):
             self.assertTrue(
                 (Path(temp_home) / ".codex/skills/experience-ledger/SKILL.md").is_file()
             )
-            for source_rel, target_rel in deployment_manifest():
+            for source_rel, target_rel, mode in deployment_manifest_entries():
                 source = ROOT / source_rel
                 target = Path(temp_home) / target_rel
-                if source.is_dir():
+                if mode == "merge":
+                    installed = (source / "INSTALLED.txt").read_text(
+                        encoding="utf-8"
+                    ).splitlines()
+                    self.assertEqual(
+                        (target / "INSTALLED.txt").read_text(encoding="utf-8"),
+                        (source / "INSTALLED.txt").read_text(encoding="utf-8"),
+                    )
+                    managed_paths = [(source / name, target / name) for name in installed]
+                    for managed_source, managed_target in managed_paths:
+                        parity = subprocess.run(
+                            ["rsync", "-an", "--links", "--force", "--delete",
+                             "--delete-excluded", "--exclude", "__pycache__/",
+                             "--exclude", "*.pyc", "--exclude", ".DS_Store",
+                             "--itemize-changes", str(managed_source),
+                             str(managed_target.parent) + "/"],
+                            capture_output=True, text=True,
+                        )
+                        self.assertEqual(parity.returncode, 0, parity.stderr)
+                        self.assertEqual(
+                            parity.stdout, "", f"drift: {target_rel}/{managed_source.name}"
+                        )
+                elif source.is_dir():
                     parity = subprocess.run(
                         ["rsync", "-an", "--links", "--force", "--delete",
                          "--delete-excluded", "--exclude", "__pycache__/",
@@ -246,6 +270,29 @@ class MechanismTests(unittest.TestCase):
             for platform in (".claude", ".codex", ".agents"):
                 unrelated = Path(temp_home) / platform / "skills/unrelated/SKILL.md"
                 self.assertEqual(unrelated.read_text(encoding="utf-8"), "user-owned\n")
+
+    def test_skill_merge_removes_managed_drift_but_preserves_other_skills(self) -> None:
+        sync = ROOT / "scripts/sync.sh"
+        with tempfile.TemporaryDirectory() as temp_home:
+            skill_root = Path(temp_home) / ".agents/skills"
+            stale = skill_root / "headroom-protocol/stale.txt"
+            stale.parent.mkdir(parents=True)
+            stale.write_text("stale\n", encoding="utf-8")
+            unrelated = skill_root / "unrelated/SKILL.md"
+            unrelated.parent.mkdir(parents=True)
+            unrelated.write_text("user-owned\n", encoding="utf-8")
+            applied = subprocess.run(
+                [str(sync), "--apply"], capture_output=True, text=True,
+                env={**os.environ, "HOME": temp_home,
+                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"},
+            )
+            self.assertEqual(applied.returncode, 0, applied.stderr + applied.stdout)
+            self.assertFalse(stale.exists())
+            self.assertEqual(unrelated.read_text(encoding="utf-8"), "user-owned\n")
+            self.assertEqual(
+                (skill_root / "INSTALLED.txt").read_text(encoding="utf-8"),
+                read(".agents/skills/INSTALLED.txt"),
+            )
 
     def test_sync_refuses_to_drop_global_settings_array_items(self) -> None:
         sync = ROOT / "scripts/sync.sh"

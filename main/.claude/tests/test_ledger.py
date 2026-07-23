@@ -38,9 +38,21 @@ class SharedSkillTests(unittest.TestCase):
 
     def test_shared_skill_names_are_listed(self) -> None:
         installed = read(".agents/skills/INSTALLED.txt").splitlines()
-        self.assertIn("headroom-protocol", installed)
-        self.assertIn("speak-human-tw", installed)
-        self.assertIn("experience-ledger", installed)
+        actual = sorted(
+            path.name
+            for path in (ROOT / "main/.agents/skills").iterdir()
+            if (path / "SKILL.md").is_file()
+        )
+        self.assertEqual(installed, actual)
+        self.assertEqual(
+            installed,
+            [
+                "experience-ledger",
+                "headroom-protocol",
+                "speak-human-tw",
+                "task-observer",
+            ],
+        )
 
     def test_experience_ledger_is_shared_and_wired(self) -> None:
         self._assert_symlinked_body("experience-ledger")

@@ -1,8 +1,5 @@
-# source (repo-relative)	target (HOME-relative)
-main/.agents/skills/headroom-protocol	.agents/skills/headroom-protocol
-main/.agents/skills/speak-human-tw	.agents/skills/speak-human-tw
-main/.agents/skills/experience-ledger	.agents/skills/experience-ledger
-main/.agents/skills/task-observer	.agents/skills/task-observer
+# source (repo-relative)	target (HOME-relative)	mode (optional)
+main/.agents/skills	.agents/skills	merge
 main/.agents/.skill-lock.json	.agents/.skill-lock.json
 main/.agents/scripts	.agents/scripts
 main/.agents/docs	.agents/docs

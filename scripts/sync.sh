@@ -36,13 +36,18 @@ run()  { if [[ $APPLY -eq 1 ]]; then "$@"; else log "[dry-run] $*"; fi }
 
 validate_manifest() {
   [[ -f "$MANIFEST" ]] || { log "ERROR: missing deployment manifest: $MANIFEST"; return 1; }
-  local src_rel dst_rel extra src count=0 seen
+  local src_rel dst_rel mode extra src count=0 seen
   # Empty sentinel keeps Bash 3.2 + nounset from treating an empty array as unbound.
   local seen_sources=("") seen_targets=("")
-  while IFS=$'\t' read -r src_rel dst_rel extra; do
+  while IFS=$'\t' read -r src_rel dst_rel mode extra; do
     [[ -z "$src_rel" || "$src_rel" == \#* ]] && continue
-    if [[ -z "$dst_rel" || -n "$extra" ]]; then
+    if [[ -z "$dst_rel" || -n "$extra" || ( -n "$mode" && "$mode" != "merge" ) ]]; then
       log "ERROR: malformed deployment manifest row: $src_rel"
+      return 1
+    fi
+    if [[ "$mode" == "merge" \
+          && "$src_rel:$dst_rel" != "main/.agents/skills:.agents/skills" ]]; then
+      log "ERROR: merge mode is restricted to the shared skill root: $src_rel -> $dst_rel"
       return 1
     fi
     case "$src_rel:$dst_rel" in
@@ -65,9 +70,36 @@ validate_manifest() {
     src="$REPO/$src_rel"
     [[ -e "$src" || -L "$src" ]] \
       || { log "ERROR: deployment source missing: $src_rel"; return 1; }
+    if [[ "$mode" == "merge" ]]; then
+      validate_project_skill_inventory "$src"
+    fi
     count=$((count + 1))
   done < "$MANIFEST"
   [[ $count -gt 0 ]] || { log "ERROR: deployment manifest is empty"; return 1; }
+}
+
+validate_project_skill_inventory() {
+  local root="$1" inventory="$1/INSTALLED.txt" name seen="" entry
+  [[ -f "$inventory" ]] \
+    || { log "ERROR: missing project skill inventory: $inventory"; return 1; }
+  while IFS= read -r name || [[ -n "$name" ]]; do
+    [[ "$name" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] \
+      || { log "ERROR: invalid project skill name in INSTALLED.txt: $name"; return 1; }
+    for entry in $seen; do
+      [[ "$entry" != "$name" ]] \
+        || { log "ERROR: duplicate project skill in INSTALLED.txt: $name"; return 1; }
+    done
+    [[ -f "$root/$name/SKILL.md" ]] \
+      || { log "ERROR: listed project skill is missing SKILL.md: $name"; return 1; }
+    seen="$seen $name"
+  done < "$inventory"
+  [[ -n "$seen" ]] || { log "ERROR: project skill inventory is empty"; return 1; }
+  for entry in "$root"/*; do
+    [[ -d "$entry" && -f "$entry/SKILL.md" ]] || continue
+    name="$(basename "$entry")"
+    grep -Fxq "$name" "$inventory" \
+      || { log "ERROR: project skill missing from INSTALLED.txt: $name"; return 1; }
+  done
 }
 
 preflight() {
@@ -99,14 +131,48 @@ preflight
 SYNCED_SRC=()
 SYNCED_DST=()
 
-sync_path() { # $1 = repo-relative source  $2 = HOME-relative target
-  local src="$REPO/$1" dst_rel="$2" dst="$HOME/$2"
-  [[ -e "$src" || -L "$src" ]] || { log "ERROR: missing manifest source: $1"; return 1; }
-  SYNCED_SRC+=("$src"); SYNCED_DST+=("$dst")
-  if [[ -e "$dst" && $APPLY -eq 1 ]]; then
+backup_target() { # $1 = absolute target  $2 = HOME-relative target
+  local dst="$1" dst_rel="$2"
+  if [[ -e "$dst" || -L "$dst" ]]; then
     mkdir -p "$BACKUP/$(dirname "$dst_rel")"
     cp -R "$dst" "$BACKUP/$dst_rel"
     BACKUP_CREATED=1
+  fi
+}
+
+sync_skill_root() { # $1 = repo-relative skill root  $2 = HOME-relative skill root
+  local src="$REPO/$1" dst_rel="$2" dst="$HOME/$2" name child_src child_dst child_rel
+  validate_project_skill_inventory "$src"
+  run mkdir -p "$dst"
+  while IFS= read -r name || [[ -n "$name" ]]; do
+    child_src="$src/$name"
+    child_dst="$dst/$name"
+    child_rel="$dst_rel/$name"
+    SYNCED_SRC+=("$child_src"); SYNCED_DST+=("$child_dst")
+    if [[ $APPLY -eq 1 ]]; then
+      backup_target "$child_dst" "$child_rel"
+    fi
+    run rsync -a --links --force --delete --delete-excluded \
+      "${RSYNC_FILTERS[@]}" "$child_src" "$dst/"
+  done < "$src/INSTALLED.txt"
+
+  SYNCED_SRC+=("$src/INSTALLED.txt"); SYNCED_DST+=("$dst/INSTALLED.txt")
+  if [[ $APPLY -eq 1 ]]; then
+    backup_target "$dst/INSTALLED.txt" "$dst_rel/INSTALLED.txt"
+  fi
+  run rsync -a --links --force "$src/INSTALLED.txt" "$dst/INSTALLED.txt"
+}
+
+sync_path() { # $1 = repo-relative source  $2 = HOME-relative target  $3 = optional mode
+  local src="$REPO/$1" dst_rel="$2" mode="${3:-}" dst="$HOME/$2"
+  [[ -e "$src" || -L "$src" ]] || { log "ERROR: missing manifest source: $1"; return 1; }
+  if [[ "$mode" == "merge" ]]; then
+    sync_skill_root "$1" "$2"
+    return
+  fi
+  SYNCED_SRC+=("$src"); SYNCED_DST+=("$dst")
+  if [[ $APPLY -eq 1 ]]; then
+    backup_target "$dst" "$dst_rel"
   fi
   run mkdir -p "$(dirname "$dst")"
   if [[ -d "$src" ]]; then
@@ -199,18 +265,18 @@ fi
 # settings first opens a window where a registered hook cannot be found and
 # every guarded tool call errors out (observed 2026-07-23).
 DEFERRED_SETTINGS_ROWS=("")
-while IFS=$'\t' read -r src_rel dst_rel extra; do
+while IFS=$'\t' read -r src_rel dst_rel mode extra; do
   [[ -z "$src_rel" || "$src_rel" == \#* ]] && continue
   if [[ "$(basename "$dst_rel")" == "settings.json" ]]; then
-    DEFERRED_SETTINGS_ROWS+=("$src_rel"$'\t'"$dst_rel")
+    DEFERRED_SETTINGS_ROWS+=("$src_rel"$'\t'"$dst_rel"$'\t'"$mode")
     continue
   fi
-  sync_path "$src_rel" "$dst_rel"
+  sync_path "$src_rel" "$dst_rel" "$mode"
 done < "$MANIFEST"
 for row in "${DEFERRED_SETTINGS_ROWS[@]}"; do
   [[ -z "$row" ]] && continue
-  IFS=$'\t' read -r src_rel dst_rel <<< "$row"
-  sync_path "$src_rel" "$dst_rel"
+  IFS=$'\t' read -r src_rel dst_rel mode <<< "$row"
+  sync_path "$src_rel" "$dst_rel" "$mode"
 done
 
 # Machine state remains deliberately outside the manifest.

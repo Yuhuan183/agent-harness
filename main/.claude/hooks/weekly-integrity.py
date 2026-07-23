@@ -15,7 +15,7 @@ STAMP = os.path.expanduser("~/.claude/telemetry/.integrity-last-run")
 
 
 def load_deployment_manifest(repo):
-    """Return validated repo-relative source and HOME-relative target pairs."""
+    """Return validated repo-relative source, HOME-relative target, and mode."""
     path = os.path.join(repo, "scripts", "deployment-manifest.tsv")
     pairs = []
     sources = set()
@@ -26,9 +26,18 @@ def load_deployment_manifest(repo):
             if not line or line.startswith("#"):
                 continue
             fields = line.split("\t")
-            if len(fields) != 2 or not all(fields):
+            if len(fields) not in (2, 3) or not all(fields):
                 raise ValueError(f"malformed deployment manifest line {line_number}")
-            source, target = fields
+            source, target = fields[:2]
+            mode = fields[2] if len(fields) == 3 else ""
+            if mode not in ("", "merge"):
+                raise ValueError(f"invalid deployment mode on line {line_number}")
+            if mode == "merge" and (
+                source != "main/.agents/skills" or target != ".agents/skills"
+            ):
+                raise ValueError(
+                    f"merge mode is restricted to the shared skill root on line {line_number}"
+                )
             source_prefixes = ("main/.agents/", "main/.claude/", "main/.codex/")
             target_prefixes = (".agents/", ".claude/", ".codex/")
             if not source.startswith(source_prefixes) or not target.startswith(target_prefixes):
@@ -40,10 +49,33 @@ def load_deployment_manifest(repo):
                 raise ValueError(f"duplicate deployment manifest line {line_number}")
             sources.add(source)
             targets.add(target)
-            pairs.append((source, target))
+            pairs.append((source, target, mode))
     if not pairs:
         raise ValueError("deployment manifest is empty")
     return pairs
+
+
+def load_project_skill_names(root):
+    """Validate and return the project-owned skills under a merged skill root."""
+    inventory = os.path.join(root, "INSTALLED.txt")
+    with open(inventory, encoding="utf-8") as stream:
+        names = [line.rstrip("\n") for line in stream]
+    if not names or any(not name for name in names) or len(names) != len(set(names)):
+        raise ValueError("invalid project skill inventory")
+    allowed = set("abcdefghijklmnopqrstuvwxyz0123456789-")
+    for name in names:
+        if set(name) - allowed or name.startswith("-") or name.endswith("-") or "--" in name:
+            raise ValueError(f"invalid project skill name: {name}")
+        if not os.path.isfile(os.path.join(root, name, "SKILL.md")):
+            raise ValueError(f"listed project skill is missing SKILL.md: {name}")
+    actual = {
+        entry
+        for entry in os.listdir(root)
+        if os.path.isfile(os.path.join(root, entry, "SKILL.md"))
+    }
+    if actual != set(names):
+        raise ValueError("project skill inventory does not match source directories")
+    return names
 
 try:
     if os.path.exists(STAMP) and time.time() - os.path.getmtime(STAMP) < PERIOD:
@@ -95,43 +127,61 @@ try:
             )
         else:
             drift = []
-            for source_rel, target_rel in load_deployment_manifest(harness_repo):
+            for source_rel, target_rel, mode in load_deployment_manifest(harness_repo):
                 if claude_git_managed and target_rel.startswith(".claude/"):
                     continue  # covered by the git status check above
                 src = os.path.join(harness_repo, source_rel)
                 if not os.path.lexists(src):
                     raise ValueError(f"deployment source missing: {source_rel}")
                 deployed = os.path.join(os.path.expanduser("~"), target_rel)
-                if os.path.isdir(src):
-                    r = subprocess.run(
-                        ["rsync", "-a", "--links", "--delete", "--delete-excluded",
-                         "--exclude", "__pycache__/", "--exclude", "*.pyc",
-                         "--exclude", ".DS_Store", "-n", "--itemize-changes",
-                         src, os.path.dirname(deployed) + "/"],
-                        capture_output=True, text=True, timeout=10,
-                    )
-                else:
-                    same = subprocess.run(
-                        ["cmp", "-s", src, deployed], timeout=10,
-                    )
-                    r = subprocess.CompletedProcess(
-                        args=same.args, returncode=0,
-                        stdout="" if same.returncode == 0 else "file content differs\n",
-                        stderr="",
-                    )
-                if r.returncode != 0:
-                    checks_completed = False
-                    detail = (r.stderr or r.stdout).rstrip()
-                    findings.append(
-                        f"deployment drift check failed (rsync exit {r.returncode}, "
-                        f"{target_rel}):\n{detail}"
-                    )
+                checks = [(src, deployed, target_rel)]
+                if mode == "merge":
+                    checks = [
+                        (
+                            os.path.join(src, name),
+                            os.path.join(deployed, name),
+                            f"{target_rel}/{name}",
+                        )
+                        for name in load_project_skill_names(src)
+                    ]
+                    checks.append((
+                        os.path.join(src, "INSTALLED.txt"),
+                        os.path.join(deployed, "INSTALLED.txt"),
+                        f"{target_rel}/INSTALLED.txt",
+                    ))
+                for check_src, check_deployed, check_target_rel in checks:
+                    if os.path.isdir(check_src):
+                        r = subprocess.run(
+                            ["rsync", "-a", "--links", "--delete", "--delete-excluded",
+                             "--exclude", "__pycache__/", "--exclude", "*.pyc",
+                             "--exclude", ".DS_Store", "-n", "--itemize-changes",
+                             check_src, os.path.dirname(check_deployed) + "/"],
+                            capture_output=True, text=True, timeout=10,
+                        )
+                    else:
+                        same = subprocess.run(
+                            ["cmp", "-s", check_src, check_deployed], timeout=10,
+                        )
+                        r = subprocess.CompletedProcess(
+                            args=same.args, returncode=0,
+                            stdout="" if same.returncode == 0 else "file content differs\n",
+                            stderr="",
+                        )
+                    if r.returncode != 0:
+                        checks_completed = False
+                        detail = (r.stderr or r.stdout).rstrip()
+                        findings.append(
+                            f"deployment drift check failed (rsync exit {r.returncode}, "
+                            f"{check_target_rel}):\n{detail}"
+                        )
+                        break
+                    for line in r.stdout.splitlines():
+                        # rsync -n itemized lines starting with '.' are unchanged;
+                        # anything else means content would be copied (drift).
+                        if line and not line.startswith(".") and not line.endswith("/"):
+                            drift.append(f"~/{check_target_rel}: {line}")
+                if not checks_completed:
                     break
-                for line in r.stdout.splitlines():
-                    # rsync -n itemized lines starting with '.' are unchanged;
-                    # anything else means content would be copied (drift).
-                    if line and not line.startswith(".") and not line.endswith("/"):
-                        drift.append(f"~/{target_rel}: {line}")
             if drift:
                 findings.append(
                     "deployment drift (managed HOME targets differ from repo — "

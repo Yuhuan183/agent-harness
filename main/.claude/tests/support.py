@@ -57,13 +57,19 @@ def read(path: str) -> str:
 
 
 def deployment_manifest() -> list[tuple[str, str]]:
-    pairs = []
+    return [(source, target) for source, target, _ in deployment_manifest_entries()]
+
+
+def deployment_manifest_entries() -> list[tuple[str, str, str]]:
+    entries = []
     for raw in read("scripts/deployment-manifest.tsv").splitlines():
         if not raw or raw.startswith("#"):
             continue
-        source, target = raw.split("\t")
-        pairs.append((source, target))
-    return pairs
+        fields = raw.split("\t")
+        source, target = fields[:2]
+        mode = fields[2] if len(fields) == 3 else ""
+        entries.append((source, target, mode))
+    return entries
 
 
 def frontmatter(path: str) -> str:

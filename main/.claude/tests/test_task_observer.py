@@ -49,7 +49,7 @@ class TaskObserverTests(unittest.TestCase):
             )
             self.assertTrue((stub / "SKILL.md").is_file())
         for pair in (
-            ("main/.agents/skills/task-observer", ".agents/skills/task-observer"),
+            ("main/.agents/skills", ".agents/skills"),
             ("main/.claude/skills/task-observer", ".claude/skills/task-observer"),
             ("main/.codex/skills/task-observer", ".codex/skills/task-observer"),
         ):
