@@ -21,14 +21,10 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from pathlib import Path
 
-TEMPLATES = {
-    "INTENT": re.compile(
-        r"INTENT: code does .+?; .+? expects? .+?; .*?spec says .+?(?:\.|$)"
-    ),
-    "TWINS": re.compile(r"TWINS: searched .+? [-–—] found .+? other sites"),
-    "AUTH": re.compile(r'AUTH: user said "[^"]+"'),
-}
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from gate_lines import TEMPLATES, flatten  # noqa: E402
 
 
 def main() -> int:
@@ -40,7 +36,7 @@ def main() -> int:
     args = ap.parse_args()
 
     raw = sys.stdin.read() if args.report == "-" else open(args.report, encoding="utf-8").read()
-    flat = re.sub(r"\s+", " ", raw)
+    flat = flatten(raw)
 
     owed = {
         "INTENT": args.behavior_changed,
