@@ -8,7 +8,7 @@ description: |
 
 # Baton Dispatch
 
-Apply the resident dispatch brake, then choose the smallest reliable shape. This is a local distillation of cablate/baton v0.1.1 plus scope fix `0ab4d2e`.
+Apply the resident dispatch brake, then choose the smallest reliable shape. This skill owns dispatch shape, grouping, briefs, collection, QC, and fixed records. It does not choose a provider/model or decide verifier eligibility; load `provider-routing` for those decisions. This is a local distillation of cablate/baton v0.1.1 plus scope fix `0ab4d2e`.
 
 ## Cost test (run before every dispatch)
 
@@ -21,7 +21,7 @@ A high-tier pinned agent (Opus/high) costs about as much as the main session —
 
 A single sequential task with none of these stays in main. When the payoff is marginal or uncertain, work directly — a wrong direct call costs one task; habitual marginal dispatch taxes every task.
 
-## Routing guide
+## Dispatch shape
 
 Keep small or tightly coupled work in main; use one `explore` for broad discovery or one review lens, bounded parallel agents for independent surfaces, and isolated workspaces for competing writes. Repetition must prove one sample before batching, and `Workflow` still requires user opt-in. Never map request bullets directly to agents.
 
@@ -46,7 +46,7 @@ The approved Plan or release slice is a hard boundary. Agents may report adjacen
 
 ## Gate placement and Plan convergence
 
-Use focused tests, builds, and static checks as intermediate evidence while iterating. When an independent outcome verifier is warranted, dispatch it at the smallest coherent integration boundary where the complete acceptance claim can be refuted; do not re-verify every small fix. Verify earlier when a change crosses security, cross-language or FFI, serialization or pre-aggregation, irreversible-operation, or integration-blocking boundaries.
+Use focused tests, builds, and static checks as intermediate evidence while iterating. If `provider-routing` establishes an independent-verifier trigger, place that verifier at the smallest coherent integration boundary where the complete acceptance claim can be refuted; do not re-verify every small fix. Trigger eligibility remains in `provider-routing`; this skill owns placement after that decision.
 
 Do not resubmit a substantially unchanged Plan to `plan-verifier`. Another readiness pass requires a material revision or new evidence. If disagreement remains unresolved, simplify the Plan, surface the blocker to the user, or defer the blocked scope; main must not silently overrule the verifier.
 
@@ -54,7 +54,7 @@ Do not resubmit a substantially unchanged Plan to `plan-verifier`. Another readi
 
 A finished agent's final response is its deliverable — the harness returns it on completion. Collect it from the finished task; never relaunch or ask a read-only recon agent (`explore`, `plan-verifier`, `security-reviewer`) to relay, restate, or report back a result it already produced. Use the resume channel only for genuinely new or redirected work. Treat a single load-bearing recon fact as an unverified input: sanity-check or re-run it in main, since the `verifier` gate covers executor output, not reconnaissance.
 
-Report the launch and the post-QC outcome as separate fixed records, never buried in prose: `[LEAF_DISPATCH] task=<label> | role=<role> | class=<class> | request_source=<request_source> | route=<profile>/<provider>/<model>/<effort> | reason=<payoff>` and `[LEAF_RESULT] task=<label> | outcome=<accepted|corrected|rebriefed|failed> | qc=<spot|full> | ledger=<logged|skipped(reason)>`. Use actual active/resolved route values and the same neutral task label in the ledger; native roles use request_source `claude-code`, bridge roles `claude-code-plugin-codex`.
+Report the launch and the post-QC outcome as separate fixed records, never buried in prose: `[LEAF_DISPATCH] task=<label> | role=<role> | class=<class> | request_source=<request_source> | route=<profile>/<provider>/<model>/<effort> | reason=<payoff>` and `[LEAF_RESULT] task=<label> | outcome=<accepted|corrected|rebriefed|failed> | qc=<spot|full> | ledger=<logged|skipped(reason)>`. Use actual active/resolved route values; native roles use request_source `claude-code`, bridge roles `claude-code-plugin-codex`. After QC, load `experience-ledger` and log the same neutral task label, task class, route, request source, and outcome; never claim `logged` before the command succeeds.
 
-QC at either tier hunts false-completion frauds: weakened or bypassed checks, fixtures fabricated to satisfy a check, undeclared out-of-scope changes, missing owed `INTENT:`/`TWINS:`/`AUTH:` lines, and leftover leaf-created scratch files (pre-existing dirty-worktree files are not debris). Never accept a `found 0/none` TWINS claim on the report's word: re-run the search yourself — grep the fixed construct across the scope — before accepting (`qc-gate-lines` flags these claims).
+Use spot QC for mechanical work from a complete spec; use full QC for judgment-heavy or verification work. Both tiers hunt false-completion frauds: weakened or bypassed checks, fixtures fabricated to satisfy a check, undeclared out-of-scope changes, missing owed `INTENT:`/`TWINS:`/`AUTH:` lines, and leftover leaf-created scratch files (pre-existing dirty-worktree files are not debris). Audit owed lines with `~/.claude/scripts/qc-gate-lines <report> --diff <diff-file> [--defect-fixed] [--outward-taken]`, setting flags from the diff and evidence, never from the report's claims. Never accept a `found 0/none` TWINS claim on the report's word: re-run the search yourself — grep the fixed construct across the scope — before accepting (`qc-gate-lines` flags these claims).
 Read [references/briefs-and-stops.md](references/briefs-and-stops.md) only when writing a brief, ownership map, or batch stop rule.

@@ -115,6 +115,7 @@ class ClaudeContractTests(unittest.TestCase):
         for text in (skill, triggers, codex_policy):
             self.assertIn("smallest coherent integration boundary", text)
             self.assertIn("intermediate evidence", text)
+        for text in (triggers, codex_policy):
             self.assertIn("cross-language or FFI", text)
             self.assertIn("serialization or pre-aggregation", text)
         # Plan anti-churn moved from the resident Claude contract into the
@@ -155,12 +156,32 @@ class ClaudeContractTests(unittest.TestCase):
             f"invoked from Claude through the `{CODEX_BRIDGE}` bridge",
             "cost per acceptable outcome",
             "External indices are priors only",
-            "[LEAF_DISPATCH]",
-            "[LEAF_RESULT]",
         ):
             self.assertIn(phrase, skill)
         self.assertIn("${CODEX_HOME:-$HOME/.codex}/scripts/model-routing", skill)
         self.assertNotIn("--model gpt-5.6-sol", skill)
+
+    def test_dispatch_skills_have_non_overlapping_ownership(self) -> None:
+        baton = read(".claude/skills/baton-dispatch/SKILL.md")
+        provider = read(".claude/skills/provider-routing/SKILL.md")
+        leaf = read(".codex/skills/leaf-dispatch/SKILL.md")
+        leaf_flat = " ".join(leaf.split())
+
+        self.assertIn(
+            "owns dispatch shape, grouping, briefs, collection, QC, and fixed records",
+            baton,
+        )
+        self.assertIn("does not choose a provider/model", baton)
+        self.assertIn(
+            "Own provider/model/role selection, bridge resolution, "
+            "cross-provider fallback, and verifier eligibility",
+            provider,
+        )
+        self.assertIn("Record formats and QC mechanics stay in `baton-dispatch`", provider)
+        self.assertNotIn("qc-gate-lines", provider)
+        self.assertNotIn("[LEAF_DISPATCH]", provider)
+        self.assertIn("Own Codex dispatch", leaf_flat)
+        self.assertIn("do not select main model", leaf_flat)
 
 
 class CodexBundleTests(unittest.TestCase):
@@ -521,7 +542,9 @@ class DocumentationBudgetTests(unittest.TestCase):
             # in from the resident contract / provider-routing (net resident
             # payload down; skill is mandatory before every dispatch).
             ".claude/skills/baton-dispatch/SKILL.md": 980,
-            ".claude/skills/provider-routing/SKILL.md": 1480,
+            # QC mechanics and fixed records belong to baton-dispatch; keep
+            # provider-routing focused on route, fallback, and eligibility.
+            ".claude/skills/provider-routing/SKILL.md": 1300,
             ".codex/skills/leaf-dispatch/SKILL.md": 720,
         }
         for path, limit in budgets.items():

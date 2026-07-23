@@ -147,7 +147,7 @@ class LeafArtifactGateTests(unittest.TestCase):
                 os.readlink(link), "../../.agents/scripts/qc-gate-lines", link
             )
         qc_paths = (
-            ".claude/skills/provider-routing/SKILL.md",
+            ".claude/skills/baton-dispatch/SKILL.md",
             ".codex/skills/leaf-dispatch/SKILL.md",
         )
         for path, home in zip(qc_paths, ("~/.claude", "~/.codex")):

@@ -8,6 +8,8 @@ description: |
 
 # Provider & Role Routing
 
+Own provider/model/role selection, bridge resolution, cross-provider fallback, and verifier eligibility. Do not choose dispatch shape or redefine briefs, QC, or record formats here; load `baton-dispatch` before every launch and use its result workflow.
+
 ## Model profiles
 
 - The user owns the main-session model and effort through the session selector; tracked settings pin neither. Never switch silently.
@@ -43,15 +45,13 @@ description: |
 
 Named Claude roles own model and effort in frontmatter; omit invocation-level `model`. Security keeps its capability split on either provider: review is read-only; implementation starts only from an approved contract. Dual-provider review may use independent read-only perspectives; implementation has one writer — never two writers on the same artifacts. Cross-provider fallback is one hop to the matching role on the other provider, at that role's active preset route (named-role presets never include Fable). In dual-provider implementation one provider writes and the other verifies after integration.
 
-## Dispatch reporting, QC, and provider experience
+## Route evidence and provider experience
 
-- Report each launch and post-QC outcome as the fixed `[LEAF_DISPATCH]` / `[LEAF_RESULT]` records defined in `baton-dispatch`; use a neutral task label and ledger class, state only the active/resolved profile, and never claim `logged` before success.
+- After `baton-dispatch` QC, preserve the actual provider/profile/model/effort and request source in its fixed records, then log the same route through `experience-ledger`. Record formats and QC mechanics stay in `baton-dispatch`.
 - Each leaf role has a Codex counterpart (`~/.codex/agents/<role>.toml`), invoked from Claude through the `codex:codex-rescue` bridge using the structured resolution procedure above. This routing controls only the Codex twin; it never changes the Claude main-session model or the named Claude role frontmatter.
-- Load `experience-ledger` and log every dispatch outcome after QC. Hooks record `claude-code` or `claude-code-plugin-codex`; native Codex records use `codex`. Always retain task class and resolved profile. If concurrent completions exist, pass the exact `--dispatch-id` rather than consuming the latest guess. Deviating from a hint requires a logged note.
 - Provider extension (e.g. Gemini) follows [references/provider-protocol.md](references/provider-protocol.md): shared-schema routing file, `routing_core` resolver wrapper, explicit-override leaf with machine-verifiable telemetry, ledger and quota integration; cross-platform leaf calls only where the platform officially supports them.
 - Compare like with like: same role/task class and, where practical, the same brief. Re-sample after a material model, harness, or benchmark change instead of treating an old leaderboard or ledger hint as permanent.
 - Codex cost telemetry lives in local session rollouts, not the plugin output: `experience-ledger`'s `codex-usage` script reports per-turn tokens and the account quota snapshot. Check quota before heavy Codex dispatch; the short window (e.g. 5h) outranks the weekly one — exhausting it stalls tasks immediately — so when the short window is near its limit, prefer the Claude role or wait for its reset, regardless of weekly headroom.
-- QC is tiered by task shape: mechanical work from a complete spec gets a spot-check (sample the diff, run the brief's acceptance checks); judgment-heavy or verification deliverables get a full review against the brief, and either tier hunts the false-completion fraud checklist in `baton-dispatch`. Audit the owed lines mechanically: `~/.claude/scripts/qc-gate-lines <report> --diff <diff-file> [--defect-fixed] [--outward-taken]`, setting flags from the diff and evidence, never from the report's claims — pass the actual diff so INTENT-owed is derived mechanically, not remembered; a missing or off-template owed line is a QC finding, while the truth of the lines stays with the reviewer. A weak deliverable is corrected in main or re-briefed, never silently merged.
 
 ## Independent-verifier triggers
 

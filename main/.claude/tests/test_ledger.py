@@ -62,10 +62,11 @@ class SharedSkillTests(unittest.TestCase):
             self.assertTrue(path.is_file(), script)
             self.assertTrue(os.access(path, os.X_OK), f"{script} not executable")
         self.assertTrue((base / "references/metrics.md").is_file())
-        # provider-routing points dispatch experience at the ledger skill.
+        # baton-dispatch owns the post-QC write; provider-routing retains route evidence.
+        baton = read(".claude/skills/baton-dispatch/SKILL.md")
         routing = read(".claude/skills/provider-routing/SKILL.md")
-        self.assertIn("experience-ledger", routing)
-        self.assertIn("log every dispatch outcome after QC", routing)
+        self.assertIn("After QC, load `experience-ledger`", baton)
+        self.assertIn("log the same route through `experience-ledger`", routing)
 
     def test_experience_scripts_log_and_report(self) -> None:
         base = ROOT / "main/.agents/skills/experience-ledger/scripts"
