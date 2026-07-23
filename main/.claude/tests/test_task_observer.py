@@ -39,15 +39,41 @@ class TaskObserverTests(unittest.TestCase):
     def test_shared_layout_manifest_and_opt_in_policy(self) -> None:
         self.assertTrue(SCRIPT.is_file())
         self.assertTrue(os.access(SCRIPT, os.X_OK))
-        for stub in (
-            ROOT / "main/.claude/skills/task-observer",
-            ROOT / "main/.codex/skills/task-observer",
+        shared = ROOT / "main/.agents/skills/task-observer"
+        claude = ROOT / "main/.claude/skills/task-observer"
+        codex = ROOT / "main/.codex/skills/task-observer"
+        self.assertTrue(claude.is_dir())
+        self.assertFalse(claude.is_symlink())
+        self.assertIn(
+            "disable-model-invocation: false",
+            (claude / "SKILL.md").read_text(encoding="utf-8"),
+        )
+        claude_meta = frontmatter("main/.claude/skills/task-observer/SKILL.md")
+        shared_meta = frontmatter("main/.agents/skills/task-observer/SKILL.md")
+        claude_portable_meta = "\n".join(
+            line for line in claude_meta.splitlines()
+            if not line.startswith("disable-model-invocation:")
+        )
+        self.assertEqual(claude_portable_meta.rstrip(), shared_meta.rstrip())
+        self.assertNotIn(
+            "disable-model-invocation:",
+            (shared / "SKILL.md").read_text(encoding="utf-8"),
+        )
+        for name, target in (
+            ("shared-instructions.md", "../../../.agents/skills/task-observer/SKILL.md"),
+            ("references", "../../../.agents/skills/task-observer/references"),
+            ("scripts", "../../../.agents/skills/task-observer/scripts"),
+            ("ATTRIBUTION.md", "../../../.agents/skills/task-observer/ATTRIBUTION.md"),
         ):
-            self.assertTrue(stub.is_symlink(), stub)
-            self.assertEqual(
-                os.readlink(stub), "../../.agents/skills/task-observer"
-            )
-            self.assertTrue((stub / "SKILL.md").is_file())
+            link = claude / name
+            self.assertTrue(link.is_symlink(), link)
+            self.assertEqual(os.readlink(link), target)
+        self.assertTrue((claude / "shared-instructions.md").is_file())
+        self.assertTrue(codex.is_symlink(), codex)
+        self.assertEqual(
+            os.readlink(codex), "../../.agents/skills/task-observer"
+        )
+        self.assertTrue((codex / "SKILL.md").is_file())
         for pair in (
             ("main/.agents/skills", ".agents/skills"),
             ("main/.claude/skills/task-observer", ".claude/skills/task-observer"),

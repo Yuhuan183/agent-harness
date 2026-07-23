@@ -127,7 +127,9 @@ preflight() {
 
 preflight
 
-# Back up existing targets, then overwrite via rsync. --links copies symlinks as-is (relative links still hold under the isomorphic $HOME layout).
+# Back up existing targets, then overwrite via rsync. --links copies symlinks
+# inside shared entries and platform wrappers as-is; relative links still hold
+# under the isomorphic $HOME layout.
 SYNCED_SRC=()
 SYNCED_DST=()
 
@@ -295,7 +297,7 @@ log "note: main/.codex/config.merge.toml must be manually merged into ~/.codex/c
 
 # --- Verification ---
 if [[ $APPLY -eq 1 ]]; then
-  # skill symlinks resolve
+  # Shared skill symlinks and platform wrappers resolve to SKILL.md.
   for l in "$HOME/.claude/skills/headroom-protocol" "$HOME/.codex/skills/headroom-protocol" \
            "$HOME/.claude/skills/speak-human-tw" "$HOME/.codex/skills/speak-human-tw" \
            "$HOME/.claude/skills/experience-ledger" "$HOME/.codex/skills/experience-ledger" \
