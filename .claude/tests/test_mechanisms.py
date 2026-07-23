@@ -153,6 +153,14 @@ class MechanismTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("preflight: passed", result.stdout)
         self.assertIn("dry-run complete", result.stdout)
+        # Hooks must land before the settings.json that registers them —
+        # settings activate immediately, and a registered-but-missing hook
+        # file bricks every guarded tool call (observed 2026-07-23).
+        actions = [l for l in result.stdout.splitlines() if "rsync" in l]
+        hook_idx = next(i for i, l in enumerate(actions) if "/hooks" in l)
+        settings_idx = next(i for i, l in enumerate(actions) if "settings.json" in l)
+        self.assertLess(hook_idx, settings_idx,
+                        "settings.json must deploy after hook files")
 
         with tempfile.TemporaryDirectory() as temp_home:
             for platform in (".claude", ".codex", ".agents"):

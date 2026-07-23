@@ -32,6 +32,11 @@
           {
             "type": "command",
             "command": "command -v rtk >/dev/null 2>&1 && rtk hook claude || true"
+          },
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/commit-test-gate.py\"",
+            "timeout": 300
           }
         ]
       },

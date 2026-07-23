@@ -159,10 +159,25 @@ EOF
 fi
 
 # Manifest order keeps shared .agents targets ahead of Claude/Codex symlinks.
+# settings.json rows are deferred to a second pass regardless of manifest
+# position: hooks activate the moment settings land, so every file a hook
+# entry references (hooks/, scripts/) must already be deployed. Applying
+# settings first opens a window where a registered hook cannot be found and
+# every guarded tool call errors out (observed 2026-07-23).
+DEFERRED_SETTINGS_ROWS=("")
 while IFS=$'\t' read -r src_rel dst_rel extra; do
   [[ -z "$src_rel" || "$src_rel" == \#* ]] && continue
+  if [[ "$(basename "$dst_rel")" == "settings.json" ]]; then
+    DEFERRED_SETTINGS_ROWS+=("$src_rel"$'\t'"$dst_rel")
+    continue
+  fi
   sync_path "$src_rel" "$dst_rel"
 done < "$MANIFEST"
+for row in "${DEFERRED_SETTINGS_ROWS[@]}"; do
+  [[ -z "$row" ]] && continue
+  IFS=$'\t' read -r src_rel dst_rel <<< "$row"
+  sync_path "$src_rel" "$dst_rel"
+done
 
 # Machine state remains deliberately outside the manifest.
 log "note: .claude/mcp_servers.json is machine state (contains local paths) and is not auto-overwritten; when adding the headroom MCP, manually merge .claude/examples/headroom-mcp.merge.json."
