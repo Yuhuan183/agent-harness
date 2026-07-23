@@ -17,13 +17,13 @@ A high-tier pinned agent (Opus/high) costs about as much as the main session —
 1. **Parallelism** — two or more genuinely independent workstreams where wall-clock matters.
 2. **Context protection** — bulky reads or noisy output would pollute the main window that later judgment still needs.
 3. **Fresh-context independence** — the value *is* the separate context (`verifier`, `plan-verifier`, `security-reviewer`).
-4. **Cheaper tier** — a pinned low role (`Explore`, `mech-executor`) genuinely covers the task.
+4. **Cheaper tier** — a pinned low role (`explore`, `mech-executor`) genuinely covers the task.
 
 A single sequential task with none of these stays in main. When the payoff is marginal or uncertain, work directly — a wrong direct call costs one task; habitual marginal dispatch taxes every task.
 
 ## Routing guide
 
-Keep small or tightly coupled work in main; use one `Explore` for broad discovery or one review lens, bounded parallel agents for independent surfaces, and isolated workspaces for competing writes. Repetition must prove one sample before batching, and `Workflow` still requires user opt-in. Never map request bullets directly to agents.
+Keep small or tightly coupled work in main; use one `explore` for broad discovery or one review lens, bounded parallel agents for independent surfaces, and isolated workspaces for competing writes. Repetition must prove one sample before batching, and `Workflow` still requires user opt-in. Never map request bullets directly to agents.
 
 ## Recurrence and batching
 
@@ -52,7 +52,9 @@ Do not resubmit a substantially unchanged Plan to `plan-verifier`. Another readi
 
 ## Result collection
 
-A finished agent's final response is its deliverable — the harness returns it on completion. Collect it from the finished task; never relaunch or ask a read-only recon agent (`Explore`, `plan-verifier`, `security-reviewer`) to relay, restate, or report back a result it already produced. Use the resume channel only for genuinely new or redirected work. Treat a single load-bearing recon fact as an unverified input: sanity-check or re-run it in main, since the `verifier` gate covers executor output, not reconnaissance.
+A finished agent's final response is its deliverable — the harness returns it on completion. Collect it from the finished task; never relaunch or ask a read-only recon agent (`explore`, `plan-verifier`, `security-reviewer`) to relay, restate, or report back a result it already produced. Use the resume channel only for genuinely new or redirected work. Treat a single load-bearing recon fact as an unverified input: sanity-check or re-run it in main, since the `verifier` gate covers executor output, not reconnaissance.
 
-Report the launch and the post-QC outcome as separate `LEAF_DISPATCH` and `LEAF_RESULT` records. The task label, role, task class, and route must match the experience-ledger entry; never bury either record inside prose.
+Report the launch and the post-QC outcome as separate fixed records, never buried in prose: `[LEAF_DISPATCH] task=<label> | role=<role> | class=<class> | request_source=<request_source> | route=<profile>/<provider>/<model>/<effort> | reason=<payoff>` and `[LEAF_RESULT] task=<label> | outcome=<accepted|corrected|rebriefed|failed> | qc=<spot|full> | ledger=<logged|skipped(reason)>`. Use actual active/resolved route values and the same neutral task label in the ledger; native roles use request_source `claude-code`, bridge roles `claude-code-plugin-codex`.
+
+QC at either tier hunts false-completion frauds: weakened or bypassed checks, fixtures fabricated to satisfy a check, undeclared out-of-scope changes, missing owed `INTENT:`/`TWINS:`/`AUTH:` lines, and leftover leaf-created scratch files (pre-existing dirty-worktree files are not debris). Never accept a `found 0/none` TWINS claim on the report's word: re-run the search yourself — grep the fixed construct across the scope — before accepting (`qc-gate-lines` flags these claims).
 Read [references/briefs-and-stops.md](references/briefs-and-stops.md) only when writing a brief, ownership map, or batch stop rule.

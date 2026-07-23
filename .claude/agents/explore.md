@@ -1,5 +1,5 @@
 ---
-name: Explore
+name: explore
 description: Broad read-only search; returns conclusions with file:line evidence. Not for one known symbol or path — look those up directly.
 model: sonnet
 effort: low

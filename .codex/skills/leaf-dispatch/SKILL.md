@@ -69,9 +69,12 @@ checks, fixtures fabricated to satisfy a check, undeclared out-of-scope
 changes, missing owed `INTENT:`/`TWINS:`/`AUTH:` lines, and leftover
 leaf-created scratch files (pre-existing dirty-worktree files are not debris).
 Audit the owed lines mechanically with `~/.codex/scripts/qc-gate-lines
-<report> [--behavior-changed] [--defect-fixed] [--outward-taken]`, setting
-flags from the diff and evidence, never from the report's claims; line truth
-stays with the reviewer. Follow up only for genuinely new or redirected work. Centralize
+<report> --diff <diff-file> [--defect-fixed] [--outward-taken]`, setting
+flags from the diff and evidence, never from the report's claims — the
+diff derives INTENT-owed mechanically; line truth
+stays with the reviewer. Never accept a `found 0/none` TWINS claim on the
+report's word: grep the fixed construct across the scope first
+(`qc-gate-lines` flags these claims). Follow up only for genuinely new or redirected work. Centralize
 repository-wide, live, or expensive gates; preserve partial evidence when
 stopping.
 

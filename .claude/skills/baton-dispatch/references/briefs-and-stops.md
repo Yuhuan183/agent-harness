@@ -25,7 +25,7 @@ These are separate axes:
 
 | Axis | Controls | Examples |
 |---|---|---|
-| Role | Authority, tools, and stop boundary | `Explore`, `executor`, `verifier` |
+| Role | Authority, tools, and stop boundary | `explore`, `executor`, `verifier` |
 | Task class | Comparable experience-ledger cohort | `recon`, `review`, `plan`, `impl`, `verify`, `security` |
 | Scenario / lens | What evidence to attack in this dispatch | `semantic-seams`, `state-concurrency`, `contract-boundaries`, `test-validity`, `numerical-rendering`, `docs-deployment` |
 
