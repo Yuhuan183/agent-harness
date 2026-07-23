@@ -33,10 +33,12 @@ import gate_lines  # noqa: E402
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--workdir", required=True, type=Path)
-    ap.add_argument("--report", type=Path)
+    ap.add_argument("--report", type=Path, required=True)
     args = ap.parse_args()
     workdir = args.workdir.resolve()
-    report = args.report.read_text(encoding="utf-8") if args.report else ""
+    report = args.report.read_text(encoding="utf-8")
+    if not report.strip():
+        ap.error("--report file is empty; a run with no report cannot pass grading")
     findings: list[dict] = []
 
     def flag(code: str, detail: str) -> None:
