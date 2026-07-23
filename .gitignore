@@ -8,3 +8,6 @@ backups/
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Behavioral trap eval scratch runs (see evals/traps/)
+.trap-runs/

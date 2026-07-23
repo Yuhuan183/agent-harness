@@ -72,6 +72,7 @@
 - **2026-07-20** — Two-tier role effort (capped at high); per-dispatch reporting and QC; Codex counterparts for each leaf role via the codex-rescue bridge. Added `experience-ledger` skill (AR/CR/RB/FR/QS, explore/prefer rule).
 - **2026-07-21** — External rankings (AA v4.1, Coding Agent Index v1.2) demoted to priors; route on local acceptable-outcome cost. Added token, review/rework, and API-cost coverage.
 - **2026-07-22** — Three quality-first profiles standardized; Claude atomic deployment presets vs Codex per-dispatch. Sol/Terra/Luna availability verified (Luna unrouted); experience schema v3 added source and dispatch/rollout identity. Sync preflight and drift guards expanded. Pilotfish v1.3 batching and Plan anti-churn adopted. Fable-method INTENT/TWINS/AUTH gates and QC fraud checklist added to both providers; behavioral trap fixtures remain open.
+- **2026-07-23** — Behavioral trap program (`evals/traps/`): s7 false-completion and s8 spec-conflict fixtures with mechanical graders; 37 valid runs across both providers and two tiers hit zero substantive traps. Three gate-line failure modes each closed by a one-sentence clause and A/B-verified (verbatim-English 1/4→3/3; stop-branch INTENT 2/3→3/3; mech clause scoped to AUTH). Owed-line QC audit mechanized via dual-deployed `qc-gate-lines` with byte-parity locked by test; bridge workdirs must sit inside the project root. Traps now serve as regression assets.
 
 ## Verification
 

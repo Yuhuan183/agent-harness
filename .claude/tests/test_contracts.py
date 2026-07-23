@@ -503,7 +503,8 @@ class DocumentationBudgetTests(unittest.TestCase):
             # operational/research detail remains linked in docs/.
             "README.md": 2250,
             "docs/README.md": 640,
-            "docs/harness-engineering.md": 2350,
+            # +100 (2026-07-23): behavioral trap-eval method section added.
+            "docs/harness-engineering.md": 2450,
             ".claude/plans/orchestration-plan.md": 1300,
             ".codex/AGENTS.contract.md": 590,
             ".codex/ANALYSIS.md": 500,

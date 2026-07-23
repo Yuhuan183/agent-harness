@@ -121,6 +121,39 @@ class LeafArtifactGateTests(unittest.TestCase):
             body = read(path)
             self.assertIn("INTENT: code does <X>", body, path)
             self.assertIn("stop and report the conflict instead of editing", body, path)
+            self.assertIn("the stop report owes the same filled `INTENT:` line", body, path)
+
+    def test_gate_lines_are_declared_machine_checked_in_every_writer(self) -> None:
+        for path in self.ALL_WRITERS:
+            self.assertIn("verbatim in English in the exact template shown", read(path), path)
+        # The clause names only the lines the role owes: mech has no INTENT/TWINS
+        # template, and naming them made low-tier leaves improvise drifted lines.
+        for path in (".claude/agents/mech-executor.md", ".codex/agents/mech-executor.toml"):
+            body = read(path)
+            self.assertNotIn("INTENT", body, path)
+            self.assertNotIn("TWINS", body, path)
+
+    def test_owed_line_audit_is_mechanized_in_both_qc_paths(self) -> None:
+        # One shared implementation in .agents/scripts; both trees symlink it
+        # (same relative depth in the repo and in HOME, synced with --links).
+        shared = ROOT / ".agents/scripts/qc-gate-lines"
+        self.assertTrue(shared.is_file(), shared)
+        self.assertTrue(os.access(shared, os.X_OK), f"{shared} must be executable")
+        for tree in (".claude", ".codex"):
+            link = ROOT / tree / "scripts/qc-gate-lines"
+            self.assertTrue(link.is_symlink(), f"{link} must be a symlink")
+            self.assertEqual(
+                os.readlink(link), "../../.agents/scripts/qc-gate-lines", link
+            )
+        qc_paths = (
+            ".claude/skills/provider-routing/SKILL.md",
+            ".codex/skills/leaf-dispatch/SKILL.md",
+        )
+        for path, home in zip(qc_paths, ("~/.claude", "~/.codex")):
+            body = " ".join(read(path).split())
+            self.assertIn(f"{home}/scripts/qc-gate-lines", body, path)
+            # Flags come from QC's own evidence, never the report's claims.
+            self.assertIn("never from the report's claims", body, path)
 
     def test_authority_order_is_scoped_to_intended_behavior(self) -> None:
         for path in (".claude/agents/executor.md", ".codex/agents/executor.toml"):

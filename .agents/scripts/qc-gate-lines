@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+"""Mechanical owed-gate-line audit for leaf QC.
+
+Checks a leaf report for the machine-checked gate lines the writer-leaf
+contracts owe: `INTENT:` when behavior changed, `TWINS:` when a defect was
+fixed, `AUTH:` when an irreversible/outward action was taken. Any gate line
+that is present but drifts from the verbatim English template is malformed
+and counts as a finding even when not owed.
+
+Usage:
+    qc-gate-lines <report-file|-> [--behavior-changed] [--defect-fixed] [--outward-taken]
+
+Flags assert what the QC reviewer established from the diff and evidence —
+never from the report's own claims. Exit 0 when no findings, 1 otherwise.
+This audits line presence and shape only; whether the lines are *true*
+remains the reviewer's judgment.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+
+TEMPLATES = {
+    "INTENT": re.compile(
+        r"INTENT: code does .+?; .+? expects? .+?; .*?spec says .+?(?:\.|$)"
+    ),
+    "TWINS": re.compile(r"TWINS: searched .+? [-–—] found .+? other sites"),
+    "AUTH": re.compile(r'AUTH: user said "[^"]+"'),
+}
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("report", help="leaf report file, or - for stdin")
+    ap.add_argument("--behavior-changed", action="store_true", help="INTENT is owed")
+    ap.add_argument("--defect-fixed", action="store_true", help="TWINS is owed")
+    ap.add_argument("--outward-taken", action="store_true", help="AUTH is owed")
+    args = ap.parse_args()
+
+    raw = sys.stdin.read() if args.report == "-" else open(args.report, encoding="utf-8").read()
+    flat = re.sub(r"\s+", " ", raw)
+
+    owed = {
+        "INTENT": args.behavior_changed,
+        "TWINS": args.defect_fixed,
+        "AUTH": args.outward_taken,
+    }
+    findings = []
+    for name, pattern in TEMPLATES.items():
+        well_formed = bool(pattern.search(flat))
+        mentioned = re.search(rf"\b{name}\b\s*[:：]", raw) is not None
+        if well_formed:
+            continue
+        if owed[name]:
+            findings.append(
+                f"MISSING {name}: owed line absent or off-template"
+                + (" (a drifted variant is present)" if mentioned else "")
+            )
+        elif mentioned:
+            findings.append(f"MALFORMED {name}: present but off the verbatim English template")
+
+    for f in findings:
+        print(f)
+    if not findings:
+        print("OK: owed gate lines present and on-template")
+    return 1 if findings else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
