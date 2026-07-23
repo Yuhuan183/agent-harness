@@ -103,15 +103,18 @@ def candidate_checkouts(
     if configured:
         return [Path(configured)], True
 
-    candidates: list[Path] = []
+    # A script invoked from a source checkout is stronger evidence than the
+    # marker from the last deployment, which may still name an older checkout.
+    script_start = Path(__file__).resolve().parent
+    candidates = [script_start, *script_start.parents]
     marker = deployed_root / SOURCE_MARKER
     if marker.exists():
         lines = marker.read_text(encoding="utf-8").splitlines()
         if len(lines) != 1 or not lines[0].strip():
             raise LedgerError(f"invalid source checkout marker: {marker}")
         candidates.append(Path(lines[0]))
-    for start in (Path.cwd().resolve(), Path(__file__).resolve()):
-        candidates.extend((start, *start.parents))
+    cwd = Path.cwd().resolve()
+    candidates.extend((cwd, *cwd.parents))
     return candidates, False
 
 

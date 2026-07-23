@@ -9,6 +9,6 @@ disable-model-invocation: false
 
 # Headroom Protocol for Claude
 
-Read and follow `shared-instructions.md` completely before acting. This wrapper
-only makes Claude's automatic-invocation policy explicit; the shared file
-remains the authoritative workflow.
+Read and follow the [shared instructions](shared-instructions.md) completely
+before acting. This wrapper only makes Claude's automatic-invocation policy
+explicit; the shared file remains the authoritative workflow.

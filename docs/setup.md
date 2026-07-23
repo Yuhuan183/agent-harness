@@ -32,7 +32,8 @@ frontmatter 時使用薄 wrapper；目前 Claude `task-observer` 以 wrapper 明
 skill 與清單本身，但保留 `~/.agents/skills/` 中其他第三方 skill；weekly integrity 也只對
 清單內的管理範圍檢查 drift。部署另會寫入 machine-local
 `~/.agents/skills/.agent-harness-source`，供維護工具把專案 skill 解析回
-`main/.agents/skills/<name>`；不得把 HOME 部署副本當成編修來源。
+`main/.agents/skills/<name>`；從 source checkout 執行維護工具時以該 checkout
+優先，避免舊部署標記導回過時分支。不得把 HOME 部署副本當成編修來源。
 `~/.agents` 並非公定標準（AGENTS.md 標準管 repo 內檔案、Skills 標準管格式，
 均未定義全域目錄），採用它是因為本機工具鏈已以它為共用 skill 家目錄。
 

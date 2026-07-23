@@ -117,6 +117,10 @@ class TaskObserverTests(unittest.TestCase):
             deployed = installed_root / "task-observer"
             deployed.mkdir(parents=True)
             (deployed / "SKILL.md").write_text("deployed copy\n", encoding="utf-8")
+            deployed_script = deployed / "scripts/observation-log"
+            deployed_script.parent.mkdir()
+            deployed_script.write_bytes(SCRIPT.read_bytes())
+            deployed_script.chmod(0o755)
             (installed_root / "INSTALLED.txt").write_text(
                 "task-observer\n", encoding="utf-8"
             )
@@ -124,7 +128,7 @@ class TaskObserverTests(unittest.TestCase):
                 str(ROOT) + "\n", encoding="utf-8"
             )
             result = subprocess.run(
-                [sys.executable, str(SCRIPT), "target",
+                [sys.executable, str(deployed_script), "target",
                  "--skill", "task-observer", "--skill-root", str(installed_root),
                  "--json"],
                 cwd=temp_dir, capture_output=True, text=True,
@@ -138,6 +142,44 @@ class TaskObserverTests(unittest.TestCase):
                 ROOT / "main/.agents/skills/task-observer",
             )
             self.assertNotEqual(Path(target["source_path"]), deployed)
+
+    def test_target_prefers_invoked_source_checkout_over_stale_marker(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            old_checkout = temp / "old-checkout"
+            old_source = old_checkout / "main/.agents/skills/task-observer"
+            old_source.mkdir(parents=True)
+            (old_checkout / ".git").mkdir()
+            (old_source / "SKILL.md").write_text("old source\n", encoding="utf-8")
+            (old_source.parent / "INSTALLED.txt").write_text(
+                "task-observer\n", encoding="utf-8"
+            )
+            (old_checkout / "scripts").mkdir()
+            (old_checkout / "scripts/deployment-manifest.tsv").write_text(
+                "main/.agents/skills\t.agents/skills\tmerge\n",
+                encoding="utf-8",
+            )
+            installed_root = temp / "installed"
+            installed_root.mkdir()
+            (installed_root / "INSTALLED.txt").write_text(
+                "task-observer\n", encoding="utf-8"
+            )
+            (installed_root / ".agent-harness-source").write_text(
+                str(old_checkout) + "\n", encoding="utf-8"
+            )
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "target",
+                 "--skill", "task-observer", "--skill-root", str(installed_root),
+                 "--json"],
+                cwd=temp_dir, capture_output=True, text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            target = json.loads(result.stdout)
+            self.assertEqual(
+                Path(target["source_path"]),
+                ROOT / "main/.agents/skills/task-observer",
+            )
+            self.assertNotEqual(Path(target["source_path"]), old_source)
 
     def test_target_refuses_managed_deployed_copy_without_valid_checkout(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

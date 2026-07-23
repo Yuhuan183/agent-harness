@@ -46,6 +46,36 @@ class SharedSkillTests(unittest.TestCase):
         openai = read(".agents/skills/headroom-protocol/agents/openai.yaml")
         self.assertIn("allow_implicit_invocation: true", openai)
 
+    def test_claude_wrapper_replaces_legacy_symlink_without_mutating_shared_skill(
+        self,
+    ) -> None:
+        source = ROOT / "main/.claude/skills/headroom-protocol"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            home = Path(temp_dir)
+            shared = home / ".agents/skills/headroom-protocol"
+            shared.mkdir(parents=True)
+            shared_skill = shared / "SKILL.md"
+            shared_skill.write_text("legacy shared copy\n", encoding="utf-8")
+            target = home / ".claude/skills/headroom-protocol"
+            target.parent.mkdir(parents=True)
+            target.symlink_to("../../.agents/skills/headroom-protocol")
+            result = subprocess.run(
+                ["rsync", "-a", "--links", "--force", "--delete",
+                 str(source), str(target.parent) + "/"],
+                capture_output=True, text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue(target.is_dir())
+            self.assertFalse(target.is_symlink())
+            self.assertIn(
+                "disable-model-invocation: false",
+                (target / "SKILL.md").read_text(encoding="utf-8"),
+            )
+            self.assertEqual(
+                shared_skill.read_text(encoding="utf-8"),
+                "legacy shared copy\n",
+            )
+
     def test_speak_human_tw_is_shared_via_symlink(self) -> None:
         self._assert_symlinked_body("speak-human-tw")
 
