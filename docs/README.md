@@ -9,13 +9,14 @@
 |---|---|---|
 | 理解整體架構與資料流 | [根 README](../README.md) | [Harness Engineering Playbook](harness-engineering.md) |
 | 安裝、同步或回滾 | [配置與部署](setup.md) | [Claude README](../.claude/README.md)、[Codex README](../.codex/README.md) |
-| 修改 leaf role 或派工契約 | [Playbook：Leaf 分派](harness-engineering.md#leaf-分派的三層契約) | [Briefs and Stops](../.claude/skills/baton-dispatch/references/briefs-and-stops.md) |
+| 修改 leaf role 或派工契約 | [Playbook：Leaf 分派](harness-engineering.md#leaf-分派的三層契約) | [Briefs](../.claude/skills/baton-dispatch/references/briefs-and-stops.md) |
 | 評估 model／effort／provider | [研究摘要](harness-engineering-research.md) | [Claude routing](../.claude/model-routing.toml)、[Codex routing](../.codex/model-routing.toml) |
-| 查 experience-ledger 指標 | [Metrics](../.agents/skills/experience-ledger/references/metrics.md) | [Experience Ledger skill](../.agents/skills/experience-ledger/SKILL.md) |
+| 查 experience-ledger 指標 | [Metrics](../.agents/skills/experience-ledger/references/metrics.md) | [skill 本體](../.agents/skills/experience-ledger/SKILL.md) |
 | 診斷 context 或工具輸出 | [Headroom runtime](../.agents/docs/headroom-runtime.md) | [RTK](../.claude/RTK.md) |
-| 跑行為 trap eval | [evals/traps/](../evals/traps/) 各 trap 的 README | [研究摘要](harness-engineering-research.md)的 trap 段 |
-| 深度審查本 repo 設計 | [harness-review skill](../skills/harness-review/SKILL.md)（dev-only） | [Orchestration plan](../.claude/plans/orchestration-plan.md) |
-| 理解目前決策與下一步 | [Orchestration plan](../.claude/plans/orchestration-plan.md) | [研究摘要：仍待驗證](harness-engineering-research.md#仍待本機驗證) |
+| 理解 QC 怎麼把關 | [QC 白話說明](qc-explainer.md) | [baton-dispatch](../.claude/skills/baton-dispatch/SKILL.md) |
+| 跑行為 trap eval | [evals/traps/](../evals/traps/) 各 README | [QC 說明](qc-explainer.md)取證段 |
+| 深度審查本 repo 設計 | [harness-review](../skills/harness-review/SKILL.md)（dev-only） | [plan](../.claude/plans/orchestration-plan.md) |
+| 理解目前決策與下一步 | [Orchestration plan](../.claude/plans/orchestration-plan.md) | [仍待驗證](harness-engineering-research.md#仍待本機驗證) |
 
 ## 文件責任
 
