@@ -31,3 +31,4 @@ lark-workflow-meeting-summary
 lark-workflow-standup-report
 merge-request-description
 speak-human-tw
+task-observer

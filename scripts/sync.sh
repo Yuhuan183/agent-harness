@@ -219,7 +219,8 @@ if [[ $APPLY -eq 1 ]]; then
   # skill symlinks resolve
   for l in "$HOME/.claude/skills/headroom-protocol" "$HOME/.codex/skills/headroom-protocol" \
            "$HOME/.claude/skills/speak-human-tw" "$HOME/.codex/skills/speak-human-tw" \
-           "$HOME/.claude/skills/experience-ledger" "$HOME/.codex/skills/experience-ledger"; do
+           "$HOME/.claude/skills/experience-ledger" "$HOME/.codex/skills/experience-ledger" \
+           "$HOME/.claude/skills/task-observer" "$HOME/.codex/skills/task-observer"; do
     [[ -f "$l/SKILL.md" ]] || { log "ERROR: $l failed to resolve to SKILL.md"; exit 1; }
   done
   # Every synced path matches the repo (including removal of files already deleted from the repo)

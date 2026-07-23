@@ -1,0 +1,308 @@
+#!/usr/bin/env python3
+"""Append-only, machine-local skill observation ledger."""
+
+from __future__ import annotations
+
+import argparse
+import fcntl
+import json
+import os
+import sys
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, TextIO
+
+
+SCHEMA_VERSION = 1
+DEFAULT_LEDGER = Path.home() / ".agents" / "telemetry" / "skill-observations.jsonl"
+VALID_TYPES = ("open-source", "internal")
+VALID_RESOLUTIONS = ("actioned", "declined")
+CREATED_TEXT_FIELDS = (
+    "skill",
+    "area",
+    "issue",
+    "suggested_improvement",
+    "principle",
+)
+
+
+class LedgerError(ValueError):
+    """The ledger or requested transition is invalid."""
+
+
+def now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def ledger_path() -> Path:
+    override = os.environ.get("AGENT_SKILL_OBSERVATIONS")
+    return Path(override).expanduser() if override else DEFAULT_LEDGER
+
+
+def validate_text_field(
+    event: dict[str, Any], field: str, line_number: int
+) -> str:
+    value = event.get(field)
+    if not isinstance(value, str) or not value.strip():
+        raise LedgerError(
+            f"invalid {event.get('event', 'event')} on ledger line {line_number}: "
+            f"{field} must be a non-empty string"
+        )
+    return value
+
+
+def validate_event(event: Any, line_number: int) -> dict[str, Any]:
+    if not isinstance(event, dict):
+        raise LedgerError(f"ledger line {line_number} must be a JSON object")
+    if type(event.get("schema_version")) is not int:
+        raise LedgerError(f"invalid schema type on ledger line {line_number}")
+    if event["schema_version"] != SCHEMA_VERSION:
+        raise LedgerError(f"unsupported schema on ledger line {line_number}")
+    event_name = event.get("event")
+    if event_name not in ("observation_created", "observation_resolved"):
+        raise LedgerError(f"unknown event on ledger line {line_number}")
+
+    observation_id = validate_text_field(event, "id", line_number)
+    try:
+        uuid.UUID(observation_id)
+    except ValueError as exc:
+        raise LedgerError(
+            f"invalid {event_name} on ledger line {line_number}: id must be a UUID"
+        ) from exc
+
+    recorded_at = validate_text_field(event, "recorded_at", line_number)
+    try:
+        parsed_at = datetime.fromisoformat(recorded_at)
+    except ValueError as exc:
+        raise LedgerError(
+            f"invalid {event_name} on ledger line {line_number}: "
+            "recorded_at must be ISO 8601"
+        ) from exc
+    if parsed_at.tzinfo is None:
+        raise LedgerError(
+            f"invalid {event_name} on ledger line {line_number}: "
+            "recorded_at must include a timezone"
+        )
+
+    if event_name == "observation_created":
+        for field in CREATED_TEXT_FIELDS:
+            validate_text_field(event, field, line_number)
+        if event.get("type") not in VALID_TYPES:
+            raise LedgerError(
+                f"invalid {event_name} on ledger line {line_number}: "
+                f"type must be one of {', '.join(VALID_TYPES)}"
+            )
+        for field in ("session_context", "reference_file"):
+            if field in event:
+                validate_text_field(event, field, line_number)
+    else:
+        if event.get("resolution") not in VALID_RESOLUTIONS:
+            raise LedgerError(
+                f"invalid {event_name} on ledger line {line_number}: "
+                f"resolution must be one of {', '.join(VALID_RESOLUTIONS)}"
+            )
+        validate_text_field(event, "note", line_number)
+    return event
+
+
+def read_events(handle: TextIO) -> list[dict[str, Any]]:
+    handle.seek(0)
+    events = []
+    for line_number, raw in enumerate(handle, 1):
+        if not raw.strip():
+            continue
+        try:
+            event = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise LedgerError(f"invalid JSON on ledger line {line_number}: {exc}") from exc
+        events.append(validate_event(event, line_number))
+    return events
+
+
+def build_state(events: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    observations: dict[str, dict[str, Any]] = {}
+    for event in events:
+        observation_id = event.get("id")
+        if not isinstance(observation_id, str) or not observation_id:
+            raise LedgerError("event has no observation id")
+        if event["event"] == "observation_created":
+            if observation_id in observations:
+                raise LedgerError(f"duplicate observation id: {observation_id}")
+            observation = dict(event)
+            observation["status"] = "open"
+            observations[observation_id] = observation
+            continue
+        if observation_id not in observations:
+            raise LedgerError(f"resolution precedes observation: {observation_id}")
+        if observations[observation_id]["status"] != "open":
+            raise LedgerError(f"duplicate resolution: {observation_id}")
+        observations[observation_id]["status"] = event["resolution"]
+        observations[observation_id]["resolved_at"] = event["recorded_at"]
+        observations[observation_id]["resolution_note"] = event["note"]
+    return observations
+
+
+def append_event(handle: TextIO, event: dict[str, Any]) -> None:
+    handle.seek(0, os.SEEK_END)
+    handle.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
+    handle.flush()
+    os.fsync(handle.fileno())
+
+
+def require_text(value: str, field: str) -> str:
+    cleaned = value.strip()
+    if not cleaned:
+        raise LedgerError(f"{field} must not be empty")
+    return cleaned
+
+
+def command_add(args: argparse.Namespace) -> int:
+    path = ledger_path()
+    event = {
+        "schema_version": SCHEMA_VERSION,
+        "event": "observation_created",
+        "id": str(uuid.uuid4()),
+        "recorded_at": now(),
+        "skill": require_text(args.skill, "skill"),
+        "type": args.type,
+        "area": require_text(args.area, "area"),
+        "issue": require_text(args.issue, "issue"),
+        "suggested_improvement": require_text(args.improvement, "improvement"),
+        "principle": require_text(args.principle, "principle"),
+    }
+    if args.session_context:
+        event["session_context"] = require_text(args.session_context, "session-context")
+    if args.reference_file:
+        event["reference_file"] = require_text(args.reference_file, "reference-file")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a+", encoding="utf-8") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        build_state(read_events(handle))
+        append_event(handle, event)
+    print(event["id"])
+    return 0
+
+
+def selected_observations(
+    observations: dict[str, dict[str, Any]], status: str
+) -> list[dict[str, Any]]:
+    selected = list(observations.values())
+    if status == "resolved":
+        selected = [item for item in selected if item["status"] != "open"]
+    elif status != "all":
+        selected = [item for item in selected if item["status"] == status]
+    return sorted(selected, key=lambda item: (item["recorded_at"], item["id"]))
+
+
+def load_observations(path: Path) -> dict[str, dict[str, Any]]:
+    if not path.exists():
+        return {}
+    with path.open("r", encoding="utf-8") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_SH)
+        return build_state(read_events(handle))
+
+
+def command_list(args: argparse.Namespace) -> int:
+    selected = selected_observations(load_observations(ledger_path()), args.status)
+    if args.json:
+        print(json.dumps(selected, ensure_ascii=False, indent=2, sort_keys=True))
+        return 0
+    if not selected:
+        print(f"no {args.status} observations")
+        return 0
+    for item in selected:
+        print(f"{item['id']} [{item['status']}] {item['skill']} / {item['area']}")
+        print(f"  issue: {item['issue']}")
+        print(f"  improvement: {item['suggested_improvement']}")
+        print(f"  principle: {item['principle']}")
+    return 0
+
+
+def command_review(_: argparse.Namespace) -> int:
+    selected = selected_observations(load_observations(ledger_path()), "open")
+    print("# Skill Observation Review")
+    print()
+    print(f"Open observations: {len(selected)}")
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for item in selected:
+        grouped.setdefault(item["skill"], []).append(item)
+    for skill in sorted(grouped):
+        print()
+        print(f"## {skill}")
+        for item in grouped[skill]:
+            print(f"- `{item['id']}` {item['issue']}")
+            print(f"  - Suggested improvement: {item['suggested_improvement']}")
+            print(f"  - Principle: {item['principle']}")
+    return 0
+
+
+def command_resolve(args: argparse.Namespace) -> int:
+    path = ledger_path()
+    if not path.exists():
+        raise LedgerError("ledger does not exist")
+    with path.open("r+", encoding="utf-8") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        observations = build_state(read_events(handle))
+        if args.id not in observations:
+            raise LedgerError(f"unknown observation id: {args.id}")
+        if observations[args.id]["status"] != "open":
+            raise LedgerError(f"observation is already resolved: {args.id}")
+        event = {
+            "schema_version": SCHEMA_VERSION,
+            "event": "observation_resolved",
+            "id": args.id,
+            "recorded_at": now(),
+            "resolution": args.resolution,
+            "note": require_text(args.note, "note"),
+        }
+        append_event(handle, event)
+    print(args.id)
+    return 0
+
+
+def parser() -> argparse.ArgumentParser:
+    root = argparse.ArgumentParser(description=__doc__)
+    commands = root.add_subparsers(dest="command", required=True)
+
+    add = commands.add_parser("add", help="append one observation")
+    add.add_argument("--skill", required=True)
+    add.add_argument("--area", required=True)
+    add.add_argument("--issue", required=True)
+    add.add_argument("--improvement", required=True)
+    add.add_argument("--principle", required=True)
+    add.add_argument("--type", choices=VALID_TYPES, default="internal")
+    add.add_argument("--session-context")
+    add.add_argument("--reference-file")
+    add.set_defaults(run=command_add)
+
+    listing = commands.add_parser("list", help="list current observation state")
+    listing.add_argument(
+        "--status", choices=("open", "resolved", "actioned", "declined", "all"),
+        default="open",
+    )
+    listing.add_argument("--json", action="store_true")
+    listing.set_defaults(run=command_list)
+
+    review = commands.add_parser("review", help="render a read-only Markdown review")
+    review.set_defaults(run=command_review)
+
+    resolve = commands.add_parser("resolve", help="append a resolution event")
+    resolve.add_argument("--id", required=True)
+    resolve.add_argument("--resolution", choices=VALID_RESOLUTIONS, required=True)
+    resolve.add_argument("--note", required=True)
+    resolve.set_defaults(run=command_resolve)
+    return root
+
+
+def main() -> int:
+    try:
+        args = parser().parse_args()
+        return args.run(args)
+    except (LedgerError, OSError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

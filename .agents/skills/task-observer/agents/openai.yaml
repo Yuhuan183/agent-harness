@@ -1,0 +1,6 @@
+interface:
+  display_name: "Task Observer"
+  short_description: "Capture reusable skill improvement observations"
+  default_prompt: "Use $task-observer to record a reusable workflow or skill improvement observation."
+policy:
+  allow_implicit_invocation: false

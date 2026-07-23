@@ -2,6 +2,7 @@
 .agents/skills/headroom-protocol	.agents/skills/headroom-protocol
 .agents/skills/speak-human-tw	.agents/skills/speak-human-tw
 .agents/skills/experience-ledger	.agents/skills/experience-ledger
+.agents/skills/task-observer	.agents/skills/task-observer
 .agents/.skill-lock.json	.agents/.skill-lock.json
 .agents/scripts	.agents/scripts
 .agents/docs	.agents/docs
@@ -21,6 +22,7 @@
 .claude/skills/headroom-protocol	.claude/skills/headroom-protocol
 .claude/skills/speak-human-tw	.claude/skills/speak-human-tw
 .claude/skills/experience-ledger	.claude/skills/experience-ledger
+.claude/skills/task-observer	.claude/skills/task-observer
 .codex/AGENTS.contract.md	.codex/AGENTS.md
 .codex/README.md	.codex/README.md
 .codex/ANALYSIS.md	.codex/ANALYSIS.md
@@ -33,3 +35,4 @@
 .codex/skills/headroom-protocol	.codex/skills/headroom-protocol
 .codex/skills/speak-human-tw	.codex/skills/speak-human-tw
 .codex/skills/experience-ledger	.codex/skills/experience-ledger
+.codex/skills/task-observer	.codex/skills/task-observer
