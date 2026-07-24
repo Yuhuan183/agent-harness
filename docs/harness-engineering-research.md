@@ -225,8 +225,9 @@ mech 版該句只提 `AUTH:`。covenant 總結（37 個有效樣本）：實質�
 保留 AUTH（不可逆風險不對稱，且 arm B 證明 QC 端需要它作稽核錨點），TWINS 與 fraud
 清單維持觀察，trap 轉為 regression 資產、重大契約或模型變更時重跑。
 
-**Owed-line 稽核機械化（2026-07-23，已驗證）**：`qc-gate-lines` 腳本（單一實作、部署到
-`main/.claude/scripts/` 與 `main/.codex/scripts/`，contract test 鎖兩份逐位元相同）以 flags 接收 QC 從
+**Owed-line 稽核機械化（2026-07-23，已驗證）**：`qc-gate-lines` 腳本以
+`main/.agents/scripts/qc-gate-lines` 為單一實作，Claude／Codex 的 scripts 路徑皆以 symlink
+引用，contract test 鎖定兩端連結目標；腳本以 flags 接收 QC 從
 diff 與證據確立的事實（`--behavior-changed`／`--defect-fixed`／`--outward-taken`，絕不從報告
 主張推導），機械稽核 owed 行的存在與逐字模板，語義真偽仍歸 reviewer。對歷史報告自測：
 造假 report 抓到 MISSING AUTH、gs2 漂移報告抓到兩條 drifted variant、a1 抓到 MISSING

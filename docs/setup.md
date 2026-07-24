@@ -45,7 +45,7 @@ sync 之前，先確認以下工具鏈到位；除 codex plugin 外，其他 plu
 
 ```bash
 # 0. Python >= 3.11（routing 工具鏈與測試使用 stdlib tomllib；
-#    macOS 系統 /usr/bin/python3 是 3.9，不夠用——sync preflight 會先擋下）
+#    `python3-run` 會依序選擇 python3.13／3.12／3.11，無須修改 shell profile）
 brew install python@3.13
 
 # 1. 基礎 CLI
@@ -71,9 +71,13 @@ claude plugin install codex@openai-codex
 cd ~/WorkSpace/agent-harness
 scripts/sync.sh            # 1. dry-run：檢視將發生的動作
 scripts/sync.sh --apply    # 2. 實際套用（自動備份到 backups/<timestamp>/）
-# 3a. Claude Code MCP（installer 會解析 headroom 的 machine-local 絕對路徑）
+# 3a. Codex always-on proxy（machine-local，不由 sync 管理）
+rtk headroom install apply --profile default --preset persistent-service \
+  --runtime python --scope provider --providers manual --target codex \
+  --port 8787 --backend anthropic --no-telemetry
+# 3b. Claude Code MCP（installer 會解析 headroom 的 machine-local 絕對路徑）
 headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787
-# 3b. codex 本機設定：把 main/.codex/config.merge.toml 手動併入 ~/.codex/config.toml
+# 3c. codex 本機設定：把 main/.codex/config.merge.toml 手動併入 ~/.codex/config.toml
 # 4. 開新 Claude Code / Codex session，確認契約與 skills 載入
 ```
 
