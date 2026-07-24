@@ -75,6 +75,15 @@ class MachineStateHygieneTests(unittest.TestCase):
         self.assertIn("headroom wrap codex --no-context-tool", runtime)
         self.assertIn("Remote Control", runtime)
         self.assertIn("headroom learn", runtime)
+        for function_name in (
+            "claude-auto()",
+            "codex-auto()",
+            "hclaude-auto()",
+            "hcodex-auto()",
+        ):
+            self.assertIn(function_name, setup)
+        self.assertIn("--permission-mode auto", runtime)
+        self.assertIn("-a never -s workspace-write", runtime)
 
     def test_commit_gate_blocks_red_suites_and_skips_foreign_repos(self) -> None:
         # Behavioral proof with a planted failure — a gate that cannot catch a

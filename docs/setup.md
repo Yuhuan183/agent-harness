@@ -83,6 +83,39 @@ profile；RTK 指引由本專案契約管理，`--no-context-tool` 可避免 wra
 完整 lifecycle、Remote Control 與版本轉換說明見
 [`headroom-runtime.md`](../main/.agents/docs/headroom-runtime.md)。
 
+### 選用的 Auto Mode shell functions
+
+需要減少互動確認時，可把以下 functions 放進個人的 `~/.zshrc`。一般 Auto Mode
+保留 sandbox；不要把完全繞過安全機制的 `--dangerously-*` 設為 `claude` 或 `codex`
+的預設 alias。
+
+```bash
+claude-auto() {
+  command claude --permission-mode auto "$@"
+}
+
+codex-auto() {
+  command codex -a never -s workspace-write "$@"
+}
+
+hclaude-auto() {
+  command headroom wrap claude --no-context-tool -- \
+    --permission-mode auto "$@"
+}
+
+hcodex-auto() {
+  command headroom wrap codex --no-context-tool -- \
+    -a never -s workspace-write "$@"
+}
+```
+
+`claude-auto` 使用 Claude 原生 Auto Mode；`codex-auto` 不詢問但只允許 workspace
+寫入。`hclaude-auto`、`hcodex-auto` 行為相同，另外經過 Headroom。只有外層已有
+Docker、VM 或 disposable sandbox 時，才針對單次執行使用
+`--dangerously-skip-permissions` 或 `--dangerously-bypass-approvals-and-sandbox`。
+保留 bypass 警告，不要在 Claude settings 設定
+`"skipDangerousModePermissionPrompt": true`。
+
 dry-run 與 apply 都會先跑 JSON／shell／兩側 routing／Claude pins／contract tests；任何失敗都在寫入前停止。
 所有可攜 source→HOME 映射只定義於 `scripts/deployment-manifest.tsv`；`sync.sh` 與 weekly integrity
 共同讀取它，新增或改名部署成品時不得另建第二份清單。

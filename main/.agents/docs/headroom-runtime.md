@@ -29,7 +29,7 @@ Claude App 使用 OAuth 直連，不經 proxy，只能透過 MCP 做手動文字
 
 - **Claude**：日常使用 `claude`；需要 Headroom 時才使用 `headroom wrap claude --no-context-tool`。只有 context 明確不足時才加 `--1m`。
 - **Codex**：使用 machine-local Headroom provider。若從 wrap 啟動，使用 `headroom wrap codex --no-context-tool`；不得把 `--dangerously-bypass-approvals-and-sandbox` 寫入 alias、profile 或固定啟動流程。
-- **權限**：`--dangerously-skip-permissions` 與 `--dangerously-bypass-approvals-and-sandbox` 不是 Headroom 的必要參數，只能由使用者針對單次任務明確選用。
+- **權限**：一般自動執行分別使用 Claude `--permission-mode auto` 與 Codex `-a never -s workspace-write`。`--dangerously-skip-permissions` 與 `--dangerously-bypass-approvals-and-sandbox` 不是 Auto Mode，也不是 Headroom 的必要參數；只有外層已有隔離環境時才能針對單次任務明確選用。可重用的 shell functions 範例見 `docs/setup.md`。
 - **常駐 runtime**：新部署使用 `headroom deploy`；後續以 `headroom install {status,start,stop,restart,remove} --profile <name>` 管理。不要用 supervisor=`none` 的孤兒程序取代可觀測的生命週期。
 - **套件管理**：CLI 由 `uv tool` 與 uv 管理的 Python 提供，`~/.local/bin/headroom` 是 MCP 設定應使用的絕對路徑。
 - **升級**：先執行 `headroom update --check`，再用 `headroom update` 或 `uv tool upgrade headroom-ai`。升級後重開 wrapped session，或 restart persistent profile，最後用 `headroom doctor` 確認 CLI 與 proxy 版本一致。
