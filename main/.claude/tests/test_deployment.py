@@ -3,36 +3,38 @@ from support import *  # noqa: F401,F403
 
 
 class MachineStateHygieneTests(unittest.TestCase):
-    PORTABLE_TEXT_FILES = (
-        ".agents/docs/headroom-runtime.md",
-        ".claude/CLAUDE.contract.md",
-        ".claude/README.md",
-        ".claude/settings.json",
-        ".claude/examples/headroom-mcp.legacy.json",
-        ".claude/skills/baton-dispatch/SKILL.md",
-        ".claude/skills/provider-routing/SKILL.md",
-        ".codex/AGENTS.contract.md",
-        ".codex/ANALYSIS.md",
-        ".codex/DEPLOY.md",
-        ".codex/config.merge.toml",
-        ".codex/README.md",
-        "docs/setup.md",
-        "README.md",
-        "scripts/sync.sh",
-    )
-
     def test_no_absolute_home_paths_leak_into_tracked_config(self) -> None:
-        for path in self.PORTABLE_TEXT_FILES:
-            self.assertNotIn("/Users/", read(path), path)
+        sources = set()
+        for source_rel, _, _ in deployment_manifest_entries():
+            source = ROOT / source_rel
+            if source.is_dir():
+                for current, dirs, files in os.walk(source, followlinks=True):
+                    dirs[:] = [name for name in dirs if name != "__pycache__"]
+                    for name in files:
+                        if name.endswith(".pyc") or name == ".DS_Store":
+                            continue
+                        sources.add((Path(current) / name).resolve())
+            else:
+                sources.add(source.resolve())
+        self.assertTrue(sources)
+        for path in sorted(sources):
+            try:
+                text = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
+            self.assertNotIn("/Users/", text, str(path.relative_to(ROOT)))
 
     def test_machine_state_files_are_gitignored(self) -> None:
         ignore = read(".gitignore")
         for entry in ("main/.claude/mcp_servers.json", "main/.codex/config.toml",
-                      "__pycache__/", "*.pyc"):
+                      ".claude/.headroom_wrap_marker.json", "__pycache__/", "*.pyc"):
             self.assertIn(entry, ignore)
         # Confirmed ignored by git itself (exit 0 == path is ignored).
         for path in ("main/.claude/mcp_servers.json", "main/.codex/config.toml"):
             self.assertEqual(git("check-ignore", path).returncode, 0, path)
+        self.assertEqual(
+            git("check-ignore", ".claude/.headroom_wrap_marker.json").returncode, 0
+        )
         # Root-level agent directories are reserved for project-specific
         # configuration and must not inherit the deployable bundle ignores.
         for path in (".claude/mcp_servers.json", ".codex/config.toml"):
@@ -75,6 +77,8 @@ class MachineStateHygieneTests(unittest.TestCase):
         self.assertIn("headroom wrap codex --no-context-tool", runtime)
         self.assertIn("Remote Control", runtime)
         self.assertIn("headroom learn", runtime)
+        self.assertIn("--profile default --preset persistent-service", runtime)
+        self.assertIn("--scope provider --providers manual --target codex", runtime)
         for function_name in (
             "claude-auto()",
             "codex-auto()",
@@ -135,6 +139,27 @@ class MachineStateHygieneTests(unittest.TestCase):
             cd_form = run_hook(f"cd {repo} && git commit -m x", "/")
             self.assertEqual(cd_form.returncode, 2)
             self.assertIn("commit blocked", cd_form.stderr)
+
+            # The harness keeps its deployable suite under main/.claude/tests.
+            # A stale root cache must neither trigger a zero-test false block
+            # nor hide the canonical suite.
+            (tests / "test_red.py").unlink()
+            (tests / "__pycache__").mkdir(exist_ok=True)
+            canonical = repo / "main" / ".claude" / "tests"
+            canonical.mkdir(parents=True)
+            canonical_test = canonical / "test_red.py"
+            canonical_test.write_text(
+                "import unittest\n"
+                "class T(unittest.TestCase):\n"
+                "    def test_red(self):\n"
+                "        self.fail('canonical planted')\n",
+                encoding="utf-8",
+            )
+            canonical_blocked = run_hook("git commit -m x", str(repo))
+            self.assertEqual(canonical_blocked.returncode, 2)
+            self.assertIn("main/.claude/tests", canonical_blocked.stderr)
+            canonical_test.unlink()
+            self.assertEqual(run_hook("git commit -m x", str(repo)).returncode, 0)
 
 
 

@@ -1,0 +1,21 @@
+#!/bin/sh
+# Execute one Python command with the first available Python 3.11+.
+set -eu
+
+if [ "$#" -eq 0 ]; then
+  printf '%s\n' "ERROR: python3-run requires a script or Python arguments" >&2
+  exit 2
+fi
+
+for candidate in "${AGENT_HARNESS_PYTHON:-}" python3.13 python3.12 python3.11 python3; do
+  [ -n "$candidate" ] || continue
+  command -v "$candidate" >/dev/null 2>&1 || continue
+  if "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' \
+      >/dev/null 2>&1; then
+    exec "$candidate" "$@"
+  fi
+done
+
+printf '%s\n' \
+  "ERROR: Python 3.11+ required; install it or set AGENT_HARNESS_PYTHON" >&2
+exit 2

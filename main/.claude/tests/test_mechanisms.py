@@ -100,7 +100,12 @@ class MechanismTests(unittest.TestCase):
                 "main/.claude/CLAUDE.contract.md\t.claude/CLAUDE.md\n",
                 encoding="utf-8",
             )
-            env["AGENT_HARNESS_REPO"] = str(repo)
+            source_marker = (
+                Path(temp_home) / ".agents" / "skills" / ".agent-harness-source"
+            )
+            source_marker.parent.mkdir(parents=True, exist_ok=True)
+            source_marker.write_text(str(repo) + "\n", encoding="utf-8")
+            env.pop("AGENT_HARNESS_REPO", None)
             drifted = subprocess.run([sys.executable, str(hook)], env=env,
                                      check=True, capture_output=True, text=True)
             self.assertIn("deployment drift", drifted.stdout)
@@ -349,15 +354,31 @@ class MechanismTests(unittest.TestCase):
             self.assertEqual(foreign.read_text(encoding="utf-8"),
                              read(".codex/AGENTS.contract.md"))
 
-    def test_routing_wrappers_gate_python_version_before_tomllib(self) -> None:
-        # macOS system python3 is 3.9; tomllib needs 3.11+. The wrapper must
-        # fail with the real cause, not misreport routing_core as missing, and
-        # sync preflight must stop before anything deeper does (review F-03).
+    def test_routing_wrappers_select_python_311_before_tomllib(self) -> None:
+        # macOS system python3 is 3.9; public entrypoints share one selector
+        # that can find a versioned Python without shell-profile aliases.
+        selector = ROOT / "main/.agents/scripts/python3-run"
+        self.assertTrue(os.access(selector, os.X_OK))
         for path in (".claude/scripts/model-routing", ".codex/scripts/model-routing"):
-            body = read(path)
-            self.assertLess(body.index("version_info < (3, 11)"),
-                            body.index("import routing_core"), path)
-        self.assertIn("python3 >= 3.11", read("scripts/sync.sh"))
+            wrapper = read(path)
+            implementation = read(path + ".py")
+            self.assertIn("../../.agents/scripts/python3-run", wrapper)
+            self.assertLess(implementation.index("version_info < (3, 11)"),
+                            implementation.index("import routing_core"), path)
+        sync = read("scripts/sync.sh")
+        self.assertIn('PYTHON_RUN="$REPO/main/.agents/scripts/python3-run"', sync)
+        self.assertNotRegex(sync, r"(?m)^\s*python3(?:\s|$)")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            selected = Path(temp_dir) / "python3.13"
+            selected.symlink_to(sys.executable)
+            result = subprocess.run(
+                [str(selector), "-c", "import sys; print(sys.version_info.major)"],
+                env={"PATH": temp_dir},
+                capture_output=True,
+                text=True,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "3")
         self.assertIn("3.11", read("docs/setup.md"))
 
     def test_usage_report_separates_sources_and_finds_rolling_peak(self) -> None:

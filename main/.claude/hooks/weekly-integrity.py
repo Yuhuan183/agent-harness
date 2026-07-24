@@ -14,6 +14,20 @@ PERIOD = 7 * 86400
 STAMP = os.path.expanduser("~/.claude/telemetry/.integrity-last-run")
 
 
+def resolve_harness_repo():
+    """Resolve the authoritative checkout from env, deployment marker, or fallback."""
+    configured = os.environ.get("AGENT_HARNESS_REPO")
+    if configured:
+        return os.path.expanduser(configured)
+    marker = os.path.expanduser("~/.agents/skills/.agent-harness-source")
+    try:
+        with open(marker, encoding="utf-8") as stream:
+            marked = stream.readline().strip()
+    except OSError:
+        marked = ""
+    return os.path.expanduser(marked or "~/WorkSpace/agent-harness")
+
+
 def load_deployment_manifest(repo):
     """Return validated repo-relative source, HOME-relative target, and mode."""
     path = os.path.join(repo, "scripts", "deployment-manifest.tsv")
@@ -89,9 +103,7 @@ try:
     # git status covers the .claude targets when ~/.claude is itself a repo;
     # every other manifest target is always compared via an rsync dry-run
     # against the source checkout (same paths sync.sh manages).
-    harness_repo = os.environ.get(
-        "AGENT_HARNESS_REPO", os.path.expanduser("~/WorkSpace/agent-harness")
-    )
+    harness_repo = resolve_harness_repo()
     try:
         # A git-managed ~/.claude answers drift for the .claude targets itself,
         # but only for them: the other manifest targets (.codex, .agents) still

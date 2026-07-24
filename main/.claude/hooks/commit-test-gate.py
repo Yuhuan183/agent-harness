@@ -6,12 +6,13 @@ because `unittest | tail` swallowed the exit code and `;` broke the chain.
 Reminders did not fix it; this hook makes green-before-commit deterministic.
 
 Scope: fires when the Bash command contains a `git commit` and any repository
-the command can plausibly target carries a `.claude/tests/` directory. The
-target set is the payload `cwd` plus every `git -C <path>` and `cd <path>`
-operand in the command, so repo-switching forms cannot dodge the gate. Other
-repos and non-commit commands pass through untouched. Escape hatch for
-intentional red commits (e.g. committing a failing reproduction): prefix the
-command with `AGENT_SKIP_TEST_GATE=1 `.
+the command can plausibly target carries test modules under `.claude/tests/`
+or the harness bundle's canonical `main/.claude/tests/`. The target set is the
+payload `cwd` plus every `git -C <path>` and `cd <path>` operand in the command,
+so repo-switching forms cannot dodge the gate. Other repos and non-commit
+commands pass through untouched. Escape hatch for intentional red commits
+(e.g. committing a failing reproduction): prefix the command with
+`AGENT_SKIP_TEST_GATE=1 `.
 
 Exit 0 = allow; exit 2 = block, stderr goes back to the model. A suite that
 exceeds its 300 s budget blocks rather than failing open.
@@ -40,6 +41,19 @@ def candidate_dirs(command: str, cwd: str) -> list[str]:
     return dirs
 
 
+def test_suites(root: Path) -> list[Path]:
+    """Return real test suites, ignoring empty directories and stale caches."""
+    candidates = (
+        root / ".claude" / "tests",
+        root / "main" / ".claude" / "tests",
+    )
+    return [
+        candidate
+        for candidate in candidates
+        if candidate.is_dir() and any(candidate.glob("test_*.py"))
+    ]
+
+
 def main() -> int:
     try:
         payload = json.load(sys.stdin)
@@ -52,7 +66,7 @@ def main() -> int:
         return 0
 
     cwd = payload.get("cwd") or "."
-    gated_repos: list[Path] = []
+    gated_suites: list[tuple[Path, Path]] = []
     for candidate in candidate_dirs(command, str(cwd)):
         top = subprocess.run(
             ["git", "-C", candidate, "rev-parse", "--show-toplevel"],
@@ -61,11 +75,12 @@ def main() -> int:
         if top.returncode != 0:
             continue  # not a git repo (or bad path); let git produce its own error
         root = Path(top.stdout.strip())
-        if (root / ".claude" / "tests").is_dir() and root not in gated_repos:
-            gated_repos.append(root)
+        for tests_dir in test_suites(root):
+            entry = (root, tests_dir)
+            if entry not in gated_suites:
+                gated_suites.append(entry)
 
-    for root in gated_repos:
-        tests_dir = root / ".claude" / "tests"
+    for root, tests_dir in gated_suites:
         try:
             result = subprocess.run(
                 [sys.executable, "-m", "unittest", "discover",
@@ -74,7 +89,7 @@ def main() -> int:
             )
         except subprocess.TimeoutExpired:
             sys.stderr.write(
-                f"commit-test-gate: suite in {root} exceeded 300s - commit blocked.\n"
+                f"commit-test-gate: suite {tests_dir} exceeded 300s - commit blocked.\n"
                 "Investigate the hang (or prefix with AGENT_SKIP_TEST_GATE=1) and retry.\n"
             )
             return 2
@@ -82,7 +97,7 @@ def main() -> int:
             continue
         tail = "\n".join(result.stderr.strip().splitlines()[-15:])
         sys.stderr.write(
-            f"commit-test-gate: test suite in {root} is RED - commit blocked.\n"
+            f"commit-test-gate: test suite {tests_dir} is RED - commit blocked.\n"
             f"{tail}\n"
             "Fix the failures (or prefix with AGENT_SKIP_TEST_GATE=1 to commit a "
             "deliberately red state) and retry.\n"

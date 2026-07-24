@@ -1,0 +1,457 @@
+"""Inspect, validate, and activate Claude routing deployment presets.
+
+Claude routes are applied through agent frontmatter pins (leaf roles) and the
+user-owned session selector (main), not a spawn-time argument. This resolver
+makes `.claude/model-routing.toml` operative by validating its internal
+consistency and cross-checking the deployed frontmatter pins against the
+selected profile (`check-pins`). Claude profiles are deployment presets, not
+per-dispatch overrides; `activate-profile` updates every leaf pin together."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+import tempfile
+from pathlib import Path
+
+if sys.version_info < (3, 11):  # routing_core needs stdlib tomllib (3.11+)
+    sys.stderr.write(
+        "ERROR: Python 3.11+ required (tomllib); "
+        f"this is Python {sys.version.split()[0]}\n")
+    sys.exit(2)
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / ".agents" / "scripts"))
+try:
+    import routing_core as core
+except ImportError:  # partial deployment: .agents layer not synced
+    sys.stderr.write(
+        "ERROR: shared routing core missing (<root>/.agents/scripts/routing_core.py); "
+        "sync the .agents layer before resolving routes\n")
+    sys.exit(2)
+
+CONFIG_PATH = Path(__file__).resolve().parents[1] / "model-routing.toml"
+AGENTS_DIR = Path(__file__).resolve().parents[1] / "agents"
+LEAF_ROLES = {
+    "explore",
+    "mech-executor",
+    "executor",
+    "plan-verifier",
+    "verifier",
+    "security-reviewer",
+    "security-executor",
+}
+REQUIRED_ROLES = LEAF_ROLES | {"main"}
+EFFORTS = {"low", "medium", "high", "xhigh"}
+MODEL_ALIASES = {
+    "haiku": "claude-haiku-4-5",
+    "sonnet": "claude-sonnet-5",
+    "opus": "claude-opus-4-8",
+    "fable": "claude-fable-5",
+}
+MODEL_NAMES = {model: alias for alias, model in MODEL_ALIASES.items()}
+AVAILABILITY_SCHEMA = {
+    "subscription": {"documented", "unverified"},
+    "main_selector": {"configured", "unverified"},
+    "role_frontmatter_override": {"configured", "not_routed", "unverified"},
+}
+
+
+def is_dispatchable(model: dict) -> bool:
+    availability = model.get("availability", {})
+    return availability.get("role_frontmatter_override") == "configured"
+
+
+def validation_errors(config: dict) -> list[str]:
+    errors: list[str] = []
+    if config.get("version") != 1:
+        errors.append("version must be 1")
+
+    models = config.get("models", {})
+    profiles = config.get("profiles", {})
+    route_application = config.get("route_application", {}).get("roles", {})
+    role_tiers = config.get("quality_floor", {}).get("roles", {})
+
+    errors += core.check_selection(config)
+    errors += core.check_revision_policy(config)
+
+    normalized_roles = {role.replace("_", "-") for role in route_application}
+    if normalized_roles != REQUIRED_ROLES:
+        errors.append("route_application.roles must cover main and every leaf role")
+    for role, application in route_application.items():
+        expected = "user_owned_session_selector" if role == "main" else "frontmatter_pin"
+        if application != expected:
+            errors.append(f"route_application role {role} must be {expected}")
+
+    errors += core.check_quality_floor_roles(config, REQUIRED_ROLES)
+
+    def route_ok(model_name: str, effort: str) -> str | None:
+        if model_name not in models:
+            return f"references unknown model: {model_name}"
+        if effort not in EFFORTS:
+            return f"references unknown effort: {effort!r}"
+        return None
+
+    errors += core.check_allowed_routes(config, route_ok)
+    errors += core.check_availability(models, AVAILABILITY_SCHEMA)
+
+    for profile_name, profile in profiles.items():
+        roles = profile.get("roles", {})
+        missing = LEAF_ROLES - roles.keys()
+        extra = roles.keys() - REQUIRED_ROLES
+        if missing:
+            errors.append(
+                f"profile {profile_name} missing roles: {', '.join(sorted(missing))}"
+            )
+        if extra:
+            errors.append(
+                f"profile {profile_name} has unknown roles: {', '.join(sorted(extra))}"
+            )
+        for role, route in roles.items():
+            if not route.get("reason"):
+                errors.append(f"profile {profile_name}/{role} has no reason")
+            if role == "main":
+                if route.get("model") != "user_selected" or route.get("effort") != "user_selected":
+                    errors.append(
+                        f"profile {profile_name}/main must stay user_selected on both axes"
+                    )
+                continue
+            model_name = route.get("model")
+            effort = route.get("effort")
+            model = models.get(model_name)
+            if model is None:
+                errors.append(
+                    f"profile {profile_name}/{role} references unknown model: {model_name!r}"
+                )
+                continue
+            if not is_dispatchable(model):
+                errors.append(
+                    f"profile {profile_name}/{role} uses non-dispatchable model: {model_name}"
+                )
+            if effort not in EFFORTS:
+                errors.append(
+                    f"profile {profile_name}/{role} references unknown effort: {effort!r}"
+                )
+            floor = core.route_floor_error(config, profile_name, role, model_name, effort)
+            if floor:
+                errors.append(floor)
+    return errors
+
+
+def parse_frontmatter(path: Path) -> dict:
+    fields: dict[str, str] = {}
+    text = path.read_text(encoding="utf-8")
+    match = re.match(r"\A---\n(.*?)\n---\n", text, re.DOTALL)
+    if not match:
+        return fields
+    for line in match.group(1).splitlines():
+        if ":" in line and not line.startswith((" ", "\t")):
+            key, _, value = line.partition(":")
+            fields[key.strip()] = value.strip()
+    return fields
+
+
+def deployed_pins(agents_dir: Path) -> dict[str, dict]:
+    pins: dict[str, dict] = {}
+    for path in sorted(agents_dir.glob("*.md")):
+        fields = parse_frontmatter(path)
+        name = fields.get("name", path.stem).lower()
+        if name not in LEAF_ROLES:
+            continue
+        pins[name] = {
+            "file": path.name,
+            "model_alias": fields.get("model"),
+            "model": MODEL_ALIASES.get(fields.get("model", ""), fields.get("model")),
+            "effort": fields.get("effort"),
+        }
+    return pins
+
+
+def command_validate(config: dict) -> int:
+    errors = validation_errors(config)
+    if errors:
+        for error in errors:
+            print(f"ERROR: {error}", file=sys.stderr)
+        return 1
+    print(
+        f"valid: {len(config['profiles'])} profiles, "
+        f"{len(config['models'])} benchmark models"
+    )
+    return 0
+
+
+def command_list(config: dict, as_json: bool) -> int:
+    rows = [
+        {"profile": name, "description": profile["description"]}
+        for name, profile in config["profiles"].items()
+    ]
+    if as_json:
+        print(json.dumps(rows, indent=2))
+    else:
+        for row in rows:
+            print(f"{row['profile']}: {row['description']}")
+    return 0
+
+
+def command_resolve(
+    config: dict, role: str, profile: str | None, priority: str | None
+) -> int:
+    profile_name = core.resolve_profile(config, profile, priority)
+    if profile_name not in config["profiles"]:
+        print(f"ERROR: unknown profile: {profile_name}", file=sys.stderr)
+        return 2
+    role = role.lower()
+    route = config["profiles"][profile_name].get("roles", {}).get(role)
+    if route is None and role == "main":
+        route = {
+            "model": "user_selected",
+            "effort": "user_selected",
+            "reason": "The user owns the main-session model and effort.",
+        }
+    if route is None:
+        print(f"ERROR: unknown role: {role}", file=sys.stderr)
+        return 2
+    if role == "main":
+        invocation = {"model_delivery": "session_selector"}
+    else:
+        invocation = {
+            "agent_type": role,
+            "model_delivery": "frontmatter_pin",
+            "effort_delivery": "frontmatter_pin",
+        }
+    print(json.dumps({
+        "profile": profile_name,
+        "objective": config["profiles"][profile_name]["description"],
+        "role": role,
+        "application": config["route_application"]["roles"][role],
+        "quality_tier": config["quality_floor"]["roles"][role],
+        **route,
+        "invocation": invocation,
+    }, indent=2))
+    return 0
+
+
+def command_check_pins(
+    config: dict, agents_dir: Path, profile: str | None, priority: str | None
+) -> int:
+    profile_name = core.resolve_profile(config, profile, priority)
+    routes = config["profiles"][profile_name]["roles"]
+    pins = deployed_pins(agents_dir)
+    problems: list[str] = []
+    for role in sorted(LEAF_ROLES):
+        route = routes.get(role)
+        pin = pins.get(role)
+        if pin is None:
+            problems.append(f"{role}: no agent frontmatter found under {agents_dir}")
+            continue
+        if route is None:
+            problems.append(f"{role}: profile {profile_name} has no route")
+            continue
+        if pin["model"] != route["model"]:
+            problems.append(
+                f"{role}: frontmatter pins {pin['model']} "
+                f"but profile {profile_name} expects {route['model']}"
+            )
+        if pin["effort"] != route["effort"]:
+            problems.append(
+                f"{role}: frontmatter effort {pin['effort']!r} "
+                f"differs from profile {profile_name} effort {route['effort']!r}"
+            )
+    if problems:
+        for problem in problems:
+            print(f"DRIFT: {problem}", file=sys.stderr)
+        return 1
+    print(f"pins match profile {profile_name}: {len(pins)} roles checked")
+    return 0
+
+
+def replace_frontmatter_pin(text: str, model: str, effort: str) -> str:
+    """Return agent Markdown with only model/effort frontmatter changed."""
+    match = re.match(r"\A---\n(.*?)\n---\n", text, re.DOTALL)
+    if not match:
+        raise ValueError("agent file has no frontmatter")
+    header = match.group(1)
+    if len(re.findall(r"(?m)^model:\s*.*$", header)) != 1:
+        raise ValueError("agent frontmatter must contain exactly one model pin")
+    if len(re.findall(r"(?m)^effort:\s*.*$", header)) != 1:
+        raise ValueError("agent frontmatter must contain exactly one effort pin")
+    header = re.sub(r"(?m)^model:\s*.*$", f"model: {model}", header)
+    header = re.sub(r"(?m)^effort:\s*.*$", f"effort: {effort}", header)
+    return f"---\n{header}\n---\n{text[match.end():]}"
+
+
+def atomic_write(path: Path, content: str) -> None:
+    """Replace one file on the same filesystem while preserving its mode."""
+    mode = path.stat().st_mode
+    fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(temp_name, mode)
+        os.replace(temp_name, path)
+    finally:
+        try:
+            os.unlink(temp_name)
+        except FileNotFoundError:
+            pass
+
+
+def command_activate_profile(
+    config: dict, config_path: Path, agents_dir: Path, profile_name: str,
+    dry_run: bool,
+) -> int:
+    """Validate all changes first, then apply with rollback on any failure."""
+    if profile_name not in config["profiles"]:
+        print(f"ERROR: unknown profile: {profile_name}", file=sys.stderr)
+        return 2
+    routes = config["profiles"][profile_name]["roles"]
+    pins = deployed_pins(agents_dir)
+    if set(pins) != LEAF_ROLES:
+        missing = ", ".join(sorted(LEAF_ROLES - pins.keys())) or "none"
+        print(f"ERROR: cannot activate profile; missing leaf pins: {missing}", file=sys.stderr)
+        return 1
+
+    originals: dict[Path, str] = {}
+    replacements: dict[Path, str] = {}
+    try:
+        for role in sorted(LEAF_ROLES):
+            path = agents_dir / pins[role]["file"]
+            original = path.read_text(encoding="utf-8")
+            route = routes[role]
+            alias = MODEL_NAMES.get(route["model"])
+            if alias is None:
+                raise ValueError(f"{role}: no Claude frontmatter alias for {route['model']}")
+            originals[path] = original
+            replacements[path] = replace_frontmatter_pin(
+                original, alias, route["effort"]
+            )
+
+        config_text = config_path.read_text(encoding="utf-8")
+        selection = re.search(r"(?ms)^\[selection\]\n(.*?)(?=^\[|\Z)", config_text)
+        if selection is None or len(re.findall(
+                r"(?m)^default\s*=\s*\"[^\"]+\"\s*$", selection.group(1))) != 1:
+            raise ValueError("selection.default must occur exactly once")
+        new_selection = re.sub(
+            r"(?m)^default\s*=\s*\"[^\"]+\"\s*$",
+            f'default = "{profile_name}"', selection.group(0), count=1,
+        )
+        originals[config_path] = config_text
+        replacements[config_path] = (
+            config_text[:selection.start()] + new_selection + config_text[selection.end():]
+        )
+    except (OSError, ValueError) as error:
+        print(f"ERROR: cannot prepare profile activation: {error}", file=sys.stderr)
+        return 1
+
+    changed = [path for path, content in replacements.items()
+               if content != originals[path]]
+    if dry_run:
+        for path in changed:
+            print(f"would update: {path}")
+        print(f"profile {profile_name}: {len(changed)} files would change")
+        return 0
+
+    applied: list[Path] = []
+
+    def rollback() -> list[str]:
+        errors = []
+        for path in reversed(applied):
+            try:
+                atomic_write(path, originals[path])
+            except OSError as rollback_error:
+                errors.append(f"{path}: {rollback_error}")
+        return errors
+
+    try:
+        for path in changed:
+            atomic_write(path, replacements[path])
+            applied.append(path)
+    except OSError as error:
+        rollback_errors = rollback()
+        detail = f"; rollback errors: {'; '.join(rollback_errors)}" if rollback_errors else ""
+        print(f"ERROR: profile activation failed and was rolled back: {error}{detail}",
+              file=sys.stderr)
+        return 1
+
+    try:
+        refreshed = core.load_config(config_path)
+        post_errors = validation_errors(refreshed)
+        result = (1 if post_errors else
+                  command_check_pins(refreshed, agents_dir, profile_name, None))
+    except (OSError, core.tomllib.TOMLDecodeError) as error:
+        post_errors = [str(error)]
+        result = 1
+    if result != 0:
+        rollback_errors = rollback()
+        detail = f"; rollback errors: {'; '.join(rollback_errors)}" if rollback_errors else ""
+        reason = f": {'; '.join(post_errors)}" if post_errors else ""
+        print(f"ERROR: profile activation post-check failed and was rolled back{reason}{detail}",
+              file=sys.stderr)
+        return 1
+    print(f"activated deployment preset: {profile_name} ({len(changed)} files updated)")
+    return 0
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", type=Path, default=CONFIG_PATH)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    list_parser = subparsers.add_parser("list", help="list routing profiles")
+    list_parser.add_argument("--json", action="store_true")
+
+    subparsers.add_parser("validate", help="validate routing references")
+
+    resolve_parser = subparsers.add_parser("resolve", help="resolve one role recommendation")
+    resolve_parser.add_argument("--role", required=True)
+    source = resolve_parser.add_mutually_exclusive_group()
+    source.add_argument("--profile")
+    source.add_argument("--priority", choices=core.PRIORITY_CHOICES)
+    check_parser = subparsers.add_parser(
+        "check-pins", help="cross-check agent frontmatter pins against a profile"
+    )
+    check_parser.add_argument("--agents-dir", type=Path, default=AGENTS_DIR)
+    check_source = check_parser.add_mutually_exclusive_group()
+    check_source.add_argument("--profile")
+    check_source.add_argument("--priority", choices=core.PRIORITY_CHOICES)
+    activate = subparsers.add_parser(
+        "activate-profile",
+        help="transactionally apply one Claude deployment preset to every leaf pin",
+    )
+    activate.add_argument("--profile", required=True)
+    activate.add_argument("--agents-dir", type=Path, default=AGENTS_DIR)
+    activate.add_argument("--dry-run", action="store_true")
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    try:
+        config = core.load_config(args.config)
+    except (OSError, core.tomllib.TOMLDecodeError) as error:
+        print(f"ERROR: cannot load routing config: {error}", file=sys.stderr)
+        return 2
+    errors = validation_errors(config)
+    if args.command != "validate" and errors:
+        for error in errors:
+            print(f"ERROR: {error}", file=sys.stderr)
+        return 1
+    if args.command == "validate":
+        return command_validate(config)
+    if args.command == "list":
+        return command_list(config, args.json)
+    if args.command == "check-pins":
+        return command_check_pins(config, args.agents_dir, args.profile, args.priority)
+    if args.command == "activate-profile":
+        return command_activate_profile(
+            config, args.config, args.agents_dir, args.profile, args.dry_run
+        )
+    return command_resolve(config, args.role, args.profile, args.priority)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

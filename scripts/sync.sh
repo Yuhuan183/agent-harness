@@ -11,6 +11,8 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 MANIFEST="$REPO/scripts/deployment-manifest.tsv"
+PYTHON_RUN="$REPO/main/.agents/scripts/python3-run"
+PYTHON_SHIM_DIR=""
 APPLY=0
 ACCEPT_SETTINGS_OVERWRITE=0
 ACCEPT_CONTRACT_TAKEOVER=0
@@ -33,6 +35,21 @@ RSYNC_FILTERS=(--exclude '__pycache__/' --exclude '*.pyc' --exclude '.DS_Store')
 
 log()  { printf '%s\n' "$*"; }
 run()  { if [[ $APPLY -eq 1 ]]; then "$@"; else log "[dry-run] $*"; fi }
+
+cleanup_python_shim() {
+  [[ -n "$PYTHON_SHIM_DIR" ]] || return 0
+  rm -f "$PYTHON_SHIM_DIR/python3"
+  rmdir "$PYTHON_SHIM_DIR"
+}
+
+prepare_python_path() {
+  local python_executable
+  python_executable="$("$PYTHON_RUN" -c 'import sys; print(sys.executable)')" || return 1
+  PYTHON_SHIM_DIR="$(mktemp -d "${TMPDIR:-/tmp}/agent-harness-python.XXXXXX")"
+  ln -s "$python_executable" "$PYTHON_SHIM_DIR/python3"
+  PATH="$PYTHON_SHIM_DIR:$PATH"
+  export PATH
+}
 
 validate_manifest() {
   [[ -f "$MANIFEST" ]] || { log "ERROR: missing deployment manifest: $MANIFEST"; return 1; }
@@ -104,12 +121,11 @@ validate_project_skill_inventory() {
 
 preflight() {
   log "== preflight =="
-  # The routing toolchain and tests need stdlib tomllib (Python 3.11+); the
-  # macOS system /usr/bin/python3 (3.9) fails deep inside otherwise.
-  python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' \
-    || { log "ERROR: python3 >= 3.11 required (tomllib); found $(python3 -V 2>&1)"; return 1; }
-  python3 -m json.tool "$REPO/main/.claude/settings.json" >/dev/null
-  python3 -m json.tool "$REPO/main/.claude/examples/headroom-mcp.legacy.json" >/dev/null
+  # Use the same portable Python 3.11+ selector as deployed routing entrypoints.
+  prepare_python_path \
+    || { log "ERROR: portable Python 3.11+ runtime unavailable"; return 1; }
+  "$PYTHON_RUN" -m json.tool "$REPO/main/.claude/settings.json" >/dev/null
+  "$PYTHON_RUN" -m json.tool "$REPO/main/.claude/examples/headroom-mcp.legacy.json" >/dev/null
   bash -n "$REPO/scripts/sync.sh" "$REPO/main/.claude/sh/statusline.sh"
   validate_manifest
   "$REPO/main/.claude/scripts/model-routing" validate >/dev/null
@@ -120,11 +136,12 @@ preflight() {
   # preserving every non-recursive preflight check in nested dry-runs.
   if [[ "${AGENT_HARNESS_PREFLIGHT_ACTIVE:-0}" != "1" ]]; then
     AGENT_HARNESS_PREFLIGHT_ACTIVE=1 PYTHONDONTWRITEBYTECODE=1 \
-      python3 -m unittest discover -s "$REPO/main/.claude/tests" -q
+      "$PYTHON_RUN" -m unittest discover -s "$REPO/main/.claude/tests" -q
   fi
   log "preflight: passed"
 }
 
+trap cleanup_python_shim EXIT
 preflight
 
 # Back up existing targets, then overwrite via rsync. --links copies symlinks
@@ -203,7 +220,7 @@ log "== agent-harness sync (apply=$APPLY) =="
 # warn before overwriting and suggest moving them to settings.local.json (sync never touches that file). apply aborts by default unless overwrite is explicitly accepted.
 if [[ -f "$HOME/.claude/settings.json" ]]; then
   SETTINGS_EXTRA=0
-  python3 - "$REPO/main/.claude/settings.json" "$HOME/.claude/settings.json" <<'EOF' || SETTINGS_EXTRA=1
+  "$PYTHON_RUN" - "$REPO/main/.claude/settings.json" "$HOME/.claude/settings.json" <<'EOF' || SETTINGS_EXTRA=1
 import json, sys
 repo = json.load(open(sys.argv[1])); glb = json.load(open(sys.argv[2]))
 def extra_values(a, b, prefix=""):
