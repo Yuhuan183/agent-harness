@@ -22,7 +22,7 @@ flowchart LR
         codex["main/.codex/<br/>Codex contracts, roles, resolver"]
         shared["main/.agents/<br/>shared skills and routing core"]
         docs["docs/<br/>playbook, research, setup"]
-        devonly["evals/ + skills/<br/>trap fixtures, dev review skill"]
+        devonly["evals/ + .agents/skills/<br/>trap fixtures, dev review skill"]
         manifest["scripts/deployment-manifest.tsv"]
     end
 
@@ -162,7 +162,7 @@ Hooks 與監控預設 fail-open，避免本機診斷工具故障阻塞正常工�
 | [`main/.agents/`](main/.agents/README.md) | 兩端共用 skills、routing core 與 runtime 知識 | `~/.agents/` |
 | [`docs/`](docs/README.md) | 方法論、研究、部署說明與歷史決策；不回寫全域 | — |
 | [`evals/`](evals/) | 行為 trap fixtures 與機械 grader；只在 repo 內取證 | — |
-| [`skills/`](skills/) | repo 內部維運 skills（如 harness-review）；dev-only | — |
+| [`.agents/skills/`](.agents/skills/) | repo 內部維運 skills（如 harness-review）；dev-only | — |
 | [`scripts/`](scripts/) | 單一 manifest 驅動的部署與驗證入口 | 執行工具 |
 
 ## 快速開始

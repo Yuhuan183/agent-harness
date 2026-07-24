@@ -15,7 +15,7 @@
 | 診斷 context 或工具輸出 | [Headroom runtime](../main/.agents/docs/headroom-runtime.md) | [RTK](../main/.claude/RTK.md) |
 | 理解 QC 怎麼把關 | [QC 白話說明](qc-explainer.md) | [baton-dispatch](../main/.claude/skills/baton-dispatch/SKILL.md) |
 | 跑行為 trap eval | [evals/traps/](../evals/traps/) 各 README | [QC 說明](qc-explainer.md)取證段 |
-| 深度審查本 repo 設計 | [harness-review](../skills/harness-review/SKILL.md)（dev-only） | [plan](../main/.claude/plans/orchestration-plan.md) |
+| 深度審查本 repo 設計 | [harness-review](../.agents/skills/harness-review/SKILL.md)（dev-only） | [plan](../main/.claude/plans/orchestration-plan.md) |
 | 理解目前決策與下一步 | [Orchestration plan](../main/.claude/plans/orchestration-plan.md) | [仍待驗證](harness-engineering-research.md#仍待本機驗證) |
 
 ## 文件責任
