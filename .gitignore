@@ -13,3 +13,7 @@ __pycache__/
 
 # Behavioral trap eval scratch runs (see evals/traps/)
 .trap-runs/
+
+#headroom
+.tokensave
+.claude/.headroom_wrap_marker.json
