@@ -2,7 +2,7 @@
 
 把 agent-harness 的可攜契約套用到本機全域配置的完整流程。設計原則：
 **專案是唯一編修處，全域是套用目標**；機器狀態（憑證、sessions、cache、
-codex `config.toml`、claude `mcp_servers.json` 的本機路徑段）永不納入版控或同步。
+Codex `config.toml`、Claude Code `~/.claude.json` 的 MCP entry）永不納入版控或同步。
 
 ## 目錄對應
 
@@ -14,7 +14,8 @@ codex `config.toml`、claude `mcp_servers.json` 的本機路徑段）永不納�
 | --- | --- | --- |
 | `main/.agents/`（共用 skill 本體、`docs/`、清單） | `~/.agents/` | script 自動；`skills/` 採 managed merge |
 | `main/.claude/`（契約檔、routing、自有 skills、hooks、scripts、prompts、sh） | `~/.claude/` | script 自動（tests/examples/plans 僅存 repo，不部署） |
-| `main/.claude/examples/headroom-mcp.merge.json` | `~/.claude/mcp_servers.json` | **手動 merge**（機器狀態，不入庫） |
+| `headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787` | `~/.claude.json` | **手動執行**（機器狀態，不入庫） |
+| `main/.claude/examples/headroom-mcp.legacy.json` | `~/.claude/mcp.json` | 僅供無 Claude CLI 的 legacy client 手動 merge |
 | `main/.codex/AGENTS.contract.md`（部署為 `AGENTS.md`）、`README.md`、`ANALYSIS.md`、`DEPLOY.md`、`model-routing.toml`、`prompts/`、`agents/`、`scripts/`、skills（含 `leaf-dispatch` 與 symlink） | `~/.codex/` | script 自動 |
 | `main/.codex/config.merge.toml` | `~/.codex/config.toml` | **手動 merge**（見 `main/.codex/DEPLOY.md`） |
 
@@ -70,10 +71,17 @@ claude plugin install codex@openai-codex
 cd ~/WorkSpace/agent-harness
 scripts/sync.sh            # 1. dry-run：檢視將發生的動作
 scripts/sync.sh --apply    # 2. 實際套用（自動備份到 backups/<timestamp>/）
-# 3a. claude MCP：把 main/.claude/examples/headroom-mcp.merge.json 手動併入 ~/.claude/mcp_servers.json
+# 3a. Claude Code MCP（installer 會解析 headroom 的 machine-local 絕對路徑）
+headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787
 # 3b. codex 本機設定：把 main/.codex/config.merge.toml 手動併入 ~/.codex/config.toml
 # 4. 開新 Claude Code / Codex session，確認契約與 skills 載入
 ```
+
+Claude Code 平常直接執行 `claude`，需要 Headroom proxy 時才執行
+`headroom wrap claude --no-context-tool`。不要把 `ANTHROPIC_BASE_URL` 永久寫進 shell
+profile；RTK 指引由本專案契約管理，`--no-context-tool` 可避免 wrapper 重寫契約。
+完整 lifecycle、Remote Control 與版本轉換說明見
+[`headroom-runtime.md`](../main/.agents/docs/headroom-runtime.md)。
 
 dry-run 與 apply 都會先跑 JSON／shell／兩側 routing／Claude pins／contract tests；任何失敗都在寫入前停止。
 所有可攜 source→HOME 映射只定義於 `scripts/deployment-manifest.tsv`；`sync.sh` 與 weekly integrity

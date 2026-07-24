@@ -38,3 +38,7 @@ Use at most one outcome verifier per top-level task, placed at the smallest cohe
 ## Reporting
 
 Report only outcome, verification evidence, material decisions or remaining risks, and required next action. Use `DECISION: <what and why>` and `[UNCERTAIN: <reason>]` only when material.
+
+## RTK command output
+
+Prefix every shell command and chained segment with `rtk`. It filters output only; authorization, approvals, and sandboxing remain unchanged. Use raw commands only when debugging evidence is hidden. This contract owns RTK guidance; pass `--no-context-tool` to `headroom wrap` so it does not rewrite `AGENTS.md`.

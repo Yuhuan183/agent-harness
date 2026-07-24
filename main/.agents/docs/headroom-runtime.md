@@ -1,33 +1,43 @@
 # Headroom Runtime Guide
 
-> 只記錄跨機器的架構與操作邊界。版本、venv、PID 與本機故障史屬 machine-local state，不進本文件。
-> 對照官方 v0.32:`headroom wrap` 是推薦的預設入口；`headroom install`(launchd/systemd 常駐)為選用的常駐替代方案。兩者皆自動管理 base URL 路由，**不需**手動改 agent settings。
+> 只記錄跨機器的架構、操作邊界與版本轉換。venv、PID、port 與 profile 名稱屬 machine-local state，不進 git。
 
-## 兩種路由模式
+## 專案採用方式
 
-| 模式 | 指令 | 適用 | 邊界 |
-|---|---|---|---|
-| **Wrap(推薦預設)** | `headroom wrap claude --tool-search true` | 個人、逐 session;proxy 只在 wrapped session 內起，結束即 idle/down 屬正常 | routing 由 wrapper 自動設定，session-scoped;tracked settings 不留 base URL |
-| **Persistent install(選用)** | `headroom init` / `headroom install apply`(supervisor=task → launchd) | 想要跨 session 常駐、隨開即用 | routing 仍 machine-local(shell profile export 或部署自帶);tracked settings 一樣不留 base URL |
+| Surface | 標準入口 | 行為 |
+|---|---|---|
+| Claude Code 原生 session | `claude` | 直連 Anthropic，保留 Remote Control |
+| Claude Code Headroom session | `headroom wrap claude --no-context-tool` | 只在這個 session 注入 `ANTHROPIC_BASE_URL`；Remote Control 不可用 |
+| Codex | machine-local `config.toml` Headroom provider | Codex WebSocket 路由不能只靠 `OPENAI_BASE_URL`，provider 設定不納入同步 |
+| Claude／Codex MCP | `headroom mcp install --agent <agent> --proxy-url http://127.0.0.1:8787` | 提供 marker retrieve、compress 與 stats；installer 管理 machine-local 絕對路徑 |
 
-兩模式共用同一原則：**base URL 是 machine-local,永不進 git-tracked 的 `settings.json`**(否則在沒有 proxy 的機器上 clone 會指向死掉的 localhost)。健康檢查用 `headroom doctor`。
+不得把 `ANTHROPIC_BASE_URL` 或 `OPENAI_BASE_URL` 永久寫入 shell profile 或 git-tracked agent settings。RTK 指引由 harness 契約管理，因此所有 wrap 指令都加 `--no-context-tool`，避免 Headroom 改寫 `AGENTS.md` 或 `CLAUDE.md`。
 
 ## 元件與 owner
 
 | 元件 | Owner | 邊界 |
 |---|---|---|
-| Proxy `:8787` | wrap 模式由 `headroom wrap claude` 起；persistent 模式由部署 supervisor 起 | 只壓縮實際經 proxy 的 CLI／Codex 流量；tracked settings 不永久改 base URL |
-| CCR MCP | Wrapper 或 `headroom mcp install --agent claude` | 手動 compress/retrieve/stats 與 marker retrieval |
-| `tokensave` | Wrapper 的 machine-local 設定 | 程式碼語意壓縮；與 CCR MCP 不重複 |
-| Headroom plugin | 維持停用(`headroom@headroom-marketplace`) | 其 durable ensure lifecycle 會與上述模式重複，勿啟用 |
+| Proxy | `headroom wrap`，或選用的 `headroom deploy` supervisor | 只壓縮實際經 proxy 的流量 |
+| Headroom MCP | `headroom mcp install` | 手動壓縮與 marker retrieval，不等於全流量代理 |
+| Coding compressor | Headroom stable release | v0.32.1 以 tokensave 為主、Serena 為 fallback |
+| RTK 指引 | harness 的 Claude／Codex contract | Headroom wrap 不得重複注入 |
+| Headroom plugin | 維持停用（`headroom@headroom-marketplace`） | 避免與 CLI／MCP 的 lifecycle 重複 |
 
-Claude App 使用 OAuth 直連，不經 proxy;只可使用 MCP 做手動文字壓縮。圖片的自動壓縮也只存在 proxy 路徑。
+Claude App 使用 OAuth 直連，不經 proxy，只能透過 MCP 做手動文字壓縮。圖片自動壓縮只存在 proxy 路徑。
 
 ## 操作指引
 
-- **標準入口(wrap)**:`headroom wrap claude --tool-search true`。只有標準 context 明確不足才加 `--1m`。Wrapper session 結束後 proxy idle/down 屬正常。
-- **常駐替代(persistent)**:`headroom install apply` 建立部署；`persistent-task` preset(supervisor=none)以 `headroom install {status,stop,start,restart} --profile <name>` 管理。launchd-supervised 部署另可用 `launchctl kickstart -k "gui/$(id -u)/com.headroom.<profile>"` 立即重載。base URL 仍靠 machine-local 的 shell profile export,不寫進 tracked settings。
-- **套件管理**:headroom CLI 由 `uv tool` 管理，並綁 uv 自管 Python(`uv python install`),與 Homebrew 的 Python formula 脫鉤——避免 `brew autoremove` 連帶移除 interpreter 而使 venv 失效。`~/.local/bin/headroom` 為 uv 建立的 shim。
-- **升級**:proxy 是長壽命行程，升級套件後需重載才生效 ——(1) `uv tool upgrade headroom-ai`(取代不穩定的 `headroom update` 內建自檢);(2) 結束舊 wrapped session 重開，或對 persistent 部署 `headroom install restart --profile <name>`。以 `headroom doctor` 驗證 `version` 列(proxy 版本須與 installed 相符)。
-- **App 手動壓縮**:只壓大型 read-only JSON、log、table 或 search output;程式碼、錯誤、圖片、可編輯內容交給原始工具。
-- 行動規則以 `headroom-protocol` skill 為準；本文件只解釋 runtime 邊界。
+- **Claude**：日常使用 `claude`；需要 Headroom 時才使用 `headroom wrap claude --no-context-tool`。只有 context 明確不足時才加 `--1m`。
+- **Codex**：使用 machine-local Headroom provider。若從 wrap 啟動，使用 `headroom wrap codex --no-context-tool`；不得把 `--dangerously-bypass-approvals-and-sandbox` 寫入 alias、profile 或固定啟動流程。
+- **權限**：`--dangerously-skip-permissions` 與 `--dangerously-bypass-approvals-and-sandbox` 不是 Headroom 的必要參數，只能由使用者針對單次任務明確選用。
+- **常駐 runtime**：新部署使用 `headroom deploy`；後續以 `headroom install {status,start,stop,restart,remove} --profile <name>` 管理。不要用 supervisor=`none` 的孤兒程序取代可觀測的生命週期。
+- **套件管理**：CLI 由 `uv tool` 與 uv 管理的 Python 提供，`~/.local/bin/headroom` 是 MCP 設定應使用的絕對路徑。
+- **升級**：先執行 `headroom update --check`，再用 `headroom update` 或 `uv tool upgrade headroom-ai`。升級後重開 wrapped session，或 restart persistent profile，最後用 `headroom doctor` 確認 CLI 與 proxy 版本一致。
+- **`headroom learn`**：預設只允許寫入 machine-local、gitignored 的學習檔。不得未經 review 直接以 `--target CLAUDE.md`、`AGENTS.md` 或其他 tracked contract 覆寫專案規則。
+- **App 手動壓縮**：只壓大型 read-only JSON、log、table 或 search output；程式碼、錯誤、圖片與可編輯內容交給原始工具。
+
+## 版本轉換
+
+PyPI v0.32.1 仍以 tokensave 為預設，現況正確。上游 `main` 已改為 Serena 預設，但尚未發布；不要為此安裝未發布的 branch。下一個 stable release 升級時，讓 Headroom 執行其 migration，並重新驗證 MCP、code graph 與本文件。
+
+行動規則以 `headroom-protocol` skill 為準；本文件只解釋 runtime 邊界。

@@ -4,10 +4,11 @@ from support import *  # noqa: F401,F403
 
 class MachineStateHygieneTests(unittest.TestCase):
     PORTABLE_TEXT_FILES = (
+        ".agents/docs/headroom-runtime.md",
         ".claude/CLAUDE.contract.md",
         ".claude/README.md",
         ".claude/settings.json",
-        ".claude/examples/headroom-mcp.merge.json",
+        ".claude/examples/headroom-mcp.legacy.json",
         ".claude/skills/baton-dispatch/SKILL.md",
         ".claude/skills/provider-routing/SKILL.md",
         ".codex/AGENTS.contract.md",
@@ -46,7 +47,7 @@ class MachineStateHygieneTests(unittest.TestCase):
         for key in ("model", "effortLevel", "fallbackModel"):
             self.assertNotIn(key, settings)
         self.assertNotIn("ANTHROPIC_BASE_URL", settings.get("env", {}))
-        mcp_text = read(".claude/examples/headroom-mcp.merge.json")
+        mcp_text = read(".claude/examples/headroom-mcp.legacy.json")
         self.assertNotIn("/Users/", mcp_text)
         self.assertEqual(
             json.loads(mcp_text)["mcpServers"]["headroom"],
@@ -61,6 +62,19 @@ class MachineStateHygieneTests(unittest.TestCase):
         self.assertEqual(sum("runtime-guard.py\" --gate" in c for c in pre), 1)
         self.assertEqual(sum("runtime-guard.py" in c for c in start), 1)
         self.assertEqual(sum("commit-test-gate.py" in c for c in pre), 1)
+
+    def test_headroom_routing_ownership_is_explicit(self) -> None:
+        runtime = read(".agents/docs/headroom-runtime.md")
+        codex = read(".codex/AGENTS.contract.md")
+        setup = read("docs/setup.md")
+        for text in (runtime, setup):
+            self.assertIn("headroom wrap claude --no-context-tool", text)
+            self.assertIn("`ANTHROPIC_BASE_URL`", text)
+            self.assertIn("永久", text)
+        self.assertIn("This contract owns RTK guidance", codex)
+        self.assertIn("headroom wrap codex --no-context-tool", runtime)
+        self.assertIn("Remote Control", runtime)
+        self.assertIn("headroom learn", runtime)
 
     def test_commit_gate_blocks_red_suites_and_skips_foreign_repos(self) -> None:
         # Behavioral proof with a planted failure — a gate that cannot catch a

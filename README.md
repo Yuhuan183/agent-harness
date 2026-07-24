@@ -179,10 +179,9 @@ scripts/sync.sh --apply
 # 3. 開新的 Claude Code / Codex session，讓契約與 roles 重新載入
 ```
 
-首次部署（或 merge 檔變更）還需要兩個 sync 永不自動執行的 machine-local merge：
-`main/.codex/config.merge.toml` → `~/.codex/config.toml`（`agents.max_depth`、角色註冊、信任設定，
-見 [main/.codex/DEPLOY.md](main/.codex/DEPLOY.md)）；`main/.claude/examples/headroom-mcp.merge.json` →
-`~/.claude/mcp_servers.json`（選用 Headroom 時）。
+首次部署另需 machine-local 設定：merge `main/.codex/config.merge.toml`（見
+[main/.codex/DEPLOY.md](main/.codex/DEPLOY.md)）；選用 Headroom 時執行
+`headroom mcp install --agent claude`。legacy fallback 見 [配置說明](docs/setup.md)。
 
 Claude profile 若要持久切換，先在 source checkout 執行：
 
@@ -204,13 +203,12 @@ main/.codex/scripts/model-routing resolve --surface claude-bridge --priority qua
 專案只管理可攜、手寫且可 review 的配置。以下保留為 machine-local，不會被 Git 或自動部署覆蓋：
 
 - credentials、auth、sessions、history、cache 與 telemetry ledger
-- `main/.claude/mcp_servers.json` 中的本機路徑
-- `main/.codex/config.toml` 中的 proxy、信任、登入與其他機器狀態
+- `~/.claude.json` MCP entries
+- `~/.codex/config.toml` 中的 provider、proxy、信任、登入與其他機器狀態
 - manifest 外的其他全域 skills
 
 可攜片段只提供 merge 來源：
 
-- `main/.claude/examples/headroom-mcp.merge.json` 手動併入 `~/.claude/mcp_servers.json`
 - `main/.codex/config.merge.toml` 手動併入 `~/.codex/config.toml`
 
 ## 文件導覽

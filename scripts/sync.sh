@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Syncs config from the agent-harness project back to global (~/.claude, ~/.codex, ~/.agents).
-# Only overwrites "portable contract" files; machine state (codex config.toml, claude mcp_servers.json, auth, sessions, cache) is never touched.
+# Only overwrites portable contract files; machine state (Codex config.toml, Claude Code ~/.claude.json MCP entries, auth, sessions, cache) is never touched.
 # Usage:
 #   scripts/sync.sh          # dry-run, only lists the actions that would happen
 #   scripts/sync.sh --apply  # actually run it (backs up to backups/<timestamp>/ first)
@@ -109,7 +109,7 @@ preflight() {
   python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' \
     || { log "ERROR: python3 >= 3.11 required (tomllib); found $(python3 -V 2>&1)"; return 1; }
   python3 -m json.tool "$REPO/main/.claude/settings.json" >/dev/null
-  python3 -m json.tool "$REPO/main/.claude/examples/headroom-mcp.merge.json" >/dev/null
+  python3 -m json.tool "$REPO/main/.claude/examples/headroom-mcp.legacy.json" >/dev/null
   bash -n "$REPO/scripts/sync.sh" "$REPO/main/.claude/sh/statusline.sh"
   validate_manifest
   "$REPO/main/.claude/scripts/model-routing" validate >/dev/null
@@ -292,7 +292,7 @@ for row in "${DEFERRED_SETTINGS_ROWS[@]}"; do
 done
 
 # Machine state remains deliberately outside the manifest.
-log "note: ~/.claude/mcp_servers.json is machine state (contains local paths) and is not auto-overwritten; when adding the headroom MCP, manually merge main/.claude/examples/headroom-mcp.merge.json."
+log "note: Claude Code MCP state lives in ~/.claude.json and is not auto-overwritten; add Headroom with 'headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787'."
 log "note: main/.codex/config.merge.toml must be manually merged into ~/.codex/config.toml (see DEPLOY.md); it is not auto-overwritten."
 
 # --- Verification ---
