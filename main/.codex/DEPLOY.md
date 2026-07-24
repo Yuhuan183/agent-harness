@@ -27,9 +27,11 @@ Deployment writes outside the repository. Keep approval enabled; never use a san
 
 Codex CLI, App, and IDE extension share these files only when they use the same `CODEX_HOME`. Existing tasks do not reliably hot-reload the instruction chain.
 
-## ChatGPT Personalization
+## ChatGPT Chat and Work Personalization
 
-Manually merge `main/.codex/prompts/custom-instructions.md` in **Settings > Personalization > Custom instructions**. Test in new chats: ordinary response, `tldr:`, and `deep:`. Do not paste the shorter ChatGPT prompt into Codex App after deploying the full Codex contract.
+Paste `main/.codex/prompts/custom-instructions.md` into ChatGPT **Settings > Personalization > Custom instructions**. It applies to Chat and Work; test a response, file task, `tldr:`, and `deep:`.
+
+Codex uses global `AGENTS.md` for personal instructions. After full-contract deployment, never paste this shorter prompt into Codex; it would duplicate or drift from `main/.codex/AGENTS.contract.md`.
 
 ## Sync boundary
 
@@ -42,4 +44,4 @@ Manually merge `main/.codex/prompts/custom-instructions.md` in **Settings > Pers
 
 Never sync credentials, session databases, absolute machine paths, or whole machine config through this repository.
 
-Official references: [Codex environment variables](https://learn.chatgpt.com/docs/config-file/environment-variables), [configuration](https://learn.chatgpt.com/docs/config-file/config-basic), [`AGENTS.md`](https://learn.chatgpt.com/docs/agent-configuration/agents-md), [ChatGPT personalization](https://learn.chatgpt.com/docs/personalize).
+Official references: [Codex environment variables](https://learn.chatgpt.com/docs/config-file/environment-variables), [configuration](https://learn.chatgpt.com/docs/config-file/config-basic), [`AGENTS.md`](https://learn.chatgpt.com/docs/agent-configuration/agents-md), [ChatGPT personalization](https://learn.chatgpt.com/docs/personalize), [ChatGPT Work](https://learn.chatgpt.com/docs/get-started-with-work).

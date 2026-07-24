@@ -519,6 +519,39 @@ class CodexBundleTests(unittest.TestCase):
         self.assertIn("Git is the cross-machine source of truth", analysis)
 
 
+class AppPromptSurfaceTests(unittest.TestCase):
+    def test_app_prompts_keep_surface_ownership_and_action_boundaries(self) -> None:
+        claude_chat = read(".claude/prompts/claude-app-profile.md")
+        cowork = read(".claude/prompts/cowork-global-instructions.md")
+        chatgpt = read(".codex/prompts/custom-instructions.md")
+
+        self.assertIn("Settings > Instructions for Claude", claude_chat)
+        self.assertIn("Settings > Cowork > Global instructions", cowork)
+        self.assertIn("Settings > Personalization > Custom instructions", chatgpt)
+        self.assertIn("Applies to Chat and Work", chatgpt)
+        self.assertIn("$CODEX_HOME/AGENTS.md", chatgpt)
+
+        for prompt in (claude_chat, cowork, chatgpt):
+            self.assertIn("explicit authority", prompt)
+        self.assertIn("reopen each produced file", cowork)
+        self.assertIn("reopen the outputs", chatgpt)
+        self.assertIn("produced artifacts and where to find them", cowork)
+
+    def test_app_prompt_sources_are_managed_without_replacing_codex_contract(self) -> None:
+        managed = set(deployment_manifest())
+        self.assertIn(("main/.claude/prompts", ".claude/prompts"), managed)
+        self.assertIn(("main/.codex/prompts", ".codex/prompts"), managed)
+
+        readme = read(".codex/README.md")
+        analysis = read(".codex/ANALYSIS.md")
+        deploy = read(".codex/DEPLOY.md")
+        self.assertIn("ChatGPT Chat／Work", readme)
+        self.assertIn("`AGENTS.contract.md`", readme)
+        self.assertIn("ChatGPT Chat and Work", analysis)
+        self.assertIn("ChatGPT Chat and Work Personalization", deploy)
+        self.assertIn("Codex uses global `AGENTS.md` for personal instructions", deploy)
+
+
 class DocumentationBudgetTests(unittest.TestCase):
     def test_docs_stay_distilled(self) -> None:
         # Word budgets, not line budgets — a line count is gameable by long

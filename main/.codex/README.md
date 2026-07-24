@@ -20,7 +20,7 @@
 | `skills/experience-ledger` | symlink → `../.agents/skills/experience-ledger`（派工經驗記帳與分析，與 Claude 共用） | 自動 |
 | `skills/speak-human-tw` | symlink → `../.agents/skills/speak-human-tw`（繁中去 AI 味，與 Claude 共用同一本體） | 自動 |
 | `skills/task-observer` | symlink → `../.agents/skills/task-observer`（使用受挫時主動詢問、同意後才記錄；machine-local JSONL） | 自動 |
-| `prompts/custom-instructions.md` | ChatGPT App chat 模式的 custom instructions | 自動 |
+| `prompts/custom-instructions.md` | ChatGPT Chat／Work 的 account-wide custom instructions；Codex agent 仍由 `AGENTS.contract.md` 管理 | 自動複製到 `~/.codex`；App 手動套用 |
 | `config.merge.toml` | 可攜設定片段（model／effort 等），**手動** merge 進 `~/.codex/config.toml` | 手動 |
 | `config.toml` | 機器狀態（headroom proxy、marketplace、trust、project 路徑等 machine-local 段）；**不入庫**（gitignored），僅存在本機 | 不覆蓋 |
 | `ANALYSIS.md`, `DEPLOY.md` | Codex／ChatGPT 蒸餾結論與跨機器部署流程 | 自動 |

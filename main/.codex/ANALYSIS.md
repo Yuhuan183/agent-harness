@@ -4,7 +4,7 @@
 
 This directory is the reviewed deployment source for Codex and ChatGPT, not automatic deployment. It carries outcome-first communication, direct-first orchestration, seven leaf-role contracts, quality-first model routing, experience-based provider revision, and risk-triggered independent verification.
 
-Codex receives the full global contract and registered leaf agents. ChatGPT chat receives only response preferences because it does not expose this repository's agent runtime.
+Codex receives the full global contract and registered leaf agents. ChatGPT Chat and Work receive only account-level response and working preferences; they do not receive this repository's Codex agent runtime.
 
 ## Ownership and execution surfaces
 
@@ -37,6 +37,6 @@ Delegation requires an observable outcome, measurable benefit over direct work, 
 | `main/.codex/agents/*.toml` | Registered Codex leaf roles |
 | `main/.codex/model-routing.toml`, `main/.codex/scripts/` | Native and Claude-bridge per-dispatch routing |
 | `main/.agents/skills/experience-ledger/` | Shared machine-local outcome analysis |
-| `main/.codex/prompts/custom-instructions.md` | ChatGPT Personalization only |
+| `main/.codex/prompts/custom-instructions.md` | ChatGPT Chat and Work Personalization; not the Codex agent contract |
 
 Use `DEPLOY.md`. A successful login proves authentication only; it does not prove contract loading, routing, leaf overrides, or source/target parity.
