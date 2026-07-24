@@ -113,6 +113,9 @@ hcodex-auto() {
 }
 ```
 
+可手動貼進 `~/.zshrc`，或執行 `scripts/install-zsh-functions.sh`（dry-run 預設，
+`--apply` 才寫入；冪等、寫入前自動備份）套用同一份區塊。
+
 `claude-auto` 使用 Claude 原生 Auto Mode；`codex-auto` 不詢問但只允許 workspace
 寫入。`hclaude-auto`、`hcodex-auto` 行為相同，另外經過 Headroom。只有外層已有
 Docker、VM 或 disposable sandbox 時，才針對單次執行使用
