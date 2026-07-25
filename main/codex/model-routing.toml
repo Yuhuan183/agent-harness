@@ -6,6 +6,8 @@ secondary_benchmark = "AA-Briefcase Elo (agentic knowledge-work benchmark), publ
 metric_scope = "English text benchmark prior; not local coding-agent success rate"
 availability_scope = "Per-surface status; benchmark data is retained even when a dispatch override is unverified"
 availability_semantics = "configured means router-permitted, not necessarily smoke-tested; evidence records verification level"
+effort_ladder_scope = "GPT-5.6 accepts none/low/medium/high/xhigh/max; this table defines low through max because those are the rungs a role can be routed to. The `none` rung is measured and deliberately excluded: AA puts non-reasoning at 41.20 (sol), 33.97 (terra) and 26.56 (luna), all below the support floor, so admitting it to the schema would add a rung no route could ever select. Figures are kept in docs/harness-engineering-research.md as the measured floor of the ladder."
+model_guidance_source = "OpenAI GPT-5.6 model guidance (https://developers.openai.com/api/docs/guides/prompt-guidance-gpt-5p6, read 2026-07-26): medium is the balanced starting point, low suits latency-sensitive work, high/xhigh only where extra reasoning shows a measured quality gain, and max is reserved for the hardest quality-first workloads and should be benchmarked against xhigh rather than assumed better. The profiles below already follow that shape and pin no role above high; `max` stays a data row. `reasoning.mode: 'pro'` is orthogonal to effort and is not routed here - the Codex CLI surface this bundle dispatches through does not expose it."
 
 [selection]
 default = "balanced"

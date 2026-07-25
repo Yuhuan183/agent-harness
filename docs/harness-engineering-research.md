@@ -36,6 +36,81 @@
 **啟發式**：`CLAUDE.md`／`AGENTS.md` 目標 40–80 行、在 context 明顯膨脹時於收斂點壓縮。
 這些是維運預算，不是已被證明的通用臨界值；應以真實任務回歸決定是否調整。
 
+## 供應商官方指引（2026-07）
+
+兩家在同一週把「常駐指令要瘦」從社群經驗法則變成帶數字的官方立場。兩份都是**一手來源**，
+但其數字都是**供應商自評**：沒有公開 harness、題目與計分細節，因此等級是「已驗證的官方主張」，
+不是可獨立重跑的實驗。
+
+### Anthropic：Claude 5 世代的 context engineering（2026-07-24）
+
+<https://claude.com/blog/the-new-rules-of-context-engineering-for-claude-5-generation-models>
+
+**官方數字**：為 Opus 5／Fable 5 等 Claude 5 世代模型刪掉 Claude Code system prompt 的
+**80% 以上**，coding evaluations **無可測損失**。
+
+文章列出的「昔非今是」與本 repo 的對照：
+
+| 舊做法 → 新做法 | 本 repo 現況 |
+|---|---|
+| 給規則 → 讓模型用判斷 | 已對齊（短契約、判準「刪掉會不會犯錯」）；本次補上**矛盾**這個獨立失敗形態 |
+| 給範例 → 設計介面（漸進揭露、工具 deferred loading／`ToolSearch`） | 已對齊（skills＋`references/`；本 session 即以 ToolSearch 載入工具） |
+| 到處重複 → 工具用法寫進工具描述 | **部分無法遵守**：本 repo 只 deploy 全域契約，改不了供應商工具描述；RTK／Headroom 因此各留一行觸發句 |
+| CLAUDE.md 當記憶 → CLI 自動記憶 | **新增分工**：記憶層寫進 playbook 的分工表，常駐契約不再承擔「怕忘記」 |
+| 簡單 spec → 豐富參照（code、測試套件當 spec、rubric＋dynamic workflow） | 已有等價實作：trap fixture＋機械 grader 就是「測試當 spec」與 rubric；本次把「brief 指向 grader 勝過複述判準」寫成規則 |
+
+文章對 CLAUDE.md 的具體建議：保持輕量、把 token 花在**程式庫的陷阱**上、**不要寫模型翻一下
+repo 就知道的事**、大量使用漸進揭露。對 skills 的建議：當作輕量指南而非緊箍咒，除非該領域
+確實高風險。另提供 `claude doctor`／`/doctor` 自動評估 skills 與 CLAUDE.md 的肥瘦。
+
+其中「不要寫可推斷的事」與「skill 不要過度約束」本 repo 早已成文；真正**新增**的是矛盾成本
+（見下）與記憶層的分工。文中舉的失敗實例正是本 repo 的風險形狀：同一次請求裡一邊寫
+「文件留得合宜」、另一邊寫「不要加註解」。
+
+**2026-07-26 稽核結果（已驗證）**：拿當期 Claude Code system prompt 逐條比對
+`CLAUDE.contract.md` 五條 working agreement 與三條 main-only 條款，**無牴觸、無重述**——
+重述早在 52b434b 清掉，剩下的每一條（繁中回覆、`DECISION:` 標記、最窄驗證、保留 dirty
+worktree、派工剎車）system prompt 都沒有涵蓋。因此本次整合**不改常駐契約**，落點是
+[契約瘦身規範](contract-slimming.md)的原則 2b 與內容判定表：管的是**下一次**改契約時的判準，
+而不是現在多加幾句。這本身就是文章的建議形狀——先找矛盾，找不到就不要動。
+
+### OpenAI：GPT-5.6 model guidance（讀取 2026-07-26）
+
+<https://developers.openai.com/api/docs/guides/prompt-guidance-gpt-5p6>
+
+**官方數字**：內部 coding-agent eval 上，精簡 system prompt 使評分升約 **10–15%**、
+總 token 降 **41–66%**、成本降 **33–67%**（官方註明為方向性區間，須自行驗證）。
+
+對本 repo 直接有後果的四條：
+
+1. **矛盾比缺漏貴。** GPT-5.6 嚴格遵守 prompt contract，遇到互相衝突的規則會花 reasoning
+   token 去調和而不是擇一，導致更慢、更貴、更常錯。這與 Anthropic 那篇的實例互為佐證，
+   已寫進 playbook §1 與契約瘦身規範。
+2. **不要重複「先問過再動」。** 官方點名重複這類語句會對安全、預期內的動作觸發多餘的
+   確認請求；正解是明確列出安全的本地動作、政策只放一處、每條只講一次。
+   `AGENTS.contract.md` 第 8–9 行已是這個形狀（先列出免授權的安全動作，再把授權邊界
+   `stated once here`）。**2026-07-26 逐檔稽核結論：無違反。** 唯一看起來像重複的是 AUTH
+   條款在 `executor`／`mech-executor`／`security-executor` 三個 role TOML 各出現一次——
+   但那是三份**自足且互斥載入**的角色契約，一個 leaf 永遠只看到其中一份，不構成官方所指的
+   「同一個 prompt 內重複」。記在這裡，以免日後有人把它當冗餘刪掉而拆掉自足性。
+3. **`text.verbosity` 與「盡量簡短」。** GPT-5.6 預設就比 5.5 精簡，籠統的簡短指令可能
+   多餘、甚至讓回覆過短；要留就得指名保留什麼、捨棄什麼。兩份契約現行的
+   「Lead with the outcome. Keep conversation proportional and requested artifacts complete.」
+   已經是這個形狀（同時指名保留什麼與可壓縮什麼），不需改寫；規則本身已反映到 playbook §4。
+4. **effort 階梯的官方定位**：`medium` 是平衡起點、`low` 給延遲敏感、`high`／`xhigh` 只在
+   量得到品質增益時用、`max` 保留給最難的品質優先工作且應與 `xhigh` 對比而非預設更好。
+   本 repo 的三個 profile 本來就沒有任何角色釘到 `high` 以上，方向一致；已記入
+   `main/codex/model-routing.toml` 的 `model_guidance_source`。
+
+**刻意沒做的事**：Programmatic Tool Calling、multi-agent [beta]、`reasoning.mode: "pro"`、
+explicit prompt caching 與 `reasoning.context` 都是 Responses API 的能力。本 bundle 透過
+Codex CLI 派工，這些參數不在可控面上，因此只記錄不接線；`none` effort 同理（見
+[2026-07-26 AA 節](#artificial-analysis-重新取數完整-effort-階梯2026-07-26)結論 4）。
+
+**共同結論（推論）**：兩家的建議在本 repo 收斂成同一條維運規則——**加規則前先找矛盾**。
+本 repo 已有的預算機制（`word_count` 上限）只擋得住肥大，擋不住矛盾；矛盾要靠
+「同一政策只有一個真相源」＋twin-parity 測試＋契約與供應商 system prompt 的定期逐條稽核。
+
 ## Pilotfish v1.3.0 案例（2026-07-20）
 
 **已驗證**：[`Nanako0129/pilotfish` v1.3.0](https://github.com/Nanako0129/pilotfish/releases/tag/v1.3.0)

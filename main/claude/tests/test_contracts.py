@@ -602,7 +602,15 @@ class DocumentationBudgetTests(unittest.TestCase):
             "README.md": 2280,
             "docs/README.md": 640,
             # +100 (2026-07-23): behavioral trap-eval method section added.
-            "docs/harness-engineering.md": 2450,
+            # +310 (2026-07-26): both vendors published context-engineering
+            # guidance in the same week and both name rule *contradiction* as a
+            # failure mode distinct from dilution — the playbook had only the
+            # dilution half. Everything that could be moved out was: the numbers,
+            # the source-by-source comparison, and the repo audit live in the
+            # research doc, and the repo-specific tool-description caveat lives
+            # in contract-slimming's placement table. What is left is 13 lines of
+            # reusable rule with no home elsewhere.
+            "docs/harness-engineering.md": 2760,
             ".claude/plans/orchestration-plan.md": 1300,
             ".codex/AGENTS.contract.md": 590,
             ".codex/ANALYSIS.md": 500,
