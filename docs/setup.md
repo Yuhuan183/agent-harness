@@ -130,7 +130,8 @@ dry-run 與 apply 都會先跑 JSON／shell／兩側 routing／Claude pins／con
 Claude Code 自己（`/model`、`/effort`）與第三方 hook 安裝程式。合併以「所有權」而非位置判斷：命令含
 `$HOME/.claude/hooks/` 或 `rtk hook claude` 的 hook group 屬本 repo，整組替換（過期指令會被更新而不是
 變成重複兩份）；其餘 group、repo 未定義的事件與 top-level key 一律原樣保留，`permissions.allow` 取聯集。
-每次執行都會列出保留了哪些項目。因此不需要覆寫逃生口，`--accept-settings-overwrite` 已移除。若既有的 `~/.claude/CLAUDE.md` 或 `~/.codex/AGENTS.md`
+每次執行都會列出保留了哪些項目。因此不需要覆寫逃生口，`--accept-settings-overwrite` 已移除。
+`~/.codex/config.toml` 同理，以 `merge-toml` 模式部署：只寫入 `[agents]` 與 `[agents.*]`，其餘 section、註解與格式逐字保留；repo 未宣告的 `[agents.*]`（使用者自建 agent）保留並回報。兩者的部署後校驗都不是 byte 相等，而是「重跑 merge 不再改變任何東西」，`sync.sh` 與 weekly integrity 都會驗。若既有的 `~/.claude/CLAUDE.md` 或 `~/.codex/AGENTS.md`
 內容從未出現在本 repo 歷史（別人的指引，不是舊版契約），apply 也會停止：先手動合併，或明確用
 `--accept-contract-takeover` 接管。切換 Claude preset 時，先在 source checkout 執行
 `main/.claude/scripts/model-routing activate-profile --profile <balanced|fast|quality_guarded>`，確認 git diff，

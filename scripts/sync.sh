@@ -26,7 +26,9 @@ for arg in "$@"; do
   esac
 done
 TS="$(date +%Y%m%d-%H%M%S)"
-BACKUP="$REPO/backups/$TS"
+# Tests drive sync.sh --apply against a temp HOME but the real repo, so their
+# backups would otherwise compete with real deploy backups for the 10 kept.
+BACKUP="${AGENT_HARNESS_BACKUP_ROOT:-$REPO/backups}/$TS"
 BACKUP_CREATED=0
 RSYNC_FILTERS=(--exclude '__pycache__/' --exclude '*.pyc' --exclude '.DS_Store')
 
@@ -56,7 +58,8 @@ validate_manifest() {
   while IFS=$'\t' read -r src_rel dst_rel mode extra; do
     [[ -z "$src_rel" || "$src_rel" == \#* ]] && continue
     if [[ -z "$dst_rel" || -n "$extra" \
-          || ( -n "$mode" && "$mode" != "merge" && "$mode" != "merge-json" ) ]]; then
+          || ( -n "$mode" && "$mode" != "merge" && "$mode" != "merge-json" \
+               && "$mode" != "merge-toml" ) ]]; then
       log "ERROR: malformed deployment manifest row: $src_rel"
       return 1
     fi
@@ -71,6 +74,14 @@ validate_manifest() {
     if [[ "$mode" == "merge-json" \
           && "$src_rel:$dst_rel" != "main/.claude/settings.json:.claude/settings.json" ]]; then
       log "ERROR: merge-json mode is restricted to Claude settings: $src_rel -> $dst_rel"
+      return 1
+    fi
+    # merge-toml exists for one file: ~/.codex/config.toml carries GPT model
+    # and effort, MCP, plugins, marketplaces, desktop, shell policy, and
+    # per-project trust alongside the agent registrations this repo owns.
+    if [[ "$mode" == "merge-toml" \
+          && "$src_rel:$dst_rel" != "main/.codex/config.merge.toml:.codex/config.toml" ]]; then
+      log "ERROR: merge-toml mode is restricted to Codex config: $src_rel -> $dst_rel"
       return 1
     fi
     case "$src_rel:$dst_rel" in
@@ -163,6 +174,7 @@ SYNCED_DST=()
 # merged file legitimately carries machine keys the source does not have.
 MERGED_SRC=()
 MERGED_DST=()
+MERGED_TOOL=()
 
 backup_target() { # $1 = absolute target  $2 = HOME-relative target
   local dst="$1" dst_rel="$2"
@@ -213,14 +225,16 @@ sync_path() { # $1 = repo-relative source  $2 = HOME-relative target  $3 = optio
     sync_skill_root "$1" "$2"
     return
   fi
-  if [[ "$mode" == "merge-json" ]]; then
-    MERGED_SRC+=("$src"); MERGED_DST+=("$dst")
+  if [[ "$mode" == "merge-json" || "$mode" == "merge-toml" ]]; then
+    local merger="merge-settings.py"
+    [[ "$mode" == "merge-toml" ]] && merger="merge-toml.py"
+    MERGED_SRC+=("$src"); MERGED_DST+=("$dst"); MERGED_TOOL+=("$merger")
     if [[ $APPLY -eq 1 ]]; then
       backup_target "$dst" "$dst_rel"
       mkdir -p "$(dirname "$dst")"
-      "$PYTHON_RUN" "$REPO/scripts/merge-settings.py" "$src" "$dst"
+      "$PYTHON_RUN" "$REPO/scripts/$merger" "$src" "$dst"
     else
-      "$PYTHON_RUN" "$REPO/scripts/merge-settings.py" "$src" "$dst" --dry-run
+      "$PYTHON_RUN" "$REPO/scripts/$merger" "$src" "$dst" --dry-run
     fi
     return
   fi
@@ -333,7 +347,7 @@ if [[ $APPLY -eq 1 ]]; then
     fi
   done
   for i in "${!MERGED_DST[@]}"; do
-    if ! "$PYTHON_RUN" "$REPO/scripts/merge-settings.py" \
+    if ! "$PYTHON_RUN" "$REPO/scripts/${MERGED_TOOL[$i]}" \
         "${MERGED_SRC[$i]}" "${MERGED_DST[$i]}" --verify >/dev/null; then
       log "ERROR: merged target still missing repo settings: ${MERGED_DST[$i]}"
       FAIL=1

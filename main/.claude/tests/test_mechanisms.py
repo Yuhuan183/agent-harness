@@ -286,7 +286,10 @@ class MechanismTests(unittest.TestCase):
             result = subprocess.run(
                 [str(sync)], capture_output=True, text=True,
                 env={**os.environ, "HOME": temp_home,
-                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"},
+                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1",
+                     # Keep test backups out of the repo's rotation of 10,
+                     # which otherwise evicts a real deploy's rollback point.
+                     "AGENT_HARNESS_BACKUP_ROOT": temp_home},
             )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("preflight: passed", result.stdout)
@@ -310,7 +313,10 @@ class MechanismTests(unittest.TestCase):
             applied = subprocess.run(
                 [str(sync), "--apply"], capture_output=True, text=True,
                 env={**os.environ, "HOME": temp_home,
-                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"},
+                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1",
+                     # Keep test backups out of the repo's rotation of 10,
+                     # which otherwise evicts a real deploy's rollback point.
+                     "AGENT_HARNESS_BACKUP_ROOT": temp_home},
             )
             self.assertEqual(applied.returncode, 0, applied.stderr)
             self.assertIn("backup: none (no existing managed targets)", applied.stdout)
@@ -328,6 +334,21 @@ class MechanismTests(unittest.TestCase):
             for source_rel, target_rel, mode in deployment_manifest_entries():
                 source = ROOT / source_rel
                 target = Path(temp_home) / target_rel
+                if mode in ("merge-json", "merge-toml"):
+                    # A merged target carries machine state the source does not
+                    # have, so byte parity is the wrong invariant. Its parity
+                    # check is re-merge idempotence, asserted below and enforced
+                    # by sync.sh itself before it reports success.
+                    merger = ("merge-settings.py" if mode == "merge-json"
+                              else "merge-toml.py")
+                    verify = subprocess.run(
+                        [sys.executable, str(ROOT / "scripts" / merger),
+                         str(source), str(target), "--verify"],
+                        capture_output=True, text=True,
+                    )
+                    self.assertEqual(verify.returncode, 0,
+                                     f"{target_rel}: {verify.stderr}")
+                    continue
                 if mode == "merge":
                     installed = (source / "INSTALLED.txt").read_text(
                         encoding="utf-8"
@@ -382,7 +403,10 @@ class MechanismTests(unittest.TestCase):
             applied = subprocess.run(
                 [str(sync), "--apply"], capture_output=True, text=True,
                 env={**os.environ, "HOME": temp_home,
-                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"},
+                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1",
+                     # Keep test backups out of the repo's rotation of 10,
+                     # which otherwise evicts a real deploy's rollback point.
+                     "AGENT_HARNESS_BACKUP_ROOT": temp_home},
             )
             self.assertEqual(applied.returncode, 0, applied.stderr + applied.stdout)
             self.assertFalse(stale.exists())
@@ -430,7 +454,10 @@ class MechanismTests(unittest.TestCase):
             result = subprocess.run(
                 [str(sync), "--apply"], capture_output=True, text=True,
                 env={**os.environ, "HOME": temp_home,
-                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"},
+                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1",
+                     # Keep test backups out of the repo's rotation of 10,
+                     # which otherwise evicts a real deploy's rollback point.
+                     "AGENT_HARNESS_BACKUP_ROOT": temp_home},
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             merged = json.loads(settings_path.read_text(encoding="utf-8"))
@@ -454,6 +481,67 @@ class MechanismTests(unittest.TestCase):
                 self.assertEqual(sum(hook["command"] == c for c in commands), 1,
                                  hook["command"])
 
+    def test_codex_config_merge_preserves_machine_state(self) -> None:
+        # ~/.codex/config.toml carries GPT model/effort, MCP, plugins, desktop,
+        # shell policy and per-project trust next to the agent registrations
+        # this repo owns. Before merge-toml existed the manual step had left 6
+        # of 7 roles unregistered with nothing able to notice.
+        merge_toml = ROOT / "scripts/merge-toml.py"
+        machine = (
+            'model = "gpt-5.6-sol"\n'
+            'model_reasoning_effort = "high"\n\n'
+            "[mcp_servers.example]\n"
+            'url = "https://example.invalid/mcp"  # inline comment must survive\n\n'
+            "[agents]\n"
+            "max_threads = 99\n\n"
+            "[agents.verifier]\n"
+            'description = "stale wording"\n'
+            'config_file = "./agents/verifier.toml"\n\n'
+            "[agents.my-own]\n"
+            'description = "user agent"\n'
+            'config_file = "./agents/mine.toml"\n\n'
+            '[projects."/Users/someone/repo"]\n'
+            'trust_level = "trusted"\n'
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = Path(temp_dir) / "config.toml"
+            config.write_text(machine, encoding="utf-8")
+            first = subprocess.run(
+                [sys.executable, str(merge_toml),
+                 str(ROOT / "main/.codex/config.merge.toml"), str(config)],
+                capture_output=True, text=True,
+            )
+            self.assertEqual(first.returncode, 0, first.stderr)
+            merged = tomllib.loads(config.read_text(encoding="utf-8"))
+            text = config.read_text(encoding="utf-8")
+
+            # Re-running must be a no-op; that is also sync.sh's parity check.
+            second = subprocess.run(
+                [sys.executable, str(merge_toml),
+                 str(ROOT / "main/.codex/config.merge.toml"), str(config), "--verify"],
+                capture_output=True, text=True,
+            )
+            self.assertEqual(second.returncode, 0, second.stderr)
+
+        declared = tomllib.loads(read(".codex/config.merge.toml"))["agents"]
+        role_names = [k for k, v in declared.items() if isinstance(v, dict)]
+        # Every repo-declared role is registered, with the repo's wording.
+        for role in role_names:
+            self.assertIn(role, merged["agents"], role)
+            self.assertEqual(merged["agents"][role]["description"],
+                             declared[role]["description"], role)
+        # Machine state survives: unrelated tables, a user's own agent, an
+        # inline comment, and the repo's own [agents] scalars are all intact.
+        self.assertEqual(merged["model"], "gpt-5.6-sol")
+        self.assertEqual(merged["model_reasoning_effort"], "high")
+        self.assertEqual(merged["mcp_servers"]["example"]["url"],
+                         "https://example.invalid/mcp")
+        self.assertEqual(merged["projects"]["/Users/someone/repo"]["trust_level"],
+                         "trusted")
+        self.assertEqual(merged["agents"]["my-own"]["description"], "user agent")
+        self.assertIn("# inline comment must survive", text)
+        self.assertEqual(merged["agents"]["max_threads"], declared["max_threads"])
+
     def test_repo_settings_hooks_are_all_owned_by_the_merge(self) -> None:
         # If a hook group stops matching OWNED_HOOK_PATTERNS the merge can no
         # longer update it on deploy and it fossilises at whatever the machine
@@ -476,7 +564,10 @@ class MechanismTests(unittest.TestCase):
             foreign.parent.mkdir(parents=True)
             foreign.write_text("someone else's guidance\n", encoding="utf-8")
             env = {**os.environ, "HOME": temp_home,
-                   "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"}
+                   "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1",
+                     # Keep test backups out of the repo's rotation of 10,
+                     # which otherwise evicts a real deploy's rollback point.
+                     "AGENT_HARNESS_BACKUP_ROOT": temp_home}
             dry = subprocess.run([str(sync)], capture_output=True, text=True, env=env)
             self.assertEqual(dry.returncode, 0, dry.stderr)
             self.assertIn("WARN: ~/.codex/AGENTS.md", dry.stdout)

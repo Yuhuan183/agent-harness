@@ -508,7 +508,10 @@ class CodexBundleTests(unittest.TestCase):
         analysis = read(".codex/ANALYSIS.md")
         for phrase in (
             "## One-shot Codex command",
-            "never replace `config.toml`",
+            # The rule is now enforced by merge-toml rather than by asking
+            # a human to be careful, so assert the scope guarantee itself.
+            "never replaces `config.toml`",
+            "writes only `[agents]` and `[agents.*]`",
             "Credentials and login",
             "Authentication only",
             "Keep approval enabled",
