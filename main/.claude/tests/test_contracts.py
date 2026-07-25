@@ -26,7 +26,7 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertIn("[LEAF_RESULT]", policy)
         self.assertIn("Never brief a subagent to delegate further", policy)
         self.assertIn("agent-to-agent briefs stay in precise, concise English", policy)
-        skill = read(".claude/skills/baton-dispatch/SKILL.md")
+        skill = read(".claude/skills-src/baton-dispatch/SKILL.md")
         for field in ("task=<label>", "role=<role>", "class=<class>",
                       "request_source=<request_source>", "route=<profile>/<provider>/<model>/<effort>",
                       "ledger=<logged|skipped(reason)>"):
@@ -36,7 +36,7 @@ class ClaudeContractTests(unittest.TestCase):
         for role in ROLES:
             self.assertNotIn("xhigh", frontmatter(f".claude/agents/{role}.md"), role)
         for path in (
-            ".claude/skills/provider-routing/SKILL.md",
+            ".claude/skills-src/provider-routing/SKILL.md",
             ".codex/AGENTS.contract.md",
             ".codex/config.merge.toml",
         ):
@@ -62,9 +62,9 @@ class ClaudeContractTests(unittest.TestCase):
             self.assertNotIn(moved, policy)
 
     def test_baton_dispatch_skill_carries_recon_result_collection(self) -> None:
-        skill = read(".claude/skills/baton-dispatch/SKILL.md")
-        brief = read(".claude/skills/baton-dispatch/references/briefs-and-stops.md")
-        self.assertIn("Mandatory before every dispatch", frontmatter(".claude/skills/baton-dispatch/SKILL.md"))
+        skill = read(".claude/skills-src/baton-dispatch/SKILL.md")
+        brief = read(".claude/skills-src/baton-dispatch/references/briefs-and-stops.md")
+        self.assertIn("Mandatory before every dispatch", frontmatter(".claude/skills-src/baton-dispatch/SKILL.md"))
         # Cost test: high-tier pinned delegation saves no compute; payoff must beat overhead.
         self.assertIn("## Cost test", skill)
         self.assertIn("delegation saves no compute", skill)
@@ -93,12 +93,12 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertIn("LEAF_RESULT", skill)
 
     def test_pilotfish_v130_guardrails_are_backend_neutral_and_cross_surface(self) -> None:
-        skill = read(".claude/skills/baton-dispatch/SKILL.md")
-        brief = read(".claude/skills/baton-dispatch/references/briefs-and-stops.md")
+        skill = read(".claude/skills-src/baton-dispatch/SKILL.md")
+        brief = read(".claude/skills-src/baton-dispatch/references/briefs-and-stops.md")
         claude = read(".claude/CLAUDE.contract.md")
         codex = read(".codex/AGENTS.contract.md")
         triggers = read(
-            ".claude/skills/provider-routing/references/verifier-triggers.md"
+            ".claude/skills-src/provider-routing/references/verifier-triggers.md"
         )
 
         codex_dispatch = " ".join(read(".codex/skills/leaf-dispatch/SKILL.md").split())
@@ -127,7 +127,7 @@ class ClaudeContractTests(unittest.TestCase):
             self.assertRegex(text, r"silently (overrule|overriding)")
 
     def test_provider_routing_owns_model_and_fallback_policy(self) -> None:
-        skill = read(".claude/skills/provider-routing/SKILL.md")
+        skill = read(".claude/skills-src/provider-routing/SKILL.md")
         for phrase in (
             "omit invocation-level `model`",
             "H** = Opus/high or Fable/low",
@@ -162,8 +162,8 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertNotIn("--model gpt-5.6-sol", skill)
 
     def test_dispatch_skills_have_non_overlapping_ownership(self) -> None:
-        baton = read(".claude/skills/baton-dispatch/SKILL.md")
-        provider = read(".claude/skills/provider-routing/SKILL.md")
+        baton = read(".claude/skills-src/baton-dispatch/SKILL.md")
+        provider = read(".claude/skills-src/provider-routing/SKILL.md")
         leaf = read(".codex/skills/leaf-dispatch/SKILL.md")
         leaf_flat = " ".join(leaf.split())
 
@@ -580,10 +580,10 @@ class DocumentationBudgetTests(unittest.TestCase):
             # +90 (2026-07-23): record template and QC fraud checklist moved
             # in from the resident contract / provider-routing (net resident
             # payload down; skill is mandatory before every dispatch).
-            ".claude/skills/baton-dispatch/SKILL.md": 980,
+            ".claude/skills-src/baton-dispatch/SKILL.md": 980,
             # QC mechanics and fixed records belong to baton-dispatch; keep
             # provider-routing focused on route, fallback, and eligibility.
-            ".claude/skills/provider-routing/SKILL.md": 1300,
+            ".claude/skills-src/provider-routing/SKILL.md": 1300,
             ".codex/skills/leaf-dispatch/SKILL.md": 720,
         }
         for path, limit in budgets.items():

@@ -274,6 +274,31 @@ class MechanismTests(unittest.TestCase):
             self.assertTrue((ROOT / source).exists(), source)
             self.assertRegex(target, r"^\.(agents|claude|codex)/")
 
+    def test_harness_sources_are_not_discoverable_while_developing(self) -> None:
+        """`main/` is deployment source, never a working environment.
+
+        Claude Code discovers skills from any nested `.claude/skills/` below the
+        working directory, and when the unqualified name is invoked it also
+        loads the directory-qualified variant covering the files being edited.
+        A source tree at `main/.claude/skills/` would therefore be listed twice
+        and loaded twice in every session that edits this repo, competing with
+        the deployed copy it is supposed to produce. Sources live one rename
+        away, at `.claude/skills-src/`, where discovery cannot reach them.
+        """
+        discoverable = sorted(
+            str(path.relative_to(ROOT))
+            for path in (ROOT / "main").rglob("skills")
+            if path.is_dir() and path.parent.name == ".claude"
+        )
+        self.assertEqual(discoverable, [], "discoverable skill sources under main/")
+
+        for source, target, _ in deployment_manifest_entries():
+            if target.startswith(".claude/skills/"):
+                self.assertTrue(
+                    source.startswith("main/.claude/skills-src/"),
+                    f"{source} deploys a Claude skill from a discoverable path",
+                )
+
     def test_sync_rejects_unknown_arguments_and_dry_run_preflights(self) -> None:
         sync = ROOT / "scripts/sync.sh"
         unknown = subprocess.run(
