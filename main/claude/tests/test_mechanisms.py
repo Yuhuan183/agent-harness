@@ -255,6 +255,49 @@ class MechanismTests(unittest.TestCase):
         # Drift is a finding to relay, not a resolver failure.
         self.assertNotIn("alias check failed", result.stdout)
 
+    def test_un_reconciled_dispatches_are_judged_against_the_ledger(self) -> None:
+        """Only a stub the ledger has no record of counts as un-reconciled.
+
+        The check used to read the pending file alone and report every stop
+        older than a day. `experience-log --from-pending` consumes the stub, but
+        logging with explicit flags is equally valid and leaves it behind, so
+        every dispatch logged that way was reported forever — under a message
+        asserting its outcome was "never logged", while the ledger held that
+        exact dispatch id. Acting on it would have duplicated the record.
+
+        A stub with no dispatch id predates the field and cannot be reconciled
+        by the command the finding recommends, so it is not reported either.
+        """
+        hook = ROOT / "main/claude/hooks/weekly-integrity.py"
+        old = "2020-01-01T00:00:00+00:00"  # comfortably past the 24h cutoff
+        with tempfile.TemporaryDirectory() as temp_home:
+            home = Path(temp_home)
+            (home / ".agents/telemetry").mkdir(parents=True)
+            pending = home / ".agents/telemetry/experience-pending.jsonl"
+            ledger = home / ".agents/telemetry/experience.jsonl"
+            stub = {"event": "SubagentStop", "agent_type": "mech-executor", "ts": old}
+            pending.write_text("\n".join(json.dumps(row) for row in [
+                {**stub, "dispatch_id": "sess:logged-explicitly"},
+                {**stub, "dispatch_id": "sess:never-logged"},
+                {**stub},  # pre-migration stub: no dispatch id at all
+            ]) + "\n", encoding="utf-8")
+            ledger.write_text(json.dumps(
+                {"role": "mech-executor", "outcome": "accepted",
+                 "dispatch_id": "sess:logged-explicitly"}) + "\n", encoding="utf-8")
+
+            result = subprocess.run(
+                [sys.executable, str(hook)],
+                env={**os.environ, "HOME": temp_home,
+                     "AGENT_HARNESS_REPO": str(home / "repo")},
+                check=True, capture_output=True, text=True,
+            )
+
+        self.assertIn("sess:never-logged", result.stdout)
+        self.assertNotIn("sess:logged-explicitly", result.stdout)
+        # The id-less stub must not surface as a bare "?" the reader cannot act on.
+        un_reconciled = result.stdout.split("un-reconciled dispatches")[-1]
+        self.assertNotIn("?", un_reconciled)
+
     def test_sync_and_weekly_integrity_share_one_deployment_manifest(self) -> None:
         hook = read(".claude/hooks/weekly-integrity.py")
         sync = read("scripts/sync.sh")

@@ -359,8 +359,17 @@ try:
 
     # Informational: the contract requires logging every dispatch after QC, but
     # nothing else catches a forgotten log. A loggable SubagentStop stub still
-    # sitting in the pending file a day later is an un-reconciled dispatch — its
-    # outcome was never written to the ledger. Best-effort; never blocks throttle.
+    # sitting in the pending file a day later *may* be an un-reconciled dispatch.
+    #
+    # It is only un-reconciled if the ledger has no record for it. The stub is
+    # consumed by `experience-log --from-pending`, but logging with explicit
+    # flags is equally valid and leaves the stub behind, so the pending file
+    # alone cannot answer the question — an earlier version asked it that way
+    # and reported every past dispatch forever, including ones whose outcome was
+    # sitting in the ledger under the same dispatch id. A permanent alarm is
+    # worse than none: it trains the reader to skip the real one.
+    #
+    # Best-effort; never blocks the throttle.
     try:
         import json as _json
         from datetime import datetime, timezone
@@ -368,6 +377,24 @@ try:
             "explore", "mech-executor", "executor", "plan-verifier",
             "verifier", "security-reviewer", "security-executor",
         }
+        ledger_path = os.environ.get(
+            "AGENT_EXPERIENCE_LEDGER",
+            os.path.expanduser("~/.agents/telemetry/experience.jsonl"),
+        )
+        reconciled = set()
+        try:
+            with open(ledger_path, encoding="utf-8") as stream:
+                for raw in stream:
+                    if not raw.strip():
+                        continue
+                    try:
+                        logged = _json.loads(raw)
+                    except _json.JSONDecodeError:
+                        continue
+                    if logged.get("dispatch_id"):
+                        reconciled.add(logged["dispatch_id"])
+        except OSError:
+            pass
         pending_path = os.environ.get(
             "AGENT_EXPERIENCE_PENDING",
             os.path.expanduser("~/.agents/telemetry/experience-pending.jsonl"),
@@ -387,12 +414,19 @@ try:
                     continue
                 if agent_type not in loggable_roles and "codex" not in agent_type:
                     continue
+                # A stub with no dispatch id predates the field and cannot be
+                # reconciled by the command this finding recommends, which
+                # requires `--dispatch-id`. The pending hook now always writes
+                # one, so no new stub can land here.
+                dispatch_id = row.get("dispatch_id")
+                if not dispatch_id or dispatch_id in reconciled:
+                    continue
                 try:
                     ts = datetime.fromisoformat(row["ts"]).timestamp()
                 except (KeyError, ValueError, TypeError):
                     continue
                 if ts < cutoff:
-                    stale.append(row.get("dispatch_id", "?"))
+                    stale.append(dispatch_id)
         if stale:
             findings.append(
                 "un-reconciled dispatches (completed but never logged to the "
