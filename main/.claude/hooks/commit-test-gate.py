@@ -15,7 +15,9 @@ commands pass through untouched. Escape hatch for intentional red commits
 `AGENT_SKIP_TEST_GATE=1 `.
 
 Exit 0 = allow; exit 2 = block, stderr goes back to the model. A suite that
-exceeds its 300 s budget blocks rather than failing open.
+exceeds its 300 s budget blocks rather than failing open. COMMIT_RE also
+matches `git commit` inside quoted text (e.g. echo "git commit"); that only
+runs the suite needlessly, so the fail-closed false positive is accepted.
 """
 
 from __future__ import annotations

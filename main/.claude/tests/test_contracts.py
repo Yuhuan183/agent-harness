@@ -563,7 +563,10 @@ class DocumentationBudgetTests(unittest.TestCase):
             ".claude/CLAUDE.contract.md": 520,
             # Root README owns the complete architecture overview and diagrams;
             # operational/research detail remains linked in docs/.
-            "README.md": 2250,
+            # +30 (2026-07-25): alias generation check added to the mechanisms
+            # table — a new guardrail belongs in that inventory, and the row is
+            # already at the terseness of its neighbours.
+            "README.md": 2280,
             "docs/README.md": 640,
             # +100 (2026-07-23): behavioral trap-eval method section added.
             "docs/harness-engineering.md": 2450,

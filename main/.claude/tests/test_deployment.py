@@ -161,6 +161,38 @@ class MachineStateHygieneTests(unittest.TestCase):
             canonical_test.unlink()
             self.assertEqual(run_hook("git commit -m x", str(repo)).returncode, 0)
 
+    def test_commit_gate_command_prefilters_non_commit_calls(self) -> None:
+        # F-03: the PreToolUse gate command must skip the python interpreter
+        # entirely when the Bash payload carries no "commit" token, so ordinary
+        # commands do not pay a per-call process spawn. A stub hook drops a
+        # marker whenever it actually runs.
+        settings = json.loads(read(".claude/settings.json"))
+        pre = [h["command"] for g in settings["hooks"]["PreToolUse"] for h in g["hooks"]]
+        command = next(c for c in pre if "commit-test-gate.py" in c)
+        with tempfile.TemporaryDirectory() as temp_home:
+            hooks_dir = Path(temp_home) / ".claude" / "hooks"
+            hooks_dir.mkdir(parents=True)
+            marker = Path(temp_home) / "ran"
+            (hooks_dir / "commit-test-gate.py").write_text(
+                "import pathlib, sys\n"
+                f"pathlib.Path({str(marker)!r}).write_text('x')\n"
+                "cmd = __import__('json').load(sys.stdin)['tool_input']['command']\n"
+                "sys.exit(2 if 'commit' in cmd else 0)\n",
+                encoding="utf-8",
+            )
+            env = {**os.environ, "HOME": temp_home}
+
+            def run_gate(command_text: str) -> subprocess.CompletedProcess[str]:
+                payload = json.dumps({"tool_input": {"command": command_text}})
+                return subprocess.run(["sh", "-c", command], input=payload,
+                                      capture_output=True, text=True, env=env)
+
+            # Non-commit: exits 0 and never spawns the interpreter.
+            self.assertEqual(run_gate("ls -la").returncode, 0)
+            self.assertFalse(marker.exists())
+            # Commit: the gate runs and its exit code propagates.
+            self.assertEqual(run_gate("git commit -m x").returncode, 2)
+            self.assertTrue(marker.exists())
 
 
 if __name__ == '__main__':

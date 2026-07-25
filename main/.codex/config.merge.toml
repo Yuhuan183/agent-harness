@@ -7,7 +7,7 @@ max_depth = 1
 interrupt_message = true
 
 [agents.verifier]
-description = "Fresh-context adversarial verification for explicit high-risk triggers."
+description = "Fresh-context, read-only adversarial verification for security or high-impact boundaries, non-mechanical integration claims, adversarial state behavior, or conflicting evidence."
 config_file = "./agents/verifier.toml"
 
 [agents.explore]

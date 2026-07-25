@@ -10,11 +10,14 @@ per-dispatch overrides; `activate-profile` updates every leaf pin together."""
 from __future__ import annotations
 
 import argparse
+import importlib.machinery
+import importlib.util
 import json
 import os
 import re
 import sys
 import tempfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 if sys.version_info < (3, 11):  # routing_core needs stdlib tomllib (3.11+)
@@ -45,13 +48,22 @@ LEAF_ROLES = {
 }
 REQUIRED_ROLES = LEAF_ROLES | {"main"}
 EFFORTS = {"low", "medium", "high", "xhigh"}
+# Frontmatter pins name a tier alias and the CLI resolves it to whatever the
+# current generation of that tier is; this repo never sends a concrete id to an
+# API. The map below is therefore an *assertion* about the CLI's choice, kept
+# only so routes and the experience ledger can name a generation. Nothing here
+# makes the assertion true — `check-aliases` is what tests it against the
+# concrete ids that actually appear in leaf transcripts.
 MODEL_ALIASES = {
     "haiku": "claude-haiku-4-5",
     "sonnet": "claude-sonnet-5",
-    "opus": "claude-opus-4-8",
+    "opus": "claude-opus-5",
     "fable": "claude-fable-5",
 }
 MODEL_NAMES = {model: alias for alias, model in MODEL_ALIASES.items()}
+TIER_PATTERN = re.compile(r"\Aclaude-(opus|sonnet|haiku|fable)(?:-|\Z)")
+USAGE_REPORT = Path(__file__).resolve().parent / "usage-report"
+TRANSCRIPT_ROOT = Path("~/.claude/projects").expanduser()
 AVAILABILITY_SCHEMA = {
     "subscription": {"documented", "unverified"},
     "main_selector": {"configured", "unverified"},
@@ -267,6 +279,110 @@ def command_check_pins(
     return 0
 
 
+def model_tier(model: str) -> str | None:
+    """Return the tier alias a concrete model id belongs to, if recognizable."""
+    match = TIER_PATTERN.match(model)
+    return match.group(1) if match else None
+
+
+def is_same_generation(observed: str, declared: str) -> bool:
+    """True when an observed id is the declared model or a dated snapshot of it.
+
+    The CLI reports `claude-haiku-4-5-20251001` where the config declares the
+    undated `claude-haiku-4-5`. That is one model, not drift. A different
+    generation (`claude-opus-4-8` vs `claude-opus-5`) is drift, and so is a
+    point release, which is why only a trailing 8-digit date is absorbed.
+    """
+    return observed == declared or bool(
+        re.fullmatch(re.escape(declared) + r"-\d{8}", observed)
+    )
+
+
+def load_usage_module():
+    """Import the sibling transcript reader, which has no .py suffix."""
+    try:
+        loader = importlib.machinery.SourceFileLoader(
+            "usage_report", str(USAGE_REPORT)
+        )
+        spec = importlib.util.spec_from_loader("usage_report", loader)
+        module = importlib.util.module_from_spec(spec)
+        # `usage-report` defines a dataclass, and @dataclass resolves the
+        # defining module through sys.modules — register before exec, not after.
+        sys.modules["usage_report"] = module
+        loader.exec_module(module)
+    except (OSError, SyntaxError, ValueError):
+        sys.modules.pop("usage_report", None)
+        return None
+    return module
+
+
+def command_check_aliases(config: dict, root: Path, max_days: float) -> int:
+    """Test the alias->generation assertion against what leaf runs actually used.
+
+    A frontmatter pin buys whatever the CLI currently calls `opus`. When that
+    moves and this config does not, nothing breaks loudly — but `experience-log`
+    seeds the ledger's model field from the route, so every dispatch is filed
+    under a generation that did not run. Only observations after `as_of` count:
+    the config claims to be current as of that date, so older transcripts are
+    history, and the check clears itself once a stale generation ages out.
+    """
+    as_of = config.get("as_of")
+    try:
+        cutoff = datetime.strptime(str(as_of), "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        print(f"ERROR: as_of must be YYYY-MM-DD, got {as_of!r}", file=sys.stderr)
+        return 2
+    # as_of only recedes, so an uncapped window would scan every transcript
+    # ever written from a hook with a 15s budget. Any run inside the cap that
+    # contradicts the declared generation is still drift, so the cap costs no
+    # detection — it only bounds the scan.
+    cutoff = max(cutoff, datetime.now(timezone.utc) - timedelta(days=max_days))
+    usage = load_usage_module()
+    if usage is None:
+        print(f"ERROR: transcript reader unavailable at {USAGE_REPORT}; "
+              "alias observation check not run", file=sys.stderr)
+        return 2
+
+    routed = {}
+    for profile in config.get("profiles", {}).values():
+        for route in profile.get("roles", {}).values():
+            alias = MODEL_NAMES.get(route.get("model"))
+            if alias is not None:
+                routed[alias] = MODEL_ALIASES[alias]
+
+    observed: dict[str, int] = {}
+    for event in usage.load_events(root, cutoff):
+        if event.source == "subagent":
+            observed[event.model] = observed.get(event.model, 0) + 1
+
+    problems: list[str] = []
+    confirmed: list[str] = []
+    for model, turns in sorted(observed.items()):
+        declared = routed.get(model_tier(model) or "")
+        if declared is None:
+            continue  # tier is not pinned by any profile here
+        if is_same_generation(model, declared):
+            confirmed.append(f"{MODEL_NAMES[declared]}={model} ({turns} turns)")
+        else:
+            problems.append(
+                f"{MODEL_NAMES[declared]}: config declares {declared}, but leaf "
+                f"transcripts since {as_of} ran {model} ({turns} turns). The CLI "
+                f"alias moved generation — update MODEL_ALIASES and the models "
+                f"table, or the ledger keeps filing these runs under {declared}"
+            )
+    if problems:
+        for problem in problems:
+            print(f"DRIFT: {problem}", file=sys.stderr)
+        return 1
+    if not confirmed:
+        print(f"alias map unverified: no leaf transcripts since as_of {as_of}; "
+              f"{len(routed)} routed tiers await first observation")
+        return 0
+    print(f"alias map matches leaf transcripts since {as_of}: "
+          + ", ".join(confirmed))
+    return 0
+
+
 def replace_frontmatter_pin(text: str, model: str, effort: str) -> str:
     """Return agent Markdown with only model/effort frontmatter changed."""
     match = re.match(r"\A---\n(.*?)\n---\n", text, re.DOTALL)
@@ -418,6 +534,12 @@ def parse_args() -> argparse.Namespace:
     check_source = check_parser.add_mutually_exclusive_group()
     check_source.add_argument("--profile")
     check_source.add_argument("--priority", choices=core.PRIORITY_CHOICES)
+    alias_parser = subparsers.add_parser(
+        "check-aliases",
+        help="test the alias->generation assertion against leaf transcripts",
+    )
+    alias_parser.add_argument("--root", type=Path, default=TRANSCRIPT_ROOT)
+    alias_parser.add_argument("--max-days", type=float, default=30)
     activate = subparsers.add_parser(
         "activate-profile",
         help="transactionally apply one Claude deployment preset to every leaf pin",
@@ -444,6 +566,8 @@ def main() -> int:
         return command_validate(config)
     if args.command == "list":
         return command_list(config, args.json)
+    if args.command == "check-aliases":
+        return command_check_aliases(config, args.root, args.max_days)
     if args.command == "check-pins":
         return command_check_pins(config, args.agents_dir, args.profile, args.priority)
     if args.command == "activate-profile":

@@ -164,11 +164,12 @@ try:
                 for check_src, check_deployed, check_target_rel in checks:
                     if os.path.isdir(check_src):
                         r = subprocess.run(
-                            ["rsync", "-a", "--links", "--delete", "--delete-excluded",
+                            ["rsync", "-a", "--checksum", "--links", "--delete",
+                             "--delete-excluded",
                              "--exclude", "__pycache__/", "--exclude", "*.pyc",
                              "--exclude", ".DS_Store", "-n", "--itemize-changes",
                              check_src, os.path.dirname(check_deployed) + "/"],
-                            capture_output=True, text=True, timeout=10,
+                            capture_output=True, text=True, timeout=30,
                         )
                     else:
                         same = subprocess.run(
@@ -254,6 +255,35 @@ try:
         checks_completed = False
         findings.append(f"model-routing check failed: {exc}")
 
+    # A frontmatter pin buys whatever the CLI currently calls `opus`; the config
+    # only asserts which generation that is. experience-log seeds the ledger's
+    # model field from the route, so an unnoticed generation move files every
+    # dispatch under a model that never ran. Nothing else catches that.
+    try:
+        # A missing resolver is already a finding from the pin-drift block
+        # above, which also withheld the stamp; do not report it twice.
+        if os.access(routing_script, os.X_OK):
+            aliases = subprocess.run(
+                [routing_script, "check-aliases"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if aliases.returncode == 1:
+                findings.append(
+                    "model-routing alias drift:\n"
+                    + (aliases.stderr or aliases.stdout).rstrip()
+                )
+            elif aliases.returncode != 0:
+                checks_completed = False
+                detail = (aliases.stderr or aliases.stdout).rstrip()
+                findings.append(
+                    f"model-routing alias check failed (exit {aliases.returncode}):\n{detail}"
+                )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        checks_completed = False
+        findings.append(f"model-routing alias check failed: {exc}")
+
     codex_routing = os.path.expanduser("~/.codex/scripts/model-routing")
     try:
         if not os.access(codex_routing, os.X_OK):
@@ -297,6 +327,51 @@ try:
                 "log the next comparable dispatch after quality-check"
             )
     except (OSError, subprocess.TimeoutExpired):
+        pass
+
+    # Informational: the contract requires logging every dispatch after QC, but
+    # nothing else catches a forgotten log. A loggable SubagentStop stub still
+    # sitting in the pending file a day later is an un-reconciled dispatch — its
+    # outcome was never written to the ledger. Best-effort; never blocks throttle.
+    try:
+        import json as _json
+        from datetime import datetime, timezone
+        loggable_roles = {
+            "explore", "mech-executor", "executor", "plan-verifier",
+            "verifier", "security-reviewer", "security-executor",
+        }
+        pending_path = os.environ.get(
+            "AGENT_EXPERIENCE_PENDING",
+            os.path.expanduser("~/.agents/telemetry/experience-pending.jsonl"),
+        )
+        cutoff = datetime.now(timezone.utc).timestamp() - 86400
+        stale = []
+        with open(pending_path, encoding="utf-8") as stream:
+            for raw in stream:
+                if not raw.strip():
+                    continue
+                try:
+                    row = _json.loads(raw)
+                except _json.JSONDecodeError:
+                    continue
+                agent_type = row.get("agent_type") or ""
+                if row.get("event") != "SubagentStop":
+                    continue
+                if agent_type not in loggable_roles and "codex" not in agent_type:
+                    continue
+                try:
+                    ts = datetime.fromisoformat(row["ts"]).timestamp()
+                except (KeyError, ValueError, TypeError):
+                    continue
+                if ts < cutoff:
+                    stale.append(row.get("dispatch_id", "?"))
+        if stale:
+            findings.append(
+                "un-reconciled dispatches (completed but never logged to the "
+                "experience ledger; log with experience-log --from-pending "
+                "--dispatch-id <id> --outcome <o>):\n" + "\n".join(stale)
+            )
+    except OSError:
         pass
 
     if checks_completed:

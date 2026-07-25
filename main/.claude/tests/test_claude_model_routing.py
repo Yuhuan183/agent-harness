@@ -32,12 +32,12 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         route = json.loads(result.stdout)
         self.assertEqual(route["profile"], "balanced")
         self.assertEqual(route["application"], "frontmatter_pin")
-        self.assertEqual(route["model"], "claude-opus-4-8")
+        self.assertEqual(route["model"], "claude-opus-5")
         self.assertEqual(route["effort"], "medium")
         self.assertEqual(route["invocation"]["effort_delivery"], "frontmatter_pin")
 
         verifier = json.loads(run("resolve", "--role", "verifier").stdout)
-        self.assertEqual(verifier["model"], "claude-opus-4-8")
+        self.assertEqual(verifier["model"], "claude-opus-5")
         self.assertEqual(verifier["effort"], "high")
         self.assertEqual(verifier["invocation"]["effort_delivery"], "frontmatter_pin")
         fast_verifier = json.loads(
@@ -130,6 +130,71 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
             for path in AGENTS_DIR.glob("*.md")
         })
 
+    def _transcript_root(self, temp_dir: str, model: str, timestamp: str) -> str:
+        subagents = Path(temp_dir) / "project" / "subagents"
+        subagents.mkdir(parents=True, exist_ok=True)
+        (subagents / "session.jsonl").write_text(
+            json.dumps({
+                "type": "assistant", "timestamp": timestamp,
+                "message": {"model": model, "usage": {"output_tokens": 1}},
+            }) + "\n",
+            encoding="utf-8",
+        )
+        return temp_dir
+
+    def test_check_aliases_catches_a_cli_generation_move(self) -> None:
+        # A frontmatter pin buys whatever the CLI calls `opus` today; the config
+        # only asserts which generation that is, and `experience-log` copies
+        # that assertion into the ledger. Behavioral proof with a planted stale
+        # generation — an unfalsifiable assertion is not a check.
+        after = "2026-07-26T00:00:00Z"
+
+        def check(model: str, timestamp: str = after) -> subprocess.CompletedProcess:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                root = self._transcript_root(temp_dir, model, timestamp)
+                return run("check-aliases", "--root", root)
+
+        drifted = check("claude-opus-4-8")
+        self.assertEqual(drifted.returncode, 1)
+        self.assertIn("alias moved generation", drifted.stderr)
+        self.assertIn("claude-opus-4-8", drifted.stderr)
+
+        # A point release is a different model, not a snapshot of the declared one.
+        point_release = check("claude-opus-5-1")
+        self.assertEqual(point_release.returncode, 1)
+
+        # The declared generation, and its dated snapshot form, both pass: the
+        # CLI reports `claude-haiku-4-5-20251001` where configs say `claude-haiku-4-5`.
+        current = check("claude-opus-5")
+        self.assertEqual(current.returncode, 0, current.stderr)
+        self.assertIn("opus=claude-opus-5", current.stdout)
+        self.assertEqual(check("claude-sonnet-5-20260101").returncode, 0)
+
+        # Runs predating as_of are history, so the check clears itself once a
+        # superseded generation ages out instead of alarming forever.
+        self.assertEqual(check("claude-opus-4-8", "2026-07-01T00:00:00Z").returncode, 0)
+
+        # An unrouted tier is not this config's claim to make.
+        self.assertEqual(check("claude-haiku-4-5-20251001").returncode, 0)
+
+    def test_check_aliases_ignores_main_session_transcripts(self) -> None:
+        # Only leaf runs are pinned by this config; the user owns the main
+        # session's model, so a Fable or older-Opus main session is not drift.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            main_dir = Path(temp_dir) / "project"
+            main_dir.mkdir(parents=True)
+            (main_dir / "session.jsonl").write_text(
+                json.dumps({
+                    "type": "assistant", "timestamp": "2026-07-26T00:00:00Z",
+                    "message": {"model": "claude-opus-4-8",
+                                "usage": {"output_tokens": 1}},
+                }) + "\n",
+                encoding="utf-8",
+            )
+            result = run("check-aliases", "--root", temp_dir)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("unverified", result.stdout)
+
     def test_revision_policy_is_required(self) -> None:
         original = (ROOT / "main/.claude/model-routing.toml").read_text(encoding="utf-8")
         invalid = original.replace("min_samples = 10\n", "", 1)
@@ -153,13 +218,13 @@ class ExperienceReviseTests(unittest.TestCase):
             # current executor route performs poorly...
             rows += [{"ts": "2026-07-20T00:00:00+00:00", "schema": 3,
                       "role": "executor", "profile": "balanced",
-                      "provider": "claude", "model": "claude-opus-4-8",
+                      "provider": "claude", "model": "claude-opus-5",
                       "effort": "medium", "task_class": "impl",
                       "request_source": "claude-code", "outcome": "failed"}] * 10
             # ...opus/high (meets the judgment floor) performs well...
             rows += [{"ts": "2026-07-20T00:00:00+00:00", "schema": 3,
                       "role": "executor", "profile": "balanced",
-                      "provider": "claude", "model": "claude-opus-4-8",
+                      "provider": "claude", "model": "claude-opus-5",
                       "effort": "high", "task_class": "impl",
                       "request_source": "claude-code", "outcome": "accepted"}] * 10
             # ...and sonnet/low also performs well but falls below the floor.
@@ -181,7 +246,7 @@ class ExperienceReviseTests(unittest.TestCase):
             executor_line = next(l for l in result.stdout.splitlines()
                                  if l.startswith("claude executor"))
             self.assertIn("consider", executor_line)
-            self.assertIn("claude-opus-4-8/high", executor_line)
+            self.assertIn("claude-opus-5/high", executor_line)
             self.assertNotIn("claude-sonnet-5/low", executor_line)
             self.assertIn("suggestions are cohort-local", result.stdout)
 
@@ -210,14 +275,14 @@ class ExperienceReviseTests(unittest.TestCase):
                 rows += [{
                     "ts": "2026-07-20T00:00:00+00:00", "schema": 3,
                     "role": "executor", "profile": profile,
-                    "provider": "claude", "model": "claude-opus-4-8",
+                    "provider": "claude", "model": "claude-opus-5",
                     "effort": "medium", "task_class": "impl",
                     "request_source": "claude-code", "outcome": "failed",
                 }] * 5
             rows += [{
                 "ts": "2026-07-20T00:00:00+00:00", "schema": 3,
                 "role": "executor", "profile": "balanced",
-                "provider": "claude", "model": "claude-opus-4-8",
+                "provider": "claude", "model": "claude-opus-5",
                 "effort": "high", "task_class": "impl",
                 "request_source": "claude-code", "outcome": "accepted",
             }] * 10

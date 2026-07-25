@@ -40,6 +40,41 @@ class MechanismTests(unittest.TestCase):
         self.assertEqual(current.stdout, "")
         self.assertIn("version unknown", unknown.stdout)
 
+    def test_runtime_guard_cache_invalidates_on_same_second_binary_swap(self) -> None:
+        # A same-second in-place upgrade changes size but not integer mtime;
+        # the fingerprint (mtime_ns + size) must still re-probe (G-01).
+        import importlib.util
+        guard = ROOT / "main/.claude/hooks/runtime-guard.py"
+        with tempfile.TemporaryDirectory() as tmp:
+            binp = Path(tmp) / "claude"
+
+            def write_bin(ver: str) -> None:
+                binp.write_text(f'#!/bin/sh\necho "{ver} (Claude Code)"\n')
+                binp.chmod(0o755)
+
+            write_bin("2.1.100")
+            spec = importlib.util.spec_from_file_location("rg_probe", guard)
+            rg = importlib.util.module_from_spec(spec)
+            old_argv = sys.argv
+            sys.argv = ["rg_probe"]
+            try:
+                spec.loader.exec_module(rg)
+            except SystemExit:
+                pass
+            finally:
+                sys.argv = old_argv
+            rg.CACHE = str(Path(tmp) / "cache")
+            env_path = os.environ["PATH"]
+            os.environ["PATH"] = tmp + os.pathsep + env_path
+            try:
+                first = rg.probe_version()
+                write_bin("2.1.9999")  # longer string -> different size, same second
+                second = rg.probe_version()
+            finally:
+                os.environ["PATH"] = env_path
+            self.assertIn("2.1.100", first)
+            self.assertIn("2.1.9999", second)
+
     def test_runtime_guard_gate_blocks_restricted_dispatch(self) -> None:
         guard = ROOT / "main/.claude/hooks/runtime-guard.py"
 
@@ -50,10 +85,17 @@ class MechanismTests(unittest.TestCase):
             )
 
         restricted = '{"tool_name": "Agent", "tool_input": {"subagent_type": "plan-verifier"}}'
+        # verifier's no-write boundary rides the same runtime enforcement
+        # (harness-review F-01).
+        verifier = '{"tool_name": "Agent", "tool_input": {"subagent_type": "verifier"}}'
         unrestricted = '{"tool_name": "Agent", "tool_input": {"subagent_type": "executor"}}'
         blocked = run_gate("2.1.197 (Claude Code)", restricted)
         self.assertEqual(blocked.returncode, 2)
         self.assertIn("blocked plan-verifier dispatch", blocked.stderr)
+        blocked_verifier = run_gate("2.1.197 (Claude Code)", verifier)
+        self.assertEqual(blocked_verifier.returncode, 2)
+        self.assertIn("blocked verifier dispatch", blocked_verifier.stderr)
+        self.assertEqual(run_gate("2.1.207 (Claude Code)", verifier).returncode, 0)
         unknown = run_gate("development build", restricted)
         self.assertEqual(unknown.returncode, 2)
         # Fail-open paths: supported version, unrestricted role, malformed stdin.
@@ -137,10 +179,32 @@ class MechanismTests(unittest.TestCase):
             # ~/.claude as a git checkout keeps the original git-status path.
             subprocess.run(["git", "init", str(claude_dir)], check=True,
                            capture_output=True, text=True)
+            # A loggable SubagentStop stub older than a day is an un-reconciled
+            # dispatch (completed, never logged); a fresh one is still in flight
+            # and must not be flagged (harness-review G-03).
+            from datetime import datetime, timezone, timedelta
+            now = datetime.now(timezone.utc)
+            pending = Path(temp_home) / ".agents" / "telemetry" / "experience-pending.jsonl"
+            pending.parent.mkdir(parents=True, exist_ok=True)
+            stale_ts = (now - timedelta(days=2)).isoformat(timespec="seconds")
+            fresh_ts = now.isoformat(timespec="seconds")
+            pending.write_text(
+                json.dumps({"ts": stale_ts, "event": "SubagentStop",
+                            "agent_type": "verifier", "agent_id": "x1",
+                            "session_id": "s1", "dispatch_id": "s1:x1"}) + "\n"
+                + json.dumps({"ts": fresh_ts, "event": "SubagentStop",
+                              "agent_type": "executor", "agent_id": "y1",
+                              "session_id": "s2", "dispatch_id": "s2:y1"}) + "\n",
+                encoding="utf-8",
+            )
             completed = subprocess.run([sys.executable, str(hook)], env=env,
                                        check=True, capture_output=True, text=True)
             self.assertNotIn("check failed", completed.stdout)
+            self.assertIn("un-reconciled dispatches", completed.stdout)
+            self.assertIn("s1:x1", completed.stdout)
+            self.assertNotIn("s2:y1", completed.stdout)
             self.assertTrue(stamp.exists())
+            pending.unlink()
 
             # A git-managed ~/.claude answers drift only for the .claude
             # targets; .codex/.agents manifest parity must still run and catch
@@ -163,6 +227,33 @@ class MechanismTests(unittest.TestCase):
             self.assertIn(".codex/AGENTS.md", git_managed_drift.stdout)
             self.assertNotIn("check failed", git_managed_drift.stdout)
             self.assertTrue(stamp.exists())
+
+    def test_weekly_integrity_surfaces_model_alias_drift(self) -> None:
+        # The alias->generation assertion is only worth making if something
+        # runs it unprompted: a CLI generation move is silent, and every
+        # dispatch logged in the meantime names a model that never ran.
+        hook = ROOT / "main/.claude/hooks/weekly-integrity.py"
+        with tempfile.TemporaryDirectory() as temp_home:
+            scripts_dir = Path(temp_home) / ".claude" / "scripts"
+            scripts_dir.mkdir(parents=True)
+            routing = scripts_dir / "model-routing"
+            routing.write_text(
+                "#!/bin/sh\n"
+                "case \"$1\" in\n"
+                "  check-aliases) echo 'DRIFT: opus: alias moved generation' >&2; exit 1;;\n"
+                "  *) exit 0;;\n"
+                "esac\n",
+                encoding="utf-8",
+            )
+            routing.chmod(0o755)
+            env = {**os.environ, "HOME": temp_home,
+                   "AGENT_HARNESS_REPO": str(Path(temp_home) / "repo")}
+            result = subprocess.run([sys.executable, str(hook)], env=env,
+                                    check=True, capture_output=True, text=True)
+        self.assertIn("model-routing alias drift", result.stdout)
+        self.assertIn("alias moved generation", result.stdout)
+        # Drift is a finding to relay, not a resolver failure.
+        self.assertNotIn("alias check failed", result.stdout)
 
     def test_sync_and_weekly_integrity_share_one_deployment_manifest(self) -> None:
         hook = read(".claude/hooks/weekly-integrity.py")
@@ -403,7 +494,7 @@ class MechanismTests(unittest.TestCase):
             main.write_text(record("2026-07-15T00:00:00Z", "claude-sonnet-5", 10) + "\n"
                             + record("2026-07-15T04:30:00Z", "claude-sonnet-5", 20) + "\n",
                             encoding="utf-8")
-            subagent.write_text(record("2026-07-15T02:00:00Z", "claude-opus-4-8", 30) + "\n",
+            subagent.write_text(record("2026-07-15T02:00:00Z", "claude-opus-5", 30) + "\n",
                                 encoding="utf-8")
             observer.write_text(record("2026-07-15T08:00:00Z", "claude-sonnet-4-5", 40) + "\n",
                                 encoding="utf-8")
@@ -414,7 +505,7 @@ class MechanismTests(unittest.TestCase):
                 check=True, capture_output=True, text=True)
             report = json.loads(result.stdout)
         self.assertEqual(report["by_source_model"]["main"]["claude-sonnet-5"]["turns"], 2)
-        self.assertEqual(report["by_source_model"]["subagent"]["claude-opus-4-8"]["turns"], 1)
+        self.assertEqual(report["by_source_model"]["subagent"]["claude-opus-5"]["turns"], 1)
         self.assertEqual(report["by_source_model"]["observer"]["claude-sonnet-4-5"]["turns"], 1)
         self.assertEqual(report["peak_rolling_window"]["turns"], 3)
 
@@ -430,7 +521,7 @@ class MechanismTests(unittest.TestCase):
                 return json.dumps({
                     "type": "assistant",
                     "timestamp": timestamp,
-                    "message": {"model": "claude-opus-4-8", "usage": {
+                    "message": {"model": "claude-opus-5", "usage": {
                         "input_tokens": 1, "output_tokens": 1,
                         "cache_creation_input_tokens": 1, "cache_read_input_tokens": cache_read,
                     }},

@@ -1,11 +1,12 @@
 version = 1
-as_of = "2026-07-22"
+as_of = "2026-07-25"
 benchmark = "Artificial Analysis Intelligence Index v4.1"
 metric_scope = "English text benchmark prior; not local coding-agent success rate"
 availability_scope = "Per-surface status; benchmark data is retained even when a dispatch override is unverified"
 availability_semantics = "configured means router-permitted, not necessarily smoke-tested; evidence records verification level"
 evidence_caveat = "AA publishes only single-configuration (adaptive reasoning, max effort) aggregates for Claude models; the only per-effort curve on file is BrowseComp agentic search (community-shared chart, 2026-07) - a direction prior, not a coding success rate. Scores are priors for model ranking, not effort selection. Effort choices below are user-directed deployment presets pending comparable local data; revision_policy requires n>=10 per role/task_class route cell."
-effort_curve_prior = "BrowseComp pass-rate/cost per effort (2026-07): Sonnet 5 leaves the Pareto frontier at high (~64.8% @ ~$6.8 vs Opus med ~68.8% @ ~$6.2 and Opus high ~69.9% @ ~$6.6); sonnet/low and sonnet/medium remain on the frontier. Cross-checked by AA max-effort telemetry: Sonnet 69k output tokens/task (56k reasoning) vs Opus 41k, with lower score at higher measured eval cost."
+effort_curve_prior = "BrowseComp pass-rate/cost per effort (2026-07): Sonnet 5 leaves the Pareto frontier at high (~64.8% @ ~$6.8 vs Opus med ~68.8% @ ~$6.2 and Opus high ~69.9% @ ~$6.6); sonnet/low and sonnet/medium remain on the frontier. Cross-checked by AA max-effort telemetry: Sonnet 69k output tokens/task (56k reasoning) vs Opus 41k, with lower score at higher measured eval cost. Scope: the Opus arm of this curve was measured on claude-opus-4-8. It is carried forward as a direction prior for the Opus tier after the 2026-07-25 generational move to claude-opus-5; it is not evidence about Opus 5 itself."
+generation_note = "2026-07-25: the opus frontmatter alias resolves to claude-opus-5. Opus 5 is reported to reach Fable-5-class efficiency, which is why no role was demoted to buy back cost; leaf pins are unchanged in shape and only the underlying Opus generation moved. Sonnet support pins are deliberately untouched - no local sample compares Opus 5 against them, and revision_policy requires n>=10 per role/task_class cell before a route moves on evidence."
 
 [selection]
 default = "balanced"
@@ -41,16 +42,29 @@ output_tokens_per_sec = 68.3
 total_eval_cost_usd = 5630.52
 eval_output_tokens = 87000000
 
+[models."claude-opus-5"]
+source = "https://artificialanalysis.ai/models/claude-opus-5"
+
+[models."claude-opus-5".availability]
+subscription = "documented"
+main_selector = "configured"
+role_frontmatter_override = "configured"
+
+[models."claude-opus-5".evidence]
+role_frontmatter = "the opus alias resolves here from 2026-07-25; active pins are defined by selection.default and verified by check-pins. Smoke-test history (plan-verifier/verifier/security-*/executor) was accumulated on the predecessor claude-opus-4-8 and does not transfer as evidence about this generation."
+aggregate_status = "No AA Intelligence Index aggregate published for Opus 5 as of 2026-07-25. The predecessor's figures were deliberately not carried forward - an unmeasured model gets no borrowed score."
+
 [models."claude-opus-4-8"]
 source = "https://artificialanalysis.ai/models/claude-opus-4-8"
 
 [models."claude-opus-4-8".availability]
 subscription = "documented"
 main_selector = "configured"
-role_frontmatter_override = "configured"
+role_frontmatter_override = "not_routed"
 
 [models."claude-opus-4-8".evidence]
-role_frontmatter = "smoke-tested in named roles: plan-verifier/verifier/security-* used the opus alias; active pins are defined by selection.default and verified by check-pins"
+main_selector = "still selectable and in recent use as a main-session model; superseding it for leaf pins does not withdraw it from the session selector"
+role_frontmatter = "superseded by claude-opus-5 on 2026-07-25: no profile routes it to a leaf role. Retained as the benchmark row the effort_curve_prior and the 2026-07-23 executor calibration were actually measured on"
 
 [models."claude-opus-4-8".aggregate]
 score_max_effort = 56
@@ -105,9 +119,9 @@ security-reviewer = "critical"
 security-executor = "critical"
 
 [quality_floor.allowed]
-support = ["claude-sonnet-5/low", "claude-sonnet-5/medium", "claude-opus-4-8/low"]
-judgment = ["claude-sonnet-5/medium", "claude-opus-4-8/low", "claude-opus-4-8/medium", "claude-opus-4-8/high", "claude-fable-5/medium", "claude-fable-5/high", "claude-fable-5/xhigh"]
-critical = ["claude-opus-4-8/medium", "claude-opus-4-8/high"]
+support = ["claude-sonnet-5/low", "claude-sonnet-5/medium", "claude-opus-5/low"]
+judgment = ["claude-sonnet-5/medium", "claude-opus-5/low", "claude-opus-5/medium", "claude-opus-5/high", "claude-fable-5/medium", "claude-fable-5/high", "claude-fable-5/xhigh"]
+critical = ["claude-opus-5/medium", "claude-opus-5/high"]
 
 [quality_floor.notes]
 judgment_fable = "Fable routes in the judgment tier apply to the main session only (H/X profiles); named roles stay on Opus."
@@ -134,27 +148,27 @@ effort = "medium"
 reason = "User-directed: medium effort raises pattern fidelity on mechanical work."
 
 [profiles.balanced.roles.executor]
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 effort = "medium"
 reason = "User-directed 2026-07-23: sonnet/high left the effort-curve Pareto frontier (BrowseComp prior + AA reasoning-token telemetry); opus/medium is cheaper and stronger there. Escalate to high on the pin's first quality miss."
 
 [profiles.balanced.roles.plan-verifier]
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 effort = "medium"
 reason = "User-directed: Opus/medium default challenge depth; quality_guarded restores high."
 
 [profiles.balanced.roles.verifier]
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 effort = "high"
 reason = "Independent adversarial verification keeps a high reasoning floor by default."
 
 [profiles.balanced.roles.security-reviewer]
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 effort = "high"
 reason = "Security review is a trust-boundary task."
 
 [profiles.balanced.roles.security-executor]
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 effort = "high"
 reason = "Security implementation preserves the approved high-reasoning floor."
 
@@ -172,27 +186,27 @@ effort = "low"
 reason = "Low effort is the fast route when the spec is complete; promote to medium on first correction."
 
 [profiles.fast.roles.executor]
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 effort = "low"
 reason = "User-directed: Opus capability at low effort trades reasoning depth for wall-clock."
 
 [profiles.fast.roles.plan-verifier]
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 effort = "medium"
 reason = "User-directed: medium challenge depth under time pressure."
 
 [profiles.fast.roles.verifier]
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 effort = "medium"
 reason = "User-directed: medium keeps the gate independent while shortening verification wall-clock."
 
 [profiles.fast.roles.security-reviewer]
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 effort = "high"
 reason = "Speed preference does not lower security review depth."
 
 [profiles.fast.roles.security-executor]
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 effort = "high"
 reason = "Speed preference does not lower security implementation depth."
 
@@ -215,27 +229,27 @@ effort = "medium"
 reason = "A complete specification and stop-on-exception contract provide the quality guard."
 
 [profiles.quality_guarded.roles.executor]
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 effort = "high"
 reason = "User-directed 2026-07-23: opus/high is a cheap upgrade over medium on the effort curve and keeps the fast/balanced/quality_guarded executor ladder monotone (low/medium/high)."
 
 [profiles.quality_guarded.roles.plan-verifier]
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 effort = "high"
 reason = "Material plans receive adversarial high-effort review."
 
 [profiles.quality_guarded.roles.verifier]
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 effort = "high"
 reason = "Independent verification remains high effort."
 
 [profiles.quality_guarded.roles.security-reviewer]
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 effort = "high"
 reason = "Security review remains high effort."
 
 [profiles.quality_guarded.roles.security-executor]
-model = "claude-opus-4-8"
+model = "claude-opus-5"
 effort = "high"
 reason = "Security implementation remains high effort."
 

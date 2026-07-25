@@ -258,6 +258,45 @@ benchmark、出處為社群轉貼；本地 executor cohort 尚無 n≥10 product
 的整行漏發不同型，屬機率性殘餘，僅記錄。opus/medium 檔位由此取得第一批 gate 遵循資料
 （INTENT 5/6、TWINS 6/6、AUTH 6/6）。
 
+## Opus 世代升級：4.8 → Opus 5（2026-07-25）
+
+**已套用（user-directed）**：`opus` frontmatter alias 由 `claude-opus-4-8` 改指
+`claude-opus-5`，五個 Opus pin（`executor`、`plan-verifier`、`verifier`、
+`security-reviewer`、`security-executor`）整體換代，effort 階梯一格未動。理由是使用者
+指出 Opus 5 的整理能效已堪比 Fable 5——換代不帶成本壓力，因此不需要靠降檔把成本買回來。
+
+**刻意沒做的事，以及為什麼**：
+
+1. **沒有把 Opus 4.8 的分數搬給 Opus 5。** AA 至今（2026-07-25）沒有 Opus 5 的
+   Intelligence Index aggregate。`models."claude-opus-5"` 只留 `aggregate_status`
+   說明無published 數據；4.8 的 row 保留在 config 內、標為 `not_routed`，讓
+   `effort_curve_prior` 與 2026-07-23 的 executor 校準繼續指向它們**真正量測的那個模型**。
+   未量測的模型不繼承分數。
+2. **沒有動 Sonnet 的 support pin**（`explore` sonnet/low、`mech-executor` sonnet/medium）。
+   本機沒有任何一筆把 Opus 5 與這兩個 pin 對比的樣本，`revision_policy` 的 n≥10 門檻
+   未達；「能效變好」不等於「support 檔位該升級」，那是一個要證據才能做的決定。
+3. **沒有改 H/X reference profile 的措辭**。`H = Fable/low 或 Opus/high`、
+   `X = Fable medium–xhigh 或 Opus/high` 本來就以世代無關的別名書寫，換代後仍然成立。
+
+**這次換代暴露的設計缺陷（已修）**：frontmatter 寫的是 tier 別名（`model: opus`），世代是
+**CLI 解析的**，這個 repo 從來沒有把具體 id 送進任何 API。所以 `MODEL_ALIASES` 只是一句
+「我猜 CLI 會挑這一代」的斷言，沒有任何東西驗證它。代價不是抽象的：`experience-log` 的
+model 欄位是從 route config 抄來的，斷言一旦過期，**每一筆 dispatch 都會被記在沒跑過的
+模型上**，而 90 天 cohort 會安靜地把兩個世代混算。機器上已有現成反例——alias map 寫
+`claude-haiku-4-5`，transcript 實際是 `claude-haiku-4-5-20251001`。
+
+修法是把斷言變成可檢查的：新增 `model-routing check-aliases`，拿 leaf transcript 的真實
+`message.model`（`usage-report` 早就在收）比對 config 的世代宣稱，掛進 weekly integrity。
+語意上只採計 `as_of` 之後的觀測——config 宣稱自己在那天是最新的，更早的是歷史——所以
+換代後舊世代會自然退場，不會永遠紅著。dated snapshot（`-YYYYMMDD`）視為同一代，point
+release（`claude-opus-5-1`）視為漂移。掃描窗口封頂 30 天，避免 `as_of` 一路後退把 hook 拖垮。
+六種情境（含植入的過期世代與 point release）逐一取證。
+
+**待驗證**：Opus 5 上的 gate 遵循率（INTENT/TWINS/AUTH）。2026-07-23 累積的 s7／s9
+數據——opus INTENT 完整率 6/10、TWINS 實質偽陰性 4/10——全部量在 4.8 上，不能外推到
+Opus 5。依 trap covenant，executor 路由變更應觸發 s7＋s8 regression 重跑；本次換代**尚未
+重跑**，這是目前最大的取證缺口。
+
 ## Artificial Analysis 快照（2026-07-21）
 
 Artificial Analysis Intelligence Index v4.1 是英文、純文字的綜合評測，共 9 項：Agents 34%、

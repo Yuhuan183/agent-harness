@@ -417,7 +417,7 @@ class SharedSkillTests(unittest.TestCase):
                         "provider": provider, "request_source": source,
                         "outcome": "accepted", "tokens_out": 20,
                         "profile": "balanced",
-                        "model": ("claude-opus-4-8" if provider == "claude"
+                        "model": ("claude-opus-5" if provider == "claude"
                                   else "gpt-5.6-sol"),
                         "effort": "medium",
                     }
@@ -457,7 +457,7 @@ class SharedSkillTests(unittest.TestCase):
                 "claude": (
                     "claude-code",
                     (("balanced", "claude-sonnet-5", "high"),
-                     ("fast", "claude-opus-4-8", "low")),
+                     ("fast", "claude-opus-5", "low")),
                 ),
                 "codex": (
                     "codex",

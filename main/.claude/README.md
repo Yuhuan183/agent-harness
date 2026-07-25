@@ -30,14 +30,15 @@ fallback、role routing 與 verifier 觸發條件全部收斂在 `skills/provide
 按需載入。Claude 三個 profile 是 session/deployment preset，不是 per-dispatch override；以
 在 source checkout 用 `scripts/model-routing activate-profile --profile <name>` 一次更新全部
 frontmatter pins，review 後透過根目錄 `scripts/sync.sh --apply` 部署，再開新 session。該工具另
-提供 `validate`／`resolve`／`check-pins`（每週 integrity 會自動比對部署與 source 漂移）；
+提供 `validate`／`resolve`／`check-pins`／`check-aliases`（每週 integrity 會自動比對部署與
+source 漂移，並以 leaf transcript 的真實 model id 驗證 `opus` 這類別名指向哪個世代）；
 經 `codex:codex-rescue` 呼叫的 Codex twin 則必須先用
 `${CODEX_HOME:-$HOME/.codex}/scripts/model-routing resolve --surface claude-bridge`
 解析 per-dispatch profile，不套用 Claude 的 frontmatter pin。兩側各自的資料來源都只有一份。
 
 ## 初始設定
 
-1. `plan-verifier` 與 `security-reviewer` 需要 Claude Code 2.1.207 以上版本。
+1. `plan-verifier`、`security-reviewer` 與 `verifier` 需要 Claude Code 2.1.207 以上版本。
 2. 新機器僅在 `$HOME/.claude` 不存在時直接套用；若已存在，先備份再合併（`sync.sh` 自動備份），不得取代憑證或本機狀態。
 3. Headroom 生命週期與升級流程見 `../.agents/docs/headroom-runtime.md`；base URL 為 machine-local，不得寫進 tracked `settings.json`。
 4. `rtk` 需另行安裝（macOS：`brew install rtk`）；未安裝時 hook 採 fail-open。

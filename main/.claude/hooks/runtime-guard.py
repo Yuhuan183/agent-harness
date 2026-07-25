@@ -20,7 +20,7 @@ import sys
 
 
 MINIMUM = (2, 1, 207)
-RESTRICTED_ROLES = ("plan-verifier", "security-reviewer")
+RESTRICTED_ROLES = ("plan-verifier", "security-reviewer", "verifier")
 CACHE = os.path.expanduser("~/.claude/telemetry/.runtime-version-cache")
 
 
@@ -32,11 +32,17 @@ def parse_version(raw):
 def probe_version():
     """Return the raw version string, re-probing only when the binary changed."""
     binary = shutil.which("claude")
-    mtime = int(os.stat(binary).st_mtime) if binary else 0
+    if binary:
+        stat = os.stat(binary)
+        # Nanosecond mtime plus size: a same-second in-place binary swap (e.g.
+        # an upgrade that keeps the path) must invalidate the cached version.
+        fingerprint = [stat.st_mtime_ns, stat.st_size]
+    else:
+        fingerprint = [0, 0]
     try:
         with open(CACHE, encoding="utf-8") as fh:
             cached = json.load(fh)
-        if (cached.get("binary") == binary and cached.get("mtime") == mtime
+        if (cached.get("binary") == binary and cached.get("fingerprint") == fingerprint
                 and parse_version(cached.get("raw", ""))):
             return cached["raw"]
     except Exception:
@@ -57,7 +63,7 @@ def probe_version():
         try:
             os.makedirs(os.path.dirname(CACHE), exist_ok=True)
             with open(CACHE, "w", encoding="utf-8") as fh:
-                json.dump({"binary": binary, "mtime": mtime, "raw": raw}, fh)
+                json.dump({"binary": binary, "fingerprint": fingerprint, "raw": raw}, fh)
         except Exception:
             pass
     return raw
