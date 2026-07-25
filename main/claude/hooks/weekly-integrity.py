@@ -5,6 +5,7 @@ Deterministic checks only: contract-repo drift (git status) and nested-delegatio
 scan. Findings and check failures are printed to stdout for the active session.
 The hook is fail-open, but its throttle advances only after both checks run.
 """
+import json
 import os
 import subprocess
 import sys
@@ -337,24 +338,37 @@ try:
 
     # Informational only: surface dispatch-experience hints or a missing-data
     # warning. Best-effort — a failure here neither blocks the throttle nor alarms.
+    #
+    # Read the machine output, not the human table: a cohort exists per role x
+    # task class, so most of them sit below the comparable-n threshold at any
+    # time and their "keep collecting" hints would put this check permanently in
+    # alarm — which is worse than no alarm, because it trains the reader to skip
+    # the real one. Those cohorts are named in `hints_insufficient` and dropped
+    # here; "log every dispatch" is already the standing contract instruction.
+    # An empty ledger is different: it means the log loop is not running at all,
+    # and it clears after the first logged dispatch.
     try:
         exp = subprocess.run(
             [os.path.expanduser(
                 "~/.agents/skills/experience-ledger/scripts/experience-report"),
-             ],
+             "--json"],
             capture_output=True,
             text=True,
             timeout=10,
         )
-        hints = [l for l in exp.stdout.splitlines() if l.startswith("hint:")]
-        if exp.returncode == 0 and hints:
-            findings.append("dispatch-experience hints:\n" + "\n".join(hints))
-        elif exp.returncode == 0 and "no records" in exp.stdout:
+        report = json.loads(exp.stdout) if exp.returncode == 0 else {}
+        insufficient = set(report.get("hints_insufficient") or ())
+        actionable = [f"hint: {cohort:<28} {hint}"
+                      for cohort, hint in sorted((report.get("hints") or {}).items())
+                      if cohort not in insufficient]
+        if actionable:
+            findings.append("dispatch-experience hints:\n" + "\n".join(actionable))
+        elif exp.returncode == 0 and not report.get("by_cohort_provider"):
             findings.append(
                 "dispatch-experience gap: no reviewed outcomes in the configured window; "
                 "log the next comparable dispatch after quality-check"
             )
-    except (OSError, subprocess.TimeoutExpired):
+    except (OSError, ValueError, subprocess.TimeoutExpired):
         pass
 
     # Informational: the contract requires logging every dispatch after QC, but
@@ -371,7 +385,6 @@ try:
     #
     # Best-effort; never blocks the throttle.
     try:
-        import json as _json
         from datetime import datetime, timezone
         loggable_roles = {
             "explore", "mech-executor", "executor", "plan-verifier",
@@ -388,8 +401,8 @@ try:
                     if not raw.strip():
                         continue
                     try:
-                        logged = _json.loads(raw)
-                    except _json.JSONDecodeError:
+                        logged = json.loads(raw)
+                    except json.JSONDecodeError:
                         continue
                     if logged.get("dispatch_id"):
                         reconciled.add(logged["dispatch_id"])
@@ -406,8 +419,8 @@ try:
                 if not raw.strip():
                     continue
                 try:
-                    row = _json.loads(raw)
-                except _json.JSONDecodeError:
+                    row = json.loads(raw)
+                except json.JSONDecodeError:
                     continue
                 agent_type = row.get("agent_type") or ""
                 if row.get("event") != "SubagentStop":

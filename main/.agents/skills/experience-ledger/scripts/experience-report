@@ -252,13 +252,21 @@ def comparable_cost(rows: dict[str, dict], min_samples: int) -> list[str]:
 
 
 def hints(route_stats: dict, current_routes: dict, min_samples: int,
-          prefer_p: float, excluded: set[str]) -> dict[str, str]:
+          prefer_p: float, excluded: set[str]) -> tuple[dict[str, str], set[str]]:
+    """Return one hint per cohort, plus the cohorts that only lack data.
+
+    The second value separates "keep collecting" from "route differently".
+    Both belong in the human report, but only the latter is worth waking an
+    unattended consumer for: a cohort exists per role x class, so an
+    insufficient-data hint would never clear.
+    """
     cohorts = {
         (key[0], key[1]) for key in route_stats
         if key[1] not in excluded
     }
 
     result = {}
+    insufficient = set()
     for role, task_class in sorted(cohorts):
         key = f"{role}/{task_class}"
         providers = {}
@@ -284,6 +292,7 @@ def hints(route_stats: dict, current_routes: dict, min_samples: int,
                 f"explore {', '.join(sorted(set(missing + under)))} "
                 f"(comparable n<{min_samples})"
             )
+            insufficient.add(key)
             continue
         ranked = sorted(providers.items(), key=lambda item: -item[1]["AR"])
         (best, best_row), (runner, runner_row) = ranked[:2]
@@ -300,7 +309,7 @@ def hints(route_stats: dict, current_routes: dict, min_samples: int,
                 f"either (P(win) {probability:.2f}, AR {best_row['AR']} "
                 f"vs {runner_row['AR']}{suffix})"
             )
-    return result
+    return result, insufficient
 
 
 def main() -> int:
@@ -343,7 +352,7 @@ def main() -> int:
             current_routes[(provider, role)] = (
                 profile, route["model"], route["effort"]
             )
-    decisions = hints(
+    decisions, insufficient = hints(
         route_stats, current_routes, min_samples, prefer_p, excluded
     )
     public = {key: {field: value for field, value in row.items()
@@ -368,6 +377,7 @@ def main() -> int:
                 in sorted(route_public.items())
             },
             "hints": decisions,
+            "hints_insufficient": sorted(insufficient),
         }, ensure_ascii=False, indent=2))
         return 0
 
