@@ -172,6 +172,7 @@ def main() -> int:
     parser.add_argument("--telemetry-warning", default=None,
                         help="machine-generated telemetry limitation")
     parser.add_argument("--now", default=None, help="ISO timestamp override (tests)")
+    parser.set_defaults(observed_model=None, observed_effort=None)
     args = parser.parse_args()
 
     stub = None
@@ -202,6 +203,11 @@ def main() -> int:
             args.request_source = stub.get("request_source")
         for field in ("rollout_id", "telemetry_warning"):
             if getattr(args, field, None) is None and stub.get(field) is not None:
+                setattr(args, field, stub[field])
+        # Provider-recorded route. Deliberately has no CLI flag: it is evidence,
+        # so it may only ever arrive from the provider's own telemetry.
+        for field in ("observed_model", "observed_effort"):
+            if stub.get(field):
                 setattr(args, field, stub[field])
     args.role = LEGACY_ROLE_ALIASES.get(args.role, args.role)
     if args.role is None or args.provider is None:
@@ -243,9 +249,32 @@ def main() -> int:
         value = getattr(args, field)
         if value is not None and (not math.isfinite(value) or value < 0):
             parser.error(f"--{field.replace('_', '-')} must be finite and >= 0")
+    # Provider-recorded route beats the dispatcher's claim. A bridge dispatch
+    # is the one case where the caller types the route by hand, so an unchecked
+    # claim would enter the ledger tagged `explicit` — a word about how the
+    # value was supplied, not how well it is attested. Compare first, then tag.
+    if args.observed_model and args.observed_effort:
+        for flag, claimed, observed in (
+                ("model", args.model, args.observed_model),
+                ("effort", args.effort, args.observed_effort)):
+            if claimed is not None and claimed != observed:
+                parser.error(
+                    f"--{flag} {claimed!r} contradicts the provider-recorded "
+                    f"route {observed!r} for this dispatch (rollout "
+                    f"{args.rollout_id or 'evidence'}); a route the provider "
+                    "did not run is a routing violation — surface it, do not "
+                    "log it"
+                )
+        args.model = args.model or args.observed_model
+        args.effort = args.effort or args.observed_effort
     args.route_source = ("explicit" if all(
         value is not None for value in (args.profile, args.model, args.effort))
         else None)
+    if args.observed_model and args.observed_effort and args.route_source:
+        # `profile` stays caller-supplied: it is a harness label with no
+        # provider-side counterpart. Model and effort are the physical facts,
+        # and both matched the rollout to get here.
+        args.route_source = "rollout-verified"
     if args.provider == "claude" and any(
             value is None for value in (args.profile, args.model, args.effort)):
         # Claude routes are deterministic frontmatter pins (check-pins keeps

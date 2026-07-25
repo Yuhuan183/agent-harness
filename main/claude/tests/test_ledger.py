@@ -675,6 +675,121 @@ class SharedSkillTests(unittest.TestCase):
         self.assertNotIn("TypeError", result.stderr)
 
 
+class BridgeRouteEvidenceTests(unittest.TestCase):
+    """A bridge record's route must be provider-recorded, not self-reported.
+
+    The bridge job sidecar stores no model or effort, so the dispatcher used to
+    hand-type both and the record was tagged `explicit` — a word about how the
+    value arrived, not how well it is attested. Codex writes the applied thread
+    settings into its own rollout; these tests hold that evidence path open.
+    """
+
+    HOOK = ROOT / "main/claude/hooks/experience-pending.py"
+    LOG = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-log"
+
+    def _stage(self, temp: Path, rollouts: list[dict]) -> dict:
+        """Run the hook over a synthetic bridge dispatch; return its stub."""
+        now = datetime.now(timezone.utc)
+        sessions = temp / "sessions" / "2026" / "07" / "26"
+        sessions.mkdir(parents=True)
+        for index, spec in enumerate(rollouts):
+            rows = [{
+                "timestamp": (now - timedelta(seconds=20)).isoformat().replace(
+                    "+00:00", "Z"),
+                "type": "event_msg",
+                "payload": {"type": "token_count", "info": {"total_token_usage": {
+                    "input_tokens": 1000, "cached_input_tokens": 600,
+                    "output_tokens": 200}}},
+            }]
+            if spec:
+                rows.insert(0, {
+                    "timestamp": (now - timedelta(seconds=30)).isoformat().replace(
+                        "+00:00", "Z"),
+                    "type": "event_msg",
+                    "payload": {"type": "thread_settings_applied",
+                                "thread_settings": spec},
+                })
+            (sessions / f"rollout-probe-{index}.jsonl").write_text(
+                "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+        pending = temp / "pending.jsonl"
+        pending.write_text(json.dumps({
+            "ts": (now - timedelta(seconds=60)).isoformat(timespec="seconds"),
+            "event": "SubagentStart", "agent_type": "codex:codex-rescue",
+            "agent_id": "a1", "session_id": "s1", "dispatch_id": "s1:a1",
+            "request_source": "claude-code-plugin-codex",
+        }) + "\n", encoding="utf-8")
+        self.env = {**os.environ,
+                    "AGENT_EXPERIENCE_PENDING": str(pending),
+                    "CODEX_SESSIONS_DIR": str(temp / "sessions"),
+                    "AGENT_EXPERIENCE_LEDGER": str(temp / "ledger.jsonl")}
+        subprocess.run(
+            [sys.executable, str(self.HOOK)], env=self.env, check=True,
+            capture_output=True, text=True,
+            input=json.dumps({"hook_event_name": "SubagentStop",
+                              "agent_type": "codex:codex-rescue",
+                              "agent_id": "a1", "session_id": "s1"}))
+        stubs = [json.loads(line) for line in
+                 pending.read_text(encoding="utf-8").splitlines()]
+        return stubs[-1]
+
+    def _log(self, *extra: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(self.LOG), "--from-pending", "--role", "verifier",
+             "--outcome", "accepted", "--class", "review",
+             "--profile", "quality_guarded", *extra],
+            env=self.env, capture_output=True, text=True)
+
+    def test_hook_stages_the_route_codex_actually_ran(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            stub = self._stage(Path(temp_dir), [
+                {"model": "gpt-5.6-sol", "reasoning_effort": "high"}])
+            self.assertEqual(stub["observed_model"], "gpt-5.6-sol")
+            self.assertEqual(stub["observed_effort"], "high")
+            self.assertEqual(stub["rollout_id"], "rollout-probe-0")
+
+    def test_unclaimed_route_is_filled_from_evidence_and_tagged_verified(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            self._stage(temp, [{"model": "gpt-5.6-sol", "reasoning_effort": "high"}])
+            result = self._log()
+            self.assertEqual(result.returncode, 0, result.stderr)
+            record = json.loads(
+                (temp / "ledger.jsonl").read_text(encoding="utf-8").splitlines()[-1])
+            self.assertEqual(record["model"], "gpt-5.6-sol")
+            self.assertEqual(record["effort"], "high")
+            self.assertEqual(record["route_source"], "rollout-verified")
+
+    def test_a_claimed_route_the_provider_did_not_run_is_rejected(self) -> None:
+        for flag, value in (("--model", "gpt-5.6-luna"), ("--effort", "low")):
+            with self.subTest(flag=flag), tempfile.TemporaryDirectory() as temp_dir:
+                self._stage(Path(temp_dir),
+                            [{"model": "gpt-5.6-sol", "reasoning_effort": "high"}])
+                result = self._log(flag, value)
+                self.assertEqual(result.returncode, 2, result.stdout)
+                self.assertIn("contradicts the provider-recorded route",
+                              result.stderr)
+
+    def test_an_unattestable_dispatch_claims_no_route(self) -> None:
+        """Two candidate rollouts, or a rollout with no settings, attest nothing.
+
+        Silence is the correct answer here: a window that cannot be pinned to
+        one rollout must not lend its route to the record.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ambiguous = self._stage(Path(temp_dir), [
+                {"model": "gpt-5.6-sol", "reasoning_effort": "high"},
+                {"model": "gpt-5.6-luna", "reasoning_effort": "low"}])
+            self.assertNotIn("observed_model", ambiguous)
+            self.assertEqual(ambiguous["telemetry_warning"], "ambiguous_codex_rollout")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            self.assertNotIn("observed_model", self._stage(temp, [None]))
+            result = self._log("--model", "gpt-5.6-sol", "--effort", "high")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            record = json.loads(
+                (temp / "ledger.jsonl").read_text(encoding="utf-8").splitlines()[-1])
+            self.assertEqual(record["route_source"], "explicit")
+
 
 if __name__ == '__main__':
     unittest.main()

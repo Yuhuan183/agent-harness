@@ -30,8 +30,11 @@ and session automatically; a native Claude dispatch then only needs its outcome:
   `--profile/--model/--effort`: the resolver fills them and tags the record
   `route_source: resolver-assumed` (pins are aliases; the resolver maps them to
   dated ids, so assumed routes never masquerade as verified evidence). Bridge
-  stubs carry no route fields — pass all three explicitly (`bridge-brief`
-  prints the exact post-QC command). Stub-less native Codex records need
+  records read model and effort from the dispatch's own Codex rollout and tag
+  `route_source: rollout-verified`; pass only `--profile` (a harness label the
+  provider does not record). A `--model/--effort` that contradicts the rollout
+  is rejected as a routing violation rather than logged. Stub-less native
+  Codex records need
   `--request-source codex` plus role, provider, and the full route.
 - Log **every** dispatch — Claude roles and Codex bridge alike. Outcome is the
   main session's quality verdict: `accepted` (clean) / `corrected` (fixed
