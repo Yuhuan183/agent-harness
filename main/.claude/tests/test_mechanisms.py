@@ -299,6 +299,43 @@ class MechanismTests(unittest.TestCase):
                     f"{source} deploys a Claude skill from a discoverable path",
                 )
 
+    def test_contract_takeover_guard_accepts_a_contract_this_repo_produced(self) -> None:
+        """Updating a contract must not be mistaken for foreign guidance.
+
+        The guard asks whether the deployed CLAUDE.md/AGENTS.md content ever
+        appeared in this repo's history. It answered that question with
+        `git rev-list ... | grep -q`, where grep exits on the first hit and
+        SIGPIPEs the rev-list feeding it; under the script's `pipefail` the
+        pipeline reported 141 and every real contract update was flagged as
+        content this repo never produced, stopping `--apply`. Nothing caught it
+        because the guard short-circuits when the deployed file already matches
+        the worktree — the only case the suite exercised.
+        """
+        sync = ROOT / "scripts/sync.sh"
+        contracts = {
+            "main/.claude/CLAUDE.contract.md": ".claude/CLAUDE.md",
+            "main/.codex/AGENTS.contract.md": ".codex/AGENTS.md",
+        }
+        with tempfile.TemporaryDirectory() as temp_home:
+            for source, target in contracts.items():
+                # A committed revision of our own contract, deliberately not the
+                # working-tree one, so the guard takes the history lookup path.
+                historical = git("show", f"HEAD:{source}").stdout
+                self.assertTrue(historical, source)
+                deployed = Path(temp_home) / target
+                deployed.parent.mkdir(parents=True, exist_ok=True)
+                deployed.write_text(historical, encoding="utf-8")
+
+            result = subprocess.run(
+                [str(sync)], capture_output=True, text=True,
+                env={**os.environ, "HOME": temp_home,
+                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1",
+                     "AGENT_HARNESS_BACKUP_ROOT": temp_home},
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("content unknown to this repo", result.stdout)
+        self.assertNotIn("has content unknown", result.stdout)
+
     def test_sync_rejects_unknown_arguments_and_dry_run_preflights(self) -> None:
         sync = ROOT / "scripts/sync.sh"
         unknown = subprocess.run(

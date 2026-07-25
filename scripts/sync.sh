@@ -272,10 +272,16 @@ while IFS=$'\t' read -r src_rel dst_rel extra; do
   cmp -s "$REPO/$src_rel" "$dst" && continue
   dst_hash="$(git -C "$REPO" hash-object "$dst")"
   legacy_src_rel="${src_rel#main/}"
-  {
+  # Collect first, match second. Piping straight into `grep -q` lets grep exit
+  # on the first hit, SIGPIPE the rev-list still feeding it, and surface as 141
+  # under `pipefail` — which marked every legitimate contract update as foreign
+  # content and stopped apply. The guard only ever passed when the deployed file
+  # already matched the worktree, i.e. when there was nothing to deploy.
+  history_objects="$(
     git -C "$REPO" rev-list --all --objects -- "$src_rel"
     git -C "$REPO" rev-list --all --objects -- "$legacy_src_rel"
-  } | grep -q "^$dst_hash " || FOREIGN_CONTRACTS+=("$dst_rel")
+  )"
+  grep -q "^$dst_hash " <<<"$history_objects" || FOREIGN_CONTRACTS+=("$dst_rel")
 done < "$MANIFEST"
 for dst_rel in "${FOREIGN_CONTRACTS[@]}"; do
   [[ -z "$dst_rel" ]] && continue
