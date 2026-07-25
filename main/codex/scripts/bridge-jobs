@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+"""Report the Codex bridge jobs that are actually alive right now.
+
+A bridge dispatch outlives its launcher. The Claude-side call that starts a
+job is a thin forwarder running as its own process; when that forwarder is
+killed — a Bash timeout, a cancelled tool call, a crashed session — the Codex
+job keeps running, because it was never the forwarder's child. Treating a dead
+launcher as a dead dispatch is what produced the 2026-07-26 duplicate: a
+forwarder timed out at two minutes, relaunched the same prompt, and two
+identical full-repo reviews ran against one workspace.
+
+So the only sound answer to "is this dispatch still running?" comes from the
+companion's own job state, which is what this reads. Ownership is per live
+job, not per launch attempt.
+
+Usage:
+    bridge-jobs [--workspace PATH] [--session ID] [--duplicates] [--json]
+
+Exit status:
+    0  answered; with --duplicates, none were found
+    1  --duplicates found at least one group of concurrent twins
+    2  cannot answer (no companion state on this machine)
+
+Exit 2 is deliberate and must never be read as "no jobs are running": a check
+that could not run has not cleared anything.
+"""
+from __future__ import annotations
+import argparse
+import json
+import os
+import sys
+from collections import defaultdict
+from pathlib import Path
+
+STATE = Path(os.environ.get(
+    "CODEX_COMPANION_STATE",
+    os.path.expanduser("~/.claude/plugins/data/codex-openai-codex/state"),
+))
+LIVE = ("running", "queued", "starting")
+
+
+def live_jobs(workspace: str | None, session: str | None) -> list[dict]:
+    """Every live job the companion knows about, newest first.
+
+    State directories are keyed by a workspace hash this script deliberately
+    does not recompute; it filters on the `workspaceRoot` each job records, so
+    a change to the companion's naming scheme cannot silently narrow results.
+    """
+    jobs = []
+    for path in sorted(STATE.glob("*/jobs/*.json")):
+        try:
+            job = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if job.get("status") not in LIVE:
+            continue
+        if workspace and job.get("workspaceRoot") != workspace:
+            continue
+        if session and job.get("sessionId") != session:
+            continue
+        jobs.append(job)
+    return sorted(jobs, key=lambda job: job.get("startedAt") or "", reverse=True)
+
+
+def duplicate_groups(jobs: list[dict]) -> list[list[dict]]:
+    """Live jobs that are twins: same session, same workspace, same prompt.
+
+    The companion stores a truncated prompt head as `summary`, which is enough
+    of a fingerprint — a relaunch reuses the prompt verbatim, so twins collide
+    on it while genuinely parallel dispatches do not.
+    """
+    groups = defaultdict(list)
+    for job in jobs:
+        groups[(job.get("sessionId"), job.get("workspaceRoot"),
+                job.get("summary"))].append(job)
+    return [group for group in groups.values() if len(group) > 1]
+
+
+def describe(job: dict) -> str:
+    return (f"{job.get('id')} | {job.get('status')}/{job.get('phase')} | "
+            f"write={job.get('write')} | started {job.get('startedAt')} | "
+            f"session {job.get('sessionId')}")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--workspace", default=None,
+                        help="only jobs whose workspaceRoot matches this path")
+    parser.add_argument("--session", default=None,
+                        help="only jobs launched by this Claude session id")
+    parser.add_argument("--duplicates", action="store_true",
+                        help="report concurrent twins; exit 1 if any exist")
+    parser.add_argument("--json", action="store_true", dest="as_json")
+    args = parser.parse_args()
+
+    if not STATE.is_dir():
+        print(f"bridge-jobs: no companion state at {STATE}; live-job state is "
+              "unknown, which is not the same as no jobs running",
+              file=sys.stderr)
+        return 2
+
+    jobs = live_jobs(args.workspace, args.session)
+    groups = duplicate_groups(jobs)
+
+    if args.as_json:
+        print(json.dumps({
+            "live": jobs,
+            "duplicate_groups": [[job.get("id") for job in group]
+                                 for group in groups],
+        }, indent=2))
+    elif args.duplicates:
+        for group in groups:
+            print("duplicate dispatch — one prompt, "
+                  f"{len(group)} live jobs against {group[0].get('workspaceRoot')}:")
+            for job in group:
+                print(f"  {describe(job)}")
+            print("  keep the one you can attest, cancel the rest:")
+            for job in group:
+                print(f"  /codex:cancel {job.get('id')}")
+        if not groups:
+            print(f"no duplicate bridge dispatches ({len(jobs)} live)")
+    elif jobs:
+        for job in jobs:
+            print(describe(job))
+    else:
+        print("no live bridge jobs")
+
+    return 1 if (args.duplicates and groups) else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

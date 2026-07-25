@@ -600,7 +600,15 @@ class DocumentationBudgetTests(unittest.TestCase):
             # table — a new guardrail belongs in that inventory, and the row is
             # already at the terseness of its neighbours.
             "README.md": 2280,
-            "docs/README.md": 640,
+            # +80 (2026-07-26): navigation and responsibility rows for the
+            # dispatch-lifecycle doc. A navigation surface has to grow when the
+            # thing it navigates to appears, or it stops being complete.
+            "docs/README.md": 720,
+            # Verification entry point for dispatch state and route evidence.
+            # Cheaper here than in the resident contracts or the two skills it
+            # ties together, both of which sit within ten words of their own
+            # ceilings.
+            "docs/dispatch-lifecycle.md": 1200,
             # +100 (2026-07-23): behavioral trap-eval method section added.
             # +310 (2026-07-26): both vendors published context-engineering
             # guidance in the same week and both name rule *contradiction* as a

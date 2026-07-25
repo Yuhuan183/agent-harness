@@ -147,6 +147,7 @@ machine-local experience ledger，方便人類回顧與 telemetry 對照。
 | Runtime guard | 需要新版能力的 reviewer 在版本過舊或未知時停止 | [runtime-guard.py](main/claude/hooks/runtime-guard.py) |
 | Delegation audit | 記錄 start/stop 並偵測 leaf 再派 leaf | [delegation-audit.py](main/claude/hooks/delegation-audit.py) |
 | Experience pending／ledger | 將 dispatch、route、source、token、時間與 QC outcome 綁在一起 | [experience-ledger](main/.agents/skills/experience-ledger/SKILL.md) |
+| Bridge 存活對帳 | bridge job 比 launcher 長命；重啟前擋下同一 prompt 的雙寫 | [dispatch-lifecycle](docs/dispatch-lifecycle.md)、[bridge-jobs](main/codex/scripts/bridge-jobs) |
 | Weekly integrity | 檢查 source／HOME 漂移、pins、delegation alarm 與 ledger 狀態；覆蓋不完整（如 resolver 缺失）即列 finding 並扣住週章 | [weekly-integrity.py](main/claude/hooks/weekly-integrity.py) |
 | Commit test gate | 紅測試套件不得 commit；解析指令實際指向的每個 repo，逃生口 `AGENT_SKIP_TEST_GATE=1` | [commit-test-gate.py](main/claude/hooks/commit-test-gate.py) |
 | Gate-line QC／trap evals | 機械稽核 leaf 報告的 INTENT/TWINS/AUTH owed lines；行為 trap fixtures 作回歸資產 | [gate_lines.py](main/.agents/scripts/gate_lines.py)、[evals/traps/](evals/traps/) |

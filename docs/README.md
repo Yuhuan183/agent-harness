@@ -12,6 +12,7 @@
 | 修改 leaf role 或派工契約 | [Playbook：Leaf 分派](harness-engineering.md#leaf-分派的三層契約) | [Briefs](../main/claude/skills/baton-dispatch/references/briefs-and-stops.md) |
 | 評估 model／effort／provider | [研究摘要](harness-engineering-research.md) | [Claude routing](../main/claude/model-routing.toml)、[Codex routing](../main/codex/model-routing.toml) |
 | 查 experience-ledger 指標 | [Metrics](../main/.agents/skills/experience-ledger/references/metrics.md) | [skill 本體](../main/.agents/skills/experience-ledger/SKILL.md) |
+| 驗證派工狀態與路由證據 | [派工生命週期](dispatch-lifecycle.md) | [bridge-liveness](../main/claude/skills/provider-routing/references/bridge-liveness.md) |
 | 診斷 context 或工具輸出 | [Headroom runtime](../main/.agents/docs/headroom-runtime.md) | [RTK](../main/claude/RTK.md) |
 | 理解 QC 怎麼把關 | [QC 白話說明](qc-explainer.md) | [baton-dispatch](../main/claude/skills/baton-dispatch/SKILL.md) |
 | 跑行為 trap eval | [evals/traps/](../evals/traps/) 各 README | [QC 說明](qc-explainer.md)取證段 |
@@ -26,6 +27,7 @@
 | [研究摘要](harness-engineering-research.md) | benchmark 快照、成本口徑、案例取捨、研究缺口 | runtime 強制規則、現行 route pins |
 | [配置與部署](setup.md) | bootstrap、apply、驗收與回滾步驟 | 模型選擇理由 |
 | [契約瘦身規範](contract-slimming.md) | CLAUDE.md／AGENTS.md 的內容判定、預算原則與驗收 | 歷史歷程、當前 orchestration 狀態 |
+| [派工生命週期](dispatch-lifecycle.md) | 派工五個狀態的承載物、不成立的推論、驗證清單 | 派工形狀與 QC（baton-dispatch）、provider 選擇（provider-routing） |
 | [Orchestration plan](../main/claude/plans/orchestration-plan.md)＋[history](../main/claude/plans/orchestration-history.md) | 當前最新方案；append-only 決策歷程 | 完整方法論與研究全文 |
 
 ## Runtime 真相源
