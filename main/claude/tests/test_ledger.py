@@ -251,6 +251,12 @@ class SharedSkillTests(unittest.TestCase):
             records = [json.loads(line) for line in Path(ledger).read_text().splitlines()]
         self.assertEqual(report["by_cohort_provider"]["explore/recon/claude"]["n"], 1)
         self.assertEqual(report["by_cohort_provider"]["explore/review/claude"]["n"], 1)
+        # Both cohorts sit under the comparable-n threshold, so their hints say
+        # "collect more", not "route differently". weekly-integrity reads this
+        # key to keep a hint that can never clear out of its findings.
+        self.assertEqual(sorted(report["hints_insufficient"]),
+                         ["explore/recon", "explore/review"])
+        self.assertEqual(sorted(report["hints"]), sorted(report["hints_insufficient"]))
         self.assertEqual({row["task_class"]: row["tier"] for row in records},
                          {"recon": "spot", "review": "full"})
 

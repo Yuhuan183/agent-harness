@@ -124,7 +124,9 @@ class MechanismTests(unittest.TestCase):
                                  "experience-ledger" / "scripts" / "experience-report")
             experience_report.parent.mkdir(parents=True)
             experience_report.write_text(
-                "#!/bin/sh\necho 'no records; log dispatches first'\n",
+                "#!/bin/sh\n"
+                "echo '{\"by_cohort_provider\": {}, \"hints\": {}, "
+                "\"hints_insufficient\": []}'\n",
                 encoding="utf-8",
             )
             experience_report.chmod(0o755)
@@ -227,6 +229,60 @@ class MechanismTests(unittest.TestCase):
             self.assertIn(".codex/AGENTS.md", git_managed_drift.stdout)
             self.assertNotIn("check failed", git_managed_drift.stdout)
             self.assertTrue(stamp.exists())
+
+    def test_weekly_integrity_says_nothing_about_a_correctly_deployed_system(self) -> None:
+        """A freshly synced HOME must produce no findings at all.
+
+        Every other test here feeds the hook a broken system and asserts that
+        the matching finding appears. None of them can catch the opposite
+        failure: a check that fires on a system with nothing wrong with it.
+        That failure is the more expensive one — this hook runs unattended at
+        SessionStart, so a finding nobody can clear becomes background noise and
+        the next real one is read as more of the same.
+
+        The fixture is a real `sync.sh --apply` into a temporary HOME rather
+        than a synthetic manifest, because the false alarms worth catching live
+        in the modes a synthetic manifest never exercises: merged targets that
+        legitimately carry machine keys, the per-skill merge root, and bytecode
+        the deployed scripts regenerate as they run.
+        """
+        with tempfile.TemporaryDirectory() as temp_home:
+            applied = subprocess.run(
+                [str(ROOT / "scripts/sync.sh"), "--apply"],
+                capture_output=True, text=True,
+                env={**os.environ, "HOME": temp_home,
+                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"},
+            )
+            self.assertEqual(applied.returncode, 0, applied.stderr + applied.stdout)
+
+            # One reviewed outcome inside the reporting window. An empty ledger
+            # means the log loop is not running at all, which is a real finding
+            # (asserted separately); it is not the state of a working machine.
+            ledger = Path(temp_home) / ".agents/telemetry/experience.jsonl"
+            ledger.parent.mkdir(parents=True, exist_ok=True)
+            ledger.write_text(json.dumps({
+                "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "schema": 3, "role": "explore", "task_class": "recon",
+                "provider": "claude", "request_source": "claude-code",
+                "outcome": "accepted", "profile": "default",
+                "model": "claude-sonnet-5", "effort": "low",
+                "route_source": "explicit",
+            }) + "\n", encoding="utf-8")
+
+            env = {**os.environ, "HOME": temp_home,
+                   "AGENT_HARNESS_REPO": str(ROOT)}
+            # The ledger paths are read from HOME; an inherited override would
+            # point the hook at this machine's real telemetry.
+            env.pop("AGENT_EXPERIENCE_LEDGER", None)
+            env.pop("AGENT_EXPERIENCE_PENDING", None)
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "main/claude/hooks/weekly-integrity.py")],
+                env=env, check=True, capture_output=True, text=True,
+            )
+            self.assertEqual(result.stdout, "", result.stdout)
+            self.assertTrue(
+                (Path(temp_home) / ".claude/telemetry/.integrity-last-run").exists()
+            )
 
     def test_weekly_integrity_surfaces_model_alias_drift(self) -> None:
         # The alias->generation assertion is only worth making if something
