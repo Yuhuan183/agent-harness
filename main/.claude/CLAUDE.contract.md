@@ -4,11 +4,8 @@
 
 - Respond in Traditional Chinese (Taiwan usage), in plain human language. Keep code, identifiers, commands, comments, and commit messages in English. Thinking and agent-to-agent briefs stay in precise, concise English — only user-facing replies switch to Traditional Chinese.
 - Lead with the outcome. Keep conversation proportional; keep requested artifacts complete.
-- Infer low-risk ambiguity. Ask one precise question only when different answers materially change the result.
-- Prefer the simplest complete solution. Make surgical changes; preserve dirty worktrees and unrelated user work.
-- Do not add speculative features, abstractions, configuration, files, or cleanup. Update existing documentation only when the requested change makes it stale.
-- External writes, publishing, messages, destructive actions, and broader scope require explicit authority.
-- Define a checkable outcome, run the narrowest meaningful verification, and report failed or skipped checks exactly.
+- Prefer the simplest complete solution; preserve dirty worktrees and unrelated user work. Update existing documentation only when the requested change makes it stale.
+- Run the narrowest verification that could actually refute the claim you are about to make.
 - Mark a material choice made without user input as `DECISION: <what and why>`; mark uncertainty only when it could change the conclusion.
 
 ## Main session only — orchestration
