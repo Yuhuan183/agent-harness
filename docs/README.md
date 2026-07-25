@@ -9,11 +9,11 @@
 |---|---|---|
 | 理解整體架構與資料流 | [根 README](../README.md) | [Harness Engineering Playbook](harness-engineering.md) |
 | 安裝、同步或回滾 | [配置與部署](setup.md) | [Claude README](../main/.claude/README.md)、[Codex README](../main/.codex/README.md) |
-| 修改 leaf role 或派工契約 | [Playbook：Leaf 分派](harness-engineering.md#leaf-分派的三層契約) | [Briefs](../main/.claude/skills/baton-dispatch/references/briefs-and-stops.md) |
+| 修改 leaf role 或派工契約 | [Playbook：Leaf 分派](harness-engineering.md#leaf-分派的三層契約) | [Briefs](../main/.claude/skills-src/baton-dispatch/references/briefs-and-stops.md) |
 | 評估 model／effort／provider | [研究摘要](harness-engineering-research.md) | [Claude routing](../main/.claude/model-routing.toml)、[Codex routing](../main/.codex/model-routing.toml) |
 | 查 experience-ledger 指標 | [Metrics](../main/.agents/skills/experience-ledger/references/metrics.md) | [skill 本體](../main/.agents/skills/experience-ledger/SKILL.md) |
 | 診斷 context 或工具輸出 | [Headroom runtime](../main/.agents/docs/headroom-runtime.md) | [RTK](../main/.claude/RTK.md) |
-| 理解 QC 怎麼把關 | [QC 白話說明](qc-explainer.md) | [baton-dispatch](../main/.claude/skills/baton-dispatch/SKILL.md) |
+| 理解 QC 怎麼把關 | [QC 白話說明](qc-explainer.md) | [baton-dispatch](../main/.claude/skills-src/baton-dispatch/SKILL.md) |
 | 跑行為 trap eval | [evals/traps/](../evals/traps/) 各 README | [QC 說明](qc-explainer.md)取證段 |
 | 深度審查本 repo 設計 | [harness-review](../.agents/skills/harness-review/SKILL.md)（dev-only） | [plan](../main/.claude/plans/orchestration-plan.md) |
 | 理解目前決策與下一步 | [Orchestration plan](../main/.claude/plans/orchestration-plan.md) | [仍待驗證](harness-engineering-research.md#仍待本機驗證) |

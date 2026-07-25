@@ -23,7 +23,16 @@ Codex `config.toml`、Claude Code `~/.claude.json` 的 MCP entry）永不納入�
 不在單一 agent 目錄下各留一份。舊機器若殘留 `~/.claude/docs/`（重整前的位置），可於套用後
 手動清除——方法論已移至專案 `docs/`、runtime 知識已移至 `~/.agents/docs/`。
 
-共用 skill 原則上採 symlink 佈局：`main/.claude/skills/<name>` 與
+### `main/` 是部署源,不是工作環境
+
+Claude Code 會從工作目錄底下任何巢狀 `.claude/skills/` 探索 skill,並在叫用未限定名稱時
+一併載入涵蓋當前檔案的限定名變體。因此 `main/` 底下**不得出現會被探索到的設定路徑**:
+skill 源檔放 `main/.claude/skills-src/`(部署為 `~/.claude/skills/`),契約源檔放
+`CLAUDE.contract.md`(部署為 `~/.claude/CLAUDE.md`)。開發改 `main/`,實際使用的一律是
+`sync.sh` 部署後的 `$HOME` 版本。此不變式由
+`test_harness_sources_are_not_discoverable_while_developing` 守住。
+
+共用 skill 原則上採 symlink 佈局：`main/.claude/skills-src/<name>` 與
 `main/.codex/skills/<name>` 都連到 `../../.agents/skills/<name>`。需要平台專用
 frontmatter 時使用薄 wrapper；目前 Claude `task-observer` 以 wrapper 明確允許模型
 自動啟動，`headroom-protocol` 也以同樣方式讓 agent 依資料大小與用途自行判斷；

@@ -101,7 +101,7 @@ Claude 與 Codex 各有一份自足角色契約；leaf 不讀 main orchestration
 
 `explore + recon` 預設 spot QC；對抗式 `explore + review` 預設 full QC，兩者不混算。
 完整 brief 與停止條件見
-[Briefs and Stops](main/.claude/skills/baton-dispatch/references/briefs-and-stops.md)。
+[Briefs and Stops](main/.claude/skills-src/baton-dispatch/references/briefs-and-stops.md)。
 
 ### Routing 語意
 

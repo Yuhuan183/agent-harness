@@ -7,11 +7,11 @@ Concrete, reproducible probes per dimension. All read-only.
 ```bash
 # Resident/doc sizes vs budgets (word budgets live in main/.claude/tests/test_contracts.py)
 wc -l main/.claude/CLAUDE.contract.md main/.codex/AGENTS.contract.md \
-      main/.claude/agents/*.md main/.claude/skills/*/SKILL.md
+      main/.claude/agents/*.md main/.claude/skills-src/*/SKILL.md
 
 # Chinese-content ratio per file (zh lines / total) — grounds dimension 3
 for f in main/.claude/CLAUDE.contract.md main/.codex/AGENTS.contract.md \
-         main/.claude/agents/*.md main/.claude/skills/*/SKILL.md README.md docs/*.md; do
+         main/.claude/agents/*.md main/.claude/skills-src/*/SKILL.md README.md docs/*.md; do
   echo "$(grep -c '[一-龥]' "$f" 2>/dev/null || echo 0)/$(wc -l < "$f") $f"
 done
 ```

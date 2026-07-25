@@ -6,7 +6,7 @@ class SharedSkillTests(unittest.TestCase):
     def _assert_symlinked_body(self, name: str) -> None:
         body = ROOT / "main/.agents/skills" / name
         self.assertTrue((body / "SKILL.md").is_file(), f"{name} body missing")
-        for stub in (f"main/.claude/skills/{name}", f"main/.codex/skills/{name}"):
+        for stub in (f"main/.claude/skills-src/{name}", f"main/.codex/skills/{name}"):
             link = ROOT / stub
             self.assertTrue(link.is_symlink(), f"{stub} is not a symlink")
             self.assertEqual(os.readlink(link), f"../../.agents/skills/{name}")
@@ -14,14 +14,14 @@ class SharedSkillTests(unittest.TestCase):
 
     def test_headroom_protocol_is_shared_with_explicit_auto_invocation(self) -> None:
         shared = ROOT / "main/.agents/skills/headroom-protocol"
-        claude = ROOT / "main/.claude/skills/headroom-protocol"
+        claude = ROOT / "main/.claude/skills-src/headroom-protocol"
         codex = ROOT / "main/.codex/skills/headroom-protocol"
         self.assertTrue((shared / "SKILL.md").is_file())
         self.assertTrue(claude.is_dir())
         self.assertFalse(claude.is_symlink())
         claude_skill = (claude / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("disable-model-invocation: false", claude_skill)
-        claude_meta = frontmatter("main/.claude/skills/headroom-protocol/SKILL.md")
+        claude_meta = frontmatter("main/.claude/skills-src/headroom-protocol/SKILL.md")
         shared_meta = frontmatter("main/.agents/skills/headroom-protocol/SKILL.md")
         claude_portable_meta = "\n".join(
             line for line in claude_meta.splitlines()
@@ -49,7 +49,7 @@ class SharedSkillTests(unittest.TestCase):
     def test_claude_wrapper_replaces_legacy_symlink_without_mutating_shared_skill(
         self,
     ) -> None:
-        source = ROOT / "main/.claude/skills/headroom-protocol"
+        source = ROOT / "main/.claude/skills-src/headroom-protocol"
         with tempfile.TemporaryDirectory() as temp_dir:
             home = Path(temp_dir)
             shared = home / ".agents/skills/headroom-protocol"
@@ -128,8 +128,8 @@ class SharedSkillTests(unittest.TestCase):
         self.assertTrue((base / "references/metrics.md").is_file())
         self.assertTrue((base / "agents/openai.yaml").is_file())
         # baton-dispatch owns the post-QC write; provider-routing retains route evidence.
-        baton = read(".claude/skills/baton-dispatch/SKILL.md")
-        routing = read(".claude/skills/provider-routing/SKILL.md")
+        baton = read(".claude/skills-src/baton-dispatch/SKILL.md")
+        routing = read(".claude/skills-src/provider-routing/SKILL.md")
         self.assertIn("After QC, load `experience-ledger`", baton)
         self.assertIn("log the same route through `experience-ledger`", routing)
 

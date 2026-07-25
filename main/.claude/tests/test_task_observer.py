@@ -40,7 +40,7 @@ class TaskObserverTests(unittest.TestCase):
         self.assertTrue(SCRIPT.is_file())
         self.assertTrue(os.access(SCRIPT, os.X_OK))
         shared = ROOT / "main/.agents/skills/task-observer"
-        claude = ROOT / "main/.claude/skills/task-observer"
+        claude = ROOT / "main/.claude/skills-src/task-observer"
         codex = ROOT / "main/.codex/skills/task-observer"
         self.assertTrue(claude.is_dir())
         self.assertFalse(claude.is_symlink())
@@ -48,7 +48,7 @@ class TaskObserverTests(unittest.TestCase):
             "disable-model-invocation: false",
             (claude / "SKILL.md").read_text(encoding="utf-8"),
         )
-        claude_meta = frontmatter("main/.claude/skills/task-observer/SKILL.md")
+        claude_meta = frontmatter("main/.claude/skills-src/task-observer/SKILL.md")
         shared_meta = frontmatter("main/.agents/skills/task-observer/SKILL.md")
         claude_portable_meta = "\n".join(
             line for line in claude_meta.splitlines()
@@ -76,7 +76,7 @@ class TaskObserverTests(unittest.TestCase):
         self.assertTrue((codex / "SKILL.md").is_file())
         for pair in (
             ("main/.agents/skills", ".agents/skills"),
-            ("main/.claude/skills/task-observer", ".claude/skills/task-observer"),
+            ("main/.claude/skills-src/task-observer", ".claude/skills/task-observer"),
             ("main/.codex/skills/task-observer", ".codex/skills/task-observer"),
         ):
             self.assertIn(pair, deployment_manifest())
