@@ -14,7 +14,7 @@ class MechanismTests(unittest.TestCase):
         }
         with tempfile.TemporaryDirectory() as other_cwd:
             result = subprocess.run(
-                ["bash", str(ROOT / "main/.claude/sh/statusline.sh")],
+                ["bash", str(ROOT / "main/claude/sh/statusline.sh")],
                 cwd=other_cwd,
                 input=json.dumps(payload),
                 check=True,
@@ -28,7 +28,7 @@ class MechanismTests(unittest.TestCase):
             self.assertIn(f"({branch})", result.stdout)
 
     def test_runtime_guard_rejects_old_or_unknown_versions(self) -> None:
-        guard = ROOT / "main/.claude/hooks/runtime-guard.py"
+        guard = ROOT / "main/claude/hooks/runtime-guard.py"
         old = subprocess.run([sys.executable, str(guard), "2.1.197 (Claude Code)"],
                              check=True, capture_output=True, text=True)
         current = subprocess.run([sys.executable, str(guard), "2.1.207 (Claude Code)"],
@@ -44,7 +44,7 @@ class MechanismTests(unittest.TestCase):
         # A same-second in-place upgrade changes size but not integer mtime;
         # the fingerprint (mtime_ns + size) must still re-probe (G-01).
         import importlib.util
-        guard = ROOT / "main/.claude/hooks/runtime-guard.py"
+        guard = ROOT / "main/claude/hooks/runtime-guard.py"
         with tempfile.TemporaryDirectory() as tmp:
             binp = Path(tmp) / "claude"
 
@@ -76,7 +76,7 @@ class MechanismTests(unittest.TestCase):
             self.assertIn("2.1.9999", second)
 
     def test_runtime_guard_gate_blocks_restricted_dispatch(self) -> None:
-        guard = ROOT / "main/.claude/hooks/runtime-guard.py"
+        guard = ROOT / "main/claude/hooks/runtime-guard.py"
 
         def run_gate(version: str, payload: str) -> subprocess.CompletedProcess:
             return subprocess.run(
@@ -104,7 +104,7 @@ class MechanismTests(unittest.TestCase):
         self.assertEqual(run_gate("2.1.197 (Claude Code)", "not json").returncode, 0)
 
     def test_weekly_integrity_stamps_only_after_completed_checks(self) -> None:
-        hook = ROOT / "main/.claude/hooks/weekly-integrity.py"
+        hook = ROOT / "main/claude/hooks/weekly-integrity.py"
         with tempfile.TemporaryDirectory() as temp_home:
             claude_dir = Path(temp_home) / ".claude"
             scripts_dir = claude_dir / "scripts"
@@ -134,12 +134,12 @@ class MechanismTests(unittest.TestCase):
             # rsync-deployed ~/.claude (no .git): drift vs the repo copy is
             # reported, but the check completes and the throttle advances.
             repo = Path(temp_home) / "repo"
-            (repo / "main" / ".claude").mkdir(parents=True)
-            (repo / "main" / ".claude" / "CLAUDE.contract.md").write_text(
+            (repo / "main" / "claude").mkdir(parents=True)
+            (repo / "main" / "claude" / "CLAUDE.contract.md").write_text(
                 "contract\n", encoding="utf-8")
             (repo / "scripts").mkdir()
             (repo / "scripts/deployment-manifest.tsv").write_text(
-                "main/.claude/CLAUDE.contract.md\t.claude/CLAUDE.md\n",
+                "main/claude/CLAUDE.contract.md\t.claude/CLAUDE.md\n",
                 encoding="utf-8",
             )
             source_marker = (
@@ -210,12 +210,12 @@ class MechanismTests(unittest.TestCase):
             # targets; .codex/.agents manifest parity must still run and catch
             # drift instead of being skipped wholesale (review F-05).
             stamp.unlink()
-            (repo / "main" / ".codex").mkdir()
-            (repo / "main" / ".codex" / "AGENTS.contract.md").write_text(
+            (repo / "main" / "codex").mkdir()
+            (repo / "main" / "codex" / "AGENTS.contract.md").write_text(
                 "agents contract\n", encoding="utf-8")
             (repo / "scripts/deployment-manifest.tsv").write_text(
-                "main/.claude/CLAUDE.contract.md\t.claude/CLAUDE.md\n"
-                "main/.codex/AGENTS.contract.md\t.codex/AGENTS.md\n",
+                "main/claude/CLAUDE.contract.md\t.claude/CLAUDE.md\n"
+                "main/codex/AGENTS.contract.md\t.codex/AGENTS.md\n",
                 encoding="utf-8",
             )
             (Path(temp_home) / ".codex" / "AGENTS.md").write_text(
@@ -232,7 +232,7 @@ class MechanismTests(unittest.TestCase):
         # The alias->generation assertion is only worth making if something
         # runs it unprompted: a CLI generation move is silent, and every
         # dispatch logged in the meantime names a model that never ran.
-        hook = ROOT / "main/.claude/hooks/weekly-integrity.py"
+        hook = ROOT / "main/claude/hooks/weekly-integrity.py"
         with tempfile.TemporaryDirectory() as temp_home:
             scripts_dir = Path(temp_home) / ".claude" / "scripts"
             scripts_dir.mkdir(parents=True)
@@ -267,8 +267,8 @@ class MechanismTests(unittest.TestCase):
         self.assertIn("deployment-manifest.tsv", hook)
         self.assertIn("deployment-manifest.tsv", sync)
         self.assertNotIn("cross_platform =", hook)
-        self.assertIn(("main/.claude/CLAUDE.contract.md", ".claude/CLAUDE.md"), pairs)
-        self.assertIn(("main/.codex/AGENTS.contract.md", ".codex/AGENTS.md"), pairs)
+        self.assertIn(("main/claude/CLAUDE.contract.md", ".claude/CLAUDE.md"), pairs)
+        self.assertIn(("main/codex/AGENTS.contract.md", ".codex/AGENTS.md"), pairs)
         self.assertIn(("main/.agents/skills", ".agents/skills", "merge"), entries)
         for source, target in pairs:
             self.assertTrue((ROOT / source).exists(), source)
@@ -277,26 +277,39 @@ class MechanismTests(unittest.TestCase):
     def test_harness_sources_are_not_discoverable_while_developing(self) -> None:
         """`main/` is deployment source, never a working environment.
 
-        Claude Code discovers skills from any nested `.claude/skills/` below the
-        working directory, and when the unqualified name is invoked it also
-        loads the directory-qualified variant covering the files being edited.
-        A source tree at `main/.claude/skills/` would therefore be listed twice
-        and loaded twice in every session that edits this repo, competing with
-        the deployed copy it is supposed to produce. Sources live one rename
-        away, at `.claude/skills-src/`, where discovery cannot reach them.
+        Claude Code discovers skills, agents, and settings from `.claude/` below
+        the working directory — and when an unqualified skill name is invoked it
+        also loads the directory-qualified variant covering the files being
+        edited. A source tree named `.claude/` therefore gets listed twice and
+        loaded twice in every session that edits this repo, competing with the
+        deployed copy it exists to produce. The bundles that a CLI discovers are
+        stored undotted and regain the dot from the manifest's target column.
+
+        `.agents/` is exempt and must stay dotted: nothing discovers it, and both
+        bundles reach the shared skills through relative symlinks that rsync
+        copies verbatim, so the shared root has to sit at the same depth and name
+        in the repo as in `$HOME`.
         """
-        discoverable = sorted(
+        discovered_by_a_cli = {".claude", ".codex"}
+        offenders = sorted(
             str(path.relative_to(ROOT))
-            for path in (ROOT / "main").rglob("skills")
-            if path.is_dir() and path.parent.name == ".claude"
+            for path in (ROOT / "main").rglob("*")
+            if path.is_dir() and not path.is_symlink()
+            and path.name in discovered_by_a_cli
         )
-        self.assertEqual(discoverable, [], "discoverable skill sources under main/")
+        self.assertEqual(offenders, [], "discoverable config trees under main/")
 
         for source, target, _ in deployment_manifest_entries():
-            if target.startswith(".claude/skills/"):
+            head = target.split("/", 1)[0]
+            if head in discovered_by_a_cli:
                 self.assertTrue(
-                    source.startswith("main/.claude/skills-src/"),
-                    f"{source} deploys a Claude skill from a discoverable path",
+                    source.startswith(f"main/{head.lstrip('.')}/"),
+                    f"{source} deploys {target} from a discoverable path",
+                )
+            else:
+                self.assertTrue(
+                    source.startswith(f"main/{head}/"),
+                    f"{source} does not mirror the deployed layout of {target}",
                 )
 
     def test_contract_takeover_guard_accepts_a_contract_this_repo_produced(self) -> None:
@@ -313,14 +326,19 @@ class MechanismTests(unittest.TestCase):
         """
         sync = ROOT / "scripts/sync.sh"
         contracts = {
-            "main/.claude/CLAUDE.contract.md": ".claude/CLAUDE.md",
-            "main/.codex/AGENTS.contract.md": ".codex/AGENTS.md",
+            "main/claude/CLAUDE.contract.md": ".claude/CLAUDE.md",
+            "main/codex/AGENTS.contract.md": ".codex/AGENTS.md",
         }
         with tempfile.TemporaryDirectory() as temp_home:
             for source, target in contracts.items():
                 # A committed revision of our own contract, deliberately not the
                 # working-tree one, so the guard takes the history lookup path.
-                historical = git("show", f"HEAD:{source}").stdout
+                # Sources moved from `main/.claude` to `main/claude`; ask both,
+                # exactly as the guard does, so this passes on either side of
+                # that commit rather than only after it lands.
+                dotted = source.replace("main/", "main/.", 1)
+                historical = (git("show", f"HEAD:{source}").stdout
+                              or git("show", f"HEAD:{dotted}").stdout)
                 self.assertTrue(historical, source)
                 deployed = Path(temp_home) / target
                 deployed.parent.mkdir(parents=True, exist_ok=True)
@@ -552,11 +570,11 @@ class MechanismTests(unittest.TestCase):
         import importlib.util
         spec = importlib.util.spec_from_file_location(
             "weekly_integrity_probe",
-            ROOT / "main/.claude/hooks/weekly-integrity.py",
+            ROOT / "main/claude/hooks/weekly-integrity.py",
         )
         module = importlib.util.module_from_spec(spec)
         # The hook body runs checks at import; only the parser is wanted here.
-        source = (ROOT / "main/.claude/hooks/weekly-integrity.py").read_text(
+        source = (ROOT / "main/claude/hooks/weekly-integrity.py").read_text(
             encoding="utf-8"
         )
         namespace: dict = {}
@@ -635,7 +653,7 @@ class MechanismTests(unittest.TestCase):
             config.write_text(machine, encoding="utf-8")
             first = subprocess.run(
                 [sys.executable, str(merge_toml),
-                 str(ROOT / "main/.codex/config.merge.toml"), str(config)],
+                 str(ROOT / "main/codex/config.merge.toml"), str(config)],
                 capture_output=True, text=True,
             )
             self.assertEqual(first.returncode, 0, first.stderr)
@@ -645,7 +663,7 @@ class MechanismTests(unittest.TestCase):
             # Re-running must be a no-op; that is also sync.sh's parity check.
             second = subprocess.run(
                 [sys.executable, str(merge_toml),
-                 str(ROOT / "main/.codex/config.merge.toml"), str(config), "--verify"],
+                 str(ROOT / "main/codex/config.merge.toml"), str(config), "--verify"],
                 capture_output=True, text=True,
             )
             self.assertEqual(second.returncode, 0, second.stderr)
@@ -675,7 +693,7 @@ class MechanismTests(unittest.TestCase):
         # last had. Preflight runs this too; asserting it here names the reason.
         result = subprocess.run(
             [sys.executable, str(ROOT / "scripts/merge-settings.py"),
-             str(ROOT / "main/.claude/settings.json"), "--check"],
+             str(ROOT / "main/claude/settings.json"), "--check"],
             capture_output=True, text=True,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -765,7 +783,7 @@ class MechanismTests(unittest.TestCase):
             observer.write_text(record("2026-07-15T08:00:00Z", "claude-sonnet-4-5", 40) + "\n",
                                 encoding="utf-8")
             result = subprocess.run(
-                [sys.executable, str(ROOT / "main/.claude/scripts/usage-report"),
+                [sys.executable, str(ROOT / "main/claude/scripts/usage-report"),
                  "--root", str(root), "--days", "2",
                  "--now", "2026-07-16T00:00:00Z", "--json"],
                 check=True, capture_output=True, text=True)
@@ -797,7 +815,7 @@ class MechanismTests(unittest.TestCase):
                              + record("2026-07-15T01:00:00Z", 500) + "\n", encoding="utf-8")
             light.write_text(record("2026-07-15T00:00:00Z", 10) + "\n", encoding="utf-8")
             result = subprocess.run(
-                [sys.executable, str(ROOT / "main/.claude/scripts/usage-report"),
+                [sys.executable, str(ROOT / "main/claude/scripts/usage-report"),
                  "--root", str(root), "--days", "2",
                  "--now", "2026-07-16T00:00:00Z", "--by-session", "--json"],
                 check=True, capture_output=True, text=True)

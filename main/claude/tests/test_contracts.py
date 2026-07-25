@@ -47,7 +47,7 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertIn("[LEAF_RESULT]", policy)
         self.assertIn("Never brief a subagent to delegate further", policy)
         self.assertIn("agent-to-agent briefs stay in precise, concise English", policy)
-        skill = read(".claude/skills-src/baton-dispatch/SKILL.md")
+        skill = read(".claude/skills/baton-dispatch/SKILL.md")
         for field in ("task=<label>", "role=<role>", "class=<class>",
                       "request_source=<request_source>", "route=<profile>/<provider>/<model>/<effort>",
                       "ledger=<logged|skipped(reason)>"):
@@ -57,7 +57,7 @@ class ClaudeContractTests(unittest.TestCase):
         for role in ROLES:
             self.assertNotIn("xhigh", frontmatter(f".claude/agents/{role}.md"), role)
         for path in (
-            ".claude/skills-src/provider-routing/SKILL.md",
+            ".claude/skills/provider-routing/SKILL.md",
             ".codex/AGENTS.contract.md",
             ".codex/config.merge.toml",
         ):
@@ -83,14 +83,14 @@ class ClaudeContractTests(unittest.TestCase):
             self.assertNotIn(moved, policy)
 
     def test_baton_dispatch_skill_carries_recon_result_collection(self) -> None:
-        skill = read(".claude/skills-src/baton-dispatch/SKILL.md")
-        brief = read(".claude/skills-src/baton-dispatch/references/briefs-and-stops.md")
+        skill = read(".claude/skills/baton-dispatch/SKILL.md")
+        brief = read(".claude/skills/baton-dispatch/references/briefs-and-stops.md")
         # Progressive disclosure: the contract's cost test answers the common
         # case ("stay in main") on its own, so this skill is loaded only once a
         # dispatch is actually going ahead. A "mandatory before every dispatch"
         # description would both re-state the contract and make a 900-word file
         # resident for decisions that resolve without it.
-        baton_meta = frontmatter(".claude/skills-src/baton-dispatch/SKILL.md")
+        baton_meta = frontmatter(".claude/skills/baton-dispatch/SKILL.md")
         self.assertIn("Load once a dispatch is going ahead", baton_meta)
         self.assertNotIn("Mandatory", baton_meta)
         # Cost test: high-tier pinned delegation saves no compute; payoff must beat overhead.
@@ -121,12 +121,12 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertIn("LEAF_RESULT", skill)
 
     def test_pilotfish_v130_guardrails_are_backend_neutral_and_cross_surface(self) -> None:
-        skill = read(".claude/skills-src/baton-dispatch/SKILL.md")
-        brief = read(".claude/skills-src/baton-dispatch/references/briefs-and-stops.md")
+        skill = read(".claude/skills/baton-dispatch/SKILL.md")
+        brief = read(".claude/skills/baton-dispatch/references/briefs-and-stops.md")
         claude = read(".claude/CLAUDE.contract.md")
         codex = read(".codex/AGENTS.contract.md")
         triggers = read(
-            ".claude/skills-src/provider-routing/references/verifier-triggers.md"
+            ".claude/skills/provider-routing/references/verifier-triggers.md"
         )
 
         codex_dispatch = " ".join(read(".codex/skills/leaf-dispatch/SKILL.md").split())
@@ -155,7 +155,7 @@ class ClaudeContractTests(unittest.TestCase):
             self.assertRegex(text, r"silently (overrule|overriding)")
 
     def test_provider_routing_owns_model_and_fallback_policy(self) -> None:
-        skill = read(".claude/skills-src/provider-routing/SKILL.md")
+        skill = read(".claude/skills/provider-routing/SKILL.md")
         for phrase in (
             "omit invocation-level `model`",
             "H** = Opus/high or Fable/low",
@@ -190,8 +190,8 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertNotIn("--model gpt-5.6-sol", skill)
 
     def test_dispatch_skills_have_non_overlapping_ownership(self) -> None:
-        baton = read(".claude/skills-src/baton-dispatch/SKILL.md")
-        provider = read(".claude/skills-src/provider-routing/SKILL.md")
+        baton = read(".claude/skills/baton-dispatch/SKILL.md")
+        provider = read(".claude/skills/provider-routing/SKILL.md")
         leaf = read(".codex/skills/leaf-dispatch/SKILL.md")
         leaf_flat = " ".join(leaf.split())
 
@@ -385,7 +385,7 @@ class CodexBundleTests(unittest.TestCase):
         )
 
     def test_model_routing_cli_validates_and_resolves_quality_first_priority(self) -> None:
-        script = ROOT / "main/.codex/scripts/model-routing"
+        script = ROOT / "main/codex/scripts/model-routing"
         self.assertTrue(os.access(script, os.X_OK))
         validated = subprocess.run(
             [str(script), "validate"], check=True, capture_output=True, text=True,
@@ -517,8 +517,8 @@ class CodexBundleTests(unittest.TestCase):
         for artifact in ("model-routing.toml", "scripts/model-routing"):
             self.assertIn(artifact, readme)
             self.assertIn(artifact, deploy)
-        self.assertIn(("main/.codex/model-routing.toml", ".codex/model-routing.toml"), managed)
-        self.assertIn(("main/.codex/scripts", ".codex/scripts"), managed)
+        self.assertIn(("main/codex/model-routing.toml", ".codex/model-routing.toml"), managed)
+        self.assertIn(("main/codex/scripts", ".codex/scripts"), managed)
         agents = read(".codex/AGENTS.contract.md")
         self.assertIn("${CODEX_HOME:-$HOME/.codex}/scripts/model-routing", agents)
         self.assertIn("session-start recommendations", agents)
@@ -572,8 +572,8 @@ class AppPromptSurfaceTests(unittest.TestCase):
 
     def test_app_prompt_sources_are_managed_without_replacing_codex_contract(self) -> None:
         managed = set(deployment_manifest())
-        self.assertIn(("main/.claude/prompts", ".claude/prompts"), managed)
-        self.assertIn(("main/.codex/prompts", ".codex/prompts"), managed)
+        self.assertIn(("main/claude/prompts", ".claude/prompts"), managed)
+        self.assertIn(("main/codex/prompts", ".codex/prompts"), managed)
 
         readme = read(".codex/README.md")
         analysis = read(".codex/ANALYSIS.md")
@@ -610,10 +610,10 @@ class DocumentationBudgetTests(unittest.TestCase):
             # +90 (2026-07-23): record template and QC fraud checklist moved
             # in from the resident contract / provider-routing (net resident
             # payload down; skill is mandatory before every dispatch).
-            ".claude/skills-src/baton-dispatch/SKILL.md": 980,
+            ".claude/skills/baton-dispatch/SKILL.md": 980,
             # QC mechanics and fixed records belong to baton-dispatch; keep
             # provider-routing focused on route, fallback, and eligibility.
-            ".claude/skills-src/provider-routing/SKILL.md": 1300,
+            ".claude/skills/provider-routing/SKILL.md": 1300,
             # +45 (2026-07-25): invocation mechanics (fork_turns, spawn_argument
             # vs agent_config) moved out of the always-resident Codex contract
             # into this on-demand skill. The resident side of that trade is
@@ -642,8 +642,8 @@ class DocumentationBudgetTests(unittest.TestCase):
 
     def test_documentation_navigation_links_resolve_locally(self) -> None:
         paths = [
-            "README.md", "docs/README.md", "main/.claude/README.md",
-            "main/.codex/README.md", "main/.agents/README.md",
+            "README.md", "docs/README.md", "main/claude/README.md",
+            "main/codex/README.md", "main/.agents/README.md",
         ]
         missing = []
         for path in paths:

@@ -13,11 +13,11 @@ Codex `config.toml`、Claude Code `~/.claude.json` 的 MCP entry）永不納入�
 | 專案內 | 全域目標 | 同步方式 |
 | --- | --- | --- |
 | `main/.agents/`（共用 skill 本體、`docs/`、清單） | `~/.agents/` | script 自動；`skills/` 採 managed merge |
-| `main/.claude/`（契約檔、routing、自有 skills、hooks、scripts、prompts、sh） | `~/.claude/` | script 自動（tests/examples/plans 僅存 repo，不部署） |
+| `main/claude/`（契約檔、routing、自有 skills、hooks、scripts、prompts、sh） | `~/.claude/` | script 自動（tests/examples/plans 僅存 repo，不部署） |
 | `headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787` | `~/.claude.json` | **手動執行**（機器狀態，不入庫） |
-| `main/.claude/examples/headroom-mcp.legacy.json` | `~/.claude/mcp.json` | 僅供無 Claude CLI 的 legacy client 手動 merge |
-| `main/.codex/AGENTS.contract.md`（部署為 `AGENTS.md`）、`README.md`、`ANALYSIS.md`、`DEPLOY.md`、`model-routing.toml`、`prompts/`、`agents/`、`scripts/`、skills（含 `leaf-dispatch` 與 symlink） | `~/.codex/` | script 自動 |
-| `main/.codex/config.merge.toml` | `~/.codex/config.toml` | **手動 merge**（見 `main/.codex/DEPLOY.md`） |
+| `main/claude/examples/headroom-mcp.legacy.json` | `~/.claude/mcp.json` | 僅供無 Claude CLI 的 legacy client 手動 merge |
+| `main/codex/AGENTS.contract.md`（部署為 `AGENTS.md`）、`README.md`、`ANALYSIS.md`、`DEPLOY.md`、`model-routing.toml`、`prompts/`、`agents/`、`scripts/`、skills（含 `leaf-dispatch` 與 symlink） | `~/.codex/` | script 自動 |
+| `main/codex/config.merge.toml` | `~/.codex/config.toml` | **手動 merge**（見 `main/codex/DEPLOY.md`） |
 
 跨 agent runtime 知識（`headroom-runtime.md`）在 `main/.agents/docs/`，Claude 與 Codex 共用同一份，
 不在單一 agent 目錄下各留一份。舊機器若殘留 `~/.claude/docs/`（重整前的位置），可於套用後
@@ -27,13 +27,13 @@ Codex `config.toml`、Claude Code `~/.claude.json` 的 MCP entry）永不納入�
 
 Claude Code 會從工作目錄底下任何巢狀 `.claude/skills/` 探索 skill,並在叫用未限定名稱時
 一併載入涵蓋當前檔案的限定名變體。因此 `main/` 底下**不得出現會被探索到的設定路徑**:
-skill 源檔放 `main/.claude/skills-src/`(部署為 `~/.claude/skills/`),契約源檔放
+skill 源檔放 `main/claude/skills/`(部署為 `~/.claude/skills/`),契約源檔放
 `CLAUDE.contract.md`(部署為 `~/.claude/CLAUDE.md`)。開發改 `main/`,實際使用的一律是
 `sync.sh` 部署後的 `$HOME` 版本。此不變式由
 `test_harness_sources_are_not_discoverable_while_developing` 守住。
 
-共用 skill 原則上採 symlink 佈局：`main/.claude/skills-src/<name>` 與
-`main/.codex/skills/<name>` 都連到 `../../.agents/skills/<name>`。需要平台專用
+共用 skill 原則上採 symlink 佈局：`main/claude/skills/<name>` 與
+`main/codex/skills/<name>` 都連到 `../../.agents/skills/<name>`。需要平台專用
 frontmatter 時使用薄 wrapper；目前 Claude `task-observer` 以 wrapper 明確允許模型
 自動啟動，`headroom-protocol` 也以同樣方式讓 agent 依資料大小與用途自行判斷；
 內文與資源仍以 symlink 連回共用來源。`$HOME` 下三個目錄平級、與專案同構，因此
@@ -86,7 +86,7 @@ rtk headroom install apply --profile default --preset persistent-service \
   --port 8787 --backend anthropic --no-telemetry
 # 3b. Claude Code MCP（installer 會解析 headroom 的 machine-local 絕對路徑）
 headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787
-# 3c. codex 本機設定：把 main/.codex/config.merge.toml 手動併入 ~/.codex/config.toml
+# 3c. codex 本機設定：把 main/codex/config.merge.toml 手動併入 ~/.codex/config.toml
 # 4. 開新 Claude Code / Codex session，確認契約與 skills 載入
 ```
 
@@ -143,7 +143,7 @@ Claude Code 自己（`/model`、`/effort`）與第三方 hook 安裝程式。合
 `~/.codex/config.toml` 同理，以 `merge-toml` 模式部署：只寫入 `[agents]` 與 `[agents.*]`，其餘 section、註解與格式逐字保留；repo 未宣告的 `[agents.*]`（使用者自建 agent）保留並回報。兩者的部署後校驗都不是 byte 相等，而是「重跑 merge 不再改變任何東西」，`sync.sh` 與 weekly integrity 都會驗。若既有的 `~/.claude/CLAUDE.md` 或 `~/.codex/AGENTS.md`
 內容從未出現在本 repo 歷史（別人的指引，不是舊版契約），apply 也會停止：先手動合併，或明確用
 `--accept-contract-takeover` 接管。切換 Claude preset 時，先在 source checkout 執行
-`main/.claude/scripts/model-routing activate-profile --profile <balanced|fast|quality_guarded>`，確認 git diff，
+`main/claude/scripts/model-routing activate-profile --profile <balanced|fast|quality_guarded>`，確認 git diff，
 再 sync 並開新 session；只改 `~/.claude` 會被 weekly integrity 視為相對 Git source 的 drift。
 
 ## 驗收

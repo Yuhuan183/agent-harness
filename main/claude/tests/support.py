@@ -50,8 +50,23 @@ DISPATCH_OPTIONS = ("Dispatch GPT + Claude", "Dispatch GPT", "Dispatch Claude")
 
 
 def read(path: str) -> str:
+    """Accepts the deployed (HOME-relative) path and resolves it to the source.
+
+    Claude Code and Codex discover config from `.claude/` and `.codex/` below
+    the working directory, so a source tree named that way competes with the
+    deployed copy it exists to produce. Those two drop the dot in the repo and
+    regain it from the manifest's target column at deploy time.
+
+    `.agents/` keeps its dot. Nothing discovers it — it is this project's own
+    convention rather than a standard — and both bundles reach the shared skills
+    through relative symlinks (`../../.agents/skills/<name>`) that rsync copies
+    verbatim. Those links must therefore resolve identically in the repo and in
+    `$HOME`; renaming the shared root here would deploy 13 broken links.
+    """
     source = Path(path)
-    if source.parts and source.parts[0] in {".claude", ".codex", ".agents"}:
+    if source.parts and source.parts[0] in {".claude", ".codex"}:
+        source = Path("main") / source.parts[0].lstrip(".") / Path(*source.parts[1:])
+    elif source.parts and source.parts[0] == ".agents":
         source = Path("main") / source
     return (ROOT / source).read_text(encoding="utf-8")
 

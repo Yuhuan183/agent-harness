@@ -7,7 +7,7 @@ Reminders did not fix it; this hook makes green-before-commit deterministic.
 
 Scope: fires when the Bash command contains a `git commit` and any repository
 the command can plausibly target carries test modules under `.claude/tests/`
-or the harness bundle's canonical `main/.claude/tests/`. The target set is the
+or the harness bundle's canonical `main/claude/tests/`. The target set is the
 payload `cwd` plus every `git -C <path>` and `cd <path>` operand in the command,
 so repo-switching forms cannot dodge the gate. Other repos and non-commit
 commands pass through untouched. Escape hatch for intentional red commits
@@ -47,7 +47,7 @@ def test_suites(root: Path) -> list[Path]:
     """Return real test suites, ignoring empty directories and stale caches."""
     candidates = (
         root / ".claude" / "tests",
-        root / "main" / ".claude" / "tests",
+        root / "main" / "claude" / "tests",
     )
     return [
         candidate

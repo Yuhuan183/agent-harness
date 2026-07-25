@@ -33,7 +33,7 @@ import sys
 from pathlib import Path
 
 # A hook belongs to this repo when its command matches one of these. Every
-# group in main/.claude/settings.json must match (enforced by --check and by
+# group in main/claude/settings.json must match (enforced by --check and by
 # the deployment tests), so adding a hook without extending this list fails
 # loudly instead of silently making the new hook un-updatable.
 OWNED_HOOK_PATTERNS = (

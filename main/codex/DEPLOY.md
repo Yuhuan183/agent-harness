@@ -7,7 +7,7 @@ On a machine with this checkout, `scripts/sync.sh --apply` (driven by `scripts/d
 ```bash
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 codex --ask-for-approval on-request --sandbox workspace-write -C "$REPO_ROOT" \
-  "Read main/.codex/DEPLOY.md completely. Deploy its Codex bundle with backups and merge-only config changes; preserve machine state, show material conflicts, run every verification, and report the backup path."
+  "Read main/codex/DEPLOY.md completely. Deploy its Codex bundle with backups and merge-only config changes; preserve machine state, show material conflicts, run every verification, and report the backup path."
 ```
 
 Deployment writes outside the repository. Keep approval enabled; never use a sandbox-bypass flag.
@@ -16,9 +16,9 @@ Deployment writes outside the repository. Keep approval enabled; never use a san
 
 1. Resolve `CODEX_HOME` (default `$HOME/.codex`) and show source/target paths.
 2. Back up every changed target under the checkout's `backups/<timestamp>/` — the same backup root `scripts/sync.sh` uses, so every rollback starts from one place. Never copy credentials, tokens, sessions, or secrets into the repo or output.
-3. Install `main/.codex/AGENTS.contract.md` as `$CODEX_HOME/AGENTS.md` (the source is renamed so agent IDEs do not double-load it inside this repo). Diff an existing non-empty file; preserve unrelated guidance and stop on material conflict — `sync.sh` enforces the same boundary by refusing to overwrite a contract file this repo never produced unless `--accept-contract-takeover` is passed. Check higher-precedence `AGENTS.override.md`.
-4. `sync.sh` merges `main/.codex/config.merge.toml` via `merge-toml` mode: it writes only `[agents]` and `[agents.*]` and never replaces `config.toml`, preserving model/effort, auth, MCP, plugins, desktop, trust, and any undeclared `[agents.*]`. `--verify` fails when a declared section is missing.
-5. Install every `main/.codex/agents/*.toml`, `main/.codex/skills/`, `main/.codex/model-routing.toml`, and `main/.codex/scripts/*` (`model-routing`, `bridge-brief`), plus the shared core `main/.agents/scripts/routing_core.py` into `$HOME/.agents/scripts/` — the resolver imports it and reports a deployment error when it is missing. Back up same-name conflicts.
+3. Install `main/codex/AGENTS.contract.md` as `$CODEX_HOME/AGENTS.md` (the source is renamed so agent IDEs do not double-load it inside this repo). Diff an existing non-empty file; preserve unrelated guidance and stop on material conflict — `sync.sh` enforces the same boundary by refusing to overwrite a contract file this repo never produced unless `--accept-contract-takeover` is passed. Check higher-precedence `AGENTS.override.md`.
+4. `sync.sh` merges `main/codex/config.merge.toml` via `merge-toml` mode: it writes only `[agents]` and `[agents.*]` and never replaces `config.toml`, preserving model/effort, auth, MCP, plugins, desktop, trust, and any undeclared `[agents.*]`. `--verify` fails when a declared section is missing.
+5. Install every `main/codex/agents/*.toml`, `main/codex/skills/`, `main/codex/model-routing.toml`, and `main/codex/scripts/*` (`model-routing`, `bridge-brief`), plus the shared core `main/.agents/scripts/routing_core.py` into `$HOME/.agents/scripts/` — the resolver imports it and reports a deployment error when it is missing. Back up same-name conflicts.
 6. Do not add or change Headroom routing, base URL, MCP, hook, or lifecycle state.
 7. Verify `AGENTS.md` sections occur once; require source/target equality for every agent file, skill, routing file, and routing script; parse TOML; run `scripts/model-routing validate`; resolve native and `--surface claude-bridge` routes for all profiles, confirming current support routes never select Luna; assert `max_threads = 4`, `max_depth = 1`, and every registered agent's `config_file` exists.
 8. Run `codex --strict-config --version`.
@@ -29,9 +29,9 @@ Codex CLI, App, and IDE extension share these files only when they use the same 
 
 ## ChatGPT Chat and Work Personalization
 
-Paste `main/.codex/prompts/custom-instructions.md` into ChatGPT **Settings > Personalization > Custom instructions**. It applies to Chat and Work; test a response, file task, `tldr:`, and `deep:`.
+Paste `main/codex/prompts/custom-instructions.md` into ChatGPT **Settings > Personalization > Custom instructions**. It applies to Chat and Work; test a response, file task, `tldr:`, and `deep:`.
 
-Codex uses global `AGENTS.md` for personal instructions. After full-contract deployment, never paste this shorter prompt into Codex; it would duplicate or drift from `main/.codex/AGENTS.contract.md`.
+Codex uses global `AGENTS.md` for personal instructions. After full-contract deployment, never paste this shorter prompt into Codex; it would duplicate or drift from `main/codex/AGENTS.contract.md`.
 
 ## Sync boundary
 

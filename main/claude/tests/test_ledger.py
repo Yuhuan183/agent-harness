@@ -6,7 +6,7 @@ class SharedSkillTests(unittest.TestCase):
     def _assert_symlinked_body(self, name: str) -> None:
         body = ROOT / "main/.agents/skills" / name
         self.assertTrue((body / "SKILL.md").is_file(), f"{name} body missing")
-        for stub in (f"main/.claude/skills-src/{name}", f"main/.codex/skills/{name}"):
+        for stub in (f"main/claude/skills/{name}", f"main/codex/skills/{name}"):
             link = ROOT / stub
             self.assertTrue(link.is_symlink(), f"{stub} is not a symlink")
             self.assertEqual(os.readlink(link), f"../../.agents/skills/{name}")
@@ -14,14 +14,14 @@ class SharedSkillTests(unittest.TestCase):
 
     def test_headroom_protocol_is_shared_with_explicit_auto_invocation(self) -> None:
         shared = ROOT / "main/.agents/skills/headroom-protocol"
-        claude = ROOT / "main/.claude/skills-src/headroom-protocol"
-        codex = ROOT / "main/.codex/skills/headroom-protocol"
+        claude = ROOT / "main/claude/skills/headroom-protocol"
+        codex = ROOT / "main/codex/skills/headroom-protocol"
         self.assertTrue((shared / "SKILL.md").is_file())
         self.assertTrue(claude.is_dir())
         self.assertFalse(claude.is_symlink())
         claude_skill = (claude / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("disable-model-invocation: false", claude_skill)
-        claude_meta = frontmatter("main/.claude/skills-src/headroom-protocol/SKILL.md")
+        claude_meta = frontmatter("main/claude/skills/headroom-protocol/SKILL.md")
         shared_meta = frontmatter("main/.agents/skills/headroom-protocol/SKILL.md")
         claude_portable_meta = "\n".join(
             line for line in claude_meta.splitlines()
@@ -49,7 +49,7 @@ class SharedSkillTests(unittest.TestCase):
     def test_claude_wrapper_replaces_legacy_symlink_without_mutating_shared_skill(
         self,
     ) -> None:
-        source = ROOT / "main/.claude/skills-src/headroom-protocol"
+        source = ROOT / "main/claude/skills/headroom-protocol"
         with tempfile.TemporaryDirectory() as temp_dir:
             home = Path(temp_dir)
             shared = home / ".agents/skills/headroom-protocol"
@@ -128,8 +128,8 @@ class SharedSkillTests(unittest.TestCase):
         self.assertTrue((base / "references/metrics.md").is_file())
         self.assertTrue((base / "agents/openai.yaml").is_file())
         # baton-dispatch owns the post-QC write; provider-routing retains route evidence.
-        baton = read(".claude/skills-src/baton-dispatch/SKILL.md")
-        routing = read(".claude/skills-src/provider-routing/SKILL.md")
+        baton = read(".claude/skills/baton-dispatch/SKILL.md")
+        routing = read(".claude/skills/provider-routing/SKILL.md")
         self.assertIn("After QC, load `experience-ledger`", baton)
         self.assertIn("log the same route through `experience-ledger`", routing)
 
@@ -138,7 +138,7 @@ class SharedSkillTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             ledger = os.path.join(temp_dir, "experience.jsonl")
             env = {**os.environ, "AGENT_EXPERIENCE_LEDGER": ledger,
-                   "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/.claude/scripts/model-routing")}
+                   "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/claude/scripts/model-routing")}
 
             def log(*extra: str) -> None:
                 subprocess.run(
@@ -229,7 +229,7 @@ class SharedSkillTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             ledger = os.path.join(temp_dir, "experience.jsonl")
             env = {**os.environ, "AGENT_EXPERIENCE_LEDGER": ledger,
-                   "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/.claude/scripts/model-routing")}
+                   "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/claude/scripts/model-routing")}
             common = [
                 # Legacy capitalized spelling: the alias must canonicalize it.
                 "--role", "Explore", "--provider", "claude",
@@ -255,7 +255,7 @@ class SharedSkillTests(unittest.TestCase):
                          {"recon": "spot", "review": "full"})
 
     def test_experience_pending_pairs_by_session_and_consumes_one_dispatch(self) -> None:
-        hook = ROOT / "main/.claude/hooks/experience-pending.py"
+        hook = ROOT / "main/claude/hooks/experience-pending.py"
         log_script = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-log"
         with tempfile.TemporaryDirectory() as temp_dir:
             pending = Path(temp_dir) / "pending.jsonl"
@@ -286,7 +286,7 @@ class SharedSkillTests(unittest.TestCase):
                 **os.environ,
                 "AGENT_EXPERIENCE_PENDING": str(pending),
                 "AGENT_EXPERIENCE_LEDGER": str(ledger),
-               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/.claude/scripts/model-routing"),
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/claude/scripts/model-routing"),
             }
             before_system_spawn = pending.read_text()
             subprocess.run(
@@ -353,7 +353,7 @@ class SharedSkillTests(unittest.TestCase):
                 **os.environ,
                 "AGENT_EXPERIENCE_PENDING": str(pending),
                 "AGENT_EXPERIENCE_LEDGER": str(ledger),
-               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/.claude/scripts/model-routing"),
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/claude/scripts/model-routing"),
             }
             ambiguous = subprocess.run(
                 [sys.executable, str(log_script), "--from-pending",
@@ -396,7 +396,7 @@ class SharedSkillTests(unittest.TestCase):
                  "--outcome", "accepted"],
                 env={**os.environ, "AGENT_EXPERIENCE_PENDING": str(pending),
                      "AGENT_EXPERIENCE_LEDGER": str(ledger),
-               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/.claude/scripts/model-routing")},
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/claude/scripts/model-routing")},
                 capture_output=True, text=True,
             )
             self.assertNotEqual(result.returncode, 0)
@@ -434,7 +434,7 @@ class SharedSkillTests(unittest.TestCase):
                 [sys.executable, str(report_script), "--json",
                  "--now", "2026-07-22T00:00:00+00:00"],
                 env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger),
-               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/.claude/scripts/model-routing")},
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/claude/scripts/model-routing")},
                 check=True, capture_output=True, text=True,
             )
         report = json.loads(result.stdout)
@@ -482,7 +482,7 @@ class SharedSkillTests(unittest.TestCase):
                 [sys.executable, str(report_script), "--json",
                  "--now", "2026-07-22T00:00:00+00:00"],
                 env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger),
-               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/.claude/scripts/model-routing")},
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/claude/scripts/model-routing")},
                 check=True, capture_output=True, text=True,
             )
         report = json.loads(result.stdout)
@@ -522,7 +522,7 @@ class SharedSkillTests(unittest.TestCase):
                 [sys.executable, str(report_script), "--json",
                  "--now", "2026-07-22T00:00:00+00:00"],
                 env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger),
-               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/.claude/scripts/model-routing")},
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/claude/scripts/model-routing")},
                 check=True, capture_output=True, text=True,
             )
         report = json.loads(result.stdout)
@@ -603,7 +603,7 @@ class SharedSkillTests(unittest.TestCase):
                 [sys.executable, str(report_script),
                  "--now", "2026-07-22T00:00:00+00:00"],
                 env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger),
-               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/.claude/scripts/model-routing")},
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/claude/scripts/model-routing")},
                 capture_output=True, text=True,
             )
         self.assertEqual(result.returncode, 0, result.stderr)

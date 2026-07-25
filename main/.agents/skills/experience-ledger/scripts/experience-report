@@ -37,6 +37,19 @@ REQUEST_SOURCE_PROVIDER = {
 ROOT = Path(__file__).resolve().parents[4]
 
 
+def bundle(name: str) -> Path:
+    """Locate a sibling bundle from either the deployed or the source layout.
+
+    Deployed, this script sits in `~/.agents/...` and its siblings are `~/.claude`
+    and `~/.codex`. In the source checkout the shared root is still `.agents/`,
+    but the two CLI bundles are stored undotted (`main/claude`, `main/codex`) so
+    that Claude Code and Codex do not discover the source tree as live config
+    while the repo is being edited. The dot is re-applied at deploy time.
+    """
+    dotted = ROOT / f".{name}"
+    return dotted if dotted.exists() else ROOT / name
+
+
 def parse_ts(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
@@ -293,9 +306,9 @@ def hints(route_stats: dict, current_routes: dict, min_samples: int,
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--claude-config", type=Path,
-                        default=ROOT / ".claude/model-routing.toml")
+                        default=bundle("claude") / "model-routing.toml")
     parser.add_argument("--codex-config", type=Path,
-                        default=ROOT / ".codex/model-routing.toml")
+                        default=bundle("codex") / "model-routing.toml")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--profile", default=None,
                         help="evaluate hints against this profile's routes on both "

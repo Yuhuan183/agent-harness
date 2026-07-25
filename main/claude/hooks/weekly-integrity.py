@@ -48,14 +48,14 @@ def load_deployment_manifest(repo):
                 raise ValueError(f"invalid deployment mode on line {line_number}")
             restricted = {
                 "merge": ("main/.agents/skills", ".agents/skills"),
-                "merge-json": ("main/.claude/settings.json", ".claude/settings.json"),
-                "merge-toml": ("main/.codex/config.merge.toml", ".codex/config.toml"),
+                "merge-json": ("main/claude/settings.json", ".claude/settings.json"),
+                "merge-toml": ("main/codex/config.merge.toml", ".codex/config.toml"),
             }
             if mode in restricted and (source, target) != restricted[mode]:
                 raise ValueError(
                     f"{mode} mode is restricted to its declared mapping on line {line_number}"
                 )
-            source_prefixes = ("main/.agents/", "main/.claude/", "main/.codex/")
+            source_prefixes = ("main/.agents/", "main/claude/", "main/codex/")
             target_prefixes = (".agents/", ".claude/", ".codex/")
             if not source.startswith(source_prefixes) or not target.startswith(target_prefixes):
                 raise ValueError(f"unsafe deployment manifest line {line_number}")
@@ -130,7 +130,7 @@ try:
                     "contract-repo drift (uncommitted changes in ~/.claude):\n"
                     + r.stdout.rstrip()
                 )
-        if not os.path.isdir(os.path.join(harness_repo, "main", ".claude")):
+        if not os.path.isdir(os.path.join(harness_repo, "main", "claude")):
             # A managed deployment without a reachable source checkout has no
             # manifest drift monitoring — that is a finding, not a silent skip,
             # and the throttle must not advance past it.
