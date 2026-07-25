@@ -964,5 +964,76 @@ class TrapGraderIntegrityTests(unittest.TestCase):
             self.assertFalse(gate_lines.TWINS.search(gate_lines.flatten(line)), line)
 
 
+class BridgeJobLivenessTests(unittest.TestCase):
+    """A dead launcher is not a dead dispatch.
+
+    Reconstructs the 2026-07-26 duplicate: a forwarder hit the two-minute Bash
+    cap, relaunched the same prompt, and both Codex jobs stayed live against
+    one workspace. The check has to see two, because the wrong answer here is
+    two agents owning the same artifacts.
+    """
+
+    SCRIPT = ROOT / "main/codex/scripts/bridge-jobs"
+
+    def _state(self, temp: Path, jobs: list[dict]) -> dict:
+        job_dir = temp / "workspace-hash" / "jobs"
+        job_dir.mkdir(parents=True)
+        for job in jobs:
+            (job_dir / f"{job['id']}.json").write_text(
+                json.dumps(job), encoding="utf-8")
+        return {**os.environ, "CODEX_COMPANION_STATE": str(temp)}
+
+    @staticmethod
+    def _job(job_id: str, *, status: str = "running", summary: str = "review",
+             session: str = "s1", started: str = "2026-07-26T00:00:00Z") -> dict:
+        return {"id": job_id, "status": status, "phase": status,
+                "summary": summary, "sessionId": session, "write": False,
+                "workspaceRoot": "/w", "startedAt": started}
+
+    def _run(self, env: dict, *args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run([sys.executable, str(self.SCRIPT), *args],
+                              env=env, capture_output=True, text=True)
+
+    def test_twin_jobs_from_one_relaunched_prompt_are_reported(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            env = self._state(Path(temp_dir), [
+                self._job("task-a", started="2026-07-26T00:00:00Z"),
+                self._job("task-b", started="2026-07-26T00:02:48Z"),
+            ])
+            result = self._run(env, "--duplicates")
+            self.assertEqual(result.returncode, 1, result.stdout)
+            self.assertIn("duplicate dispatch", result.stdout)
+            for job_id in ("task-a", "task-b"):
+                self.assertIn(f"/codex:cancel {job_id}", result.stdout)
+
+    def test_genuinely_parallel_dispatches_are_not_twins(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            env = self._state(Path(temp_dir), [
+                self._job("task-a", summary="review contracts"),
+                self._job("task-b", summary="review routing"),
+            ])
+            result = self._run(env, "--duplicates")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("no duplicate", result.stdout)
+
+    def test_finished_jobs_never_count_as_live(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            env = self._state(Path(temp_dir), [
+                self._job("task-a"),
+                self._job("task-b", status="cancelled"),
+                self._job("task-c", status="completed"),
+            ])
+            result = self._run(env, "--duplicates")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("1 live", result.stdout)
+
+    def test_missing_state_refuses_to_answer_instead_of_clearing(self) -> None:
+        env = {**os.environ, "CODEX_COMPANION_STATE": "/nonexistent-state"}
+        result = self._run(env, "--duplicates")
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn("not the same as no jobs running", result.stderr)
+        self.assertNotIn("no duplicate", result.stdout)
+
+
 if __name__ == '__main__':
     unittest.main()

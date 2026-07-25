@@ -84,7 +84,14 @@ policy content.
   explicitly; prepend the role contract; state read-only prohibitions
   explicitly (bridge is write-capable by default).
 - The rescue subagent is a one-shot forwarder: it cannot poll. The Codex job
-  keeps running after the subagent returns "Task started". Poll from main:
+  keeps running after the subagent returns "Task started" — and also after the
+  forwarder *dies*. A forwarder killed by the 2-minute Bash cap reads its own
+  timeout as failure and relaunches, leaving two live jobs on one workspace
+  (observed 2026-07-26). Before relaunching anything, run
+  `~/.codex/scripts/bridge-jobs --workspace "$PWD" --duplicates`: exit 1 lists
+  the twins with their cancel lines, exit 2 means the check could not answer
+  and clears nothing. Full rule: `provider-routing/references/bridge-liveness.md`.
+- Poll from main:
   `node ~/.claude/plugins/cache/openai-codex/codex/<ver>/scripts/codex-companion.mjs
   status <task-id>`, then `result <task-id>`.
 - Poll trap: status output contains progress lines like "Command completed:" —
@@ -92,9 +99,14 @@ policy content.
   word "completed".
 - `result` on a still-running job returns "No job found" — that means not
   finished, not lost.
-- Ledger: the hook-staged pending stub has no route fields for bridge
-  dispatches; pass `--profile/--model/--effort` (and `--dispatch-id` when
-  multiple completions are pending) explicitly to `experience-log`.
+- Two id spaces: the rescue subagent reports its own task id, the companion
+  keys jobs as `task-<slug>`. `status` on the wrong one answers "No job found",
+  which looks identical to "not finished". Get the companion's id from bare
+  `status` (or `bridge-jobs`) before polling.
+- Ledger: `experience-log --from-pending` reads model and effort from the
+  dispatch's own rollout and tags `route_source: rollout-verified`; pass
+  `--profile` (and `--dispatch-id` when multiple completions are pending), and
+  do not hand-type a route the provider can be asked about.
 
 ## Remediation-round probes (second-order defects)
 
