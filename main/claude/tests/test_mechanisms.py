@@ -985,10 +985,12 @@ class BridgeJobLivenessTests(unittest.TestCase):
 
     @staticmethod
     def _job(job_id: str, *, status: str = "running", summary: str = "review",
-             session: str = "s1", started: str = "2026-07-26T00:00:00Z") -> dict:
+             session: str = "s1", started: str = "2026-07-26T00:00:00Z",
+             pid: int | None = None) -> dict:
         return {"id": job_id, "status": status, "phase": status,
                 "summary": summary, "sessionId": session, "write": False,
-                "workspaceRoot": "/w", "startedAt": started}
+                "workspaceRoot": "/w", "startedAt": started,
+                "pid": os.getpid() if pid is None else pid}
 
     def _run(self, env: dict, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run([sys.executable, str(self.SCRIPT), *args],
@@ -1026,6 +1028,35 @@ class BridgeJobLivenessTests(unittest.TestCase):
             result = self._run(env, "--duplicates")
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("1 live", result.stdout)
+
+    def test_a_job_whose_process_died_is_not_live(self) -> None:
+        """`status: running` outlives the process that earned it.
+
+        The 2026-07-26 review job died and its state file never noticed; a
+        guard that trusts the status field would have reported a phantom
+        writer forever, and its twin check would key off a job that is gone.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            env = self._state(Path(temp_dir), [
+                self._job("task-dead", pid=2 ** 22),
+                self._job("task-live"),
+            ])
+            result = self._run(env, "--duplicates")
+            self.assertEqual(result.returncode, 0, result.stdout)
+            self.assertIn("1 live", result.stdout)
+            self.assertIn("died without updating their state", result.stdout)
+            self.assertIn("task-dead", result.stdout.split(
+                "died without updating their state")[1])
+
+    def test_an_uncheckable_pid_still_counts_as_live(self) -> None:
+        """Over-reporting is the safe direction for a duplicate guard."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            job = self._job("task-a")
+            job.pop("pid")
+            env = self._state(Path(temp_dir), [job, self._job("task-b")])
+            result = self._run(env, "--duplicates")
+            self.assertEqual(result.returncode, 1, result.stdout)
+            self.assertIn("duplicate dispatch", result.stdout)
 
     def test_missing_state_refuses_to_answer_instead_of_clearing(self) -> None:
         env = {**os.environ, "CODEX_COMPANION_STATE": "/nonexistent-state"}

@@ -23,6 +23,14 @@ dispatch, ask the companion what is actually alive:
 - exit 2 — **could not answer**; this is not "nothing is running", and nothing
   may be relaunched on the strength of it
 
+Liveness is decided by asking the OS about the job's recorded pid, not by the
+`status` field. Status outlives the process: a job killed abruptly keeps
+`status: running` in its state file indefinitely. Those show up separately as
+"died without updating their state" — not a duplicate risk, but the difference
+between a dispatch still working and one that gave you nothing. A record whose
+pid cannot be checked counts as live, because for a duplicate guard
+over-reporting is the safe direction.
+
 ## Why it is load-bearing
 
 `baton-dispatch` requires one owner per writable artifact. Ownership attaches
@@ -44,6 +52,14 @@ the role that was dispatched, not of any mechanism — the same sequence with an
 prompt is live, do not relaunch: it is still your dispatch, and it will finish.
 Poll it (`node <companion>/scripts/codex-companion.mjs status <job-id>`) or
 wait on its state file. Relaunch only after the check reports no live twin.
+
+Poll on the companion's job id (`task-<slug>`), not the rescue subagent's own
+task id — they are different id spaces, and `status` on the wrong one answers
+"No job found", which is indistinguishable from "not finished yet".
+
+**Reported dead.** A job listed as died-without-updating produced nothing;
+relaunching is correct, and there is no twin to cancel. Waiting on its state
+file would wait forever, since nothing will ever rewrite it.
 
 **Twins already exist.** Keep exactly one and cancel the rest. Keep the one
 whose route you can attest — `route_source: rollout-verified` comes from the

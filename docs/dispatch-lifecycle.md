@@ -39,6 +39,12 @@ exit 0 沒有雙胞胎；exit 1 列出雙胞胎與各自的取消指令；**exit
 它不等於「沒有在跑」，也不足以授權任何重啟。完整規則與 plugin 升級後的複查清單見
 [bridge-liveness](../main/claude/skills/provider-routing/references/bridge-liveness.md)。
 
+**job 的 `status` 欄位 ≠ job 還活著。** 被硬砍掉的 job 會永遠留著
+`status: running`（2026-07-26 當天第二次踩到：review job 死了，狀態檔沒有察覺）。
+所以存活判定是去問 OS 那個 pid 還在不在，不是讀 status。狀態檔說在跑、process 卻不見的
+會另外列成「died without updating their state」—— 它不構成雙寫風險，但它是「還在做」跟
+「什麼都不會給你」的差別。pid 查不到的記錄一律算活著：對雙寫防護來說，寧可多報。
+
 Native Claude subagent 沒有這個失效模式：harness 自己追蹤子代理，launcher 與 job
 同生共死。這條規則只對 bridge 成立，也只寫在 bridge 那一側。
 
