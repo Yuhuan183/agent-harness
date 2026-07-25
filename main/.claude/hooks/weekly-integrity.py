@@ -146,20 +146,22 @@ try:
                 if not os.path.lexists(src):
                     raise ValueError(f"deployment source missing: {source_rel}")
                 deployed = os.path.join(os.path.expanduser("~"), target_rel)
-                if mode == "merge-json":
+                if mode in ("merge-json", "merge-toml"):
+                    merger = ("merge-settings.py" if mode == "merge-json"
+                              else "merge-toml.py")
                     # A merged target legitimately carries machine keys and
                     # foreign hooks the source lacks, so byte comparison would
                     # report drift forever and train the reader to ignore it.
                     # The real invariant is that re-merging changes nothing.
                     verify = subprocess.run(
                         [sys.executable,
-                         os.path.join(harness_repo, "scripts", "merge-settings.py"),
+                         os.path.join(harness_repo, "scripts", merger),
                          src, deployed, "--verify"],
                         capture_output=True, text=True, timeout=15,
                     )
                     if verify.returncode != 0:
                         drift.append(
-                            f"~/{target_rel}: repo-declared settings not present "
+                            f"~/{target_rel}: repo-declared content not present "
                             f"(run scripts/sync.sh --apply)"
                         )
                     continue
