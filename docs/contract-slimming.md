@@ -10,6 +10,12 @@
    模型犯錯」；會，才留。個人偏好（語言、報告形狀）屬於推不出的一類。
 2. **規則競爭注意力。** 常駐檔越長、單條遵循度越低（IFScale／Context Rot 證據見
    [研究摘要](harness-engineering-research.md)）。加一條的成本是其他每一條的稀釋。
+2b. **矛盾是獨立且更貴的失敗形態。** 稀釋讓規則被忽略；矛盾讓模型花 reasoning 去調和兩條
+   互斥指令，更慢、更貴、還常常錯（兩家 2026-07 官方指引同時點名，見
+   [供應商官方指引](harness-engineering-research.md#供應商官方指引2026-07)）。三個推論：
+   （a）**契約牴觸供應商 system prompt 時是 bug**，處置是刪契約那一行，不是加字補強；
+   （b）重述 system prompt 已保證的行為是純注意力稅，一律刪；
+   （c）同一條政策只能有一個真相源，其他位置只放連結。加規則前先找矛盾，不是先找空位。
 3. **分層放置。** 按需流程放 skills（漸進揭露）；可機械判定的紀律交給 hooks 與
    contract tests（機制勝過提醒）；角色專屬規則放各 role 契約，不進主契約。
 4. **決策點強制行勝過清單散文。** 弱檔位執行者只遵守決策點上的格式行
@@ -28,6 +34,9 @@
 | Provider／model routing、fallback、verifier 觸發 | skill（`provider-routing`／`leaf-dispatch`），常駐只留觸發行 |
 | Role 能力、工具、停止邊界 | 各 role 契約 frontmatter＋本文；主契約不重複 |
 | 可機械檢查的紀律（紅測試不 commit、pin 漂移、owed lines） | hooks／validators／graders，文件只留一行指向 |
+| 跨 session 要記得的個人事實與專案約束 | CLI 自動記憶層；常駐契約不再承擔「怕忘記」 |
+| 工具用法與邊界 | 該工具的描述；無法改描述時（本 repo 的 RTK／Headroom）常駐只留一行觸發句 |
+| 供應商 system prompt 已保證的行為 | 刪除——重述是稅，牴觸是 bug |
 | 歷史決策、實驗數據、方法論 | Git、history、docs；永不常駐 |
 
 ## 預算與強制
@@ -45,6 +54,11 @@
 瘦身或增補後：挑 3–5 個近期真實任務（至少含一次跨 provider 交接、一次高風險驗證），
 變更前後各跑一次，比較鐵律有無遺漏、routing 是否仍正確觸發、常駐 token 差異。
 格式紀律類規則另以 `evals/traps/` 的對應 trap 做 A/B（無失敗 trap 的規則是刪除候選）。
+
+矛盾稽核（原則 2b）另外做，因為預算與 trap 都測不到它：對照當期供應商 system prompt
+與兩份常駐契約逐條比，找重述與牴觸各一類；`/doctor`（Claude Code）可先跑一次當粗篩，
+但它評的是肥瘦不是矛盾，仍需人工對照。CLI 大版本更新後重跑——system prompt 會變，
+昨天不重複的句子今天可能重複了。
 
 ## 回寫流程
 
