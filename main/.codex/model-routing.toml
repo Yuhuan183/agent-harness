@@ -1,6 +1,8 @@
 version = 3
-as_of = "2026-07-21"
+as_of = "2026-07-25"
 benchmark = "Artificial Analysis Intelligence Index v4.1"
+data_verification = "Re-retrieved from AA 2026-07-25 and compared cell by cell against the 2026-07-21 snapshot: zero drift. Scores matched to 2 decimals on the 7 cells AA still charts (sol medium/high/xhigh/max, terra xhigh/max, luna max) and cost per index task matched to 3 decimals on 13 cells. The GPT-5.6 numbers below are therefore unchanged, not merely un-rechecked."
+secondary_benchmark = "AA-Briefcase Elo (agentic knowledge-work benchmark), published for gpt-5.6-sol only: 1503.38 at max. Cross-provider caution - the text index puts sol/max within 1.8 points of claude-opus-5/max (58.89 vs 60.69), but Briefcase puts it 217 Elo behind (1503 vs 1720). On agentic work the providers are not as close as the index implies; CP-first routing should not treat sol/max as an Opus-5-equivalent."
 metric_scope = "English text benchmark prior; not local coding-agent success rate"
 availability_scope = "Per-surface status; benchmark data is retained even when a dispatch override is unverified"
 availability_semantics = "configured means router-permitted, not necessarily smoke-tested; evidence records verification level"

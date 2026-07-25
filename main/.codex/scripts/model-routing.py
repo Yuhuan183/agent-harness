@@ -240,16 +240,7 @@ def validation_errors(config: dict) -> list[str]:
 
 
 def command_validate(config: dict) -> int:
-    errors = validation_errors(config)
-    if errors:
-        for error in errors:
-            print(f"ERROR: {error}", file=sys.stderr)
-        return 1
-    print(
-        f"valid: {len(config['profiles'])} profiles, "
-        f"{len(config['models'])} benchmark models"
-    )
-    return 0
+    return core.report_validation(config, validation_errors(config))
 
 
 def command_list(config: dict, as_json: bool) -> int:

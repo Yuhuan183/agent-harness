@@ -6,11 +6,12 @@ import this module via the common layout (`<root>/.agents/scripts/`, where
 stays in each wrapper; this module owns the logic that is genuinely
 identical: config loading, profile selection, and the generic validation
 helpers for selection keys, availability schemas, quality-floor routes,
-and per-route floor checks.
+and per-route floor checks, plus the shared validate reporter.
 """
 
 from __future__ import annotations
 
+import sys
 import tomllib
 from pathlib import Path
 
@@ -144,6 +145,76 @@ def check_allowed_routes(
     return errors
 
 
+TIER_ORDER = ("support", "judgment", "critical")
+
+
+def route_score(config: dict, model_name: str, effort: str):
+    """Published index score for one route, with its provenance.
+
+    Returns (score, provenance). `per-effort` is a measurement of this rung.
+    `upper-bound` means only the model's max-effort aggregate is published, so
+    the number caps the rung from above but does not measure it - the rung
+    could be anywhere below. Nothing published at all returns (None, "none").
+    """
+    model = config.get("models", {}).get(model_name, {})
+    per_effort = (model.get("efforts", {}).get(effort) or {}).get("score")
+    if isinstance(per_effort, (int, float)):
+        return per_effort, "per-effort"
+    aggregate = model.get("aggregate", {}).get("score_max_effort")
+    if isinstance(aggregate, (int, float)):
+        return aggregate, "per-effort" if effort == "max" else "upper-bound"
+    return None, "none"
+
+
+def floor_coverage(config: dict) -> dict:
+    """Report how much of quality_floor.allowed is backed by measured scores.
+
+    `quality_floor` reads like a numeric threshold but is implemented as a
+    curated list: route_floor_error can only test membership, never magnitude.
+    This makes the gap visible - per tier, how many listed rungs have a real
+    per-rung score, and whether the tier minima actually separate.
+    """
+    allowed = config.get("quality_floor", {}).get("allowed", {})
+    tiers: dict[str, dict] = {}
+    for tier, routes in allowed.items():
+        measured, unmeasured, scores = [], [], []
+        for route_key in routes:
+            if "/" not in route_key:
+                continue
+            score, provenance = route_score(config, *route_key.rsplit("/", 1))
+            if provenance == "per-effort":
+                measured.append(route_key)
+                scores.append(score)
+            else:
+                unmeasured.append(route_key)
+        tiers[tier] = {
+            "measured": measured,
+            "unmeasured": unmeasured,
+            "min_measured": min(scores) if scores else None,
+        }
+    warnings = []
+    ladder = [t for t in TIER_ORDER if tiers.get(t, {}).get("min_measured") is not None]
+    for lower, higher in zip(ladder, ladder[1:]):
+        low, high = tiers[lower]["min_measured"], tiers[higher]["min_measured"]
+        if high < low:
+            warnings.append(
+                f"tier {higher} admits a weaker measured route ({high:.2f}) than "
+                f"tier {lower} ({low:.2f}) - the floors are inverted"
+            )
+        elif high == low:
+            warnings.append(
+                f"tiers {lower} and {higher} have the same measured minimum "
+                f"({high:.2f}) - they do not separate on evidence"
+            )
+    for tier, data in tiers.items():
+        if data["unmeasured"]:
+            warnings.append(
+                f"tier {tier} allows {len(data['unmeasured'])} route(s) with no "
+                f"per-rung score: {', '.join(sorted(data['unmeasured']))}"
+            )
+    return {"tiers": tiers, "warnings": warnings}
+
+
 def route_floor_error(
     config: dict, profile_name: str, role: str, model_name: str, effort: str,
     context: str = "",
@@ -192,3 +263,24 @@ def model_dispatchable(config: dict, model: str) -> bool:
                  if key.endswith("_override")]
     return bool(overrides) and all(
         value in DISPATCHABLE_OVERRIDES for value in overrides)
+
+
+def report_validation(config: dict, errors: list[str]) -> int:
+    """Shared `validate` output for both provider resolvers.
+
+    Errors fail the command; floor-coverage findings print as warnings and do
+    not. That split is deliberate: coverage gaps describe how well the
+    published evidence backs the declared floors, and turning them into
+    failures would force a routing-semantics change to make the check pass.
+    """
+    if errors:
+        for error in errors:
+            print(f"ERROR: {error}", file=sys.stderr)
+        return 1
+    print(
+        f"valid: {len(config['profiles'])} profiles, "
+        f"{len(config['models'])} benchmark models"
+    )
+    for warning in floor_coverage(config)["warnings"]:
+        print(f"WARNING: {warning}")
+    return 0

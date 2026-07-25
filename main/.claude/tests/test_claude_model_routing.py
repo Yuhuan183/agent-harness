@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import shutil
@@ -194,6 +195,63 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
             result = run("check-aliases", "--root", temp_dir)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("unverified", result.stdout)
+
+    def test_validate_reports_floor_score_coverage(self) -> None:
+        # quality_floor reads like a numeric threshold but is a curated list:
+        # route_floor_error can only test membership. The shared reporter makes
+        # that gap visible instead of leaving it implied — coverage findings are
+        # warnings, never failures, so reporting them cannot force a routing
+        # change just to go green.
+        result = run("validate")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("valid:", result.stdout)
+        self.assertIn("WARNING:", result.stdout)
+        self.assertIn("no per-rung score", result.stdout)
+        # Sonnet is the known unmeasured cell: AA publishes max effort only.
+        self.assertIn("claude-sonnet-5/medium", result.stdout)
+
+        # Both providers share one reporter, and the Codex table — which does
+        # carry a per-effort score for every allowed rung — must come back clean.
+        codex = subprocess.run(
+            [str(ROOT / "main/.codex/scripts/model-routing"), "validate"],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(codex.returncode, 0, codex.stderr)
+        self.assertNotIn("WARNING:", codex.stdout)
+
+    def test_floor_coverage_detects_an_inverted_tier(self) -> None:
+        # Behavioral proof with a planted inversion: a stronger tier whose
+        # weakest measured route is below a weaker tier's must be reported.
+        # Load by path rather than mutating sys.path, which would leak into
+        # every test that runs after this one.
+        spec = importlib.util.spec_from_file_location(
+            "routing_core_probe", ROOT / "main/.agents/scripts/routing_core.py"
+        )
+        routing_core = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(routing_core)
+
+        config = {
+            "models": {
+                "m": {"efforts": {"low": {"score": 40.0}, "high": {"score": 60.0}}},
+            },
+            "quality_floor": {"allowed": {
+                "support": ["m/high"],
+                "judgment": ["m/low"],
+            }},
+        }
+        warnings = routing_core.floor_coverage(config)["warnings"]
+        self.assertTrue(any("inverted" in w for w in warnings), warnings)
+        # An upper-bound-only rung is not counted as measured.
+        bound = {
+            "models": {"m": {"aggregate": {"score_max_effort": 53.0}}},
+            "quality_floor": {"allowed": {"support": ["m/medium"]}},
+        }
+        self.assertEqual(
+            routing_core.route_score(bound, "m", "medium"), (53.0, "upper-bound")
+        )
+        self.assertEqual(
+            routing_core.route_score(bound, "m", "max"), (53.0, "per-effort")
+        )
 
     def test_revision_policy_is_required(self) -> None:
         original = (ROOT / "main/.claude/model-routing.toml").read_text(encoding="utf-8")

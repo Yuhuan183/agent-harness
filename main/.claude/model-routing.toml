@@ -1,12 +1,14 @@
 version = 1
 as_of = "2026-07-25"
 benchmark = "Artificial Analysis Intelligence Index v4.1"
+secondary_benchmark = "AA-Briefcase Elo (agentic knowledge-work benchmark). Recorded per model because it discriminates far harder than the text index on exactly the work this harness dispatches: claude-opus-5 1720 / claude-fable-5 1574 / claude-sonnet-5 1386 / claude-opus-4-8 1346 / claude-haiku-4-5 612. The 7-point text-index gap between Opus 5 and Sonnet 5 is a 335-Elo gap here."
 metric_scope = "English text benchmark prior; not local coding-agent success rate"
 availability_scope = "Per-surface status; benchmark data is retained even when a dispatch override is unverified"
 availability_semantics = "configured means router-permitted, not necessarily smoke-tested; evidence records verification level"
-evidence_caveat = "AA publishes only single-configuration (adaptive reasoning, max effort) aggregates for Claude models; the only per-effort curve on file is BrowseComp agentic search (community-shared chart, 2026-07) - a direction prior, not a coding success rate. Scores are priors for model ranking, not effort selection. Effort choices below are user-directed deployment presets pending comparable local data; revision_policy requires n>=10 per role/task_class route cell."
-effort_curve_prior = "BrowseComp pass-rate/cost per effort (2026-07): Sonnet 5 leaves the Pareto frontier at high (~64.8% @ ~$6.8 vs Opus med ~68.8% @ ~$6.2 and Opus high ~69.9% @ ~$6.6); sonnet/low and sonnet/medium remain on the frontier. Cross-checked by AA max-effort telemetry: Sonnet 69k output tokens/task (56k reasoning) vs Opus 41k, with lower score at higher measured eval cost. Scope: the Opus arm of this curve was measured on claude-opus-4-8. It is carried forward as a direction prior for the Opus tier after the 2026-07-25 generational move to claude-opus-5; it is not evidence about Opus 5 itself."
-generation_note = "2026-07-25: the opus frontmatter alias resolves to claude-opus-5. Opus 5 is reported to reach Fable-5-class efficiency, which is why no role was demoted to buy back cost; leaf pins are unchanged in shape and only the underlying Opus generation moved. Sonnet support pins are deliberately untouched - no local sample compares Opus 5 against them, and revision_policy requires n>=10 per role/task_class cell before a route moves on evidence."
+evidence_caveat = "Scores are English-text benchmark priors for model ranking, not local coding-agent success rates; revision_policy still requires n>=10 per role/task_class route cell before local evidence moves a route. Coverage as of 2026-07-25 is no longer uniform: AA publishes per-effort index scores for claude-opus-5 (medium/high/xhigh/max) and the GPT-5.6 family, so the Opus effort ladder is now measured rather than inferred. Two gaps remain - claude-opus-5/low has published cost and token data but no index score, and claude-sonnet-5 is still published at max effort only, so every Sonnet rung is bounded from above by 53.35 and otherwise unmeasured."
+effort_curve = "claude-opus-5 measured per-effort index (AA v4.1, 2026-07-25): medium 56.28 @ $0.618/task, high 58.86, xhigh 60.07, max 60.69 @ $2.028/task; low is $0.361/task with no published score. Two consequences drive the routes below: opus/medium (56.28) already exceeds the previous generation's ceiling, claude-opus-4-8/max (55.69), at about a third of its cost; and it exceeds claude-sonnet-5/max (53.35) at 40% of that cost, so no Sonnet rung can outrank opus/medium on capability."
+superseded_prior = "The BrowseComp agentic-search curve (community-shared chart, 2026-07) that previously justified the executor ladder is retired: it was measured on claude-opus-4-8 and claude-sonnet-5, and AA's own per-effort index now covers the Opus ladder directly. Retained in docs/harness-engineering-research.md as history, not as an active prior."
+generation_note = "2026-07-25: the opus frontmatter alias resolves to claude-opus-5. Leaf pins kept their effort rungs across the generation move; the per-effort data since retrieved confirms the move was strictly favourable (opus/medium now outranks opus-4-8/max at a third of the cost). Sonnet support pins remain untouched for want of per-effort Sonnet data, not for want of a candidate - see effort_curve."
 
 [selection]
 default = "balanced"
@@ -37,10 +39,14 @@ main_selector = "in use as this session's main model"
 role_frontmatter = "contract forbids Fable in named roles; fallback from GPT lands on Opus, never Fable"
 
 [models."claude-fable-5".aggregate]
-score_max_effort = 60
-output_tokens_per_sec = 68.3
-total_eval_cost_usd = 5630.52
-eval_output_tokens = 87000000
+score_max_effort = 59.86
+cost_usd_per_index_task = 2.750
+briefcase_elo = 1573.78
+omniscience_index = 40.15
+output_tokens_per_sec = 73.54
+decode_minutes_per_index_task = 4.84
+output_tokens_per_index_task = 33127.0
+score_note = "AA labels this row 'with fallback' - it includes claude-opus-4-8 fallback, so it is not a standalone Fable measurement. Even so it is dominated by claude-opus-5/max on all four published axes: index 59.86 vs 60.69, cost 2.750 vs 2.028, Briefcase Elo 1573.78 vs 1720.43, output tokens 33127 vs 28703 (opus xhigh)."
 
 [models."claude-opus-5"]
 source = "https://artificialanalysis.ai/models/claude-opus-5"
@@ -52,7 +58,49 @@ role_frontmatter_override = "configured"
 
 [models."claude-opus-5".evidence]
 role_frontmatter = "the opus alias resolves here from 2026-07-25; active pins are defined by selection.default and verified by check-pins. Smoke-test history (plan-verifier/verifier/security-*/executor) was accumulated on the predecessor claude-opus-4-8 and does not transfer as evidence about this generation."
-aggregate_status = "No AA Intelligence Index aggregate published for Opus 5 as of 2026-07-25. The predecessor's figures were deliberately not carried forward - an unmeasured model gets no borrowed score."
+aggregate_status = "Retrieved from AA 2026-07-25. Per-effort index scores published for medium/high/xhigh/max; low has cost and token data only. Pricing 5.00/25.00 USD per M input/output, 0.50 cache hit - identical to claude-opus-4-8, so the whole generational gain is capability per token, not price."
+
+[models."claude-opus-5".aggregate]
+score_max_effort = 60.69
+cost_usd_per_index_task = 2.028
+briefcase_elo = 1720.43
+omniscience_index = 31.27
+context_window_tokens = 1000000
+
+# Per-effort economics, same schema as the Codex resolver's models.*.efforts so
+# both providers' routes can be justified against comparable measured rungs.
+[models."claude-opus-5".efforts.low]
+cost_usd_per_index_task = 0.361
+decode_minutes_per_index_task = 1.163
+reasoning_tokens_per_index_task = 2995.1
+answer_tokens_per_index_task = 3071.8
+output_tokens_per_index_task = 6066.9
+score_status = "not published by AA as of 2026-07-25"
+
+[models."claude-opus-5".efforts.medium]
+score = 56.28
+cost_usd_per_index_task = 0.618
+decode_minutes_per_index_task = 2.376
+reasoning_tokens_per_index_task = 6612.7
+answer_tokens_per_index_task = 4950.8
+output_tokens_per_index_task = 11563.6
+
+[models."claude-opus-5".efforts.high]
+score = 58.86
+decode_minutes_per_index_task = 3.488
+reasoning_tokens_per_index_task = 11975.4
+answer_tokens_per_index_task = 7716.6
+output_tokens_per_index_task = 19692.1
+
+[models."claude-opus-5".efforts.xhigh]
+score = 60.07
+reasoning_tokens_per_index_task = 18324.0
+answer_tokens_per_index_task = 10379.1
+output_tokens_per_index_task = 28703.2
+
+[models."claude-opus-5".efforts.max]
+score = 60.69
+cost_usd_per_index_task = 2.028
 
 [models."claude-opus-4-8"]
 source = "https://artificialanalysis.ai/models/claude-opus-4-8"
@@ -67,9 +115,11 @@ main_selector = "still selectable and in recent use as a main-session model; sup
 role_frontmatter = "superseded by claude-opus-5 on 2026-07-25: no profile routes it to a leaf role. Retained as the benchmark row the effort_curve_prior and the 2026-07-23 executor calibration were actually measured on"
 
 [models."claude-opus-4-8".aggregate]
-score_max_effort = 56
+score_max_effort = 55.69
+cost_usd_per_index_task = 1.797
+briefcase_elo = 1346.38
+omniscience_index = 27.43
 total_eval_cost_usd = 3752.55
-eval_output_tokens = 120000000
 output_tokens_per_index_task = 41000
 
 [models."claude-sonnet-5"]
@@ -84,11 +134,13 @@ role_frontmatter_override = "configured"
 role_frontmatter = "smoke-tested in named roles: Explore/mech-executor/executor used the sonnet alias; active pins are defined by selection.default and verified by check-pins"
 
 [models."claude-sonnet-5".aggregate]
-score_max_effort = 53
-output_tokens_per_sec = 83.9
-total_eval_cost_usd = 4010.12
-eval_output_tokens = 300000000
+score_max_effort = 53.35
+cost_usd_per_index_task = 1.525
+briefcase_elo = 1385.76
+omniscience_index = 15.32
+output_tokens_per_sec = 77.23
 output_tokens_per_index_task = 69000
+effort_coverage = "max effort only as of 2026-07-25; AA lists sonnet-5 low/medium/high/xhigh as models but publishes no index score for them. The routed rungs (support: low, medium) are therefore bounded above by 53.35 and otherwise unmeasured - the one cell in this config with no per-rung evidence on either provider."
 
 [models."claude-haiku-4-5"]
 source = "https://artificialanalysis.ai/models/claude-4-5-haiku"
@@ -103,7 +155,11 @@ role_frontmatter = "benchmark comparison row; no current profile routes Haiku (u
 
 [models."claude-haiku-4-5".aggregate]
 score_non_reasoning = 24
-output_tokens_per_sec = 93.7
+briefcase_elo = 611.83
+omniscience_index = -4.22
+output_tokens_per_sec = 95.0
+cost_usd_per_index_task = 0.237
+score_note = "Briefcase Elo 611.83 is roughly 1100 below claude-opus-5 and 770 below claude-sonnet-5 on the agentic benchmark; the 2026-07-22 user-directed Sonnet floor for support roles is corroborated, not merely asserted."
 
 [quality_floor]
 policy = "Meet the role quality tier first; optimize the selected secondary objective only within allowed routes."
@@ -124,7 +180,7 @@ judgment = ["claude-sonnet-5/medium", "claude-opus-5/low", "claude-opus-5/medium
 critical = ["claude-opus-5/medium", "claude-opus-5/high"]
 
 [quality_floor.notes]
-judgment_fable = "Fable routes in the judgment tier apply to the main session only (H/X profiles); named roles stay on Opus."
+judgment_fable = "Fable routes in the judgment tier apply to the main session only (H/X profiles); named roles stay on Opus. Fable stays allowed because it clears the judgment floor comfortably (59.86, second highest published), but as of 2026-07-25 it is dominated by claude-opus-5/max on index, cost, Briefcase Elo, and output tokens at once, so H/X now names Opus first. Read the domination claim with its caveat: AA's Fable row includes opus-4-8 fallback and no standalone Fable score is published."
 xhigh = "xhigh is main-session-only under profile X; no named role or bridge call uses it."
 critical_medium = "opus/medium is allowed so verifier can trade depth for speed under fast; security-* stay at opus/high in every profile."
 effort_source = "All named roles pin effort from the active deployment preset (user-directed 2026-07-22); no role follows the main-session effort."
@@ -135,7 +191,7 @@ description = "Meet every quality floor, then balance capability, speed, cost, a
 [profiles.balanced.roles.main]
 model = "user_selected"
 effort = "user_selected"
-reason = "The user owns the main-session model and effort; H = Fable/low or Opus/high, X = Fable medium-xhigh or Opus/high."
+reason = "The user owns the main-session model and effort; H = Opus/high or Fable/low, X = Opus/high or Fable medium-xhigh. Opus 5 leads both profiles on 2026-07-25 measured data (higher index and Briefcase Elo at lower cost per task than Fable 5)."
 
 [profiles.balanced.roles.explore]
 model = "claude-sonnet-5"
@@ -216,7 +272,7 @@ description = "Guard high-risk, high-impact, or ambiguity-heavy work without ove
 [profiles.quality_guarded.roles.main]
 model = "user_selected"
 effort = "user_selected"
-reason = "Recommend profile X (Fable up to xhigh or Opus/high); the user still owns the switch."
+reason = "Recommend profile X (Opus/high, or Fable up to xhigh); the user still owns the switch."
 
 [profiles.quality_guarded.roles.explore]
 model = "claude-sonnet-5"

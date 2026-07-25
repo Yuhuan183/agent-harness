@@ -56,7 +56,7 @@ class ClaudeContractTests(unittest.TestCase):
         for moved in (
             "Discovery → Plan → Approval",
             "gpt-5.6-sol",
-            "H = Fable",
+            "H = Opus",
             "2.1.207",
         ):
             self.assertNotIn(moved, policy)
@@ -130,8 +130,8 @@ class ClaudeContractTests(unittest.TestCase):
         skill = read(".claude/skills/provider-routing/SKILL.md")
         for phrase in (
             "omit invocation-level `model`",
-            "H** = Fable/low or Opus/high",
-            "X** = Fable at medium\u2013xhigh or Opus/high",
+            "H** = Opus/high or Fable/low",
+            "X** = Opus/high or Fable at medium\u2013xhigh",
             "one cross-provider hop measured from the task's origin",
             "A fallback provider cannot route back",
             "one bounded retry",

@@ -297,6 +297,59 @@ release（`claude-opus-5-1`）視為漂移。掃描窗口封頂 30 天，避免 
 Opus 5。依 trap covenant，executor 路由變更應觸發 s7＋s8 regression 重跑；本次換代**尚未
 重跑**，這是目前最大的取證缺口。
 
+## Artificial Analysis 重新取數與 per-effort 曲線（2026-07-25）
+
+**已驗證（一手擷取）**：從 AA 各 model 詳情頁的 `application/ld+json` Dataset 區塊直接擷取，
+非讀圖或轉述。方法備註：`?models=` 是 client-side filter,server 回同一份 HTML，所以 per-effort
+資料要逐個 variant slug 頁抓；成本用「Cost per Intelligence Index Task」的五個分項
+(input／cacheHit／cacheWrite／reasoning／answer)相加，此法在 13 個同時也有官方彙總值的
+label 上誤差 0.00%，方法本身已驗證。
+
+| model / effort | AAII v4.1 | US$/task | output tok | Briefcase Elo |
+|---|---|---|---|---|
+| Claude Opus 5 (max) | **60.69** | **2.028** | — | **1720** |
+| Claude Opus 5 (xhigh) | 60.07 | — | 28,703 | — |
+| Claude Fable 5（含 fallback） | 59.86 | 2.750 | 33,127 | 1574 |
+| GPT-5.6 Sol (max) | 58.89 | 1.037 | 15,346 | 1503 |
+| Claude Opus 5 (high) | 58.86 | — | 19,692 | — |
+| GPT-5.6 Sol (xhigh) | 57.65 | 0.682 | 9,941 | — |
+| Claude Opus 5 (medium) | 56.28 | 0.618 | 11,564 | — |
+| GPT-5.6 Sol (high) | 55.87 | 0.453 | 6,690 | — |
+| Claude Opus 4.8 (max) | 55.69 | 1.797 | — | 1346 |
+| GPT-5.6 Terra (max) | 54.95 | 0.825 | 19,370 | — |
+| GPT-5.6 Sol (medium) | 53.59 | 0.314 | 4,203 | — |
+| Claude Sonnet 5 (max) | 53.35 | 1.525 | — | 1386 |
+| GPT-5.6 Luna (max) | 51.24 | 0.209 | 18,912 | — |
+| Claude Opus 5 (low) | 未發布 | 0.361 | 6,067 | — |
+| Claude 4.5 Haiku | 未發布 | 0.237 | 23,537 | 612 |
+
+**四個對本 repo 有直接後果的結論**：
+
+1. **Opus 5 全面支配 Fable 5。** 60.69 vs 59.86（分數）、2.028 vs 2.750（成本）、
+   1720 vs 1574（Briefcase）、28.7k vs 33.1k（output tokens）——四軸同時勝。H/X reference
+   profile 因此改為 **Opus 優先**、Fable 次之。誠實邊界：AA 的 Fable row 標示「with
+   fallback」（含 opus-4-8 fallback），沒有純 Fable 分數，所以這是「以已發布數據論」的支配。
+2. **換代的收益比先前假設的更大。** opus/medium（56.28）已經超過上一代的天花板
+   opus-4-8/max（55.69），而成本只有其約三分之一（0.618 vs 1.797）。定價未變
+   （$5／$25 per M），所以整個增益都是「每 token 的能力」。
+3. **Briefcase Elo 的鑑別度遠高於文字 Index，而且結論不同。** Opus 5 與 Sonnet 5 的文字
+   Index 差 7 分，Briefcase 差 **335 Elo**;Opus 5 與 Sol/max 文字 Index 只差 1.8 分，
+   Briefcase 差 **217 Elo**。本 harness 派的正是 agentic 工作，所以兩份 routing 檔都新增
+   `secondary_benchmark` 記錄此軸。這條直接反對「Sol/max ≈ Opus 5」的跨 provider 等價假設。
+4. **GPT-5.6 資料零漂移。** 逐格比對 2026-07-21 快照：7 個仍有圖表分數的 cell 分數到小數
+   兩位相同，13 個 cell 成本到小數三位相同。Codex 側因此**只動 `as_of` 與驗證註記，數字一格未改**
+   ——這是「已重新確認未變」，不是「未重新確認」。
+
+**取代關係**：先前作為 executor 檔位依據的 BrowseComp agentic-search 曲線（社群分享圖表)
+正式退役，改由 AA 自己的 per-effort Index 直接覆蓋 Opus 階梯。舊曲線量在 opus-4-8／sonnet-5
+上，保留在本文件下方作為歷史，不再是 active prior。
+
+**仍然無法裁決的一格**：`explore` sonnet/low 與 `mech-executor` sonnet/medium。AA 把
+sonnet-5 的 low／medium／high／xhigh 列為 model 但**不發布其 Index 分數**，所以這兩個
+routed rung 只有「上界 53.35」這一個資訊。Sonnet 每 token 便宜 2.5 倍($2／$10 vs $5／$25),
+opus/low 是 $0.361/task 但同樣沒有分數——兩邊都缺分數，任何一方向的搬移都會是無證據的。
+依 `revision_policy` 的 n≥10 規則，這格留給本機 trap 取證，不由外部數據推動。
+
 ## Artificial Analysis 快照（2026-07-21）
 
 Artificial Analysis Intelligence Index v4.1 是英文、純文字的綜合評測，共 9 項：Agents 34%、

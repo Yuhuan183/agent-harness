@@ -17,7 +17,7 @@
 
 ## Routing policy (summary)
 
-- **Main session**: model and effort are user-selected; tracked settings pin neither. Reference profiles: H = Fable/low or Opus/high; X = Fable at medium–xhigh or Opus/high (xhigh is main-session-only).
+- **Main session**: model and effort are user-selected; tracked settings pin neither. Reference profiles: H = Opus/high or Fable/low; X = Opus/high or Fable at medium–xhigh (xhigh is main-session-only); Opus leads both since 2026-07-25 measured data.
 - **Role pins**: Claude profiles are deployment presets, not per-dispatch routes. Balanced pins `explore` sonnet/low, `mech-executor` sonnet/medium, `executor` opus/medium, `plan-verifier` opus/medium, and `verifier`/`security-*` opus/high. Pins name a tier alias and the CLI resolves the generation (`opus` → `claude-opus-5`), so a generation move edits the alias map and the routing table but never the seven agent files; `check-aliases` verifies the alias-to-generation claim against leaf transcripts. `activate-profile` updates all frontmatter pins and `selection.default` transactionally in source before sync.
 - **Codex bridge**: every leaf dispatch resolves model/effort via `~/.codex/scripts/model-routing` (single source of truth); Sol and Luna bridge overrides are smoke-tested (2026-07-22, rollout-verified).
 - **Cross-provider**: provider choice is CP-first (local reports + external priors + ledger; usage alarm switches to the provider with headroom, asking the user when material). Single-hop fallback from the task's origin, never circular; security routes like any role at its critical floor; dual-provider implementation always has one writer. Uncertain choice uses the three-option user gate.
@@ -48,7 +48,7 @@
 ### For Claude
 
 - Review `experience-revise` suggestions only after policy thresholds are met; apply a Claude role-wide change through a source deployment preset, never from one mixed cohort.
-- F-06 follow-up: Claude pins are aliases, so ledger routes stay `route_source: resolver-assumed`. Once telemetry exposes the actual runtime model id, mark mismatches non-decisive. Verify at the next alias upgrade: pre-upgrade assumed records must not be credited to the new model.
+- F-06 follow-up: Claude pins are aliases, so ledger routes stay `route_source: resolver-assumed`. **Precondition now met (2026-07-25)** — `model-routing check-aliases` reads the real `message.model` from leaf transcripts, so the runtime id is available to compare against the assumed route. Remaining work: have `experience-log` record `transcript-verified` when the observed id matches, and keep pre-upgrade assumed records from being credited to the new generation.
 - Live probe: permission matching around the `rtk` PreToolUse rewrite.
 
 ### For Codex
