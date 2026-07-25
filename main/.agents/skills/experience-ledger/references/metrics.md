@@ -19,7 +19,7 @@
 | `cache_write_tokens` / `cache_read_tokens` | automatic (when available) | int | Cache-creation and cache-read tokens; all four categories must be present for a complete token count |
 | `token_scope` | automatic | `full` \| `output_only` \| `partial` | Explicit cost-proxy scope; comparisons across scopes are prohibited |
 | `telemetry_warning` | automatic (on anomaly) | string | e.g. multiple Codex rollouts landing in the same time window |
-| `route_source` | automatic | `explicit` \| `resolver-assumed` | Whether the route field was passed explicitly or inferred by the resolver from an alias; inferred values must not be treated as verified evidence once the alias is upgraded |
+| `route_source` | automatic | `rollout-verified` \| `explicit` \| `resolver-assumed` | How well the route is attested, strongest first. `rollout-verified`: model and effort matched the provider's own rollout record. `explicit`: passed by the dispatcher with no provider telemetry to check it against — a claim, not evidence. `resolver-assumed`: inferred by the resolver from an alias, and must not be treated as verified once the alias is upgraded |
 | `origin_provider` / `parent_dispatch_id` / `fallback_hops` | on fallback | | Origin, failed dispatch, and hop count for a cross-provider fallback; the logger rejects hops > 1 |
 | `secs` | should be recorded | float | **Execution-time proxy**: SubagentStart to SubagentStop; excludes subsequent main-session correction and integration |
 | `review_secs` / `rework_secs` | should be recorded | float | Main session's quality-check and correction/integration time |

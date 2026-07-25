@@ -75,6 +75,30 @@ CODEX_SESSIONS = os.environ.get(
     "CODEX_SESSIONS_DIR", os.path.expanduser("~/.codex/sessions"))
 
 
+def codex_route_from_rollout(path):
+    """Return the model/effort Codex itself recorded for this rollout.
+
+    The bridge job sidecar stores no route, so a bridge record's route would
+    otherwise be the dispatcher's self-report. Codex writes the applied thread
+    settings into the rollout, which is the provider-recorded telemetry the
+    provider-extension protocol requires of every routable target.
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                if '"thread_settings_applied"' not in line:
+                    continue
+                settings = (json.loads(line).get("payload") or {}).get(
+                    "thread_settings") or {}
+                model = settings.get("model")
+                effort = settings.get("reasoning_effort")
+                if model and effort:
+                    return {"observed_model": model, "observed_effort": effort}
+    except (OSError, json.JSONDecodeError, AttributeError, TypeError):
+        pass
+    return {}
+
+
 def codex_usage_tokens(start, stop):
     """Token delta for one unambiguous Codex rollout in [start, stop].
 
@@ -130,6 +154,10 @@ def codex_usage_tokens(start, stop):
         "cache_read_tokens": totals.get("cached_input_tokens", 0),
         "tokens_out": totals.get("output_tokens", 0),
         "rollout_id": os.path.basename(path).removesuffix(".jsonl"),
+        # Same unambiguous rollout, so the route is attested by the same
+        # evidence as the tokens. An ambiguous window returns above without
+        # either: a rollout that cannot be pinned cannot attest a route.
+        **codex_route_from_rollout(path),
     }
 
 
