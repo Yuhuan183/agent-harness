@@ -39,14 +39,37 @@ STATE = Path(os.environ.get(
 LIVE = ("running", "queued", "starting")
 
 
-def live_jobs(workspace: str | None, session: str | None) -> list[dict]:
-    """Every live job the companion knows about, newest first.
+def pid_alive(pid: object) -> bool | None:
+    """True/False for a checkable pid, None when the record carries none.
+
+    The status field alone is not enough: a job killed abruptly leaves
+    `status: running` behind forever (observed 2026-07-26, when the review job
+    died and its state file never noticed). Asking the OS is what makes "live"
+    mean live.
+    """
+    if not isinstance(pid, int):
+        return None
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True  # someone else's process, but it exists
+    except OSError:
+        return None
+    return True
+
+
+def scan(workspace: str | None, session: str | None) -> tuple[list[dict], list[dict]]:
+    """Return (live, stale) jobs, newest first.
 
     State directories are keyed by a workspace hash this script deliberately
     does not recompute; it filters on the `workspaceRoot` each job records, so
     a change to the companion's naming scheme cannot silently narrow results.
+    A job whose pid cannot be checked counts as live: for a duplicate guard,
+    over-reporting is the safe direction.
     """
-    jobs = []
+    live, stale = [], []
     for path in sorted(STATE.glob("*/jobs/*.json")):
         try:
             job = json.loads(path.read_text(encoding="utf-8"))
@@ -58,8 +81,12 @@ def live_jobs(workspace: str | None, session: str | None) -> list[dict]:
             continue
         if session and job.get("sessionId") != session:
             continue
-        jobs.append(job)
-    return sorted(jobs, key=lambda job: job.get("startedAt") or "", reverse=True)
+        alive = pid_alive(job.get("pid"))
+        job["pid_alive"] = alive
+        (stale if alive is False else live).append(job)
+    order = lambda job: job.get("startedAt") or ""  # noqa: E731
+    return (sorted(live, key=order, reverse=True),
+            sorted(stale, key=order, reverse=True))
 
 
 def duplicate_groups(jobs: list[dict]) -> list[list[dict]]:
@@ -77,7 +104,9 @@ def duplicate_groups(jobs: list[dict]) -> list[list[dict]]:
 
 
 def describe(job: dict) -> str:
-    return (f"{job.get('id')} | {job.get('status')}/{job.get('phase')} | "
+    pid = ("pid gone" if job.get("pid_alive") is False
+           else "pid unknown" if job.get("pid_alive") is None else "pid alive")
+    return (f"{job.get('id')} | {job.get('status')}/{job.get('phase')} | {pid} | "
             f"write={job.get('write')} | started {job.get('startedAt')} | "
             f"session {job.get('sessionId')}")
 
@@ -99,12 +128,13 @@ def main() -> int:
               file=sys.stderr)
         return 2
 
-    jobs = live_jobs(args.workspace, args.session)
+    jobs, stale = scan(args.workspace, args.session)
     groups = duplicate_groups(jobs)
 
     if args.as_json:
         print(json.dumps({
             "live": jobs,
+            "stale": stale,
             "duplicate_groups": [[job.get("id") for job in group]
                                  for group in groups],
         }, indent=2))
@@ -124,6 +154,14 @@ def main() -> int:
             print(describe(job))
     else:
         print("no live bridge jobs")
+
+    # A job whose process vanished while its record still says "running" died
+    # without finishing. Report it: it is not a duplicate risk, but it is the
+    # difference between "still working" and "gave you nothing".
+    if stale and not args.as_json:
+        print(f"\n{len(stale)} job(s) died without updating their state:")
+        for job in stale:
+            print(f"  {describe(job)}")
 
     return 1 if (args.duplicates and groups) else 0
 
