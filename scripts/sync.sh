@@ -309,7 +309,7 @@ done
 
 # Machine state remains deliberately outside the manifest.
 log "note: Claude Code MCP state lives in ~/.claude.json and is not auto-overwritten; add Headroom with 'headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787'."
-log "note: main/.codex/config.merge.toml must be manually merged into ~/.codex/config.toml (see DEPLOY.md); it is not auto-overwritten."
+log "note: ~/.codex/config.toml is merged section-scoped ([agents] only, see DEPLOY.md); GPT model/effort, MCP, plugins, desktop, and project trust are preserved, never authored here."
 
 # --- Verification ---
 if [[ $APPLY -eq 1 ]]; then

@@ -481,6 +481,71 @@ class MechanismTests(unittest.TestCase):
                 self.assertEqual(sum(hook["command"] == c for c in commands), 1,
                                  hook["command"])
 
+    def test_weekly_integrity_parses_the_real_deployment_manifest(self) -> None:
+        # The hook re-implements manifest parsing, so a mode added to the
+        # manifest and to sync.sh but not here makes load_deployment_manifest
+        # raise, which the hook catches — silently killing the whole deployment
+        # drift check while still looking like a normal finding. Every existing
+        # test used a synthetic manifest, so `merge-json` shipped broken.
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "weekly_integrity_probe",
+            ROOT / "main/.claude/hooks/weekly-integrity.py",
+        )
+        module = importlib.util.module_from_spec(spec)
+        # The hook body runs checks at import; only the parser is wanted here.
+        source = (ROOT / "main/.claude/hooks/weekly-integrity.py").read_text(
+            encoding="utf-8"
+        )
+        namespace: dict = {}
+        exec(source[:source.index("try:\n    if os.path.exists(STAMP)")], namespace)
+
+        entries = namespace["load_deployment_manifest"](str(ROOT))
+        manifest_modes = {mode for _, _, mode in entries}
+        self.assertEqual(len(entries), len(deployment_manifest_entries()))
+        # Every mode the manifest actually uses must be understood here.
+        self.assertIn("merge-json", manifest_modes)
+        self.assertIn("merge-toml", manifest_modes)
+        self.assertEqual(
+            manifest_modes,
+            {mode for _, _, mode in deployment_manifest_entries()},
+        )
+
+    def test_drift_check_ignores_runtime_generated_bytecode(self) -> None:
+        # Deployed scripts write __pycache__ as they run. If the drift check
+        # counts that as drift the alarm can never clear, and an alarm that is
+        # always on is worse than none. Real drift must still be caught.
+        hook = read(".claude/hooks/weekly-integrity.py")
+        self.assertIn("--checksum", hook)
+        # As an rsync argument, not as prose in the comment explaining why.
+        self.assertNotIn('"--delete-excluded"', hook)
+
+        src = ROOT / "main/.agents/scripts"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            dst_parent = Path(temp_dir)
+            subprocess.run(["rsync", "-a", str(src), str(dst_parent) + "/"], check=True)
+            deployed = dst_parent / "scripts"
+            args = ["rsync", "-a", "--checksum", "--links", "--delete",
+                    "--exclude", "__pycache__/", "--exclude", "*.pyc",
+                    "--exclude", ".DS_Store", "-n", "--itemize-changes",
+                    str(src), str(dst_parent) + "/"]
+
+            def drift() -> list[str]:
+                out = subprocess.run(args, capture_output=True, text=True, check=True)
+                return [l for l in out.stdout.splitlines()
+                        if l and not l.startswith(".") and not l.endswith("/")]
+
+            self.assertEqual(drift(), [])
+            # Bytecode the deployed script regenerates: not drift.
+            cache = deployed / "__pycache__"
+            cache.mkdir(exist_ok=True)
+            (cache / "routing_core.cpython-313.pyc").write_bytes(b"\x00bytecode")
+            (deployed / ".DS_Store").write_bytes(b"\x00")
+            self.assertEqual(drift(), [])
+            # A real edit to a deployed file is still caught.
+            (deployed / "routing_core.py").write_text("tampered\n", encoding="utf-8")
+            self.assertTrue(any("routing_core.py" in l for l in drift()), drift())
+
     def test_codex_config_merge_preserves_machine_state(self) -> None:
         # ~/.codex/config.toml carries GPT model/effort, MCP, plugins, desktop,
         # shell policy and per-project trust next to the agent registrations

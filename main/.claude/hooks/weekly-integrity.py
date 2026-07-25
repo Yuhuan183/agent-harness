@@ -44,13 +44,16 @@ def load_deployment_manifest(repo):
                 raise ValueError(f"malformed deployment manifest line {line_number}")
             source, target = fields[:2]
             mode = fields[2] if len(fields) == 3 else ""
-            if mode not in ("", "merge"):
+            if mode not in ("", "merge", "merge-json", "merge-toml"):
                 raise ValueError(f"invalid deployment mode on line {line_number}")
-            if mode == "merge" and (
-                source != "main/.agents/skills" or target != ".agents/skills"
-            ):
+            restricted = {
+                "merge": ("main/.agents/skills", ".agents/skills"),
+                "merge-json": ("main/.claude/settings.json", ".claude/settings.json"),
+                "merge-toml": ("main/.codex/config.merge.toml", ".codex/config.toml"),
+            }
+            if mode in restricted and (source, target) != restricted[mode]:
                 raise ValueError(
-                    f"merge mode is restricted to the shared skill root on line {line_number}"
+                    f"{mode} mode is restricted to its declared mapping on line {line_number}"
                 )
             source_prefixes = ("main/.agents/", "main/.claude/", "main/.codex/")
             target_prefixes = (".agents/", ".claude/", ".codex/")
@@ -183,8 +186,14 @@ try:
                 for check_src, check_deployed, check_target_rel in checks:
                     if os.path.isdir(check_src):
                         r = subprocess.run(
+                            # --delete (drift: deployed file the repo dropped)
+                            # but deliberately NOT --delete-excluded. This is a
+                            # read-only comparison, and the excluded patterns
+                            # are bytecode the deployed scripts regenerate as
+                            # they run. Counting those as drift produced an
+                            # alarm that could never clear, which is worse than
+                            # no alarm: it trains the reader to skip the real one.
                             ["rsync", "-a", "--checksum", "--links", "--delete",
-                             "--delete-excluded",
                              "--exclude", "__pycache__/", "--exclude", "*.pyc",
                              "--exclude", ".DS_Store", "-n", "--itemize-changes",
                              check_src, os.path.dirname(check_deployed) + "/"],
