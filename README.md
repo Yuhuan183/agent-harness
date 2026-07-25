@@ -9,7 +9,7 @@ Git，讓配置可以 review、測試、部署、回滾，而不會覆蓋憑證�
 - **品質優先的派工**：main 保留架構與最終判斷；leaf 只處理有界、可驗收的工作。
 - **可調整但不漂移的 routing**：benchmark 是先驗，本機 reviewed dispatch-outcome 證據才負責修正選擇。
 - **跨平台一致契約**：Claude、Codex 與 Claude→Codex bridge 使用對應角色與相同品質語意。
-- **可恢復的全域部署**：source checkout 是真相源；同步前先驗證，套用時備份，套用後比對。
+- **可恢復的全域部署**：source checkout 是真相源；同步前先驗證，套用後比對；回滾靠 git 重新部署。
 
 ## 系統全貌
 
@@ -26,7 +26,7 @@ flowchart LR
         manifest["scripts/deployment-manifest.tsv"]
     end
 
-    sync["scripts/sync.sh<br/>preflight → backup → sync → parity"]
+    sync["scripts/sync.sh<br/>preflight → sync → parity"]
 
     subgraph home["Managed HOME targets"]
         homeClaude["~/.claude"]
@@ -174,7 +174,7 @@ Hooks 與監控預設 fail-open，避免本機診斷工具故障阻塞正常工�
 # 1. 在 source checkout 檢查所有 preflight 與預計同步內容
 scripts/sync.sh
 
-# 2. review dry-run 後才回寫全域配置；套用前會建立備份
+# 2. review dry-run 後才回寫全域配置
 scripts/sync.sh --apply
 
 # 3. 開新的 Claude Code / Codex session，讓契約與 roles 重新載入
