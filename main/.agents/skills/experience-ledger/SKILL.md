@@ -24,6 +24,8 @@ and session automatically; a native Claude dispatch then only needs its outcome:
 
 - Explicit flags always override pending values. When completions overlap,
   `--from-pending` refuses to guess — pass the hook-generated `--dispatch-id`.
+  Any run that names a `--dispatch-id` clears that dispatch's staged stub, so a
+  fully explicit record reconciles the pending file the same way.
 - **Route flags by request source.** Native Claude records may omit
   `--profile/--model/--effort`: the resolver fills them and tags the record
   `route_source: resolver-assumed` (pins are aliases; the resolver maps them to

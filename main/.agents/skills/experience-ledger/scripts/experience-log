@@ -12,6 +12,8 @@ role/source/dispatch/time/token usage so a sequential log call shrinks to
 When multiple completions are pending, --dispatch-id is required so concurrent
 dispatches cannot be paired with the wrong outcome.
 Explicit flags always override pending values.
+Any run that names a --dispatch-id clears that dispatch's stub, so logging with
+explicit flags reconciles the pending file the same way --from-pending does.
 """
 from __future__ import annotations
 
@@ -128,7 +130,8 @@ def main() -> int:
     parser.add_argument("--from-pending", action="store_true",
                         help="pre-fill from one hook-staged dispatch stub")
     parser.add_argument("--dispatch-id", default=None,
-                        help="exact staged dispatch id; required when completions overlap")
+                        help="exact staged dispatch id; required when completions "
+                             "overlap, and clears that dispatch's staged stub")
     parser.add_argument("--role", choices=ROLES + tuple(LEGACY_ROLE_ALIASES),
                         default=None)
     parser.add_argument("--provider", choices=PROVIDERS, default=None)
@@ -171,6 +174,7 @@ def main() -> int:
     parser.add_argument("--now", default=None, help="ISO timestamp override (tests)")
     args = parser.parse_args()
 
+    stub = None
     if args.from_pending:
         try:
             stub = consume_pending(args.dispatch_id, remove=False)
@@ -309,7 +313,12 @@ def main() -> int:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
-    if args.from_pending:
+    # A stub is staged per dispatch id, not per logging style. Logging with
+    # explicit flags is equally valid and used to leave the stub behind, so the
+    # pending file grew by one row per explicitly-logged dispatch forever.
+    # Reconcile whenever the record names a dispatch; `expected_stop` still
+    # pins --from-pending to the exact row it read.
+    if args.dispatch_id or args.from_pending:
         try:
             consume_pending(args.dispatch_id, remove=True, expected_stop=stub)
         except (OSError, ValueError) as error:
