@@ -297,6 +297,81 @@ release（`claude-opus-5-1`）視為漂移。掃描窗口封頂 30 天，避免 
 Opus 5。依 trap covenant，executor 路由變更應觸發 s7＋s8 regression 重跑；本次換代**尚未
 重跑**，這是目前最大的取證缺口。
 
+## Artificial Analysis 重新取數：完整 effort 階梯（2026-07-26）
+
+**已驗證（一手擷取）**：沿用 07-25 的方法並強化——逐一擷取 32 個 variant slug 頁的
+`application/ld+json` Dataset 區塊，再跨頁取聯集。強化的原因是單頁的每張圖只列前幾名，
+同一個 rung 的數字常只出現在兄弟頁上；跨 32 頁聯集後重疊處**零衝突**。成本仍用五個分項
+（input／cacheHit／cacheWrite／reasoning／answer）相加，與 AA 自己發布的總值在浮點精度上完全相同。
+
+Claude 側（AAII = Intelligence Index v4.1；decode 分鐘排除 TTFT 與工具 overhead）：
+
+| model / effort | AAII | US$/task | output tok（reasoning＋answer） | decode 分 | Briefcase Elo |
+|---|---:|---:|---:|---:|---:|
+| Opus 5 max | **60.69** | 2.028 | 36,978（24,412＋12,567） | 6.98 | **1720** |
+| Opus 5 xhigh | 60.07 | 1.561 | 28,703（18,324＋10,379） | — | 1693 |
+| Opus 5 high | 58.86 | 1.057 | 19,692（11,975＋7,717） | 3.51 | 1606 |
+| Opus 5 medium | 56.28 | 0.618 | 11,564（6,613＋4,951） | 2.40 | 1470 |
+| Opus 5 low | **50.61** | 0.361 | 6,067（2,995＋3,072） | 1.17 | 1223 |
+| Fable 5（含 fallback） | 59.86 | 2.750 | 33,127（25,431＋7,696） | 4.84 | 1574 |
+| Sonnet 5 max | 53.35 | 1.525 | — | — | 1386 |
+| Sonnet 5 xhigh | 未發布 | 未發布 | — | — | 1294 |
+| Sonnet 5 high | 未發布 | 未發布 | — | — | 1194 |
+| Sonnet 5 medium | 未發布 | 未發布 | — | — | 1056 |
+| Sonnet 5 low | 未發布 | 未發布 | — | — | 928 |
+| Sonnet 5 non-reasoning | 41.73 | 0.375 | 9,709（0＋9,709） | 1.64 | — |
+| Opus 4.8 max | 55.69 | 1.797 | — | — | 1346 |
+| Haiku 4.5 | 23.71 | — | — | — | 612（07-25 值，本次未再確認） |
+
+GPT-5.6 側，每格依序是 `AAII／US$ per task／decode 分／output token per task`：
+
+| Effort | Sol | Terra | Luna |
+|---|---:|---:|---:|
+| none | 41.20／$0.200／0.61／2,074 | 33.97／$0.179／0.33／2,154 | 26.56／$0.055／0.23／2,110 |
+| low | 49.44／$0.197／0.77／2,508 | 40.47／$0.154／0.34／2,258 | 33.26／$0.040／0.26／2,298 |
+| medium | 53.59／$0.314／1.14／4,203 | 45.57／$0.175／0.59／3,769 | 38.05／$0.050／0.38／3,663 |
+| high | 55.87／$0.453／1.84／6,690 | 48.95／$0.336／1.06／7,738 | 46.06／$0.095／0.85／8,118 |
+| xhigh | 57.65／$0.682／2.69／9,941 | 51.60／$0.477／1.52／11,036 | 49.07／$0.139／1.28／12,492 |
+| max | 58.89／$1.037／3.88／15,346 | 54.95／$0.825／2.37／19,370 | 51.24／$0.209／1.71／18,912 |
+
+**四個結論：**
+
+1. **Opus 階梯補齊，也解釋了為什麼沒有 profile 釘 max。** 07-25 唯一缺的 `opus/low` 分數
+   已發布（50.61），五個 rung 全部量測完成。階梯的**級距極不平均**：low→medium 用
+   US$0.257 換 5.67 分，xhigh→max 用 US$0.467 只換 0.62 分。最貴的一階買到最少的能力，
+   這不是偏好而是數據。
+2. **首次出現 per-rung Briefcase Elo——這是 Sonnet support pin 的第一份逐檔證據。**
+   07-25 明確記錄「AA 不發布 Sonnet 各檔分數，因此這兩格無法裁決」；現在 agentic 軸有了。
+   兩條階梯**互相交錯**：`opus/low`（1223）高於 `sonnet/high`（1194），而現行 support pin
+   `sonnet/low`（928）與 `sonnet/medium`（1056）分別低於 `opus/low` 295 與 166 Elo——
+   而 `claude-opus-5/low` 本來就在 support tier 的 allowlist 內。
+   **這是候選，不是判決**，三個理由：AA 沒有發布任何 Sonnet rung 的 per-task 成本，所以
+   換檔的價格無法量化（Sonnet 每 token 便宜 2.5 倍：$2/$10 vs $5/$25）；Sonnet 底線是
+   使用者指示；`revision_policy` 仍要求該 cell 有 n≥10 本機樣本。已寫入 routing 檔的
+   `effort_curve`，pin 一格未動。
+3. **GPT-5.6 連續第二次零漂移——但只限 eval 數字。** 15 個 rung 的 index、成本、reasoning／
+   answer token 對到 4–5 位小數全數相同（60/60）。**decode 分鐘則 15 格全動**，幅度從
+   −6.5%（sol/max 4.152→3.880）到 +22%（luna/xhigh 1.049→1.278）。原因是 decode 是持續
+   重測的吞吐觀測，不是固定的 eval 結果。實務後果：任何引用舊 decode 值的速度論述都要重算——
+   本文 2026-07-22 那條「Luna／high decode 約慢 Terra／low 2.6 倍」現為 **2.5 倍**。
+4. **關掉 reasoning 在這個指標上不省錢。** 三個 GPT-5.6 家族的 non-reasoing 每任務成本
+   都**高於**自己的 low（sol $0.200 vs $0.197、terra $0.179 vs $0.154、luna $0.055 vs $0.040）：
+   token 少了，但 index 掉得更多，cost-per-index-task 反而上升。GPT-5.6 官方雖然把 `none`
+   列為合法 effort，本 repo 因此**刻意不把它加進 routing schema**——三個家族的 none 都在
+   support 門檻之下，加進去只會多一個永遠不會被選到的 rung。數字留在本文作為階梯下界。
+
+**取代關係**：本節取代 07-25 節中「`opus/low` 無分數」「Sonnet 為全 config 唯一無逐檔證據的
+一格」兩項陳述；07-25 節其餘結論（Opus 5 支配 Fable 5、換代收益、Briefcase 鑑別度高於文字
+Index）不變，數據也未變。
+
+資料頁：[Opus 5](https://artificialanalysis.ai/models/claude-opus-5)、
+[Sonnet 5](https://artificialanalysis.ai/models/claude-sonnet-5)、
+[Fable 5](https://artificialanalysis.ai/models/claude-fable-5)、
+[Sol](https://artificialanalysis.ai/models/gpt-5-6-sol)、
+[Terra](https://artificialanalysis.ai/models/gpt-5-6-terra)、
+[Luna](https://artificialanalysis.ai/models/gpt-5-6-luna)；
+各 effort 為同名 slug 加 `-low`／`-medium`／`-high`／`-xhigh`／`-non-reasoning`。
+
 ## Artificial Analysis 重新取數與 per-effort 曲線（2026-07-25）
 
 **已驗證（一手擷取）**：從 AA 各 model 詳情頁的 `application/ld+json` Dataset 區塊直接擷取，
@@ -379,7 +454,9 @@ US$1.04／US$0.55／US$0.21；目前 v4.1 模型頁重算後是 US$1.04／US$0.8
 的 US$0.55 已過時。發布文章中的 Codex Coding Agent Index 80／77／75 仍是另一個 harness
 評測，不能與下表的基礎模型 Index 混用。
 
-目前模型頁的完整 effort 快照如下。每格依序是 `Index／美元每 Index task／加權 decode 分鐘／
+當時模型頁的完整 effort 快照如下（歷史值；現行數據見
+[2026-07-26 節](#artificial-analysis-重新取數完整-effort-階梯2026-07-26)，index 與成本相同、
+decode 分鐘已全部重測）。每格依序是 `Index／美元每 Index task／加權 decode 分鐘／
 output token 每 Index task`；decode 時間排除 TTFT、工具與其他平台 overhead，不是端到端時間。
 
 | Effort | Sol | Terra | Luna |
@@ -459,7 +536,8 @@ Main 與七個 leaf roles 的責任、三種 profile 語意及各 surface 套用
 - 快速表示「通過品質門檻後最快」，不是所有候選中絕對最快。
 - 沒有獨立 `economy` profile。「較省」由 provider 選擇、訂閱額度與每個可接受成果的本機成本
   決定，不能靠降低品質門檻達成。Luna／high 的 AA API 成本代理雖比 Terra／low 低約 39%，但
-  decode 約慢 2.6 倍、benchmark output token 約為 3.6 倍；而訂閱額度沒有公開美元換算公式。
+  decode 約慢 2.5 倍（2026-07-26 重測值；07-22 當時為 2.6 倍）、benchmark output token
+  約為 3.6 倍；而訂閱額度沒有公開美元換算公式。
 - Codex `balanced` 的 support roles 使用 Sol／low，付出一些時間與成本換額外能力餘裕；judgment
   與 critical roles 已位於品質門檻，不任意降級。
 - 在 GPT 候選中，`Sol/high` 的 high 設定分數最高且 output token 最少，因此 Codex critical roles

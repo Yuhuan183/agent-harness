@@ -1,7 +1,7 @@
 version = 3
-as_of = "2026-07-25"
+as_of = "2026-07-26"
 benchmark = "Artificial Analysis Intelligence Index v4.1"
-data_verification = "Re-retrieved from AA 2026-07-25 and compared cell by cell against the 2026-07-21 snapshot: zero drift. Scores matched to 2 decimals on the 7 cells AA still charts (sol medium/high/xhigh/max, terra xhigh/max, luna max) and cost per index task matched to 3 decimals on 13 cells. The GPT-5.6 numbers below are therefore unchanged, not merely un-rechecked."
+data_verification = "Re-retrieved from AA 2026-07-26 and compared cell by cell against the 2026-07-25 and 2026-07-21 snapshots. This pass is strictly stronger than 07-25: the union across all 32 fetched variant pages recovered an index score for all 15 GPT-5.6 rungs, not only the 7 AA charts on a single page. Every eval-derived figure held - index to 4 decimals and cost per index task, reasoning tokens and answer tokens to 5 decimals, on all 15 rungs, 60 of 60 comparisons. Decode minutes did move on all 15, by -6.5% (sol/max) to +22% (luna/xhigh), and are updated below: that field is a continuously re-measured throughput observation, not a fixed eval result, so it drifts while the scores do not. Any speed-based reasoning quoting a 07-21 or 07-25 decode figure should be recomputed. Method: parse each variant page's application/ld+json Dataset blocks and union across pages, because a single page truncates every chart to its top rows; cost per task is the sum of the five published components and agrees with AA's own total to full float precision."
 secondary_benchmark = "AA-Briefcase Elo (agentic knowledge-work benchmark), published for gpt-5.6-sol only: 1503.38 at max. Cross-provider caution - the text index puts sol/max within 1.8 points of claude-opus-5/max (58.89 vs 60.69), but Briefcase puts it 217 Elo behind (1503 vs 1720). On agentic work the providers are not as close as the index implies; CP-first routing should not treat sol/max as an Opus-5-equivalent."
 metric_scope = "English text benchmark prior; not local coding-agent success rate"
 availability_scope = "Per-surface status; benchmark data is retained even when a dispatch override is unverified"
@@ -38,7 +38,7 @@ claude_bridge = "smoke-tested 2026-07-22 via codex:codex-rescue --model gpt-5.6-
 [models."gpt-5.6-sol".efforts.low]
 score = 49.4440
 cost_usd_per_index_task = 0.19747
-decode_minutes_per_index_task = 0.77299
+decode_minutes_per_index_task = 0.77476
 reasoning_tokens_per_index_task = 616.3584
 answer_tokens_per_index_task = 1891.3954
 output_tokens_per_index_task = 2507.7537
@@ -46,7 +46,7 @@ output_tokens_per_index_task = 2507.7537
 [models."gpt-5.6-sol".efforts.medium]
 score = 53.5888
 cost_usd_per_index_task = 0.31398
-decode_minutes_per_index_task = 1.23356
+decode_minutes_per_index_task = 1.14389
 reasoning_tokens_per_index_task = 1524.2649
 answer_tokens_per_index_task = 2678.4565
 output_tokens_per_index_task = 4202.7214
@@ -54,7 +54,7 @@ output_tokens_per_index_task = 4202.7214
 [models."gpt-5.6-sol".efforts.high]
 score = 55.8665
 cost_usd_per_index_task = 0.45301
-decode_minutes_per_index_task = 1.83309
+decode_minutes_per_index_task = 1.83525
 reasoning_tokens_per_index_task = 3187.2679
 answer_tokens_per_index_task = 3503.0407
 output_tokens_per_index_task = 6690.3086
@@ -62,7 +62,7 @@ output_tokens_per_index_task = 6690.3086
 [models."gpt-5.6-sol".efforts.xhigh]
 score = 57.6538
 cost_usd_per_index_task = 0.68248
-decode_minutes_per_index_task = 2.70965
+decode_minutes_per_index_task = 2.68990
 reasoning_tokens_per_index_task = 5548.7635
 answer_tokens_per_index_task = 4391.7929
 output_tokens_per_index_task = 9940.5564
@@ -70,7 +70,7 @@ output_tokens_per_index_task = 9940.5564
 [models."gpt-5.6-sol".efforts.max]
 score = 58.8898
 cost_usd_per_index_task = 1.03733
-decode_minutes_per_index_task = 4.15178
+decode_minutes_per_index_task = 3.88033
 reasoning_tokens_per_index_task = 10076.1795
 answer_tokens_per_index_task = 5270.1728
 output_tokens_per_index_task = 15346.3522
@@ -90,7 +90,7 @@ claude_bridge = "smoke-tested 2026-07-22 via codex:codex-rescue --model gpt-5.6-
 [models."gpt-5.6-terra".efforts.low]
 score = 40.4657
 cost_usd_per_index_task = 0.15417
-decode_minutes_per_index_task = 0.26701
+decode_minutes_per_index_task = 0.34181
 reasoning_tokens_per_index_task = 584.5130
 answer_tokens_per_index_task = 1673.8730
 output_tokens_per_index_task = 2258.3860
@@ -98,7 +98,7 @@ output_tokens_per_index_task = 2258.3860
 [models."gpt-5.6-terra".efforts.medium]
 score = 45.5742
 cost_usd_per_index_task = 0.17520
-decode_minutes_per_index_task = 0.45844
+decode_minutes_per_index_task = 0.58650
 reasoning_tokens_per_index_task = 1442.8103
 answer_tokens_per_index_task = 2326.2762
 output_tokens_per_index_task = 3769.0864
@@ -106,7 +106,7 @@ output_tokens_per_index_task = 3769.0864
 [models."gpt-5.6-terra".efforts.high]
 score = 48.9549
 cost_usd_per_index_task = 0.33633
-decode_minutes_per_index_task = 0.93955
+decode_minutes_per_index_task = 1.05881
 reasoning_tokens_per_index_task = 4227.9240
 answer_tokens_per_index_task = 3510.3981
 output_tokens_per_index_task = 7738.3221
@@ -114,7 +114,7 @@ output_tokens_per_index_task = 7738.3221
 [models."gpt-5.6-terra".efforts.xhigh]
 score = 51.6046
 cost_usd_per_index_task = 0.47687
-decode_minutes_per_index_task = 1.34996
+decode_minutes_per_index_task = 1.52136
 reasoning_tokens_per_index_task = 6825.4530
 answer_tokens_per_index_task = 4210.2763
 output_tokens_per_index_task = 11035.7292
@@ -122,7 +122,7 @@ output_tokens_per_index_task = 11035.7292
 [models."gpt-5.6-terra".efforts.max]
 score = 54.9529
 cost_usd_per_index_task = 0.82461
-decode_minutes_per_index_task = 2.05628
+decode_minutes_per_index_task = 2.37201
 reasoning_tokens_per_index_task = 14183.9251
 answer_tokens_per_index_task = 5185.8701
 output_tokens_per_index_task = 19369.7952
@@ -143,7 +143,7 @@ claude_bridge = "smoke-tested 2026-07-22 via codex:codex-rescue --model gpt-5.6-
 [models."gpt-5.6-luna".efforts.low]
 score = 33.2639
 cost_usd_per_index_task = 0.04046
-decode_minutes_per_index_task = 0.19438
+decode_minutes_per_index_task = 0.25864
 reasoning_tokens_per_index_task = 600.3002
 answer_tokens_per_index_task = 1697.6452
 output_tokens_per_index_task = 2297.9454
@@ -151,7 +151,7 @@ output_tokens_per_index_task = 2297.9454
 [models."gpt-5.6-luna".efforts.medium]
 score = 38.0506
 cost_usd_per_index_task = 0.05042
-decode_minutes_per_index_task = 0.31476
+decode_minutes_per_index_task = 0.37663
 reasoning_tokens_per_index_task = 1360.6067
 answer_tokens_per_index_task = 2302.2691
 output_tokens_per_index_task = 3662.8758
@@ -159,7 +159,7 @@ output_tokens_per_index_task = 3662.8758
 [models."gpt-5.6-luna".efforts.high]
 score = 46.0590
 cost_usd_per_index_task = 0.09476
-decode_minutes_per_index_task = 0.69949
+decode_minutes_per_index_task = 0.85495
 reasoning_tokens_per_index_task = 4666.8784
 answer_tokens_per_index_task = 3451.2097
 output_tokens_per_index_task = 8118.0881
@@ -167,7 +167,7 @@ output_tokens_per_index_task = 8118.0881
 [models."gpt-5.6-luna".efforts.xhigh]
 score = 49.0677
 cost_usd_per_index_task = 0.13896
-decode_minutes_per_index_task = 1.04895
+decode_minutes_per_index_task = 1.27843
 reasoning_tokens_per_index_task = 8415.7800
 answer_tokens_per_index_task = 4076.5240
 output_tokens_per_index_task = 12492.3040
@@ -175,7 +175,7 @@ output_tokens_per_index_task = 12492.3040
 [models."gpt-5.6-luna".efforts.max]
 score = 51.2359
 cost_usd_per_index_task = 0.20941
-decode_minutes_per_index_task = 1.57140
+decode_minutes_per_index_task = 1.70840
 reasoning_tokens_per_index_task = 13905.5161
 answer_tokens_per_index_task = 5006.4891
 output_tokens_per_index_task = 18912.0053
