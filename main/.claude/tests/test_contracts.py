@@ -8,14 +8,35 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertLessEqual(len(policy.splitlines()), 40)
         for phrase in (
             "Lead with the outcome",
-            "Infer low-risk ambiguity",
-            "different answers materially change the result",
             "preserve dirty worktrees",
-            "require explicit authority",
             "Direct execution is the default",
             "## Main session only — orchestration",
+            "DECISION: <what and why>",
         ):
             self.assertIn(phrase, policy)
+
+    def test_claude_md_does_not_restate_the_harness_system_prompt(self) -> None:
+        """Claude Code already states these; a second copy is not free.
+
+        Anthropic's context-engineering guidance for the Claude 5 generation cut
+        most of Claude Code's own system prompt because overlapping directives
+        make the model spend reasoning reconciling them, and OpenAI's GPT-5.6
+        guidance reports that repeating approval language makes a model ask
+        permission for safe, expected actions. Each phrase below is carried by
+        the harness prompt in equivalent or stronger form, so this contract must
+        not carry it again. Note this applies to the Claude Code CLI only: the
+        Codex contract and the app prompts face thinner host prompts and keep
+        their own authority boundary.
+        """
+        policy = read(".claude/CLAUDE.contract.md")
+        for restated in (
+            "Infer low-risk ambiguity",
+            "different answers materially change the result",
+            "require explicit authority",
+            "report failed or skipped checks exactly",
+            "Do not add speculative features",
+        ):
+            self.assertNotIn(restated, policy)
 
     def test_dispatch_reporting_and_leaf_boundary(self) -> None:
         # The resident contract keeps the record names and the leaf boundary;
