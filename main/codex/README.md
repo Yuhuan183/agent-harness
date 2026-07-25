@@ -35,7 +35,7 @@ native Codex 記錄來源為 `codex`，Claude bridge 為 `claude-code-plugin-cod
 Main route 只供開啟 task 前選擇；執行中的 main 不會切換模型。Leaf route 依 resolver 的
 `invocation` 使用 spawn argument；未來若啟用 Luna，才使用另行註冊的 custom agent config。切換模型時固定
 `fork_turns = "none"`，由完整 brief 重建必要脈絡。部署後從 `${CODEX_HOME:-$HOME/.codex}/scripts/model-routing` 執行；repo 內則
-使用 `main/.codex/scripts/model-routing`。模型可用性分為訂閱、main selector、原生 leaf override
+使用 `main/codex/scripts/model-routing`。模型可用性分為訂閱、main selector、原生 leaf override
 與 Claude bridge override；訂閱可用不等於 leaf override 已驗證。Claude 經
 `codex:codex-rescue` 派 Codex twin 時，也必須以 `--surface claude-bridge` 解析同一份 profile。
 `~/.codex/skills/headroom-protocol` 回寫後應為指向 `~/.agents/` 的 symlink（`sync.sh` 以

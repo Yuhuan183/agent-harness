@@ -18,8 +18,8 @@ Git，讓配置可以 review、測試、部署、回滾，而不會覆蓋憑證�
 ```mermaid
 flowchart LR
     subgraph repo["Git source checkout"]
-        claude["main/.claude/<br/>Claude contracts, roles, hooks"]
-        codex["main/.codex/<br/>Codex contracts, roles, resolver"]
+        claude["main/claude/<br/>Claude contracts, roles, hooks"]
+        codex["main/codex/<br/>Codex contracts, roles, resolver"]
         shared["main/.agents/<br/>shared skills and routing core"]
         docs["docs/<br/>playbook, research, setup"]
         devonly["evals/ + .agents/skills/<br/>trap fixtures, dev review skill"]
@@ -101,7 +101,7 @@ Claude 與 Codex 各有一份自足角色契約；leaf 不讀 main orchestration
 
 `explore + recon` 預設 spot QC；對抗式 `explore + review` 預設 full QC，兩者不混算。
 完整 brief 與停止條件見
-[Briefs and Stops](main/.claude/skills-src/baton-dispatch/references/briefs-and-stops.md)。
+[Briefs and Stops](main/claude/skills/baton-dispatch/references/briefs-and-stops.md)。
 
 ### Routing 語意
 
@@ -123,7 +123,7 @@ Claude 與 Codex 各有一份自足角色契約；leaf 不讀 main orchestration
 | Claude→Codex bridge | 每次派工以 `claude-bridge` surface 解析；不套用 Claude pins |
 
 實際模型、effort、benchmark 快照與 availability evidence 在
-[Claude routing](main/.claude/model-routing.toml) 和 [Codex routing](main/.codex/model-routing.toml)。
+[Claude routing](main/claude/model-routing.toml) 和 [Codex routing](main/codex/model-routing.toml)。
 數據口徑與選擇理由見[研究摘要](docs/harness-engineering-research.md)。
 
 ### 結構化派工回報
@@ -142,15 +142,15 @@ machine-local experience ledger，方便人類回顧與 telemetry 對照。
 
 | 機制 | 解決的問題 | 真相源 |
 |---|---|---|
-| Routing validator／pin check | 阻止不完整 profile、品質門檻以下 route 與 Claude pin 漂移 | `main/.claude/scripts/model-routing`、`main/.codex/scripts/model-routing` |
-| Alias generation check | `opus` 指向哪個世代由 CLI 決定；以 leaf transcript 的真實 model id 驗證 config 的宣稱 | [model-routing.py](main/.claude/scripts/model-routing.py) |
-| Runtime guard | 需要新版能力的 reviewer 在版本過舊或未知時停止 | [runtime-guard.py](main/.claude/hooks/runtime-guard.py) |
-| Delegation audit | 記錄 start/stop 並偵測 leaf 再派 leaf | [delegation-audit.py](main/.claude/hooks/delegation-audit.py) |
+| Routing validator／pin check | 阻止不完整 profile、品質門檻以下 route 與 Claude pin 漂移 | `main/claude/scripts/model-routing`、`main/codex/scripts/model-routing` |
+| Alias generation check | `opus` 指向哪個世代由 CLI 決定；以 leaf transcript 的真實 model id 驗證 config 的宣稱 | [model-routing.py](main/claude/scripts/model-routing.py) |
+| Runtime guard | 需要新版能力的 reviewer 在版本過舊或未知時停止 | [runtime-guard.py](main/claude/hooks/runtime-guard.py) |
+| Delegation audit | 記錄 start/stop 並偵測 leaf 再派 leaf | [delegation-audit.py](main/claude/hooks/delegation-audit.py) |
 | Experience pending／ledger | 將 dispatch、route、source、token、時間與 QC outcome 綁在一起 | [experience-ledger](main/.agents/skills/experience-ledger/SKILL.md) |
-| Weekly integrity | 檢查 source／HOME 漂移、pins、delegation alarm 與 ledger 狀態；覆蓋不完整（如 resolver 缺失）即列 finding 並扣住週章 | [weekly-integrity.py](main/.claude/hooks/weekly-integrity.py) |
-| Commit test gate | 紅測試套件不得 commit；解析指令實際指向的每個 repo，逃生口 `AGENT_SKIP_TEST_GATE=1` | [commit-test-gate.py](main/.claude/hooks/commit-test-gate.py) |
+| Weekly integrity | 檢查 source／HOME 漂移、pins、delegation alarm 與 ledger 狀態；覆蓋不完整（如 resolver 缺失）即列 finding 並扣住週章 | [weekly-integrity.py](main/claude/hooks/weekly-integrity.py) |
+| Commit test gate | 紅測試套件不得 commit；解析指令實際指向的每個 repo，逃生口 `AGENT_SKIP_TEST_GATE=1` | [commit-test-gate.py](main/claude/hooks/commit-test-gate.py) |
 | Gate-line QC／trap evals | 機械稽核 leaf 報告的 INTENT/TWINS/AUTH owed lines；行為 trap fixtures 作回歸資產 | [gate_lines.py](main/.agents/scripts/gate_lines.py)、[evals/traps/](evals/traps/) |
-| RTK／Headroom | 控制工具輸出與大型唯讀 context；不可冒充模型配額 | [RTK](main/.claude/RTK.md)、[Headroom runtime](main/.agents/docs/headroom-runtime.md) |
+| RTK／Headroom | 控制工具輸出與大型唯讀 context；不可冒充模型配額 | [RTK](main/claude/RTK.md)、[Headroom runtime](main/.agents/docs/headroom-runtime.md) |
 
 Hooks 與監控預設 fail-open，避免本機診斷工具故障阻塞正常工作。兩個刻意 fail-closed 的例外：runtime guard 的 PreToolUse gate（版本過舊或未知時擋受限 reviewer 派工）與 commit test gate（紅套件或逾時直接擋 commit）；真正的 correctness gate 仍由 focused tests、contract tests、主 session QC 與必要時的獨立 verifier 負責。
 
@@ -158,8 +158,8 @@ Hooks 與監控預設 fail-open，避免本機診斷工具故障阻塞正常工�
 
 | 路徑 | 真相源與職責 | 部署目標 |
 |---|---|---|
-| [`main/.claude/`](main/.claude/README.md) | Claude Code 契約、roles、skills、hooks、prompts、routing | `~/.claude/` |
-| [`main/.codex/`](main/.codex/README.md) | Codex 契約、roles、resolver、bridge、可攜 config 片段 | `~/.codex/` |
+| [`main/claude/`](main/claude/README.md) | Claude Code 契約、roles、skills、hooks、prompts、routing | `~/.claude/` |
+| [`main/codex/`](main/codex/README.md) | Codex 契約、roles、resolver、bridge、可攜 config 片段 | `~/.codex/` |
 | [`main/.agents/`](main/.agents/README.md) | 兩端共用 skills、routing core 與 runtime 知識 | `~/.agents/` |
 | [`docs/`](docs/README.md) | 方法論、研究、部署說明與歷史決策；不回寫全域 | — |
 | [`evals/`](evals/) | 行為 trap fixtures 與機械 grader；只在 repo 內取證 | — |
@@ -180,23 +180,23 @@ scripts/sync.sh --apply
 # 3. 開新的 Claude Code / Codex session，讓契約與 roles 重新載入
 ```
 
-首次部署另需 machine-local 設定：merge `main/.codex/config.merge.toml`（見
-[main/.codex/DEPLOY.md](main/.codex/DEPLOY.md)）；選用 Headroom 時執行
+首次部署另需 machine-local 設定：merge `main/codex/config.merge.toml`（見
+[main/codex/DEPLOY.md](main/codex/DEPLOY.md)）；選用 Headroom 時執行
 `headroom mcp install --agent claude`。legacy fallback 見 [配置說明](docs/setup.md)。
 
 Claude profile 若要持久切換，先在 source checkout 執行：
 
 ```bash
-main/.claude/scripts/model-routing activate-profile --profile <balanced|fast|quality_guarded> --dry-run
-main/.claude/scripts/model-routing activate-profile --profile <balanced|fast|quality_guarded>
+main/claude/scripts/model-routing activate-profile --profile <balanced|fast|quality_guarded> --dry-run
+main/claude/scripts/model-routing activate-profile --profile <balanced|fast|quality_guarded>
 scripts/sync.sh --apply
 ```
 
 Codex leaf 不需改檔，派工前直接解析：
 
 ```bash
-main/.codex/scripts/model-routing resolve --priority balanced --role executor
-main/.codex/scripts/model-routing resolve --surface claude-bridge --priority quality-guarded --role verifier
+main/codex/scripts/model-routing resolve --priority balanced --role executor
+main/codex/scripts/model-routing resolve --surface claude-bridge --priority quality-guarded --role verifier
 ```
 
 ## 管理邊界
@@ -210,7 +210,7 @@ main/.codex/scripts/model-routing resolve --surface claude-bridge --priority qua
 
 可攜片段只提供 merge 來源：
 
-- `main/.codex/config.merge.toml` 手動併入 `~/.codex/config.toml`
+- `main/codex/config.merge.toml` 手動併入 `~/.codex/config.toml`
 
 ## 文件導覽
 
@@ -220,7 +220,7 @@ main/.codex/scripts/model-routing resolve --surface claude-bridge --priority qua
 - [研究摘要](docs/harness-engineering-research.md)：Artificial Analysis、成本模型、本機實驗與證據限制。
 - [配置與部署](docs/setup.md)：bootstrap、dry-run、apply、驗收與回滾。
 - [常駐契約瘦身規範](docs/contract-slimming.md)：CLAUDE.md 與 AGENTS.md 的內容判定、預算與驗收。
-- [目前 orchestration plan](main/.claude/plans/orchestration-plan.md)：現況、未決項與短決策紀錄。
+- [目前 orchestration plan](main/claude/plans/orchestration-plan.md)：現況、未決項與短決策紀錄。
 
 文件採單一職責：runtime 規則放 contracts，角色能力放 agent files，按需流程放 skills，方法與
 研究放 docs；README 只提供全貌與入口，不複製細節真相源。
@@ -228,11 +228,11 @@ main/.codex/scripts/model-routing resolve --surface claude-bridge --priority qua
 ## 驗證
 
 ```bash
-python3 -m unittest discover -s main/.claude/tests -v
-main/.claude/scripts/model-routing validate
-main/.claude/scripts/model-routing check-pins
-main/.claude/scripts/model-routing check-aliases
-main/.codex/scripts/model-routing validate
+python3 -m unittest discover -s main/claude/tests -v
+main/claude/scripts/model-routing validate
+main/claude/scripts/model-routing check-pins
+main/claude/scripts/model-routing check-aliases
+main/codex/scripts/model-routing validate
 git diff --check
 scripts/sync.sh
 ```

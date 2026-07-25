@@ -27,6 +27,18 @@ except ImportError:
 
 POSTERIOR_DRAWS = 4000
 ROOT = Path(__file__).resolve().parents[4]
+
+
+def bundle(name: str) -> Path:
+    """Locate a sibling bundle from either the deployed or the source layout.
+
+    Deployed, this script sits in `~/.agents/...` beside `~/.claude` and
+    `~/.codex`. In the source checkout the shared root keeps its dot but the two
+    CLI bundles are stored undotted (`main/claude`, `main/codex`) so neither CLI
+    discovers the source tree as live config; the dot returns at deploy time.
+    """
+    dotted = ROOT / f".{name}"
+    return dotted if dotted.exists() else ROOT / name
 REQUEST_SOURCE_PROVIDER = {
     "claude-code": "claude",
     "codex": "codex",
@@ -167,9 +179,9 @@ def revise(config: dict, provider: str, cells: dict,
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--claude-config", type=Path,
-                        default=ROOT / ".claude/model-routing.toml")
+                        default=bundle("claude") / "model-routing.toml")
     parser.add_argument("--codex-config", type=Path,
-                        default=ROOT / ".codex/model-routing.toml")
+                        default=bundle("codex") / "model-routing.toml")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--now", default=None, help="ISO timestamp override (tests)")
     args = parser.parse_args()

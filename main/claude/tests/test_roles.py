@@ -5,7 +5,7 @@ from support import *  # noqa: F401,F403
 class AgentRosterTests(unittest.TestCase):
     def test_roster_matches_expected_roles(self) -> None:
         self.assertEqual(
-            {p.stem for p in (ROOT / "main/.claude/agents").glob("*.md")},
+            {p.stem for p in (ROOT / "main/claude/agents").glob("*.md")},
             set(ROLES),
         )
 
@@ -140,14 +140,14 @@ class LeafArtifactGateTests(unittest.TestCase):
         shared = ROOT / "main/.agents/scripts/qc-gate-lines"
         self.assertTrue(shared.is_file(), shared)
         self.assertTrue(os.access(shared, os.X_OK), f"{shared} must be executable")
-        for tree in (".claude", ".codex"):
+        for tree in ("claude", "codex"):
             link = ROOT / "main" / tree / "scripts/qc-gate-lines"
             self.assertTrue(link.is_symlink(), f"{link} must be a symlink")
             self.assertEqual(
                 os.readlink(link), "../../.agents/scripts/qc-gate-lines", link
             )
         qc_paths = (
-            ".claude/skills-src/baton-dispatch/SKILL.md",
+            ".claude/skills/baton-dispatch/SKILL.md",
             ".codex/skills/leaf-dispatch/SKILL.md",
         )
         for path, home in zip(qc_paths, ("~/.claude", "~/.codex")):
@@ -217,7 +217,7 @@ class LeafArtifactGateTests(unittest.TestCase):
                           agent["developer_instructions"], role)
 
     def test_qc_fraud_checklist_in_both_main_qc_paths(self) -> None:
-        for path in (".claude/skills-src/baton-dispatch/SKILL.md",
+        for path in (".claude/skills/baton-dispatch/SKILL.md",
                      ".codex/skills/leaf-dispatch/SKILL.md"):
             body = " ".join(read(path).split())
             self.assertIn("false-completion frauds", body, path)
@@ -282,7 +282,7 @@ class LeafArtifactGateTests(unittest.TestCase):
 
     def test_brief_carries_stop_defaults_and_auth_provenance(self) -> None:
         for path in (
-            ".claude/skills-src/baton-dispatch/references/briefs-and-stops.md",
+            ".claude/skills/baton-dispatch/references/briefs-and-stops.md",
             ".codex/skills/leaf-dispatch/SKILL.md",
         ):
             body = read(path)

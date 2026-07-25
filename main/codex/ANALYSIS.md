@@ -32,11 +32,11 @@ Delegation requires an observable outcome, measurable benefit over direct work, 
 
 | Source | Target / purpose |
 |---|---|
-| `main/.codex/AGENTS.contract.md` | `$CODEX_HOME/AGENTS.md` |
-| `main/.codex/config.merge.toml` | Manual merge into `$CODEX_HOME/config.toml` |
-| `main/.codex/agents/*.toml` | Registered Codex leaf roles |
-| `main/.codex/model-routing.toml`, `main/.codex/scripts/` | Native and Claude-bridge per-dispatch routing |
+| `main/codex/AGENTS.contract.md` | `$CODEX_HOME/AGENTS.md` |
+| `main/codex/config.merge.toml` | Manual merge into `$CODEX_HOME/config.toml` |
+| `main/codex/agents/*.toml` | Registered Codex leaf roles |
+| `main/codex/model-routing.toml`, `main/codex/scripts/` | Native and Claude-bridge per-dispatch routing |
 | `main/.agents/skills/experience-ledger/` | Shared machine-local outcome analysis |
-| `main/.codex/prompts/custom-instructions.md` | ChatGPT Chat and Work Personalization; not the Codex agent contract |
+| `main/codex/prompts/custom-instructions.md` | ChatGPT Chat and Work Personalization; not the Codex agent contract |
 
 Use `DEPLOY.md`. A successful login proves authentication only; it does not prove contract loading, routing, leaf overrides, or source/target parity.

@@ -26,11 +26,11 @@ class MachineStateHygieneTests(unittest.TestCase):
 
     def test_machine_state_files_are_gitignored(self) -> None:
         ignore = read(".gitignore")
-        for entry in ("main/.claude/mcp_servers.json", "main/.codex/config.toml",
+        for entry in ("main/claude/mcp_servers.json", "main/codex/config.toml",
                       ".claude/.headroom_wrap_marker.json", "__pycache__/", "*.pyc"):
             self.assertIn(entry, ignore)
         # Confirmed ignored by git itself (exit 0 == path is ignored).
-        for path in ("main/.claude/mcp_servers.json", "main/.codex/config.toml"):
+        for path in ("main/claude/mcp_servers.json", "main/codex/config.toml"):
             self.assertEqual(git("check-ignore", path).returncode, 0, path)
         self.assertEqual(
             git("check-ignore", ".claude/.headroom_wrap_marker.json").returncode, 0
@@ -41,8 +41,8 @@ class MachineStateHygieneTests(unittest.TestCase):
             self.assertEqual(git("check-ignore", path).returncode, 1, path)
         # And not tracked.
         tracked = git("ls-files").stdout.splitlines()
-        self.assertNotIn("main/.claude/mcp_servers.json", tracked)
-        self.assertNotIn("main/.codex/config.toml", tracked)
+        self.assertNotIn("main/claude/mcp_servers.json", tracked)
+        self.assertNotIn("main/codex/config.toml", tracked)
 
     def test_settings_are_user_owned_and_portable(self) -> None:
         settings = json.loads(read(".claude/settings.json"))
@@ -93,7 +93,7 @@ class MachineStateHygieneTests(unittest.TestCase):
         # Behavioral proof with a planted failure — a gate that cannot catch a
         # deliberate error does not exist. Uses a synthetic repo so the check
         # never recurses into this suite.
-        hook = ROOT / "main/.claude/hooks/commit-test-gate.py"
+        hook = ROOT / "main/claude/hooks/commit-test-gate.py"
 
         def run_hook(command: str, cwd: str) -> subprocess.CompletedProcess[str]:
             payload = json.dumps({"tool_input": {"command": command}, "cwd": cwd})
@@ -140,12 +140,12 @@ class MachineStateHygieneTests(unittest.TestCase):
             self.assertEqual(cd_form.returncode, 2)
             self.assertIn("commit blocked", cd_form.stderr)
 
-            # The harness keeps its deployable suite under main/.claude/tests.
+            # The harness keeps its deployable suite under main/claude/tests.
             # A stale root cache must neither trigger a zero-test false block
             # nor hide the canonical suite.
             (tests / "test_red.py").unlink()
             (tests / "__pycache__").mkdir(exist_ok=True)
-            canonical = repo / "main" / ".claude" / "tests"
+            canonical = repo / "main" / "claude" / "tests"
             canonical.mkdir(parents=True)
             canonical_test = canonical / "test_red.py"
             canonical_test.write_text(
@@ -157,7 +157,7 @@ class MachineStateHygieneTests(unittest.TestCase):
             )
             canonical_blocked = run_hook("git commit -m x", str(repo))
             self.assertEqual(canonical_blocked.returncode, 2)
-            self.assertIn("main/.claude/tests", canonical_blocked.stderr)
+            self.assertIn("main/claude/tests", canonical_blocked.stderr)
             canonical_test.unlink()
             self.assertEqual(run_hook("git commit -m x", str(repo)).returncode, 0)
 

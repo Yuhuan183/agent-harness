@@ -29,7 +29,7 @@
 
 1. skill 本體放 `main/.agents/skills/<name>/`。
 2. 把 `<name>` 加進 `main/.agents/skills/INSTALLED.txt`。
-3. 在 `main/.claude/skills-src/` 與需要的 `main/.codex/skills/` 各建相對 symlink：
+3. 在 `main/claude/skills/` 與需要的 `main/codex/skills/` 各建相對 symlink：
    `ln -s ../../.agents/skills/<name> <name>`。
 4. `scripts/sync.sh` 會精確同步清單內的 skill，但保留 `~/.agents/skills/` 內不在清單中的
    第三方 skill；`rsync --links` 會原樣複製兩端 symlink。

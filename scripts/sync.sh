@@ -72,7 +72,7 @@ validate_manifest() {
     # repo, Claude Code's /model and /effort, third-party hook installers), so
     # a wholesale copy would delete two of them.
     if [[ "$mode" == "merge-json" \
-          && "$src_rel:$dst_rel" != "main/.claude/settings.json:.claude/settings.json" ]]; then
+          && "$src_rel:$dst_rel" != "main/claude/settings.json:.claude/settings.json" ]]; then
       log "ERROR: merge-json mode is restricted to Claude settings: $src_rel -> $dst_rel"
       return 1
     fi
@@ -80,12 +80,12 @@ validate_manifest() {
     # and effort, MCP, plugins, marketplaces, desktop, shell policy, and
     # per-project trust alongside the agent registrations this repo owns.
     if [[ "$mode" == "merge-toml" \
-          && "$src_rel:$dst_rel" != "main/.codex/config.merge.toml:.codex/config.toml" ]]; then
+          && "$src_rel:$dst_rel" != "main/codex/config.merge.toml:.codex/config.toml" ]]; then
       log "ERROR: merge-toml mode is restricted to Codex config: $src_rel -> $dst_rel"
       return 1
     fi
     case "$src_rel:$dst_rel" in
-      main/.agents/*:.agents/*|main/.claude/*:.claude/*|main/.codex/*:.codex/*) ;;
+      main/.agents/*:.agents/*|main/claude/*:.claude/*|main/codex/*:.codex/*) ;;
       *) log "ERROR: unsafe deployment mapping: $src_rel -> $dst_rel"; return 1 ;;
     esac
     case "/$src_rel/:/$dst_rel/" in
@@ -141,23 +141,23 @@ preflight() {
   # Use the same portable Python 3.11+ selector as deployed routing entrypoints.
   prepare_python_path \
     || { log "ERROR: portable Python 3.11+ runtime unavailable"; return 1; }
-  "$PYTHON_RUN" -m json.tool "$REPO/main/.claude/settings.json" >/dev/null
+  "$PYTHON_RUN" -m json.tool "$REPO/main/claude/settings.json" >/dev/null
   # Every hook group in the repo must be recognisably ours, or merge-json could
   # not update it on deploy and it would silently fossilise.
   "$PYTHON_RUN" "$REPO/scripts/merge-settings.py" \
-    "$REPO/main/.claude/settings.json" --check >/dev/null
-  "$PYTHON_RUN" -m json.tool "$REPO/main/.claude/examples/headroom-mcp.legacy.json" >/dev/null
-  bash -n "$REPO/scripts/sync.sh" "$REPO/main/.claude/sh/statusline.sh"
+    "$REPO/main/claude/settings.json" --check >/dev/null
+  "$PYTHON_RUN" -m json.tool "$REPO/main/claude/examples/headroom-mcp.legacy.json" >/dev/null
+  bash -n "$REPO/scripts/sync.sh" "$REPO/main/claude/sh/statusline.sh"
   validate_manifest
-  "$REPO/main/.claude/scripts/model-routing" validate >/dev/null
-  "$REPO/main/.claude/scripts/model-routing" check-pins >/dev/null
-  "$REPO/main/.codex/scripts/model-routing" validate >/dev/null
+  "$REPO/main/claude/scripts/model-routing" validate >/dev/null
+  "$REPO/main/claude/scripts/model-routing" check-pins >/dev/null
+  "$REPO/main/codex/scripts/model-routing" validate >/dev/null
   git -C "$REPO" diff --check
   # Tests exercise sync.sh itself. The sentinel prevents recursive suites while
   # preserving every non-recursive preflight check in nested dry-runs.
   if [[ "${AGENT_HARNESS_PREFLIGHT_ACTIVE:-0}" != "1" ]]; then
     AGENT_HARNESS_PREFLIGHT_ACTIVE=1 PYTHONDONTWRITEBYTECODE=1 \
-      "$PYTHON_RUN" -m unittest discover -s "$REPO/main/.claude/tests" -q
+      "$PYTHON_RUN" -m unittest discover -s "$REPO/main/claude/tests" -q
   fi
   log "preflight: passed"
 }
@@ -277,9 +277,16 @@ while IFS=$'\t' read -r src_rel dst_rel extra; do
   # under `pipefail` — which marked every legitimate contract update as foreign
   # content and stopped apply. The guard only ever passed when the deployed file
   # already matched the worktree, i.e. when there was nothing to deploy.
+  # Contract sources have moved twice: out of the repo root into main/, then
+  # from main/.claude to main/claude so neither CLI discovers the source tree.
+  # `rev-list -- <path>` only sees a blob under the path it had in that commit,
+  # so every historical location has to be asked, or a machine deployed from an
+  # older checkout reads as someone else's guidance.
+  dotted_src_rel="${src_rel/#main\//main/.}"
   history_objects="$(
     git -C "$REPO" rev-list --all --objects -- "$src_rel"
     git -C "$REPO" rev-list --all --objects -- "$legacy_src_rel"
+    git -C "$REPO" rev-list --all --objects -- "$dotted_src_rel"
   )"
   grep -q "^$dst_hash " <<<"$history_objects" || FOREIGN_CONTRACTS+=("$dst_rel")
 done < "$MANIFEST"
@@ -328,9 +335,9 @@ if [[ $APPLY -eq 1 ]]; then
   done
   # Every synced path matches the repo (including removal of files already deleted from the repo)
   FAIL=0
-  cmp -s "$REPO/main/.claude/CLAUDE.contract.md" "$HOME/.claude/CLAUDE.md" \
+  cmp -s "$REPO/main/claude/CLAUDE.contract.md" "$HOME/.claude/CLAUDE.md" \
     || { log "ERROR: ~/.claude/CLAUDE.md does not match CLAUDE.contract.md"; FAIL=1; }
-  cmp -s "$REPO/main/.codex/AGENTS.contract.md" "$HOME/.codex/AGENTS.md" \
+  cmp -s "$REPO/main/codex/AGENTS.contract.md" "$HOME/.codex/AGENTS.md" \
     || { log "ERROR: ~/.codex/AGENTS.md does not match AGENTS.contract.md"; FAIL=1; }
   [[ -f "$HOME/.agents/skills/.agent-harness-source" \
         && "$(<"$HOME/.agents/skills/.agent-harness-source")" == "$REPO" ]] \

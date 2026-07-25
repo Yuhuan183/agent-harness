@@ -12,8 +12,8 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-SCRIPT = ROOT / "main/.claude/scripts/model-routing"
-AGENTS_DIR = ROOT / "main/.claude/agents"
+SCRIPT = ROOT / "main/claude/scripts/model-routing"
+AGENTS_DIR = ROOT / "main/claude/agents"
 
 
 def run(*args: str) -> subprocess.CompletedProcess:
@@ -80,7 +80,7 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
             self.assertIn("verifier: frontmatter effort 'low'", result.stderr)
 
     def test_activate_profile_is_atomic_and_does_not_touch_source_fixture(self) -> None:
-        source_config = ROOT / "main/.claude/model-routing.toml"
+        source_config = ROOT / "main/claude/model-routing.toml"
         source_before = source_config.read_text(encoding="utf-8")
         source_agents = {
             path.name: path.read_text(encoding="utf-8")
@@ -213,7 +213,7 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         # Both providers share one reporter, and the Codex table — which does
         # carry a per-effort score for every allowed rung — must come back clean.
         codex = subprocess.run(
-            [str(ROOT / "main/.codex/scripts/model-routing"), "validate"],
+            [str(ROOT / "main/codex/scripts/model-routing"), "validate"],
             capture_output=True, text=True,
         )
         self.assertEqual(codex.returncode, 0, codex.stderr)
@@ -254,7 +254,7 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         )
 
     def test_revision_policy_is_required(self) -> None:
-        original = (ROOT / "main/.claude/model-routing.toml").read_text(encoding="utf-8")
+        original = (ROOT / "main/claude/model-routing.toml").read_text(encoding="utf-8")
         invalid = original.replace("min_samples = 10\n", "", 1)
         with tempfile.TemporaryDirectory() as temp_dir:
             config = Path(temp_dir) / "model-routing.toml"
@@ -294,8 +294,8 @@ class ExperienceReviseTests(unittest.TestCase):
             ledger.write_text("\n".join(json.dumps(r) for r in rows),
                               encoding="utf-8")
             result = subprocess.run(
-                [str(REVISE), "--claude-config", str(ROOT / "main/.claude/model-routing.toml"),
-                 "--codex-config", str(ROOT / "main/.codex/model-routing.toml"),
+                [str(REVISE), "--claude-config", str(ROOT / "main/claude/model-routing.toml"),
+                 "--codex-config", str(ROOT / "main/codex/model-routing.toml"),
                  "--now", "2026-07-21T00:00:00+00:00"],
                 capture_output=True, text=True,
                 env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger)},
@@ -312,13 +312,13 @@ class ExperienceReviseTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             codex = Path(temp_dir) / "codex.toml"
             codex.write_text(
-                (ROOT / "main/.codex/model-routing.toml").read_text(encoding="utf-8")
+                (ROOT / "main/codex/model-routing.toml").read_text(encoding="utf-8")
                 .replace("prefer_probability = 0.90", "prefer_probability = 0.91"),
                 encoding="utf-8",
             )
             result = subprocess.run(
                 [str(REVISE),
-                 "--claude-config", str(ROOT / "main/.claude/model-routing.toml"),
+                 "--claude-config", str(ROOT / "main/claude/model-routing.toml"),
                  "--codex-config", str(codex)],
                 capture_output=True, text=True,
             )

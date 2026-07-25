@@ -451,7 +451,7 @@ plugin）、dispatch／rollout 識別碼，並盡量自動取得 input、output�
 
 Main 與七個 leaf roles 的責任、三種 profile 語意及各 surface 套用方式已由
 [根 README](../README.md#執行模型) 統一說明；現行 pins、品質門檻與 availability 的唯一真相源是
-[Claude routing](../main/.claude/model-routing.toml) 與 [Codex routing](../main/.codex/model-routing.toml)，
+[Claude routing](../main/claude/model-routing.toml) 與 [Codex routing](../main/codex/model-routing.toml)，
 研究摘要不再複製容易過期的 route 表格與操作命令。
 
 2026-07-22 快照下的決策理由：
