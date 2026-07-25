@@ -39,7 +39,7 @@ source 漂移，並以 leaf transcript 的真實 model id 驗證 `opus` 這類�
 ## 初始設定
 
 1. `plan-verifier`、`security-reviewer` 與 `verifier` 需要 Claude Code 2.1.207 以上版本。
-2. 新機器僅在 `$HOME/.claude` 不存在時直接套用；若已存在，先備份再合併（`sync.sh` 自動備份），不得取代憑證或本機狀態。
+2. 新機器僅在 `$HOME/.claude` 不存在時直接套用；若已存在則合併而非取代，不得取代憑證或本機狀態；回滾靠 git 重新部署。
 3. Headroom 生命週期與升級流程見 `../.agents/docs/headroom-runtime.md`；base URL 為 machine-local，不得寫進 tracked `settings.json`。
 4. `rtk` 需另行安裝（macOS：`brew install rtk`）；未安裝時 hook 採 fail-open。
 5. 修改 settings／agents／skills／prompts 後，開新 session 才能可靠載入。

@@ -347,8 +347,7 @@ class MechanismTests(unittest.TestCase):
             result = subprocess.run(
                 [str(sync)], capture_output=True, text=True,
                 env={**os.environ, "HOME": temp_home,
-                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1",
-                     "AGENT_HARNESS_BACKUP_ROOT": temp_home},
+                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"},
             )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotIn("content unknown to this repo", result.stdout)
@@ -366,10 +365,7 @@ class MechanismTests(unittest.TestCase):
             result = subprocess.run(
                 [str(sync)], capture_output=True, text=True,
                 env={**os.environ, "HOME": temp_home,
-                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1",
-                     # Keep test backups out of the repo's rotation of 10,
-                     # which otherwise evicts a real deploy's rollback point.
-                     "AGENT_HARNESS_BACKUP_ROOT": temp_home},
+                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1",},
             )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("preflight: passed", result.stdout)
@@ -393,13 +389,9 @@ class MechanismTests(unittest.TestCase):
             applied = subprocess.run(
                 [str(sync), "--apply"], capture_output=True, text=True,
                 env={**os.environ, "HOME": temp_home,
-                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1",
-                     # Keep test backups out of the repo's rotation of 10,
-                     # which otherwise evicts a real deploy's rollback point.
-                     "AGENT_HARNESS_BACKUP_ROOT": temp_home},
+                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1",},
             )
             self.assertEqual(applied.returncode, 0, applied.stderr)
-            self.assertIn("backup: none (no existing managed targets)", applied.stdout)
             self.assertEqual(
                 (Path(temp_home) / ".claude/CLAUDE.md").read_text(encoding="utf-8"),
                 read(".claude/CLAUDE.contract.md"),
@@ -483,10 +475,7 @@ class MechanismTests(unittest.TestCase):
             applied = subprocess.run(
                 [str(sync), "--apply"], capture_output=True, text=True,
                 env={**os.environ, "HOME": temp_home,
-                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1",
-                     # Keep test backups out of the repo's rotation of 10,
-                     # which otherwise evicts a real deploy's rollback point.
-                     "AGENT_HARNESS_BACKUP_ROOT": temp_home},
+                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1",},
             )
             self.assertEqual(applied.returncode, 0, applied.stderr + applied.stdout)
             self.assertFalse(stale.exists())
@@ -534,10 +523,7 @@ class MechanismTests(unittest.TestCase):
             result = subprocess.run(
                 [str(sync), "--apply"], capture_output=True, text=True,
                 env={**os.environ, "HOME": temp_home,
-                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1",
-                     # Keep test backups out of the repo's rotation of 10,
-                     # which otherwise evicts a real deploy's rollback point.
-                     "AGENT_HARNESS_BACKUP_ROOT": temp_home},
+                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1",},
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             merged = json.loads(settings_path.read_text(encoding="utf-8"))
@@ -709,10 +695,7 @@ class MechanismTests(unittest.TestCase):
             foreign.parent.mkdir(parents=True)
             foreign.write_text("someone else's guidance\n", encoding="utf-8")
             env = {**os.environ, "HOME": temp_home,
-                   "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1",
-                     # Keep test backups out of the repo's rotation of 10,
-                     # which otherwise evicts a real deploy's rollback point.
-                     "AGENT_HARNESS_BACKUP_ROOT": temp_home}
+                   "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1",}
             dry = subprocess.run([str(sync)], capture_output=True, text=True, env=env)
             self.assertEqual(dry.returncode, 0, dry.stderr)
             self.assertIn("WARN: ~/.codex/AGENTS.md", dry.stdout)

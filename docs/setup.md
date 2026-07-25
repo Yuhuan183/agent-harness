@@ -79,7 +79,7 @@ claude plugin install codex@openai-codex
 ```bash
 cd ~/WorkSpace/agent-harness
 scripts/sync.sh            # 1. dry-run：檢視將發生的動作
-scripts/sync.sh --apply    # 2. 實際套用（自動備份到 backups/<timestamp>/）
+scripts/sync.sh --apply    # 2. 實際套用
 # 3a. Codex always-on proxy（machine-local，不由 sync 管理）
 rtk headroom install apply --profile default --preset persistent-service \
   --runtime python --scope provider --providers manual --target codex \
@@ -157,8 +157,20 @@ Claude Code 自己（`/model`、`/effort`）與第三方 hook 安裝程式。合
 
 ## 回滾
 
-`scripts/sync.sh --apply` 每次執行前會把被覆蓋的目標完整備份到
-`backups/<timestamp>/`（gitignored）；把備份內容複製回原位即可回滾。
+不做備份。每一個部署出去的位元組都在 git 裡，所以回滾就是把 repo 切回想要的
+版本再重跑一次部署：
+
+```bash
+git checkout <ref> -- main/   # 或整個 checkout 到某個 commit
+scripts/sync.sh               # dry-run 確認影響面
+scripts/sync.sh --apply
+```
+
+機器狀態不需要回滾——`settings.json` 與 `config.toml` 走 merge，本來就不會被整份
+覆蓋；`~/.claude/CLAUDE.md`、`~/.codex/AGENTS.md` 若內容不曾出現在本 repo 歷史，
+apply 會直接停下而不是覆蓋。唯一沒有還原路徑的是「手動改在 repo 全權擁有的目錄裡」
+的檔案（例如自己往 `~/.claude/hooks/` 塞東西），那些會被 `rsync --delete` 清掉——
+這類本機偏好請放 `settings.local.json`。
 
 ## 修改流程（日常）
 

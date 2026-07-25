@@ -3,7 +3,7 @@
 # Only overwrites portable contract files; machine state (Codex config.toml, Claude Code ~/.claude.json MCP entries, auth, sessions, cache) is never touched.
 # Usage:
 #   scripts/sync.sh          # dry-run, only lists the actions that would happen
-#   scripts/sync.sh --apply  # actually run it (backs up to backups/<timestamp>/ first)
+#   scripts/sync.sh --apply  # actually run it
 #   scripts/sync.sh --apply --accept-contract-takeover   # explicitly allow overwriting a pre-existing foreign AGENTS.md/CLAUDE.md
 # Portable source -> HOME target mappings are defined only in scripts/deployment-manifest.tsv.
 set -euo pipefail
@@ -25,11 +25,6 @@ for arg in "$@"; do
     *) printf 'ERROR: unknown argument: %s\n' "$arg" >&2; exit 2 ;;
   esac
 done
-TS="$(date +%Y%m%d-%H%M%S)"
-# Tests drive sync.sh --apply against a temp HOME but the real repo, so their
-# backups would otherwise compete with real deploy backups for the 10 kept.
-BACKUP="${AGENT_HARNESS_BACKUP_ROOT:-$REPO/backups}/$TS"
-BACKUP_CREATED=0
 RSYNC_FILTERS=(--exclude '__pycache__/' --exclude '*.pyc' --exclude '.DS_Store')
 
 log()  { printf '%s\n' "$*"; }
@@ -165,9 +160,14 @@ preflight() {
 trap cleanup_python_shim EXIT
 preflight
 
-# Back up existing targets, then overwrite via rsync. --links copies symlinks
-# inside shared entries and platform wrappers as-is; relative links still hold
-# under the isomorphic $HOME layout.
+# Overwrite targets via rsync. --links copies symlinks inside shared entries and
+# platform wrappers as-is; relative links still hold because the shared root
+# keeps the same name and depth in the repo as in $HOME.
+#
+# No backup is taken. Every deployed byte is tracked in git, so a rollback is
+# `git checkout <ref> && scripts/sync.sh --apply`, and apply already refuses to
+# overwrite a contract this repo never produced. A second copy under the repo
+# only added rotation logic and trees for the CLIs to discover.
 SYNCED_SRC=()
 SYNCED_DST=()
 # Merged targets are verified by re-merge idempotence, not byte parity: a
@@ -175,15 +175,6 @@ SYNCED_DST=()
 MERGED_SRC=()
 MERGED_DST=()
 MERGED_TOOL=()
-
-backup_target() { # $1 = absolute target  $2 = HOME-relative target
-  local dst="$1" dst_rel="$2"
-  if [[ -e "$dst" || -L "$dst" ]]; then
-    mkdir -p "$BACKUP/$(dirname "$dst_rel")"
-    cp -R "$dst" "$BACKUP/$dst_rel"
-    BACKUP_CREATED=1
-  fi
-}
 
 sync_skill_root() { # $1 = repo-relative skill root  $2 = HOME-relative skill root
   local src="$REPO/$1" dst_rel="$2" dst="$HOME/$2" name child_src child_dst child_rel source_marker
@@ -194,24 +185,17 @@ sync_skill_root() { # $1 = repo-relative skill root  $2 = HOME-relative skill ro
     child_dst="$dst/$name"
     child_rel="$dst_rel/$name"
     SYNCED_SRC+=("$child_src"); SYNCED_DST+=("$child_dst")
-    if [[ $APPLY -eq 1 ]]; then
-      backup_target "$child_dst" "$child_rel"
-    fi
     run rsync -a --links --force --delete --delete-excluded \
       "${RSYNC_FILTERS[@]}" "$child_src" "$dst/"
   done < "$src/INSTALLED.txt"
 
   SYNCED_SRC+=("$src/INSTALLED.txt"); SYNCED_DST+=("$dst/INSTALLED.txt")
-  if [[ $APPLY -eq 1 ]]; then
-    backup_target "$dst/INSTALLED.txt" "$dst_rel/INSTALLED.txt"
-  fi
   run rsync -a --links --force "$src/INSTALLED.txt" "$dst/INSTALLED.txt"
 
   # Machine-local provenance lets maintenance tools find the authoritative
   # checkout instead of editing a deployed copy that the next sync replaces.
   source_marker="$dst/.agent-harness-source"
   if [[ $APPLY -eq 1 ]]; then
-    backup_target "$source_marker" "$dst_rel/.agent-harness-source"
     printf '%s\n' "$REPO" > "$source_marker"
   else
     log "[dry-run] write source checkout $REPO -> $source_marker"
@@ -230,7 +214,6 @@ sync_path() { # $1 = repo-relative source  $2 = HOME-relative target  $3 = optio
     [[ "$mode" == "merge-toml" ]] && merger="merge-toml.py"
     MERGED_SRC+=("$src"); MERGED_DST+=("$dst"); MERGED_TOOL+=("$merger")
     if [[ $APPLY -eq 1 ]]; then
-      backup_target "$dst" "$dst_rel"
       mkdir -p "$(dirname "$dst")"
       "$PYTHON_RUN" "$REPO/scripts/$merger" "$src" "$dst"
     else
@@ -239,9 +222,6 @@ sync_path() { # $1 = repo-relative source  $2 = HOME-relative target  $3 = optio
     return
   fi
   SYNCED_SRC+=("$src"); SYNCED_DST+=("$dst")
-  if [[ $APPLY -eq 1 ]]; then
-    backup_target "$dst" "$dst_rel"
-  fi
   run mkdir -p "$(dirname "$dst")"
   if [[ -d "$src" ]]; then
     # --force: allows a symlink to replace an existing real directory; --delete clears leftovers already removed from the repo.
@@ -292,7 +272,7 @@ while IFS=$'\t' read -r src_rel dst_rel extra; do
 done < "$MANIFEST"
 for dst_rel in "${FOREIGN_CONTRACTS[@]}"; do
   [[ -z "$dst_rel" ]] && continue
-  log "WARN: ~/$dst_rel has content unknown to this repo; apply would replace it (after backup)."
+  log "WARN: ~/$dst_rel has content unknown to this repo; apply would replace it."
 done
 if [[ $APPLY -eq 1 && ${#FOREIGN_CONTRACTS[@]} -gt 1 && $ACCEPT_CONTRACT_TAKEOVER -ne 1 ]]; then
   log "ERROR: apply stopped to avoid overwriting a contract file this repo never produced; merge the existing guidance manually or explicitly pass --accept-contract-takeover."
@@ -367,18 +347,6 @@ if [[ $APPLY -eq 1 ]]; then
     fi
   done
   [[ $FAIL -eq 0 ]] || exit 1
-  # Backup rotation: keep only the most recent 10 (apply already verified parity; old backups are just a rollback safety net)
-  if [[ -d "$REPO/backups" ]]; then
-    find "$REPO/backups" -mindepth 1 -maxdepth 1 -type d -print \
-      | sort -r | tail -n +11 | while read -r old; do
-        rm -rf "$old"
-      done
-  fi
-  if [[ $BACKUP_CREATED -eq 1 ]]; then
-    log "backup: $BACKUP"
-  else
-    log "backup: none (no existing managed targets)"
-  fi
   log "done. All synced paths verified consistent; open a new session to verify contract loading."
 else
   log "dry-run complete; once confirmed, run scripts/sync.sh --apply"
