@@ -404,6 +404,60 @@ class SharedSkillTests(unittest.TestCase):
             self.assertEqual(pending.read_text(encoding="utf-8"), before)
             self.assertFalse(ledger.exists())
 
+    def test_explicit_logging_clears_its_own_pending_stub(self) -> None:
+        """Logging with explicit flags must consume the stub it accounts for.
+
+        The hook stages a stub per dispatch, not per logging style. Only
+        `--from-pending` used to clear it, so every dispatch logged with
+        explicit flags — the required form for bridge and native-Codex
+        records — left its start/stop pair behind and the pending file grew by
+        two rows per dispatch with nothing ever removing them.
+        """
+        log_script = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-log"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            pending = Path(temp_dir) / "pending.jsonl"
+            ledger = Path(temp_dir) / "experience.jsonl"
+            rows = []
+            for suffix in ("a", "b"):
+                common = {
+                    "ts": "2026-07-20T00:00:00+00:00",
+                    "agent_type": "executor", "agent_id": suffix,
+                    "session_id": "session", "request_source": "claude-code",
+                    "dispatch_id": f"session:{suffix}",
+                }
+                rows.append({**common, "event": "SubagentStart"})
+                rows.append({**common, "event": "SubagentStop", "secs": 1.0})
+            pending.write_text(
+                "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8"
+            )
+            env = {
+                **os.environ,
+                "AGENT_EXPERIENCE_PENDING": str(pending),
+                "AGENT_EXPERIENCE_LEDGER": str(ledger),
+               "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/claude/scripts/model-routing"),
+            }
+            explicit = [
+                sys.executable, str(log_script), "--outcome", "accepted",
+                "--role", "executor", "--provider", "claude",
+                "--request-source", "claude-code", "--profile", "balanced",
+                "--model", "claude-sonnet-5", "--effort", "low",
+            ]
+            subprocess.run(explicit + ["--dispatch-id", "session:a"],
+                           env=env, check=True, capture_output=True, text=True)
+            # Only the named dispatch is reconciled; a concurrent one is not.
+            remaining = [json.loads(line) for line
+                         in pending.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual([row["dispatch_id"] for row in remaining],
+                             ["session:b", "session:b"])
+
+            subprocess.run(explicit + ["--dispatch-id", "session:b"],
+                           env=env, check=True, capture_output=True, text=True)
+            self.assertEqual(pending.read_text(encoding="utf-8"), "")
+            logged = [json.loads(line) for line
+                      in ledger.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual([row["dispatch_id"] for row in logged],
+                             ["session:a", "session:b"])
+
     def test_experience_report_never_mixes_total_and_output_only_cost(self) -> None:
         report_script = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-report"
         with tempfile.TemporaryDirectory() as temp_dir:
