@@ -294,7 +294,9 @@ class MechanismTests(unittest.TestCase):
         # Hooks must land before the settings.json that registers them —
         # settings activate immediately, and a registered-but-missing hook
         # file bricks every guarded tool call (observed 2026-07-23).
-        actions = [l for l in result.stdout.splitlines() if "rsync" in l]
+        # settings.json deploys via merge-json, which reports itself instead of
+        # emitting an rsync line, so match planned actions rather than rsync.
+        actions = [l for l in result.stdout.splitlines() if "[dry-run]" in l]
         hook_idx = next(i for i, l in enumerate(actions) if "/hooks" in l)
         settings_idx = next(i for i, l in enumerate(actions) if "settings.json" in l)
         self.assertLess(hook_idx, settings_idx,
@@ -396,8 +398,17 @@ class MechanismTests(unittest.TestCase):
                 str(ROOT),
             )
 
-    def test_sync_refuses_to_drop_global_settings_array_items(self) -> None:
+    def test_sync_merges_settings_without_dropping_machine_state(self) -> None:
+        # settings.json has three writers: this repo, Claude Code itself
+        # (`/model`, `/effort`), and third-party hook installers. Deploying it
+        # must land the repo's own entries without deleting the other two.
+        # End-to-end through sync.sh --apply, not just the merge unit.
         sync = ROOT / "scripts/sync.sh"
+        foreign = {
+            "type": "command",
+            "command": "/bin/sh '/opt/vendor/agent-hooks/vendor-hook.sh'",
+            "timeout": 10,
+        }
         with tempfile.TemporaryDirectory() as temp_home:
             settings_path = Path(temp_home) / ".claude/settings.json"
             settings_path.parent.mkdir(parents=True)
@@ -405,18 +416,55 @@ class MechanismTests(unittest.TestCase):
             settings.setdefault("permissions", {}).setdefault("allow", []).append(
                 "Bash(user-local-command:*)"
             )
+            settings["model"] = "opus[1m]"
+            settings["effortLevel"] = "high"
+            # A vendor group in an event the repo owns, and one it does not.
+            settings["hooks"]["PreToolUse"].append({"matcher": "*", "hooks": [foreign]})
+            settings["hooks"]["UserPromptSubmit"] = [{"hooks": [foreign]}]
+            # A repo-owned hook left at a stale command must be updated, not
+            # duplicated — this is the case a naive merge gets wrong.
+            settings["hooks"]["SessionStart"][0]["hooks"][0]["command"] = (
+                'python3 "$HOME/.claude/hooks/runtime-guard.py" --stale-flag'
+            )
             settings_path.write_text(json.dumps(settings), encoding="utf-8")
-            before = settings_path.read_text(encoding="utf-8")
             result = subprocess.run(
                 [str(sync), "--apply"], capture_output=True, text=True,
                 env={**os.environ, "HOME": temp_home,
                      "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"},
             )
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("permissions.allow", result.stdout)
-            self.assertIn("apply stopped to avoid losing local settings", result.stdout)
-            self.assertEqual(settings_path.read_text(encoding="utf-8"), before)
-            self.assertFalse((Path(temp_home) / ".codex").exists())
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            merged = json.loads(settings_path.read_text(encoding="utf-8"))
+
+        commands = [h["command"] for groups in merged["hooks"].values()
+                    for g in groups for h in g["hooks"]]
+        # Machine state survives.
+        self.assertEqual(merged["model"], "opus[1m]")
+        self.assertEqual(merged["effortLevel"], "high")
+        self.assertIn("Bash(user-local-command:*)", merged["permissions"]["allow"])
+        # Foreign hooks survive, in both kinds of event.
+        self.assertEqual(sum(foreign["command"] == c for c in commands), 2)
+        self.assertIn("UserPromptSubmit", merged["hooks"])
+        # The repo's own stale entry is updated exactly once, not duplicated.
+        self.assertNotIn(
+            'python3 "$HOME/.claude/hooks/runtime-guard.py" --stale-flag', commands
+        )
+        repo_settings = json.loads(read(".claude/settings.json"))
+        for group in repo_settings["hooks"]["SessionStart"]:
+            for hook in group["hooks"]:
+                self.assertEqual(sum(hook["command"] == c for c in commands), 1,
+                                 hook["command"])
+
+    def test_repo_settings_hooks_are_all_owned_by_the_merge(self) -> None:
+        # If a hook group stops matching OWNED_HOOK_PATTERNS the merge can no
+        # longer update it on deploy and it fossilises at whatever the machine
+        # last had. Preflight runs this too; asserting it here names the reason.
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "scripts/merge-settings.py"),
+             str(ROOT / "main/.claude/settings.json"), "--check"],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("every hook group", result.stdout)
 
     def test_sync_refuses_first_takeover_of_foreign_contracts(self) -> None:
         # A pre-existing AGENTS.md/CLAUDE.md whose content never appeared in

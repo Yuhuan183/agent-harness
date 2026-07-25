@@ -126,8 +126,11 @@ Docker、VM 或 disposable sandbox 時，才針對單次執行使用
 dry-run 與 apply 都會先跑 JSON／shell／兩側 routing／Claude pins／contract tests；任何失敗都在寫入前停止。
 所有可攜 source→HOME 映射只定義於 `scripts/deployment-manifest.tsv`；`sync.sh` 與 weekly integrity
 共同讀取它，新增或改名部署成品時不得另建第二份清單。
-若全域 `settings.json` 有 repo 未管理的 key，apply 預設停止：先移至 `settings.local.json`；只有明確接受
-刪除時才使用 `--accept-settings-overwrite`。若既有的 `~/.claude/CLAUDE.md` 或 `~/.codex/AGENTS.md`
+全域 `settings.json` 以 `merge-json` 模式部署（manifest 第三欄），因為這個檔案有三個寫入者：本 repo、
+Claude Code 自己（`/model`、`/effort`）與第三方 hook 安裝程式。合併以「所有權」而非位置判斷：命令含
+`$HOME/.claude/hooks/` 或 `rtk hook claude` 的 hook group 屬本 repo，整組替換（過期指令會被更新而不是
+變成重複兩份）；其餘 group、repo 未定義的事件與 top-level key 一律原樣保留，`permissions.allow` 取聯集。
+每次執行都會列出保留了哪些項目。因此不需要覆寫逃生口，`--accept-settings-overwrite` 已移除。若既有的 `~/.claude/CLAUDE.md` 或 `~/.codex/AGENTS.md`
 內容從未出現在本 repo 歷史（別人的指引，不是舊版契約），apply 也會停止：先手動合併，或明確用
 `--accept-contract-takeover` 接管。切換 Claude preset 時，先在 source checkout 執行
 `main/.claude/scripts/model-routing activate-profile --profile <balanced|fast|quality_guarded>`，確認 git diff，

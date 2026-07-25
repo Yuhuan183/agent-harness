@@ -4,7 +4,6 @@
 # Usage:
 #   scripts/sync.sh          # dry-run, only lists the actions that would happen
 #   scripts/sync.sh --apply  # actually run it (backs up to backups/<timestamp>/ first)
-#   scripts/sync.sh --apply --accept-settings-overwrite  # explicitly allow deleting extra global settings keys
 #   scripts/sync.sh --apply --accept-contract-takeover   # explicitly allow overwriting a pre-existing foreign AGENTS.md/CLAUDE.md
 # Portable source -> HOME target mappings are defined only in scripts/deployment-manifest.tsv.
 set -euo pipefail
@@ -14,12 +13,10 @@ MANIFEST="$REPO/scripts/deployment-manifest.tsv"
 PYTHON_RUN="$REPO/main/.agents/scripts/python3-run"
 PYTHON_SHIM_DIR=""
 APPLY=0
-ACCEPT_SETTINGS_OVERWRITE=0
 ACCEPT_CONTRACT_TAKEOVER=0
 for arg in "$@"; do
   case "$arg" in
     --apply) APPLY=1 ;;
-    --accept-settings-overwrite) ACCEPT_SETTINGS_OVERWRITE=1 ;;
     --accept-contract-takeover) ACCEPT_CONTRACT_TAKEOVER=1 ;;
     -h|--help)
       sed -n '2,7p' "$0"
@@ -58,13 +55,22 @@ validate_manifest() {
   local seen_sources=("") seen_targets=("")
   while IFS=$'\t' read -r src_rel dst_rel mode extra; do
     [[ -z "$src_rel" || "$src_rel" == \#* ]] && continue
-    if [[ -z "$dst_rel" || -n "$extra" || ( -n "$mode" && "$mode" != "merge" ) ]]; then
+    if [[ -z "$dst_rel" || -n "$extra" \
+          || ( -n "$mode" && "$mode" != "merge" && "$mode" != "merge-json" ) ]]; then
       log "ERROR: malformed deployment manifest row: $src_rel"
       return 1
     fi
     if [[ "$mode" == "merge" \
           && "$src_rel:$dst_rel" != "main/.agents/skills:.agents/skills" ]]; then
       log "ERROR: merge mode is restricted to the shared skill root: $src_rel -> $dst_rel"
+      return 1
+    fi
+    # merge-json exists for one file: settings.json has three writers (this
+    # repo, Claude Code's /model and /effort, third-party hook installers), so
+    # a wholesale copy would delete two of them.
+    if [[ "$mode" == "merge-json" \
+          && "$src_rel:$dst_rel" != "main/.claude/settings.json:.claude/settings.json" ]]; then
+      log "ERROR: merge-json mode is restricted to Claude settings: $src_rel -> $dst_rel"
       return 1
     fi
     case "$src_rel:$dst_rel" in
@@ -125,6 +131,10 @@ preflight() {
   prepare_python_path \
     || { log "ERROR: portable Python 3.11+ runtime unavailable"; return 1; }
   "$PYTHON_RUN" -m json.tool "$REPO/main/.claude/settings.json" >/dev/null
+  # Every hook group in the repo must be recognisably ours, or merge-json could
+  # not update it on deploy and it would silently fossilise.
+  "$PYTHON_RUN" "$REPO/scripts/merge-settings.py" \
+    "$REPO/main/.claude/settings.json" --check >/dev/null
   "$PYTHON_RUN" -m json.tool "$REPO/main/.claude/examples/headroom-mcp.legacy.json" >/dev/null
   bash -n "$REPO/scripts/sync.sh" "$REPO/main/.claude/sh/statusline.sh"
   validate_manifest
@@ -149,6 +159,10 @@ preflight
 # under the isomorphic $HOME layout.
 SYNCED_SRC=()
 SYNCED_DST=()
+# Merged targets are verified by re-merge idempotence, not byte parity: a
+# merged file legitimately carries machine keys the source does not have.
+MERGED_SRC=()
+MERGED_DST=()
 
 backup_target() { # $1 = absolute target  $2 = HOME-relative target
   local dst="$1" dst_rel="$2"
@@ -199,6 +213,17 @@ sync_path() { # $1 = repo-relative source  $2 = HOME-relative target  $3 = optio
     sync_skill_root "$1" "$2"
     return
   fi
+  if [[ "$mode" == "merge-json" ]]; then
+    MERGED_SRC+=("$src"); MERGED_DST+=("$dst")
+    if [[ $APPLY -eq 1 ]]; then
+      backup_target "$dst" "$dst_rel"
+      mkdir -p "$(dirname "$dst")"
+      "$PYTHON_RUN" "$REPO/scripts/merge-settings.py" "$src" "$dst"
+    else
+      "$PYTHON_RUN" "$REPO/scripts/merge-settings.py" "$src" "$dst" --dry-run
+    fi
+    return
+  fi
   SYNCED_SRC+=("$src"); SYNCED_DST+=("$dst")
   if [[ $APPLY -eq 1 ]]; then
     backup_target "$dst" "$dst_rel"
@@ -216,49 +241,9 @@ sync_path() { # $1 = repo-relative source  $2 = HOME-relative target  $3 = optio
 
 log "== agent-harness sync (apply=$APPLY) =="
 
-# Safety net: if the global settings.json has keys the repo doesn't (e.g. from /config or manually added local preferences),
-# warn before overwriting and suggest moving them to settings.local.json (sync never touches that file). apply aborts by default unless overwrite is explicitly accepted.
-if [[ -f "$HOME/.claude/settings.json" ]]; then
-  SETTINGS_EXTRA=0
-  "$PYTHON_RUN" - "$REPO/main/.claude/settings.json" "$HOME/.claude/settings.json" <<'EOF' || SETTINGS_EXTRA=1
-import json, sys
-repo = json.load(open(sys.argv[1])); glb = json.load(open(sys.argv[2]))
-def extra_values(a, b, prefix=""):
-    out = []
-    if isinstance(a, dict) and isinstance(b, dict):
-        for k in b:
-            path = f"{prefix}.{k}" if prefix else k
-            if k not in a:
-                out.append(path)
-            else:
-                out.extend(extra_values(a[k], b[k], path))
-    elif isinstance(a, list) and isinstance(b, list):
-        # Settings arrays are semantically collections. Preserve every global
-        # entry not represented in the portable repo contract, independent of
-        # ordering; canonical JSON also handles hook objects safely.
-        available = [json.dumps(item, sort_keys=True, separators=(",", ":"))
-                     for item in a]
-        for index, item in enumerate(b):
-            encoded = json.dumps(item, sort_keys=True, separators=(",", ":"))
-            if encoded in available:
-                available.remove(encoded)
-            else:
-                out.append(f"{prefix}[{index}]")
-    elif type(a) is not type(b):
-        out.append(f"{prefix} (type differs)")
-    return out
-extra = extra_values(repo, glb)
-if extra:
-    print("WARN: ~/.claude/settings.json has keys or array items not present in the repo; apply would overwrite/delete them. Move local preferences to ~/.claude/settings.local.json:")
-    for k in extra:
-        print(f"  - {k}")
-    raise SystemExit(1)
-EOF
-  if [[ $APPLY -eq 1 && $SETTINGS_EXTRA -eq 1 && $ACCEPT_SETTINGS_OVERWRITE -ne 1 ]]; then
-    log "ERROR: apply stopped to avoid losing local settings; move the extra keys or explicitly pass --accept-settings-overwrite."
-    exit 1
-  fi
-fi
+# settings.json is deployed with merge-json, so extra global keys and foreign
+# hook groups survive by construction and no overwrite escape hatch is needed;
+# scripts/merge-settings.py reports exactly what it preserved on each run.
 
 # First-takeover guard: the contract-file mappings (CLAUDE.md / AGENTS.md
 # targets) fully replace the deployed file. A pre-existing target whose content
@@ -344,6 +329,13 @@ if [[ $APPLY -eq 1 ]]; then
     if [[ -n "$diffout" ]]; then
       log "ERROR: still differs after sync: ${SYNCED_DST[$i]}"
       log "$diffout"
+      FAIL=1
+    fi
+  done
+  for i in "${!MERGED_DST[@]}"; do
+    if ! "$PYTHON_RUN" "$REPO/scripts/merge-settings.py" \
+        "${MERGED_SRC[$i]}" "${MERGED_DST[$i]}" --verify >/dev/null; then
+      log "ERROR: merged target still missing repo settings: ${MERGED_DST[$i]}"
       FAIL=1
     fi
   done

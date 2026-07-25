@@ -7,7 +7,7 @@ main/.agents/README.md	.agents/README.md
 main/.claude/CLAUDE.contract.md	.claude/CLAUDE.md
 main/.claude/README.md	.claude/README.md
 main/.claude/RTK.md	.claude/RTK.md
-main/.claude/settings.json	.claude/settings.json
+main/.claude/settings.json	.claude/settings.json	merge-json
 main/.claude/model-routing.toml	.claude/model-routing.toml
 main/.claude/agents	.claude/agents
 main/.claude/hooks	.claude/hooks
