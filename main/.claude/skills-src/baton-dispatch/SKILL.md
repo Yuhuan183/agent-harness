@@ -1,8 +1,8 @@
 ---
 name: baton-dispatch
 description: |
-  Decide the dispatch shape — direct, one agent, bounded parallel, workflow, or isolated workspaces. Mandatory before every dispatch. Small edits, known-target lookups, and tightly coupled debugging normally resolve to direct work in main.
-  觸發：任何派工前、「怎麼拆」「要不要派 agent」「平行處理」「批次」「多個 writer」。
+  Decide the dispatch shape — direct, one agent, bounded parallel, workflow, or isolated workspaces. Load once a dispatch is going ahead; it owns briefs, ownership, batching, collection, QC, and the fixed record formats.
+  觸發：已經決定要派工、「怎麼拆」「平行處理」「批次」「多個 writer」。
   不觸發：小修改、已知目標查找、緊耦合除錯（留在 main 直接做）。
 ---
 
@@ -10,7 +10,7 @@ description: |
 
 Apply the resident dispatch brake, then choose the smallest reliable shape. This skill owns dispatch shape, grouping, briefs, collection, QC, and fixed records. It does not choose a provider/model or decide verifier eligibility; load `provider-routing` for those decisions. This is a local distillation of cablate/baton v0.1.1 plus scope fix `0ab4d2e`.
 
-## Cost test (run before every dispatch)
+## Cost test
 
 A high-tier pinned agent (Opus/high) costs about as much as the main session — delegation saves no compute, and briefing, context reconstruction, collection, and quality-check are pure overhead in both tokens and wall-clock. Delegate only when at least one payoff clearly exceeds that overhead:
 

@@ -8,11 +8,17 @@ description: |
 
 # Leaf Dispatch
 
-Apply before every dispatch. Direct work is default; main owns framing,
+Load once a dispatch is going ahead. Direct work is default; main owns framing,
 architecture, ambiguity, integration, synthesis, model intensity, and final
 judgment.
 Own Codex dispatch after `model-routing` resolves the invocation; do not select
 main model or cross-provider fallback.
+
+## Invocation mechanics
+
+Follow the resolver's `invocation` object exactly. Changing model or agent type
+needs `fork_turns = "none"` and the complete brief. Pass model and effort only
+for `spawn_argument`; `agent_config` routes pin them in the role.
 
 ## Cost test
 

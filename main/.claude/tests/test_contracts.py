@@ -64,7 +64,14 @@ class ClaudeContractTests(unittest.TestCase):
     def test_baton_dispatch_skill_carries_recon_result_collection(self) -> None:
         skill = read(".claude/skills-src/baton-dispatch/SKILL.md")
         brief = read(".claude/skills-src/baton-dispatch/references/briefs-and-stops.md")
-        self.assertIn("Mandatory before every dispatch", frontmatter(".claude/skills-src/baton-dispatch/SKILL.md"))
+        # Progressive disclosure: the contract's cost test answers the common
+        # case ("stay in main") on its own, so this skill is loaded only once a
+        # dispatch is actually going ahead. A "mandatory before every dispatch"
+        # description would both re-state the contract and make a 900-word file
+        # resident for decisions that resolve without it.
+        baton_meta = frontmatter(".claude/skills-src/baton-dispatch/SKILL.md")
+        self.assertIn("Load once a dispatch is going ahead", baton_meta)
+        self.assertNotIn("Mandatory", baton_meta)
         # Cost test: high-tier pinned delegation saves no compute; payoff must beat overhead.
         self.assertIn("## Cost test", skill)
         self.assertIn("delegation saves no compute", skill)
@@ -197,7 +204,9 @@ class CodexBundleTests(unittest.TestCase):
             "### Independent verifier",
             "Subagents use their own role contract",
             "Report only outcome",
-            "Load the `leaf-dispatch` skill before ANY dispatch",
+            # Same progressive-disclosure rule as baton-dispatch on the Claude
+            # side: the contract's cost test resolves the common case by itself.
+            "Once a dispatch is going ahead, load the `leaf-dispatch` skill",
         ):
             self.assertIn(phrase, agents)
         self.assertNotIn("Discovery → Plan → Approval", agents)
@@ -584,7 +593,12 @@ class DocumentationBudgetTests(unittest.TestCase):
             # QC mechanics and fixed records belong to baton-dispatch; keep
             # provider-routing focused on route, fallback, and eligibility.
             ".claude/skills-src/provider-routing/SKILL.md": 1300,
-            ".codex/skills/leaf-dispatch/SKILL.md": 720,
+            # +45 (2026-07-25): invocation mechanics (fork_turns, spawn_argument
+            # vs agent_config) moved out of the always-resident Codex contract
+            # into this on-demand skill. The resident side of that trade is
+            # visible above: AGENTS.contract.md model-ownership dropped ~23
+            # words while staying under its own ceiling.
+            ".codex/skills/leaf-dispatch/SKILL.md": 765,
         }
         for path, limit in budgets.items():
             self.assertLessEqual(word_count(read(path)), limit, path)
