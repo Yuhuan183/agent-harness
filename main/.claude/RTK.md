@@ -22,3 +22,15 @@ rtk proxy <cmd>      # Raw command for debugging
 ```
 
 Use normal commands such as `git status`; the hook handles supported rewrites.
+
+## When a rewritten command fails
+
+`rtk` subcommands accept a narrower flag set than the tools they stand in for —
+`rtk find`, for example, rejects compound predicates and actions such as
+`\( -o \)`, `-not`, and `-exec`. The failure surfaces as an `rtk:` message rather
+than the tool's own error. Rerun with an absolute path (`/usr/bin/find`,
+`/usr/bin/grep`) to bypass the rewrite.
+
+Bare `find` and `grep` are not `rtk`: Claude Code shadows them with its embedded
+`bfs` and `ugrep`, which take the usual flags. Reach for the absolute path only
+after an `rtk:` message actually appears.
