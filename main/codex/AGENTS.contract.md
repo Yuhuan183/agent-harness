@@ -16,9 +16,7 @@ This section applies only to the top-level task. Subagents use their own role co
 ### Model ownership
 
 - The user owns the Codex GPT model and reasoning effort through machine config or the task selector. This bundle does not pin or silently switch either setting.
-- The `model-routing.toml` beside this contract is a quality-first prior: every role must meet its quality tier before optimizing for `fast`, `quality-guarded`, or `balanced`. Local reviewed dispatch-outcome evidence overrides external benchmarks.
-- Main routes are session-start recommendations and cannot switch the running task. Before leaf dispatch, resolve the role with `${CODEX_HOME:-$HOME/.codex}/scripts/model-routing` (source checkout: `main/codex/scripts/model-routing`); `leaf-dispatch` owns the invocation mechanics. High-risk routes use `quality-guarded`, reserving GPT-5.6 Sol/high for judgment and critical roles.
-- If the selected GPT model is unavailable or fails, report the model, attempts, evidence, artifacts, and acceptance checks.
+- Main routes are session-start recommendations and cannot switch the running task. Resolution, priority selection, and unavailability reporting belong to `leaf-dispatch`; load it once a dispatch is going ahead.
 
 ### Dispatch
 

@@ -256,8 +256,14 @@ class CodexBundleTests(unittest.TestCase):
         lowered = read(".codex/AGENTS.contract.md").lower()
         for forbidden in ("fable", "opus", "dispatch gpt +", "dispatch claude"):
             self.assertNotIn(forbidden, lowered)
-        self.assertIn("GPT-5.6 Sol/high", read(".codex/AGENTS.contract.md"))
+        # The ownership invariant must stay resident; the routing detail that
+        # states it may live in either the contract or the on-demand skill, so
+        # assert the union — otherwise moving a line between them reads as
+        # deleting it.
         self.assertIn("The user owns the Codex GPT model", read(".codex/AGENTS.contract.md"))
+        self.assertIn("GPT-5.6 Sol/high",
+                      read(".codex/AGENTS.contract.md")
+                      + read(".codex/skills/leaf-dispatch/SKILL.md"))
 
     def test_config_merge_and_verifier_are_leaf_bounded(self) -> None:
         config = tomllib.loads(read(".codex/config.merge.toml"))
@@ -296,6 +302,10 @@ class CodexBundleTests(unittest.TestCase):
             expected_sandbox = "read-only" if codex_name in read_only else "workspace-write"
             self.assertEqual(agent["sandbox_mode"], expected_sandbox, path)
             self.assertRegex(agent["developer_instructions"].lower(), r"(never|do not) delegate", path)
+            # Same ungameable unit as the Claude twin's body budget: a role
+            # that outgrows it on one provider only would drift silently.
+            self.assertLessEqual(
+                word_count(agent["developer_instructions"]), ROLE_BODY_BUDGET, path)
             self.assertEqual(
                 config["agents"][codex_name]["config_file"],
                 f"./agents/{codex_name}.toml",
@@ -520,7 +530,12 @@ class CodexBundleTests(unittest.TestCase):
         self.assertIn(("main/codex/model-routing.toml", ".codex/model-routing.toml"), managed)
         self.assertIn(("main/codex/scripts", ".codex/scripts"), managed)
         agents = read(".codex/AGENTS.contract.md")
-        self.assertIn("${CODEX_HOME:-$HOME/.codex}/scripts/model-routing", agents)
+        # The resolver path is operational detail and lives wherever the
+        # dispatch mechanics live; only the "routes do not switch a running
+        # task" invariant has to be resident. Assert the union so relocating
+        # the command does not read as dropping it.
+        self.assertIn("${CODEX_HOME:-$HOME/.codex}/scripts/model-routing",
+                      agents + read(".codex/skills/leaf-dispatch/SKILL.md"))
         self.assertIn("session-start recommendations", agents)
 
     def test_codex_dispatch_reporting_matches_claude(self) -> None:
@@ -622,7 +637,12 @@ class DocumentationBudgetTests(unittest.TestCase):
             # reusable rule with no home elsewhere.
             "docs/harness-engineering.md": 2760,
             ".claude/plans/orchestration-plan.md": 1300,
-            ".codex/AGENTS.contract.md": 590,
+            # -50 (2026-07-26): route resolution, priority selection, and
+            # unavailability reporting moved to the on-demand `leaf-dispatch`,
+            # where the invocation mechanics already lived. The ceiling drops
+            # with the content — leaving it at 590 would just invite a refill,
+            # and this file sat 2 words under it.
+            ".codex/AGENTS.contract.md": 540,
             ".codex/ANALYSIS.md": 500,
             ".codex/DEPLOY.md": 550,
             # +90 (2026-07-23): record template and QC fraud checklist moved
@@ -637,7 +657,9 @@ class DocumentationBudgetTests(unittest.TestCase):
             # into this on-demand skill. The resident side of that trade is
             # visible above: AGENTS.contract.md model-ownership dropped ~23
             # words while staying under its own ceiling.
-            ".codex/skills/leaf-dispatch/SKILL.md": 765,
+            # +85 (2026-07-26): the receiving side of the trade above. Paid
+            # once per dispatch instead of once per task.
+            ".codex/skills/leaf-dispatch/SKILL.md": 850,
         }
         for path, limit in budgets.items():
             self.assertLessEqual(word_count(read(path)), limit, path)

@@ -14,6 +14,18 @@ judgment.
 Own Codex dispatch after `model-routing` resolves the invocation; do not select
 main model or cross-provider fallback.
 
+## Route resolution
+
+`model-routing.toml` beside the contract is a quality-first prior: every role
+must meet its quality tier before optimizing for `fast`, `quality-guarded`, or
+`balanced`. Local reviewed dispatch-outcome evidence overrides external
+benchmarks. Before every leaf dispatch resolve the role with
+`${CODEX_HOME:-$HOME/.codex}/scripts/model-routing` (source checkout:
+`main/codex/scripts/model-routing`). High-risk routes use `quality-guarded`,
+reserving GPT-5.6 Sol/high for judgment and critical roles. If the selected GPT
+model is unavailable or fails, report the model, attempts, evidence, artifacts,
+and acceptance checks.
+
 ## Invocation mechanics
 
 Follow the resolver's `invocation` object exactly. Changing model or agent type

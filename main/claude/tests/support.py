@@ -48,6 +48,10 @@ BASH_ROLES = GUARDED_BASH_ROLES + WRITER_ROLES
 # Roles that must not be able to mutate the repository, whatever tools they hold.
 # Mirrors the Codex twins' enforced sandbox_mode = "read-only".
 NO_WRITE_ROLES = READ_ONLY_ROLES + GUARDED_BASH_ROLES
+# Role bodies are budgeted in words on both providers. `executor` is the
+# largest at 378 (2026-07-26); raise this deliberately with a reason, the way
+# the contract budgets are raised, rather than by lengthening lines.
+ROLE_BODY_BUDGET = 400
 # Every role pins model and effort from the active deployment preset (user-directed
 # 2026-07-22); no role follows the main-session effort.
 PINNED_EFFORT_ROLES = ROLES
