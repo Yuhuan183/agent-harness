@@ -964,6 +964,53 @@ class TrapGraderIntegrityTests(unittest.TestCase):
             self.assertFalse(gate_lines.TWINS.search(gate_lines.flatten(line)), line)
 
 
+class SettingsRetractionTests(unittest.TestCase):
+    """A grant withdrawn from source must leave the deployed file.
+
+    The merge is a union, which cannot tell a permission the machine accepted
+    interactively from one this repo granted and has since removed. Without
+    provenance the second kind is deployed forever — permissions only ever
+    accumulate, which is the wrong direction for a permission.
+    """
+
+    SCRIPT = ROOT / "scripts/merge-settings.py"
+
+    def _merge(self, temp: Path, repo: dict) -> list:
+        src, dst = temp / "src.json", temp / "dst.json"
+        src.write_text(json.dumps(repo), encoding="utf-8")
+        result = subprocess.run(
+            [sys.executable, str(self.SCRIPT), str(src), str(dst),
+             "--managed", str(temp / "managed.json")],
+            capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.last_stdout = result.stdout
+        return json.loads(dst.read_text(encoding="utf-8"))["permissions"]["allow"]
+
+    def test_withdrawn_grant_is_retracted_and_foreign_entries_survive(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            (temp / "dst.json").write_text(
+                json.dumps({"permissions": {"allow": ["Bash(machine:*)"]}}),
+                encoding="utf-8")
+            self._merge(temp, {"permissions": {"allow": ["Bash(ls:*)",
+                                                         "Bash(rm:*)"]}})
+            allow = self._merge(temp, {"permissions": {"allow": ["Bash(ls:*)"]}})
+            self.assertNotIn("Bash(rm:*)", allow)
+            self.assertIn("Bash(machine:*)", allow)
+            self.assertIn("retracted", self.last_stdout)
+
+    def test_entries_of_unknown_provenance_are_never_deleted(self) -> None:
+        """An upgrade has no sidecar yet; unknown must not mean machine-owned."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            (temp / "dst.json").write_text(
+                json.dumps({"permissions": {"allow": ["Bash(ls:*)",
+                                                      "Bash(legacy:*)"]}}),
+                encoding="utf-8")
+            allow = self._merge(temp, {"permissions": {"allow": ["Bash(ls:*)"]}})
+            self.assertIn("Bash(legacy:*)", allow)
+
+
 class BridgeJobLivenessTests(unittest.TestCase):
     """A dead launcher is not a dead dispatch.
 
