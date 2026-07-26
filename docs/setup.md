@@ -86,7 +86,7 @@ rtk headroom install apply --profile default --preset persistent-service \
   --port 8787 --backend anthropic --no-telemetry
 # 3b. Claude Code MCP（installer 會解析 headroom 的 machine-local 絕對路徑）
 headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787
-# 3c. codex 本機設定：把 main/codex/config.merge.toml 手動併入 ~/.codex/config.toml
+# 3c. main/codex/config.merge.toml 已於步驟 2 由 sync.sh 以 merge-toml 併入；此處無需手動
 # 4. 開新 Claude Code / Codex session，確認契約與 skills 載入
 ```
 

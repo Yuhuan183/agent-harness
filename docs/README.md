@@ -53,4 +53,4 @@
 3. benchmark、effort、日期與成本口徑只放研究摘要或 routing data，不寫成永久能力宣稱。
 4. 已落地的 runtime 規則從 plan 移出；歷史判斷留在 Git 或明確標示的決策紀錄。
 5. 文件改動仍需通過 contract tests、連結檢查、`git diff --check` 與部署 dry-run。
-6. 語言分層：agent 在 runtime 讀的檔案（contracts、roles、skills、script 註解）用英文，人讀的文件用 zh-TW。唯一例外是 `speak-human-tw`——它的素材就是繁中文案，規則與例句拆開就沒用了。除此之外的 runtime 中文都是漂移。
+6. 語言分層：runtime 檔案（contracts、roles、skills、script 註解）的**操作本體**（指令、流程、格式）用英文，人讀文件用 zh-TW。窄例外：skill／agent `description` 的**觸發詞**與對使用者輸出的**模板**可用所需語言以對上使用者；`speak-human-tw` 是繁中素材。其餘 runtime 中文即漂移。

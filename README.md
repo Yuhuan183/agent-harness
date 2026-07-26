@@ -183,9 +183,9 @@ scripts/sync.sh --apply
 # 3. 開新的 Claude Code / Codex session，讓契約與 roles 重新載入
 ```
 
-首次部署另需 machine-local 設定：merge `main/codex/config.merge.toml`（見
-[main/codex/DEPLOY.md](main/codex/DEPLOY.md)）；選用 Headroom 時執行
-`headroom mcp install --agent claude`。legacy fallback 見 [配置說明](docs/setup.md)。
+`sync.sh --apply` 依 manifest 併入 `main/codex/config.merge.toml`（`merge-toml`，見
+[main/codex/DEPLOY.md](main/codex/DEPLOY.md)）；不由 sync 管理的只有選用 Headroom
+proxy 與 MCP。legacy fallback 見 [配置說明](docs/setup.md)。
 
 Claude profile 若要持久切換，先在 source checkout 執行：
 
@@ -213,7 +213,7 @@ main/codex/scripts/model-routing resolve --surface claude-bridge --priority qual
 
 可攜片段只提供 merge 來源：
 
-- `main/codex/config.merge.toml` 手動併入 `~/.codex/config.toml`
+- `main/codex/config.merge.toml` 由 `sync.sh` 以 `merge-toml` 併入 `~/.codex/config.toml`
 
 ## 文件導覽
 
