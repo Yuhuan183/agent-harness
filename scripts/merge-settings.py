@@ -94,24 +94,59 @@ def merge_hooks(repo: dict, deployed: dict) -> dict:
     return merged
 
 
-def merge_value(repo, deployed):
+def merge_value(repo, deployed, managed: dict, path: str = "",
+                retracted: list | None = None):
     if isinstance(repo, dict) and isinstance(deployed, dict):
         merged = copy.deepcopy(deployed)
         for key, value in repo.items():
-            merged[key] = merge_value(value, deployed[key]) if key in deployed else value
+            child = f"{path}.{key}" if path else key
+            merged[key] = (merge_value(value, deployed[key], managed, child, retracted)
+                           if key in deployed else value)
         return merged
     if isinstance(repo, list) and isinstance(deployed, list):
-        # Union: the repo's entries always land, and machine-added entries
-        # (e.g. a permission accepted interactively) are kept after them.
-        seen = {canonical(item) for item in repo}
-        return list(repo) + [item for item in deployed if canonical(item) not in seen]
+        # The repo's entries always land. A deployed entry the repo no longer
+        # declares is kept only when the repo never put it there: a plain union
+        # cannot tell a machine-added permission from one this repo granted and
+        # has since withdrawn, so removing a grant from source would leave it
+        # deployed forever.
+        wanted = {canonical(item) for item in repo}
+        previously_ours = set(managed.get(path, []))
+        kept = []
+        for item in deployed:
+            key = canonical(item)
+            if key in wanted:
+                continue  # already carried by the repo's own entries
+            if key in previously_ours:
+                if retracted is not None:
+                    retracted.append(f"{path}: {key}")
+                continue
+            kept.append(item)
+        return list(repo) + kept
     return repo
 
 
-def merge_settings(repo: dict, deployed: dict) -> dict:
+def managed_entries(repo, path: str = "", into: dict | None = None) -> dict:
+    """Canonical forms of every list entry this repo contributes, by path.
+
+    Written after a successful merge so the next one can distinguish "the repo
+    withdrew this" from "the machine added this". Absent provenance means
+    unknown, never machine-owned — an upgrade must not retroactively delete.
+    """
+    into = {} if into is None else into
+    if isinstance(repo, dict):
+        for key, value in repo.items():
+            managed_entries(value, f"{path}.{key}" if path else key, into)
+    elif isinstance(repo, list) and path:
+        into[path] = [canonical(item) for item in repo]
+    return into
+
+
+def merge_settings(repo: dict, deployed: dict, managed: dict | None = None,
+                   retracted: list | None = None) -> dict:
     merged = merge_value(
         {k: v for k, v in repo.items() if k != "hooks"},
         {k: v for k, v in deployed.items() if k != "hooks"},
+        managed or {}, "", retracted,
     )
     if "hooks" in repo or "hooks" in deployed:
         merged["hooks"] = merge_hooks(repo.get("hooks", {}), deployed.get("hooks", {}))
@@ -129,10 +164,28 @@ def preserved_report(repo: dict, merged: dict) -> list[str]:
     return lines
 
 
+def write_managed(path: Path, repo: dict, dry_run: bool) -> None:
+    """Record what the repo owns now, so the next merge can retract removals."""
+    if dry_run:
+        return
+    try:
+        path.write_text(
+            json.dumps(managed_entries({k: v for k, v in repo.items()
+                                        if k != "hooks"}), indent=2) + "\n",
+            encoding="utf-8")
+    except OSError as exc:
+        # Losing provenance costs a future retraction, never the merge itself.
+        print(f"  warning: could not record managed entries: {exc}",
+              file=sys.stderr)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("repo", type=Path)
     parser.add_argument("deployed", type=Path, nargs="?")
+    parser.add_argument("--managed", type=Path, default=None,
+                        help="provenance sidecar; defaults to a dotfile beside "
+                             "the deployed file")
     parser.add_argument("--check", action="store_true",
                         help="verify every hook group in `repo` is owned")
     parser.add_argument("--dry-run", action="store_true",
@@ -177,11 +230,20 @@ def main() -> int:
         return 0
 
     deployed = json.loads(args.deployed.read_text(encoding="utf-8"))
-    merged = merge_settings(repo, deployed)
-    report = preserved_report(repo, merged)
+    managed_path = args.managed or args.deployed.with_name(
+        f".{args.deployed.stem}-managed.json")
+    try:
+        managed = json.loads(managed_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        managed = {}  # no provenance recorded yet: keep everything
+    retracted: list[str] = []
+    merged = merge_settings(repo, deployed, managed, retracted)
+    report = preserved_report(repo, merged) + [
+        f"retracted (repo no longer grants it): {line}" for line in retracted]
 
     if merged == deployed:
         print("settings already merged; no change")
+        write_managed(managed_path, repo, args.dry_run)
         return 0
     if args.verify:
         print(f"ERROR: {args.deployed} still lacks repo-declared settings after "
@@ -193,6 +255,7 @@ def main() -> int:
         print(f"[dry-run] would merge {args.repo} -> {args.deployed}")
         return 0
     args.deployed.write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
+    write_managed(managed_path, repo, dry_run=False)
     print(f"merged settings -> {args.deployed}")
     return 0
 
