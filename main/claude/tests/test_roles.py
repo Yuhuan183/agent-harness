@@ -15,7 +15,14 @@ class AgentRosterTests(unittest.TestCase):
             body = read(f".claude/agents/{role}.md")
             self.assertIn(f"name: {role}\n", meta)
             self.assertRegex(meta, r"(?m)^model:\s*\S+\s*$")
-            self.assertLessEqual(len(body.splitlines()), 30, role)
+            # Words, not lines: a line budget is raised by writing longer
+            # lines, and these role bodies already pack several independent
+            # rules into one. The unit has to be the one that cannot be gamed,
+            # which is the same CJK-aware count the contract budgets use.
+            # Measured on the body alone, so it is comparable with the Codex
+            # twin's `developer_instructions`.
+            instructions = body.split("---\n", 2)[-1]
+            self.assertLessEqual(word_count(instructions), ROLE_BODY_BUDGET, role)
             # Leaf roles never read orchestration docs or name the main contract.
             for forbidden in ("CLAUDE.md", "baton-dispatch", "provider-routing", "orchestration"):
                 self.assertNotIn(forbidden, body, f"{role} leaks {forbidden}")

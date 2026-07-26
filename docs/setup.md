@@ -17,7 +17,7 @@ Codex `config.toml`、Claude Code `~/.claude.json` 的 MCP entry）永不納入�
 | `headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787` | `~/.claude.json` | **手動執行**（機器狀態，不入庫） |
 | `main/claude/examples/headroom-mcp.legacy.json` | `~/.claude/mcp.json` | 僅供無 Claude CLI 的 legacy client 手動 merge |
 | `main/codex/AGENTS.contract.md`（部署為 `AGENTS.md`）、`README.md`、`ANALYSIS.md`、`DEPLOY.md`、`model-routing.toml`、`prompts/`、`agents/`、`scripts/`、skills（含 `leaf-dispatch` 與 symlink） | `~/.codex/` | script 自動 |
-| `main/codex/config.merge.toml` | `~/.codex/config.toml` | **手動 merge**（見 `main/codex/DEPLOY.md`） |
+| `main/codex/config.merge.toml` | `~/.codex/config.toml` | script 自動 **section-scoped merge**（只寫 `[agents]`／`[agents.*]`，見 `main/codex/DEPLOY.md`） |
 
 跨 agent runtime 知識（`headroom-runtime.md`）在 `main/.agents/docs/`，Claude 與 Codex 共用同一份，
 不在單一 agent 目錄下各留一份。舊機器若殘留 `~/.claude/docs/`（重整前的位置），可於套用後
