@@ -20,6 +20,12 @@ being blocked on a carrier this hook could not read.
 
 Exit 0 allows; exit 2 blocks. Override a genuinely new task boundary inside
 one prompt with AGENT_ALLOW_SECOND_VERIFIER=1.
+
+Ordering: runtime-guard runs before this on PreToolUse[Agent], so a dispatch
+blocked for an old runtime is rejected on the more fundamental ground first. A
+version block on an old runtime also blocks every verifier, so the quota it
+records cannot change an outcome there; the recording is a budget marker, not a
+safety decision, and this ordering keeps the safety gate first.
 """
 from __future__ import annotations
 
