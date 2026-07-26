@@ -346,12 +346,25 @@ class LeafArtifactGateTests(unittest.TestCase):
                         "nice rm x", "git -c core.pager=touch log",
                         "git log --output=/tmp/p", "git log -o /tmp/p",
                         "sed -n 1w/tmp/p f", "rg --pre /bin/rm x .",
-                        "uniq in.txt /tmp/pwn", "uniq -f 2 in out"):
+                        "uniq in.txt /tmp/pwn", "uniq -f 2 in out",
+                        # Chained/newline escapes: `shlex.split` glued the
+                        # operator to a token or swallowed a post-newline head,
+                        # walking a second command past the allowlist.
+                        "rg needle .;rm -rf /tmp/x", "rg needle .&&rm -rf /x",
+                        "grep x . || rm -rf /", "(rm -rf /)",
+                        "git status\nrm -rf /tmp/x", "ls\nrm -rf /x",
+                        # Bash combine-and-write redirects.
+                        "grep x . >& /tmp/pwn", "grep x . &>/tmp/pwn"):
             self.assertEqual(verdict(command), 2, command)
         # Read-only forms that must survive the tightening.
         for command in ("git -C /other/repo status", "grep -f patterns.txt src",
                         "command -v git", "command git status", "env FOO=1 git log",
-                        "sed -n 5p sword.py", "uniq -c in.txt", "uniq -f 2 in.txt"):
+                        "sed -n 5p sword.py", "uniq -c in.txt", "uniq -f 2 in.txt",
+                        # A pipe into another read-only command is fine; each
+                        # segment is validated on its own, and fd redirects
+                        # (2>&1, 2>/dev/null) are not file writes.
+                        "uniq -c a.txt | head", "grep x . 2>/dev/null",
+                        "grep x . 2>&1"):
             self.assertEqual(verdict(command), 0, command)
         # Writers and the main session are untouched by this boundary.
         self.assertEqual(verdict("rm -rf /tmp/x", agent="executor"), 0)

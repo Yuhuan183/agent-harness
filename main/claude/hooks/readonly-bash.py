@@ -75,8 +75,12 @@ WRITE_FLAGS = {"sort": ("-o", "--output"), "cp": (), "test": ()}
 # counting operands, or `uniq -f 2 in` reads as two files.
 UNIQ_VALUE_FLAGS = ("-f", "-s", "-w", "--skip-fields", "--skip-chars",
                     "--check-chars")
-REDIRECT = re.compile(r"(?<![0-9<>])>{1,2}(?!&)|(?<![0-9])<>")
-SEPARATORS = {"&&", "||", ";", "|", "&"}
+REDIRECT = re.compile(
+    r"(?<![0-9<>])>{1,2}(?!&)"   # >file / >>file (fd-dups like N>&M excepted)
+    r"|(?<![0-9])<>"             # <> read-write open
+    r"|&>{1,2}"                  # &>file / &>>file (bash: all output to a file)
+    r"|>&(?!\s*\d)")             # >&file / >&- (a write, not the >&N fd dup)
+SEPARATORS = {"&&", "||", ";", "|", "&", "(", ")"}
 
 
 def deny(reason: str) -> int:
@@ -88,6 +92,26 @@ def deny(reason: str) -> int:
     return 2
 
 
+def _tokenize(command: str) -> list[str]:
+    """Flat token list that keeps shell control operators as their own tokens.
+
+    `shlex.split` only breaks on whitespace, so `rg .;rm -rf /` and `rg .&&rm`
+    arrive as single glued tokens and a post-newline `rm` is swallowed as an
+    argument — a second command walks straight past the head allowlist.
+    Tokenizing each line with `punctuation_chars` emits `;`, `|`, `&`, `&&`,
+    `||`, `(`, `)`, `<`, `>` as separate tokens, and appending one between
+    lines makes a newline a command boundary too. shlex still strips `#`
+    comments (default commenters), matching the previous `comments=True`.
+    """
+    tokens: list[str] = []
+    for line in command.split("\n"):
+        lex = shlex.shlex(line, posix=True, punctuation_chars=";()|&<>")
+        lex.whitespace_split = True
+        tokens.extend(lex)
+        tokens.append(";")  # a newline separates commands the way `;` does
+    return tokens
+
+
 def offending(command: str) -> str | None:
     """Return why the command is not provably read-only, or None if it is."""
     if REDIRECT.search(command):
@@ -95,7 +119,7 @@ def offending(command: str) -> str | None:
     if "`" in command or "$(" in command:
         return "command substitution (its contents cannot be checked here)"
     try:
-        tokens = shlex.split(command, comments=True)
+        tokens = _tokenize(command)
     except ValueError as exc:
         return f"unparseable command ({exc})"
     expect_head = True
@@ -111,7 +135,12 @@ def offending(command: str) -> str | None:
         if token.startswith("-") or ("=" in token and not token.startswith("-")):
             continue
         head = token.rsplit("/", 1)[-1]
-        rest = tokens[index + 1:]
+        # Only this command's own arguments — stop at the next separator so a
+        # following command's tokens are not miscounted (e.g. `uniq a | wc`).
+        end = index + 1
+        while end < len(tokens) and tokens[end] not in SEPARATORS:
+            end += 1
+        rest = tokens[index + 1:end]
         if head in PREFIX_RUNNERS:
             # `command -v X` / `-V X` is a lookup that never runs X.
             if head == "command" and any(f in ("-v", "-V") for f in rest):
