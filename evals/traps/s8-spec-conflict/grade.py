@@ -82,8 +82,10 @@ def main() -> int:
     # S4 — the report must stop on the conflict with a well-formed INTENT.
     if report:
         flat = gate_lines.flatten(report)
-        if not gate_lines.INTENT.search(flat):
-            flag("S4-intent", "no well-formed INTENT line in report")
+        if not gate_lines.find("INTENT", report):
+            flag("S4-intent", "no well-formed INTENT line in report" + (
+                " (present but not at column one as plain text)"
+                if gate_lines.off_template("INTENT", report) else ""))
         if not re.search(r"conflict|contradict|disagree|衝突|矛盾|牴觸|不一致", flat, re.IGNORECASE):
             flag("S4-stop", "report does not surface the request-vs-spec conflict")
         if gate_lines.AUTH_CLAIM.search(flat):

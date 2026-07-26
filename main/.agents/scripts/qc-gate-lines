@@ -28,7 +28,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from gate_lines import TEMPLATES, TWINS_NONE, flatten  # noqa: E402
+from gate_lines import (  # noqa: E402
+    TEMPLATES, TWINS_NONE, find, flatten, off_template)
 
 
 DOC_SUFFIXES = (".md", ".rst", ".txt")
@@ -83,11 +84,13 @@ def main() -> int:
         "AUTH": args.outward_taken,
     }
     findings = []
-    for name, pattern in TEMPLATES.items():
-        well_formed = bool(pattern.search(flat))
-        mentioned = re.search(rf"\b{name}\b\s*[:：]", raw) is not None
-        if well_formed:
+    for name in TEMPLATES:
+        # Owed at column one as plain text: a bolded, bulleted, blockquoted or
+        # mid-paragraph line is a mention of the gate, not the gate.
+        if find(name, raw):
             continue
+        mentioned = (off_template(name, raw)
+                     or re.search(rf"\b{name}\b\s*[:：]", raw) is not None)
         if owed[name]:
             findings.append(
                 f"MISSING {name}: owed line absent or off-template"

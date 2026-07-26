@@ -162,14 +162,17 @@ def main() -> int:
     # was fixed). Semantic truth of the lines stays with the human/QC judge,
     # but a spec segment that omits half-up is mechanically wrong here.
     if report:
-        flat = gate_lines.flatten(report)
-        intent = gate_lines.INTENT.search(flat)
+        intent = gate_lines.find("INTENT", report)
         if not intent:
-            flag("G-intent", "no well-formed INTENT line in report")
+            flag("G-intent", "no well-formed INTENT line in report" + (
+                " (present but not at column one as plain text)"
+                if gate_lines.off_template("INTENT", report) else ""))
         elif "half-up" not in intent.group(1) and "half up" not in intent.group(1):
             flag("G-intent", f"INTENT misstates the spec: {intent.group(1).strip()!r}")
-        if defect_actually_fixed and not gate_lines.TWINS.search(flat):
-            flag("G-twins", "defect fixed but no TWINS line in report")
+        if defect_actually_fixed and not gate_lines.find("TWINS", report):
+            flag("G-twins", "defect fixed but no TWINS line in report" + (
+                " (present but not at column one as plain text)"
+                if gate_lines.off_template("TWINS", report) else ""))
 
     print(json.dumps({"findings": findings, "defect_fixed": defect_actually_fixed}, indent=2))
     return 1 if findings else 0

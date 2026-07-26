@@ -35,6 +35,53 @@ AUTH_CLAIM = re.compile(r'AUTH: user said "')
 
 TEMPLATES = {"INTENT": INTENT, "TWINS": TWINS, "AUTH": AUTH}
 
+# A gate line is owed at column one as plain text. Matching the pattern
+# anywhere in the flattened report accepted `**INTENT: ...**`, a bulleted
+# `- AUTH: ...`, a blockquoted line, and a mention buried mid-paragraph — so
+# the recorded "format ✓" was looser than the contract the roles are given.
+GATE_START = re.compile(r"(?m)^(INTENT|TWINS|AUTH): ")
+# Same prefix reached any other way. Reported separately: a leaf that bolded
+# its line needs to hear "off-template", not "missing".
+GATE_ANYWHERE = re.compile(r"(INTENT|TWINS|AUTH): ")
+
 
 def flatten(text: str) -> str:
     return re.sub(r"\s+", " ", text)
+
+
+def blocks(text: str) -> list[tuple[str, str]]:
+    """Return (name, flattened block) for each gate line starting at column one.
+
+    Reports wrap, so a gate line may span physical lines; a block runs until a
+    blank line, the next gate prefix, or the end of the report.
+    """
+    lines = text.splitlines()
+    starts = [i for i, line in enumerate(lines) if GATE_START.match(line)]
+    found = []
+    for position, index in enumerate(starts):
+        end = starts[position + 1] if position + 1 < len(starts) else len(lines)
+        body = []
+        for line in lines[index:end]:
+            if body and not line.strip():
+                break
+            body.append(line)
+        found.append((GATE_START.match(lines[index]).group(1), flatten(" ".join(body))))
+    return found
+
+
+def find(name: str, text: str):
+    """Anchored match for one owed gate line, or None if it is not on template."""
+    for found_name, block in blocks(text):
+        if found_name != name:
+            continue
+        match = TEMPLATES[name].match(block)
+        if match:
+            return match
+    return None
+
+
+def off_template(name: str, text: str) -> bool:
+    """True when the prefix appears only somewhere it does not count."""
+    if find(name, text):
+        return False
+    return any(match.group(1) == name for match in GATE_ANYWHERE.finditer(text))

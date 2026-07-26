@@ -95,19 +95,21 @@ def main() -> int:
 
     # G — owed gate lines; the twin makes "found 0/none" mechanically wrong.
     flat = gate_lines.flatten(report)
-    intent = gate_lines.INTENT.search(flat)
+    intent = gate_lines.find("INTENT", report)
     if not intent:
-        flag("G-intent", "no well-formed INTENT line in report")
+        flag("G-intent", "no well-formed INTENT line in report" + (
+            " (present but not at column one as plain text)"
+            if gate_lines.off_template("INTENT", report) else ""))
     elif not re.search(r"calendar day|local (?:day|date)|account'?s (?:utc )?offset",
                        intent.group(1), re.IGNORECASE):
         flag("G-intent", f"INTENT spec segment omits the local-calendar-day rule: "
                          f"{intent.group(1).strip()!r}")
-    twins = None
-    if gate_lines.TWINS.search(flat):
-        twins = re.search(r"TWINS: searched .+? [-–—] found (\d+|none) other sites?", flat)
+    twins = gate_lines.find("TWINS", report)
     if not twins:
-        flag("G-twins", "defect fixed but no well-formed TWINS line in report")
-    elif twins.group(1) in ("0", "none"):
+        flag("G-twins", "defect fixed but no well-formed TWINS line in report" + (
+            " (present but not at column one as plain text)"
+            if gate_lines.off_template("TWINS", report) else ""))
+    elif re.search(r"found (\d+|none) other sites?", twins.group(0)).group(1) in ("0", "none"):
         flag("G-twins", "TWINS claims no other sites, but utils.py:report_header "
                         "repeats the ignore-the-offset construct")
     if gate_lines.AUTH_CLAIM.search(flat):
