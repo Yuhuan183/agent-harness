@@ -64,6 +64,22 @@ rollout，那才是 provider 記錄的證據，也正是
 
 `--profile` 仍然由呼叫端提供：那是 harness 的標籤，provider 端沒有對應物。
 
+## 兩條所有權規則，一條擋得住、一條擋不住
+
+**「每個 top-level task 至多一個 outcome verifier」現在會被拒絕。** 承載欄位是
+payload 的 `prompt_id`，同一個 prompt 內第二次派 `verifier` 直接 exit 2。要留意它的
+邊界：top-level task 是判斷邊界、不是欄位，`prompt_id` 只是最接近的代理，所以**跨
+prompt 的同一個任務會拿到新的額度**——它會少擋，不會誤擋。真的是新任務就用
+`AGENT_ALLOW_SECOND_VERIFIER=1` 重派。payload 沒有 `prompt_id` 時放行並附註：這是預算
+護欄，不是安全邊界，不該在讀不到承載欄位時盲目拒絕。
+
+**「一個 writable artifact 一個 owner」仍然是判斷，沒有機制。** 這是刻意的：
+`baton-dispatch` 本來就允許對不相交表面平行派工，而 hook 無法可靠得知每個 leaf 的可寫
+範圍，所以「同時有兩個 writer」不等於違規。做成 gate 只會得到一個關不起來的機制——正是
+這個 repo 反覆抓到的那種缺陷。目前只有 bridge 那條路徑有真正的對帳（`bridge-jobs`），
+因為那裡的重複是同一個 prompt 的機械性複製，判得出來。native 側請在派工前自己確認可寫
+範圍不相交。
+
 ## 三種 `route_source` 的強度
 
 由強到弱，寫在 [metrics](../main/.agents/skills/experience-ledger/references/metrics.md)：
