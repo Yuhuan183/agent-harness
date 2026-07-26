@@ -33,12 +33,21 @@ READ_ONLY_ROLES = (
     "plan-verifier",
     "security-reviewer",
 )
-BASH_ROLES = (
+# `verifier` holds Bash because its contract forbids believing a test report it
+# has not reproduced, and Claude Code cannot grant a partial Bash: the boundary
+# is drawn by hooks/readonly-bash.py instead. It is a read-only role with a
+# guarded tool, not a writer — grouping it with the writers is what let it
+# claim a sandbox it did not have.
+GUARDED_BASH_ROLES = ("verifier",)
+WRITER_ROLES = (
     "mech-executor",
     "executor",
-    "verifier",
     "security-executor",
 )
+BASH_ROLES = GUARDED_BASH_ROLES + WRITER_ROLES
+# Roles that must not be able to mutate the repository, whatever tools they hold.
+# Mirrors the Codex twins' enforced sandbox_mode = "read-only".
+NO_WRITE_ROLES = READ_ONLY_ROLES + GUARDED_BASH_ROLES
 # Every role pins model and effort from the active deployment preset (user-directed
 # 2026-07-22); no role follows the main-session effort.
 PINNED_EFFORT_ROLES = ROLES

@@ -145,6 +145,7 @@ machine-local experience ledger，方便人類回顧與 telemetry 對照。
 | Routing validator／pin check | 阻止不完整 profile、品質門檻以下 route 與 Claude pin 漂移 | `main/claude/scripts/model-routing`、`main/codex/scripts/model-routing` |
 | Alias generation check | `opus` 指向哪個世代由 CLI 決定；以 leaf transcript 的真實 model id 驗證 config 的宣稱 | [model-routing.py](main/claude/scripts/model-routing.py) |
 | Runtime guard | 需要新版能力的 reviewer 在版本過舊或未知時停止 | [runtime-guard.py](main/claude/hooks/runtime-guard.py) |
+| 唯讀 Bash 邊界 | Claude Code 沒有 per-agent sandbox；`verifier` 保留重現能力，但只允許唯讀指令，其餘一律拒絕 | [readonly-bash.py](main/claude/hooks/readonly-bash.py) |
 | Delegation audit | 記錄 start/stop 並偵測 leaf 再派 leaf | [delegation-audit.py](main/claude/hooks/delegation-audit.py) |
 | Experience pending／ledger | 將 dispatch、route、source、token、時間與 QC outcome 綁在一起 | [experience-ledger](main/.agents/skills/experience-ledger/SKILL.md) |
 | Bridge 存活對帳 | bridge job 比 launcher 長命；重啟前擋下同一 prompt 的雙寫 | [dispatch-lifecycle](docs/dispatch-lifecycle.md)、[bridge-jobs](main/codex/scripts/bridge-jobs) |

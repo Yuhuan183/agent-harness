@@ -290,6 +290,52 @@ class LeafArtifactGateTests(unittest.TestCase):
             self.assertIn("fruitless lookups", body, path)
             self.assertIn("provenance-labelled direct quote", body, path)
 
+    def test_no_write_role_has_an_unguarded_bash(self) -> None:
+        """The Claude twin of the Codex `sandbox_mode = "read-only"` guarantee.
+
+        Claude Code has no per-agent sandbox, so a role that keeps Bash needs
+        the hook to draw the boundary. Either way the invariant is the same:
+        a role that claims read-only isolation cannot mutate the repository.
+        """
+        guarded = read(".claude/hooks/readonly-bash.py")
+        settings = json.loads(read(".claude/settings.json"))
+        registered = [
+            hook["command"]
+            for matcher in settings["hooks"]["PreToolUse"]
+            if matcher.get("matcher") == "Bash"
+            for hook in matcher["hooks"]
+        ]
+        self.assertTrue(
+            any("readonly-bash.py" in command for command in registered),
+            "the read-only Bash boundary is not registered on PreToolUse[Bash]")
+        for role in NO_WRITE_ROLES:
+            meta = frontmatter(f".claude/agents/{role}.md")
+            tools = re.search(r"(?m)^tools:\s*(.+)$", meta)
+            has_bash = tools is None or "Bash" in tools.group(1)
+            if has_bash:
+                self.assertIn(f'"{role}"', guarded,
+                              f"{role} holds Bash but the hook does not guard it")
+
+    def test_the_read_only_allowlist_refuses_the_obvious_escapes(self) -> None:
+        hook = ROOT / "main/claude/hooks/readonly-bash.py"
+
+        def verdict(command: str, agent: str = "verifier") -> int:
+            return subprocess.run(
+                [sys.executable, str(hook)], capture_output=True, text=True,
+                input=json.dumps({"tool_name": "Bash", "agent_type": agent,
+                                  "tool_input": {"command": command}})).returncode
+
+        for command in ("git status --short", "rtk git diff", "sed -n '1,5p' f",
+                        "grep -rn foo src | head -20"):
+            self.assertEqual(verdict(command), 0, command)
+        for command in ("rm -rf /tmp/x", "git reset --hard", "echo x > f",
+                        "find . -delete", "python3 -c 'x'", "sed -i s/a/b/ f",
+                        "cat f | tee out", "echo $(rm x)", "git stash",
+                        "git config --global user.name x"):
+            self.assertEqual(verdict(command), 2, command)
+        # Writers and the main session are untouched by this boundary.
+        self.assertEqual(verdict("rm -rf /tmp/x", agent="executor"), 0)
+
     def test_bridge_brief_skeleton_carries_stops_and_authorization(self) -> None:
         body = read(".codex/scripts/bridge-brief")
         self.assertIn("Stops (append):", body)
