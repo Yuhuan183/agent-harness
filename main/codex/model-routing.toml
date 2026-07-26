@@ -183,7 +183,7 @@ answer_tokens_per_index_task = 5006.4891
 output_tokens_per_index_task = 18912.0053
 
 [quality_floor]
-policy = "Meet the role quality tier first; optimize the selected secondary objective only within allowed routes."
+policy = "Meet the role quality tier first; optimize the selected secondary objective only within allowed routes. `allowed` is a curated list of approved routes, not a measured threshold: the validator tests membership and can never test magnitude, so a rung listed here is approved, not proven above a floor. `model-routing validate` reports, as warnings, how much of each tier is actually backed by per-rung scores."
 
 [quality_floor.roles]
 main = "judgment"

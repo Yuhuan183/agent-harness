@@ -23,7 +23,7 @@ Codex `config.toml`、Claude Code `~/.claude.json` 的 MCP entry）永不納入�
 不在單一 agent 目錄下各留一份。舊機器若殘留 `~/.claude/docs/`（重整前的位置），可於套用後
 手動清除——方法論已移至專案 `docs/`、runtime 知識已移至 `~/.agents/docs/`。
 
-### `main/` 是部署源,不是工作環境
+### `main/` 是部署源，不是工作環境
 
 Claude Code 會從工作目錄底下任何巢狀 `.claude/skills/` 探索 skill,並在叫用未限定名稱時
 一併載入涵蓋當前檔案的限定名變體。因此 `main/` 底下**不得出現會被探索到的設定路徑**:
