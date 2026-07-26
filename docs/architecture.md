@@ -124,7 +124,7 @@ Hook 是把「規則」變成「機制」的地方：需要判斷的交給模型
 | 附檔 | 回答什麼問題 |
 |---|---|
 | [數據研究](harness-engineering-research.md) | 各 model／effort 的 benchmark 與成本口徑，選擇理由，以及還沒本機驗證的缺口 |
-| [Fable 5 安全 fallback](fable-5-fallback.md) | Fable 5 何時會被切到 Opus、對 main session routing 整合性的影響、怎麼避開；與本 repo 的跨 provider fallback 區分 |
+| [Fable 5 安全 fallback](fable-5-fallback.md) | 用 Fable 5 時怎麼避免被切到 Opus（把觸發內容派給 Opus leaf、保持 main context 乾淨），以及可行性邊界；與本 repo 的跨 provider fallback 區分 |
 | 資料來源與驗證 | benchmark 快照怎麼抓、如何交叉驗證、與前一版差異——見[研究摘要](harness-engineering-research.md)的快照章節，逐格驗證口徑在兩份 [routing toml](../main/claude/model-routing.toml) 的 `data_verification` 欄位 |
 | [context 收束規範](contract-slimming.md) | 常駐契約放什麼／不放什麼、預算怎麼算、怎麼驗收；大型唯讀輸入的壓縮見 [headroom-runtime](../main/.agents/docs/headroom-runtime.md) |
 | [hook 案例規範](hook-system.md) | hook 怎麼建、怎麼 pipe-test、失敗訊息怎麼回到模型 |

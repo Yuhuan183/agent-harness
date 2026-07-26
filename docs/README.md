@@ -12,7 +12,7 @@
 | 安裝、同步或回滾 | [配置與部署](setup.md) | [Claude README](../main/claude/README.md)、[Codex README](../main/codex/README.md) |
 | 修改 leaf role 或派工契約 | [Playbook：Leaf 分派](harness-engineering.md#leaf-分派的三層契約) | [Briefs](../main/claude/skills/baton-dispatch/references/briefs-and-stops.md) |
 | 評估 model／effort／provider | [研究摘要](harness-engineering-research.md) | [Claude routing](../main/claude/model-routing.toml)、[Codex routing](../main/codex/model-routing.toml) |
-| 避開 Fable 5 被切到 Opus | [Fable 5 安全 fallback](fable-5-fallback.md) | [provider-routing](../main/claude/skills/provider-routing/SKILL.md) |
+| 用 Fable 5 時避免被切到 Opus | [Fable 5 安全 fallback](fable-5-fallback.md) | [provider-routing](../main/claude/skills/provider-routing/SKILL.md) |
 | 查 experience-ledger 指標 | [Metrics](../main/.agents/skills/experience-ledger/references/metrics.md) | [skill 本體](../main/.agents/skills/experience-ledger/SKILL.md) |
 | 驗證派工狀態與路由證據 | [派工生命週期](dispatch-lifecycle.md) | [bridge-liveness](../main/claude/skills/provider-routing/references/bridge-liveness.md) |
 | 診斷 context 或工具輸出 | [Headroom runtime](../main/.agents/docs/headroom-runtime.md) | [RTK](../main/claude/RTK.md) |
