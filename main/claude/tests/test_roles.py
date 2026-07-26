@@ -345,12 +345,13 @@ class LeafArtifactGateTests(unittest.TestCase):
                         "env rm -rf /tmp/x", "command rm -rf /tmp/x",
                         "nice rm x", "git -c core.pager=touch log",
                         "git log --output=/tmp/p", "git log -o /tmp/p",
-                        "sed -n 1w/tmp/p f", "rg --pre /bin/rm x ."):
+                        "sed -n 1w/tmp/p f", "rg --pre /bin/rm x .",
+                        "uniq in.txt /tmp/pwn", "uniq -f 2 in out"):
             self.assertEqual(verdict(command), 2, command)
         # Read-only forms that must survive the tightening.
         for command in ("git -C /other/repo status", "grep -f patterns.txt src",
                         "command -v git", "command git status", "env FOO=1 git log",
-                        "sed -n 5p sword.py"):
+                        "sed -n 5p sword.py", "uniq -c in.txt", "uniq -f 2 in.txt"):
             self.assertEqual(verdict(command), 0, command)
         # Writers and the main session are untouched by this boundary.
         self.assertEqual(verdict("rm -rf /tmp/x", agent="executor"), 0)

@@ -70,6 +70,11 @@ GREP_UNSAFE = ("--pre", "--preprocessor")
 GIT_VALUE_FLAGS = ("-C", "-c", "--git-dir", "--work-tree", "--namespace")
 # `sed -i` and `sort -o` write; so does any redirection.
 WRITE_FLAGS = {"sort": ("-o", "--output"), "cp": (), "test": ()}
+# `uniq [input [output]]` writes its second file operand — the one allowlist
+# tool with a positional output. Its value-taking flags must be skipped before
+# counting operands, or `uniq -f 2 in` reads as two files.
+UNIQ_VALUE_FLAGS = ("-f", "-s", "-w", "--skip-fields", "--skip-chars",
+                    "--check-chars")
 REDIRECT = re.compile(r"(?<![0-9<>])>{1,2}(?!&)|(?<![0-9])<>")
 SEPARATORS = {"&&", "||", ";", "|", "&"}
 
@@ -148,6 +153,19 @@ def offending(command: str) -> str | None:
                 return "sed -i writes in place"
             if any(SED_WRITE.search(t) for t in rest if not t.startswith("-")):
                 return "sed script writes a file (w/W command or s///w flag)"
+        if head == "uniq":
+            operands, skip = 0, False
+            for t in rest:
+                if skip:
+                    skip = False
+                    continue
+                if t in UNIQ_VALUE_FLAGS:
+                    skip = True
+                    continue
+                if not t.startswith("-"):
+                    operands += 1
+            if operands >= 2:
+                return "uniq writes its second file operand"
         for flag in WRITE_FLAGS.get(head, ()):
             if any(t == flag or t.startswith(flag) for t in rest):
                 return f"{head} {flag} writes"
