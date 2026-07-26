@@ -19,6 +19,10 @@ The merge is textual and section-scoped, deliberately:
   * An owned section that is absent is inserted next to its siblings.
   * A section under the owned prefix that the repo does not declare is
     preserved and reported, not deleted - it may be the user's own agent.
+    The exception is a section a provenance sidecar records as one this repo
+    previously wrote: that is a withdrawn registration, and leaving it would
+    mean a role removed from source stays registered on the machine forever.
+    A section of unrecorded provenance is always treated as the user's.
 
 Re-serialising through a TOML writer was rejected: it would silently reformat
 and strip the comments in a file the user edits by hand.
@@ -27,6 +31,7 @@ and strip the comments in a file the user edits by hand.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -65,13 +70,15 @@ def normalize(body: list[str]) -> list[str]:
     return body + ["\n"]
 
 
-def merge_toml(repo_text: str, deployed_text: str, prefix: str):
+def merge_toml(repo_text: str, deployed_text: str, prefix: str,
+               managed: list | None = None):
     repo_owned = [(n, b) for n, b in parse_sections(repo_text) if is_owned(n, prefix)]
     repo_names = [n for n, _ in repo_owned]
     deployed = parse_sections(deployed_text)
     deployed_names = {n for n, _ in deployed if n is not None}
+    previously_ours = set(managed or ())
 
-    updated, preserved_foreign = [], []
+    updated, preserved_foreign, retracted = [], [], []
     result: list[tuple[str | None, list[str]]] = []
     for name, body in deployed:
         if name in repo_names:
@@ -81,6 +88,13 @@ def merge_toml(repo_text: str, deployed_text: str, prefix: str):
             result.append((name, normalize(list(repo_body))))
         else:
             if is_owned(name, prefix):
+                # A section the repo used to declare and has since dropped is a
+                # withdrawn registration, not the user's own agent. Without
+                # provenance the two are indistinguishable, so an unrecorded
+                # section is always treated as the user's and kept.
+                if name in previously_ours:
+                    retracted.append(name)
+                    continue
                 preserved_foreign.append(name)
             result.append((name, body))
 
@@ -104,6 +118,8 @@ def merge_toml(repo_text: str, deployed_text: str, prefix: str):
         "updated": updated,
         "preserved_sections": len(result) - len(repo_owned),
         "preserved_foreign_owned": preserved_foreign,
+        "retracted": retracted,
+        "repo_names": repo_names,
     }
     return text, report
 
@@ -114,16 +130,31 @@ def describe(report: dict) -> list[str]:
         lines.append(f"added section: [{name}]")
     for name in report["updated"]:
         lines.append(f"updated section: [{name}]")
+    for name in report["retracted"]:
+        lines.append(f"retracted section the repo no longer declares: [{name}]")
     for name in report["preserved_foreign_owned"]:
         lines.append(f"kept non-repo section under owned prefix: [{name}]")
     lines.append(f"preserved {report['preserved_sections']} machine section(s) untouched")
     return lines
 
 
+def write_managed(path: Path, names: list, dry_run: bool) -> None:
+    """Record the sections the repo owns now, so the next merge can retract."""
+    if dry_run:
+        return
+    try:
+        path.write_text(json.dumps(sorted(names), indent=2) + "\n", encoding="utf-8")
+    except OSError as exc:
+        print(f"  warning: could not record managed sections: {exc}", file=sys.stderr)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("repo", type=Path)
     parser.add_argument("deployed", type=Path)
+    parser.add_argument("--managed", type=Path, default=None,
+                        help="provenance sidecar; defaults to a dotfile beside "
+                             "the deployed file")
     parser.add_argument("--prefix", default="agents",
                         help="top-level section this repo owns (default: agents)")
     parser.add_argument("--dry-run", action="store_true")
@@ -147,9 +178,16 @@ def main() -> int:
         return 0
 
     deployed_text = args.deployed.read_text(encoding="utf-8")
-    merged, report = merge_toml(repo_text, deployed_text, args.prefix)
+    managed_path = args.managed or args.deployed.with_name(
+        f".{args.deployed.stem}-managed.json")
+    try:
+        managed = json.loads(managed_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        managed = []  # no provenance recorded yet: retract nothing
+    merged, report = merge_toml(repo_text, deployed_text, args.prefix, managed)
 
     if merged == deployed_text:
+        write_managed(managed_path, report["repo_names"], args.dry_run or args.verify)
         # Still name any non-repo section under the owned prefix: it is exactly
         # the content a future careless change would delete, so it should stay
         # visible on every run, not only on runs that happen to write.
@@ -168,6 +206,7 @@ def main() -> int:
         print(f"[dry-run] would merge {args.repo} -> {args.deployed}")
         return 0
     args.deployed.write_text(merged, encoding="utf-8")
+    write_managed(managed_path, report["repo_names"], dry_run=False)
     print(f"merged config -> {args.deployed}")
     return 0
 
