@@ -650,7 +650,11 @@ class DocumentationBudgetTests(unittest.TestCase):
             # leaves, keep main context clean, and turn auto-switch off as the
             # observable safety net. Distinct from the repo's own cross-provider
             # fallback, which the doc disambiguates.
-            "docs/fable-5-fallback.md": 1500,
+            # +440 (2026-07-26): design notes for four unimplemented directions
+            # (heuristic hook, payoff codification, routing disambiguation,
+            # main-session audit gap), recorded with approach/principle/open-
+            # questions for later evaluation rather than built now.
+            "docs/fable-5-fallback.md": 2000,
             # +100 (2026-07-23): behavioral trap-eval method section added.
             # +310 (2026-07-26): both vendors published context-engineering
             # guidance in the same week and both name rule *contradiction* as a

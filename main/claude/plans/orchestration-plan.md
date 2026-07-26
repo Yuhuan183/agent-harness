@@ -86,6 +86,7 @@ permissions the source no longer grants.
 
 - **All**: OTel stays deferred unless JSONL/transcript telemetry cannot answer a concrete real-time routing question.
 - **Codex**: Codex App may rewrite machine `config.toml`; deployment must merge and recheck local state instead of replacing it.
+- **Fable fallback avoidance**: four unimplemented directions recorded in [fable-5-fallback](../../../docs/fable-5-fallback.md) (heuristic dispatch-hint hook, payoff codification, routing disambiguation, main-session model audit) — approach and principle noted, decision deferred.
 
 ## Decision history
 
