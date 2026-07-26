@@ -15,6 +15,7 @@
 | 驗證派工狀態與路由證據 | [派工生命週期](dispatch-lifecycle.md) | [bridge-liveness](../main/claude/skills/provider-routing/references/bridge-liveness.md) |
 | 診斷 context 或工具輸出 | [Headroom runtime](../main/.agents/docs/headroom-runtime.md) | [RTK](../main/claude/RTK.md) |
 | 理解 QC 怎麼把關 | [QC 白話說明](qc-explainer.md) | [baton-dispatch](../main/claude/skills/baton-dispatch/SKILL.md) |
+| 理解 hook 系統怎麼運作 | [Hook 系統](hook-system.md) | [settings.json](../main/claude/settings.json) |
 | 跑行為 trap eval | [evals/traps/](../evals/traps/) 各 README | [QC 說明](qc-explainer.md)取證段 |
 | 深度審查本 repo 設計 | [harness-review](../.agents/skills/harness-review/SKILL.md)（dev-only） | [plan](../main/claude/plans/orchestration-plan.md) |
 | 理解目前決策與下一步 | [Orchestration plan](../main/claude/plans/orchestration-plan.md) | [仍待驗證](harness-engineering-research.md#仍待本機驗證) |
@@ -28,6 +29,7 @@
 | [配置與部署](setup.md) | bootstrap、apply、驗收與回滾步驟 | 模型選擇理由 |
 | [契約瘦身規範](contract-slimming.md) | CLAUDE.md／AGENTS.md 的內容判定、預算原則與驗收 | 歷史歷程、當前 orchestration 狀態 |
 | [派工生命週期](dispatch-lifecycle.md) | 派工五個狀態的承載物、不成立的推論、驗證清單 | 派工形狀與 QC（baton-dispatch）、provider 選擇（provider-routing） |
+| [Hook 系統](hook-system.md) | fail-open／fail-closed 語意、逐事件清單、為何值得信任 | hook 內部實作細節（各 hook 檔內 docstring） |
 | [Orchestration plan](../main/claude/plans/orchestration-plan.md)＋[history](../main/claude/plans/orchestration-history.md) | 當前最新方案；append-only 決策歷程 | 完整方法論與研究全文 |
 
 ## Runtime 真相源

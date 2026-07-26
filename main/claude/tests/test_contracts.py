@@ -614,21 +614,29 @@ class DocumentationBudgetTests(unittest.TestCase):
             # +30 (2026-07-25): alias generation check added to the mechanisms
             # table — a new guardrail belongs in that inventory, and the row is
             # already at the terseness of its neighbours.
-            # +40 (2026-07-26): the read-only Bash boundary. A guardrail the
-            # index does not list is a guardrail nobody knows to verify.
-            "README.md": 2370,
+            # +90 (2026-07-26): the accurate fail-closed gate set (four bounded
+            # gates, not two) plus the architecture and hook-system pointers. A
+            # guardrail the index does not list is a guardrail nobody verifies.
+            "README.md": 2460,
             # +80 (2026-07-26): navigation and responsibility rows for the
             # dispatch-lifecycle doc. A navigation surface has to grow when the
             # thing it navigates to appears, or it stops being complete.
             # +60 (2026-07-26): the language-layering rule and its one
             # exception. An unstated convention cannot distinguish a
             # deliberate exception from drift, which is what a reviewer found.
-            "docs/README.md": 780,
+            # +55 (2026-07-26): navigation and responsibility rows for the
+            # hook-system concept doc.
+            "docs/README.md": 840,
             # Verification entry point for dispatch state and route evidence.
             # Cheaper here than in the resident contracts or the two skills it
             # ties together, both of which sit within ten words of their own
             # ceilings.
             "docs/dispatch-lifecycle.md": 1650,
+            # The hook-system concept doc: fail-open/fail-closed semantics, the
+            # per-event inventory, and why each gate is trustworthy. The
+            # guardrail table in the README pointed at individual hooks but no
+            # doc explained the system as a whole.
+            "docs/hook-system.md": 1300,
             # +100 (2026-07-23): behavioral trap-eval method section added.
             # +310 (2026-07-26): both vendors published context-engineering
             # guidance in the same week and both name rule *contradiction* as a
