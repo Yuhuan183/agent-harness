@@ -56,6 +56,32 @@
 - Extend bridge smoke coverage to remaining roles and priorities as real dispatches occur (no dedicated quota burn); keep availability evidence dated and rollout-verified.
 - Live probe: GPT-origin failure handoff and fallback-stop behavior.
 
+## Remediation plan — 2026-07-26 dual-provider review
+
+Ordered by blast radius, not severity alone. Waves 1–2 gate the next
+`sync.sh --apply`: deploying before them ships an unbounded verifier and cements
+permissions the source no longer grants.
+
+1. **Verifier read-only boundary** (high). Claude `verifier`/`plan-verifier`/
+   `security-reviewer` keep Bash while claiming sandbox isolation; the Codex
+   twins carry enforced `sandbox_mode` and a parity test. Spike the per-agent
+   mechanism Claude Code actually supports, then mirror
+   `test_contracts.py:296` on the Claude side.
+2. **Permission retraction**. `merge-settings.py`/`merge-toml.py` union
+   forever, so a permission dropped from source stays deployed. Record
+   managed-entry provenance; retract what source removed, keep foreign entries.
+3. **Gate-line anchoring**. Regexes match markdown-wrapped and inline-in-prose
+   lines, so recorded "format ✓" is looser than the contract. Anchor to logical
+   line starts, add negative cases to all three trap graders, and mark the
+   affected rows in the trap results logs — this reinterprets past data.
+4. **Cardinality and ownership carriers**. Generalise the 2026-07-26 bridge fix:
+   top-level task id plus owned-artifact set, so "at most one verifier" and "one
+   owner per artifact" can be refused rather than merely stated.
+5. Doc contradiction on `config.merge.toml` (three files); role budgets to
+   `word_count`; Codex resident extraction; s9 arm-B fixture.
+6. `quality_floor` naming; zh-TW punctuation; a stated exception for
+   `speak-human-tw` in the language rule.
+
 ## Open items
 
 - **All**: OTel stays deferred unless JSONL/transcript telemetry cannot answer a concrete real-time routing question.
