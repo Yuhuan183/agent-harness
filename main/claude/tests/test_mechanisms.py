@@ -999,6 +999,33 @@ class SettingsRetractionTests(unittest.TestCase):
             self.assertIn("Bash(machine:*)", allow)
             self.assertIn("retracted", self.last_stdout)
 
+    def test_withdrawn_agent_registration_is_retracted_from_config(self) -> None:
+        """Same defect at section level: a role dropped from source stayed registered."""
+        script = ROOT / "scripts/merge-toml.py"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            src, dst, man = temp / "src.toml", temp / "dst.toml", temp / "m.json"
+            dst.write_text('[model]\nname = "gpt"\n\n[agents.mine]\nconfig_file = "x"\n',
+                           encoding="utf-8")
+
+            def merge(repo: str) -> str:
+                src.write_text(repo, encoding="utf-8")
+                result = subprocess.run(
+                    [sys.executable, str(script), str(src), str(dst),
+                     "--managed", str(man)], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.last_stdout = result.stdout
+                return dst.read_text(encoding="utf-8")
+
+            merge('[agents.verifier]\nconfig_file = "v"\n\n'
+                  '[agents.executor]\nconfig_file = "e"\n')
+            text = merge('[agents.verifier]\nconfig_file = "v"\n')
+            self.assertNotIn("[agents.executor]", text)
+            self.assertIn("retracted section", self.last_stdout)
+            # The user's own agent and every machine section are untouched.
+            self.assertIn("[agents.mine]", text)
+            self.assertIn("[model]", text)
+
     def test_entries_of_unknown_provenance_are_never_deleted(self) -> None:
         """An upgrade has no sidecar yet; unknown must not mean machine-owned."""
         with tempfile.TemporaryDirectory() as temp_dir:
