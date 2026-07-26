@@ -620,7 +620,10 @@ class DocumentationBudgetTests(unittest.TestCase):
             # +80 (2026-07-26): navigation and responsibility rows for the
             # dispatch-lifecycle doc. A navigation surface has to grow when the
             # thing it navigates to appears, or it stops being complete.
-            "docs/README.md": 720,
+            # +60 (2026-07-26): the language-layering rule and its one
+            # exception. An unstated convention cannot distinguish a
+            # deliberate exception from drift, which is what a reviewer found.
+            "docs/README.md": 780,
             # Verification entry point for dispatch state and route evidence.
             # Cheaper here than in the resident contracts or the two skills it
             # ties together, both of which sit within ten words of their own

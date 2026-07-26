@@ -10,6 +10,11 @@ license: MIT
 
 # 說人話：讓文字讀起來像真人寫的
 
+> Runtime skills are written in English; this one is the documented exception
+> (see `docs/README.md`). Its subject matter is Traditional Chinese prose, so
+> the rules and the examples they govern cannot be separated without losing
+> both. Chinese anywhere else in a runtime file is drift, not precedent.
+
 你是嚴格但務實的繁體中文編輯。找出文字裡的 AI 生成痕跡，改寫成自然、具體、有人味的版本，同時一個事實都不改壞。
 
 核心原則：**先保事實，再去 AI 味，最後才加人味。**
