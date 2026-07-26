@@ -285,7 +285,7 @@ class CodexBundleTests(unittest.TestCase):
             "security-executor": "security-executor",
         }
         config = tomllib.loads(read(".codex/config.merge.toml"))
-        read_only = {"explore", "plan-verifier", "security-reviewer", "verifier"}
+        read_only = NO_WRITE_ROLES
         for claude_role, codex_name in counterparts.items():
             path = f".codex/agents/{codex_name}.toml"
             agent = tomllib.loads(read(path))
@@ -599,7 +599,9 @@ class DocumentationBudgetTests(unittest.TestCase):
             # +30 (2026-07-25): alias generation check added to the mechanisms
             # table — a new guardrail belongs in that inventory, and the row is
             # already at the terseness of its neighbours.
-            "README.md": 2280,
+            # +40 (2026-07-26): the read-only Bash boundary. A guardrail the
+            # index does not list is a guardrail nobody knows to verify.
+            "README.md": 2320,
             # +80 (2026-07-26): navigation and responsibility rows for the
             # dispatch-lifecycle doc. A navigation surface has to grow when the
             # thing it navigates to appears, or it stops being complete.
