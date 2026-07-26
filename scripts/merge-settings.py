@@ -243,7 +243,9 @@ def main() -> int:
 
     if merged == deployed:
         print("settings already merged; no change")
-        write_managed(managed_path, repo, args.dry_run)
+        # --verify is a read-only preflight check and must not write the
+        # provenance sidecar as a side effect; only a real apply records it.
+        write_managed(managed_path, repo, args.dry_run or args.verify)
         return 0
     if args.verify:
         print(f"ERROR: {args.deployed} still lacks repo-declared settings after "
