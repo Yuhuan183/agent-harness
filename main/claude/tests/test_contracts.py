@@ -645,10 +645,12 @@ class DocumentationBudgetTests(unittest.TestCase):
             # connective narrative the README (a repo landing page) and the
             # per-topic docs each lacked.
             "docs/architecture.md": 2000,
-            # Anthropic's Fable 5 -> Opus safety fallback and its routing-
-            # integrity impact on the main session; distinct from the repo's
-            # own cross-provider fallback, which the doc disambiguates.
-            "docs/fable-5-fallback.md": 1400,
+            # How to avoid Anthropic's Fable 5 -> Opus safety fallback while on
+            # a Fable main session: dispatch flagging work to Opus-immune
+            # leaves, keep main context clean, and turn auto-switch off as the
+            # observable safety net. Distinct from the repo's own cross-provider
+            # fallback, which the doc disambiguates.
+            "docs/fable-5-fallback.md": 1500,
             # +100 (2026-07-23): behavioral trap-eval method section added.
             # +310 (2026-07-26): both vendors published context-engineering
             # guidance in the same week and both name rule *contradiction* as a
