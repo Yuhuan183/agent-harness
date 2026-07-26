@@ -1066,6 +1066,53 @@ class SettingsRetractionTests(unittest.TestCase):
             self.assertIn("Bash(legacy:*)", allow)
 
 
+class VerifierQuotaTests(unittest.TestCase):
+    """One outcome verifier per top-level task, refused rather than recommended.
+
+    The rule sat in four files as prose with nothing able to enforce it, and
+    the second verifier always feels justified at the time — which is why the
+    budget has to be spent by a mechanism.
+    """
+
+    HOOK = ROOT / "main/claude/hooks/verifier-quota.py"
+
+    def _dispatch(self, home: Path, subagent: str = "verifier",
+                  prompt: str | None = "p1", **env) -> int:
+        payload = {"tool_name": "Agent", "session_id": "s1",
+                   "tool_input": {"subagent_type": subagent}}
+        if prompt is not None:
+            payload["prompt_id"] = prompt
+        return subprocess.run(
+            [sys.executable, str(self.HOOK)], input=json.dumps(payload),
+            capture_output=True, text=True,
+            env={**os.environ, "HOME": str(home), **env}).returncode
+
+    def test_the_second_verifier_in_one_task_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as home:
+            self.assertEqual(self._dispatch(Path(home)), 0)
+            self.assertEqual(self._dispatch(Path(home)), 2)
+            # A new prompt is a new task boundary; the quota resets.
+            self.assertEqual(self._dispatch(Path(home), prompt="p2"), 0)
+
+    def test_only_the_outcome_verifier_spends_the_quota(self) -> None:
+        with tempfile.TemporaryDirectory() as home:
+            for role in ("plan-verifier", "security-reviewer", "executor"):
+                self.assertEqual(self._dispatch(Path(home), subagent=role), 0, role)
+            self.assertEqual(self._dispatch(Path(home)), 0)
+
+    def test_an_explicit_override_lets_a_real_new_task_through(self) -> None:
+        with tempfile.TemporaryDirectory() as home:
+            self.assertEqual(self._dispatch(Path(home)), 0)
+            self.assertEqual(
+                self._dispatch(Path(home), AGENT_ALLOW_SECOND_VERIFIER="1"), 0)
+
+    def test_a_missing_carrier_does_not_block_the_dispatch(self) -> None:
+        """A budget guard, unlike a safety boundary, may not refuse blind."""
+        with tempfile.TemporaryDirectory() as home:
+            self.assertEqual(self._dispatch(Path(home), prompt=None), 0)
+            self.assertEqual(self._dispatch(Path(home), prompt=None), 0)
+
+
 class BridgeJobLivenessTests(unittest.TestCase):
     """A dead launcher is not a dead dispatch.
 
