@@ -65,6 +65,23 @@ class MachineStateHygieneTests(unittest.TestCase):
         self.assertEqual(sum("runtime-guard.py" in c for c in start), 1)
         self.assertEqual(sum("commit-test-gate.py" in c for c in pre), 1)
 
+    def test_weekly_integrity_outer_timeout_exceeds_its_inner_work(self) -> None:
+        # F-06: the SessionStart hook budget must outlast its slowest internal
+        # subprocess. When the outer timeout was 15s and one rsync alone was
+        # 30s, a drift-heavy run got killed before writing its throttle stamp
+        # and silently retried every session, never completing.
+        settings = json.loads(read(".claude/settings.json"))
+        outer = next(
+            h["timeout"]
+            for g in settings["hooks"]["SessionStart"] for h in g["hooks"]
+            if "weekly-integrity.py" in h["command"]
+        )
+        inner = [int(m) for m in re.findall(
+            r"timeout=(\d+)", read(".claude/hooks/weekly-integrity.py"))]
+        self.assertGreater(outer, max(inner),
+                           "weekly-integrity outer timeout must exceed its "
+                           "slowest internal subprocess timeout")
+
     def test_headroom_routing_ownership_is_explicit(self) -> None:
         runtime = read(".agents/docs/headroom-runtime.md")
         codex = read(".codex/AGENTS.contract.md")
@@ -139,6 +156,12 @@ class MachineStateHygieneTests(unittest.TestCase):
             cd_form = run_hook(f"cd {repo} && git commit -m x", "/")
             self.assertEqual(cd_form.returncode, 2)
             self.assertIn("commit blocked", cd_form.stderr)
+
+            # A backslash-newline continuation is one command; the raw newline
+            # must not split `git` from `commit` and slip the gate (F-02).
+            cont_form = run_hook("git \\\n  commit -m x", str(repo))
+            self.assertEqual(cont_form.returncode, 2)
+            self.assertIn("commit blocked", cont_form.stderr)
 
             # The harness keeps its deployable suite under main/claude/tests.
             # A stale root cache must neither trigger a zero-test false block

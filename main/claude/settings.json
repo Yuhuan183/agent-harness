@@ -78,7 +78,7 @@
           {
             "type": "command",
             "command": "python3 \"$HOME/.claude/hooks/weekly-integrity.py\"",
-            "timeout": 15
+            "timeout": 60
           }
         ]
       }

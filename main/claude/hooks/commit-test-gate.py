@@ -62,7 +62,13 @@ def main() -> int:
     except (json.JSONDecodeError, ValueError):
         return 0  # malformed input: never break unrelated tool calls
     command = (payload.get("tool_input") or {}).get("command", "")
-    if not isinstance(command, str) or not COMMIT_RE.search(command):
+    if not isinstance(command, str):
+        return 0
+    # Fold backslash-newline continuations: `git \<newline>commit` is one
+    # command, but the raw newline would otherwise split `git` from `commit`
+    # and slip the gate. COMMIT_RE still stops at real `;|&` separators.
+    command = re.sub(r"\\\n", " ", command)
+    if not COMMIT_RE.search(command):
         return 0
     if SKIP_RE.match(command):
         return 0
