@@ -56,31 +56,35 @@
 - Extend bridge smoke coverage to remaining roles and priorities as real dispatches occur (no dedicated quota burn); keep availability evidence dated and rollout-verified.
 - Live probe: GPT-origin failure handoff and fallback-stop behavior.
 
-## Remediation plan — 2026-07-26 dual-provider review
+## Remediation plan — 2026-07-26 dual-provider review (landed)
 
-Ordered by blast radius, not severity alone. Waves 1–2 gate the next
-`sync.sh --apply`: deploying before them ships an unbounded verifier and cements
-permissions the source no longer grants.
+Waves 1–4 landed across the 2026-07-26/27 sessions: the Claude read-only Bash
+boundary (`readonly-bash.py` + `test_contracts.py:296` parity), managed-entry
+permission retraction, gate-line anchoring, and the cardinality/ownership
+carriers (bridge `dispatch_id`, `verifier-quota`). Wave 5–6 doc items landed
+too. The second-pass review below re-verified the security-relevant ones and
+closed the remaining `config.merge.toml` and language-rule items.
 
-1. **Verifier read-only boundary** (high). Claude `verifier`/`plan-verifier`/
-   `security-reviewer` keep Bash while claiming sandbox isolation; the Codex
-   twins carry enforced `sandbox_mode` and a parity test. Spike the per-agent
-   mechanism Claude Code actually supports, then mirror
-   `test_contracts.py:296` on the Claude side.
-2. **Permission retraction**. `merge-settings.py`/`merge-toml.py` union
-   forever, so a permission dropped from source stays deployed. Record
-   managed-entry provenance; retract what source removed, keep foreign entries.
-3. **Gate-line anchoring**. Regexes match markdown-wrapped and inline-in-prose
-   lines, so recorded "format ✓" is looser than the contract. Anchor to logical
-   line starts, add negative cases to all three trap graders, and mark the
-   affected rows in the trap results logs — this reinterprets past data.
-4. **Cardinality and ownership carriers**. Generalise the 2026-07-26 bridge fix:
-   top-level task id plus owned-artifact set, so "at most one verifier" and "one
-   owner per artifact" can be refused rather than merely stated.
-5. Doc contradiction on `config.merge.toml` (three files); role budgets to
-   `word_count`; Codex resident extraction; s9 arm-B fixture.
-6. `quality_floor` naming; zh-TW punctuation; a stated exception for
-   `speak-human-tw` in the language rule.
+## Second-pass review — 2026-07-27
+
+Each finding was spot-verified before acting; the reproducible ones were fixed,
+the rest recorded as audited-not-a-defect so they are not re-opened blindly.
+
+- **Fixed (reproduced first):** `readonly-bash` chained-command/newline bypass
+  (`shlex.split` glued `.;rm`/`.&&rm` and swallowed a post-newline head — a
+  segment-aware tokenizer now validates each segment, and `>&file`/`&>file` are
+  closed); `commit-test-gate` backslash-newline continuation slipping the
+  `git … commit` prefilter; `weekly-integrity` outer SessionStart timeout (15 s)
+  shorter than its slowest inner subprocess (rsync 30 s), which killed
+  drift-heavy runs before the throttle stamp — now 60 s (`outer > max(inner)`);
+  the `config.merge.toml` "manual merge" wording (`sync.sh` `merge-toml` applies
+  it); and the language rule's narrow trigger-metadata / template exception.
+- **Audited, no fix:** `route_source` does not gate `decision_eligible` by
+  design (the whole Claude side is `resolver-assumed`); `verifier-quota`'s
+  `prompt_id` scope and read-modify-write are a documented budget marker, not a
+  safety boundary; `quality_floor` is documented in-code as a curated list, not
+  a magnitude threshold; the git-managed-`~/.claude` drift path relies on that
+  repo's own `git status`, a rare-deployment gap left as a note.
 
 ## Open items
 
