@@ -628,7 +628,8 @@ class DocumentationBudgetTests(unittest.TestCase):
             # hook-system concept doc.
             # +70 (2026-07-26): navigation and responsibility rows for the
             # top-down architecture overview, now the recommended entry point.
-            "docs/README.md": 920,
+            # +20 (2026-07-26): nav row for the Fable 5 fallback research doc.
+            "docs/README.md": 950,
             # Verification entry point for dispatch state and route evidence.
             # Cheaper here than in the resident contracts or the two skills it
             # ties together, both of which sit within ten words of their own
@@ -644,6 +645,10 @@ class DocumentationBudgetTests(unittest.TestCase):
             # connective narrative the README (a repo landing page) and the
             # per-topic docs each lacked.
             "docs/architecture.md": 2000,
+            # Anthropic's Fable 5 -> Opus safety fallback and its routing-
+            # integrity impact on the main session; distinct from the repo's
+            # own cross-provider fallback, which the doc disambiguates.
+            "docs/fable-5-fallback.md": 1400,
             # +100 (2026-07-23): behavioral trap-eval method section added.
             # +310 (2026-07-26): both vendors published context-engineering
             # guidance in the same week and both name rule *contradiction* as a
