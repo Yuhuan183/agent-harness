@@ -217,7 +217,9 @@ main/codex/scripts/model-routing resolve --surface claude-bridge --priority qual
 
 ## 文件導覽
 
-從 [docs/README.md](docs/README.md) 依工作目的進入：
+想由上而下讀懂整套設計，先看 [架構總覽](docs/architecture.md)——它從架構圖開始，依序
+串起核心想法、QC 派發、生命週期驗證、hook 系統與附檔。其餘依工作目的從
+[docs/README.md](docs/README.md) 進入：
 
 - [Harness Engineering Playbook](docs/harness-engineering.md)：跨專案設計與維運方法。
 - [研究摘要](docs/harness-engineering-research.md)：Artificial Analysis、成本模型、本機實驗與證據限制。

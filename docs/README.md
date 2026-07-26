@@ -7,6 +7,7 @@
 
 | 你要做什麼 | 從哪裡開始 | 接著看 |
 |---|---|---|
+| 由上而下讀懂整套架構 | [架構總覽](architecture.md) | [根 README](../README.md) |
 | 理解整體架構與資料流 | [根 README](../README.md) | [Harness Engineering Playbook](harness-engineering.md) |
 | 安裝、同步或回滾 | [配置與部署](setup.md) | [Claude README](../main/claude/README.md)、[Codex README](../main/codex/README.md) |
 | 修改 leaf role 或派工契約 | [Playbook：Leaf 分派](harness-engineering.md#leaf-分派的三層契約) | [Briefs](../main/claude/skills/baton-dispatch/references/briefs-and-stops.md) |
@@ -24,6 +25,7 @@
 
 | 文件 | 保存內容 | 不保存內容 |
 |---|---|---|
+| [架構總覽](architecture.md) | 由上而下的骨幹敘事：架構圖、核心想法、QC、生命週期、hook、附檔導引 | 各層細節（指向專門文檔）、可變的 model 數值 |
 | [Harness Engineering Playbook](harness-engineering.md) | 可跨專案複用的設計與驗證方法 | 當前 route pins、實驗原始數據 |
 | [研究摘要](harness-engineering-research.md) | benchmark 快照、成本口徑、案例取捨、研究缺口 | runtime 強制規則、現行 route pins |
 | [配置與部署](setup.md) | bootstrap、apply、驗收與回滾步驟 | 模型選擇理由 |

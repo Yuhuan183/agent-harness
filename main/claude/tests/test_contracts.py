@@ -626,7 +626,9 @@ class DocumentationBudgetTests(unittest.TestCase):
             # deliberate exception from drift, which is what a reviewer found.
             # +55 (2026-07-26): navigation and responsibility rows for the
             # hook-system concept doc.
-            "docs/README.md": 840,
+            # +70 (2026-07-26): navigation and responsibility rows for the
+            # top-down architecture overview, now the recommended entry point.
+            "docs/README.md": 920,
             # Verification entry point for dispatch state and route evidence.
             # Cheaper here than in the resident contracts or the two skills it
             # ties together, both of which sit within ten words of their own
@@ -637,6 +639,11 @@ class DocumentationBudgetTests(unittest.TestCase):
             # guardrail table in the README pointed at individual hooks but no
             # doc explained the system as a whole.
             "docs/hook-system.md": 1300,
+            # Top-down architecture spine: one diagram then a concise walk
+            # through every layer, each pointing at its specialized doc. The
+            # connective narrative the README (a repo landing page) and the
+            # per-topic docs each lacked.
+            "docs/architecture.md": 2000,
             # +100 (2026-07-23): behavioral trap-eval method section added.
             # +310 (2026-07-26): both vendors published context-engineering
             # guidance in the same week and both name rule *contradiction* as a
