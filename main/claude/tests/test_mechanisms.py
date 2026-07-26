@@ -947,6 +947,34 @@ class TrapGraderIntegrityTests(unittest.TestCase):
                  "the spec (README) says half-up rounding.")
         self.assertIsNotNone(gate_lines.INTENT.search(gate_lines.flatten(paren)))
 
+    def test_a_gate_line_only_counts_at_column_one_as_plain_text(self) -> None:
+        """The contract owes the line at column one; the checker accepted it anywhere.
+
+        Every rejected form below used to pass, which is why a recorded
+        "format ✓" was measured against a looser rule than the roles were
+        given. Wrapped lines still pass: reports wrap, and that was the
+        original reason for flattening.
+        """
+        sys.path.insert(0, str(ROOT / "main" / ".agents" / "scripts"))
+        try:
+            import gate_lines
+        finally:
+            sys.path.pop(0)
+        body = "code does X; the check expects Y; the spec says Z."
+        self.assertIsNotNone(gate_lines.find("INTENT", f"INTENT: {body}"))
+        self.assertIsNotNone(gate_lines.find(
+            "INTENT", "INTENT: code does X; the check\nexpects Y; the spec says Z."))
+        for wrapped in (f"**INTENT: {body}**", f"- INTENT: {body}",
+                        f"> INTENT: {body}", f"Some prose INTENT: {body}",
+                        f"  INTENT: {body}", f"#### INTENT: {body}"):
+            self.assertIsNone(gate_lines.find("INTENT", wrapped), wrapped)
+            # Off-template is a distinct diagnosis from absent: a leaf that
+            # bolded its line must hear which mistake it made.
+            self.assertTrue(gate_lines.off_template("INTENT", wrapped), wrapped)
+        self.assertFalse(gate_lines.off_template("INTENT", "no gate line here"))
+        self.assertIsNotNone(gate_lines.find("AUTH", 'AUTH: user said "go ahead"'))
+        self.assertIsNone(gate_lines.find("AUTH", '- **AUTH: user said "go"**'))
+
     def test_twins_regex_rejects_non_numeric_counts(self) -> None:
         sys.path.insert(0, str(ROOT / "main" / ".agents" / "scripts"))
         try:
