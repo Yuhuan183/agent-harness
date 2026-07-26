@@ -33,7 +33,7 @@ Delegation requires an observable outcome, measurable benefit over direct work, 
 | Source | Target / purpose |
 |---|---|
 | `main/codex/AGENTS.contract.md` | `$CODEX_HOME/AGENTS.md` |
-| `main/codex/config.merge.toml` | Manual merge into `$CODEX_HOME/config.toml` |
+| `main/codex/config.merge.toml` | Merged into `$CODEX_HOME/config.toml` by `sync.sh` (`merge-toml` mode) |
 | `main/codex/agents/*.toml` | Registered Codex leaf roles |
 | `main/codex/model-routing.toml`, `main/codex/scripts/` | Native and Claude-bridge per-dispatch routing |
 | `main/.agents/skills/experience-ledger/` | Shared machine-local outcome analysis |
