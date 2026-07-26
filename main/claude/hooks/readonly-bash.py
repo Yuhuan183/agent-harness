@@ -36,9 +36,14 @@ GUARDED_ROLES = ("verifier", "plan-verifier", "security-reviewer", "explore")
 READ_ONLY = {
     "git", "grep", "rg", "sed", "ls", "cat", "head", "tail", "wc", "file",
     "stat", "basename", "dirname", "realpath", "readlink", "pwd", "echo",
-    "printf", "which", "command", "type", "jq", "diff", "cmp", "sort", "uniq",
-    "cut", "tr", "column", "date", "env", "true", "false", "test",
+    "printf", "which", "type", "jq", "diff", "cmp", "sort", "uniq",
+    "cut", "tr", "column", "date", "true", "false", "test",
 }
+# Prefix runners execute the command that follows them, so the head that
+# matters is the next token, not the runner. `env` and `command` were the
+# escape that a first pass missed: both were on the allowlist as if terminal,
+# so `env rm -rf` and `command rm -rf` walked straight through.
+PREFIX_RUNNERS = {"env", "command", "rtk", "nice", "stdbuf", "ionice"}
 # git is only read-only for these subcommands. Anything with a writing form is
 # out even when the reading form is the common one: `config --global`, bare
 # `stash`, `worktree add`, `branch -d`, `tag -d` and `remote add` all mutate,
@@ -48,8 +53,23 @@ GIT_READ_ONLY = {
     "ls-tree", "cat-file", "describe", "shortlog", "for-each-ref",
     "merge-base", "check-ignore",
 }
+# git flags that write or run a command regardless of the subcommand: `-c`
+# injects config (pager/alias -> arbitrary exec), `--output`/`-o` write a file,
+# `--open-files-in-pager` and `--exec` run a program.
+GIT_UNSAFE_FLAGS = ("-c", "--output", "-o", "-O", "--open-files-in-pager",
+                    "--exec", "-p")
+# A sed script writes through the `w`/`W` command or the `s///w` flag; `-i`
+# edits in place. The regex catches `1w file`, `s/a/b/w file`, and `W` blocks.
+SED_WRITE = re.compile(r"(?:^|[;{}\n])\s*[0-9,]*\s*[wW]\b"
+                       r"|s(.).*?\1.*?\1[a-z0-9]*[wW]")
+# grep/rg run an arbitrary program through a preprocessor flag. `-f` reads a
+# pattern file and is read-only, so it is deliberately not here.
+GREP_UNSAFE = ("--pre", "--preprocessor")
+# git global flags that consume the following token as a value, so the
+# subcommand finder must skip that value rather than read it as the subcommand.
+GIT_VALUE_FLAGS = ("-C", "-c", "--git-dir", "--work-tree", "--namespace")
 # `sed -i` and `sort -o` write; so does any redirection.
-WRITE_FLAGS = {"sed": ("-i",), "sort": ("-o",), "git": (), "cp": (), "test": ()}
+WRITE_FLAGS = {"sort": ("-o", "--output"), "cp": (), "test": ()}
 REDIRECT = re.compile(r"(?<![0-9<>])>{1,2}(?!&)|(?<![0-9])<>")
 SEPARATORS = {"&&", "||", ";", "|", "&"}
 
@@ -80,21 +100,54 @@ def offending(command: str) -> str | None:
             continue
         if not expect_head:
             continue
-        expect_head = False
+        # In head position a flag or a VAR=value assignment is not the acting
+        # command; skip it and keep looking (this is what lets a prefix runner
+        # like `env -i VAR=x cmd` reach `cmd`).
+        if token.startswith("-") or ("=" in token and not token.startswith("-")):
+            continue
         head = token.rsplit("/", 1)[-1]
-        if head == "rtk":  # output filter, never the acting command
-            expect_head = True
+        rest = tokens[index + 1:]
+        if head in PREFIX_RUNNERS:
+            # `command -v X` / `-V X` is a lookup that never runs X.
+            if head == "command" and any(f in ("-v", "-V") for f in rest):
+                expect_head = False
+                continue
+            expect_head = True  # the real command is the next head
             continue
-        if "=" in head and not head.startswith("-"):
-            expect_head = True  # leading VAR=value assignment
-            continue
+        expect_head = False
         if head not in READ_ONLY:
             return f"{head!r} is not on the read-only allowlist"
-        rest = tokens[index + 1:]
         if head == "git":
-            sub = next((t for t in rest if not t.startswith("-")), "")
+            if any(t == f or t.startswith(f + "=") or
+                   (f.startswith("--") and t.startswith(f)) for t in rest
+                   for f in GIT_UNSAFE_FLAGS):
+                return "git global flag can write or run a command (-c/--output/--exec)"
+            # Find the subcommand, skipping global flags and the values that
+            # flags like `-C <path>` consume — otherwise the path reads as the
+            # subcommand and a plain `git -C repo status` is falsely blocked.
+            sub, skip = "", False
+            for t in rest:
+                if skip:
+                    skip = False
+                    continue
+                if t in GIT_VALUE_FLAGS:
+                    skip = True
+                    continue
+                if t.startswith("-"):
+                    continue
+                sub = t
+                break
             if sub not in GIT_READ_ONLY:
                 return f"git subcommand {sub!r} is not known to be read-only"
+        if head in ("grep", "rg") and any(
+                t == f or t.startswith(f + "=") for t in rest for f in GREP_UNSAFE):
+            return f"{head} preprocessor/file flag runs a program"
+        if head == "sed":
+            if any(t in ("-i", "--in-place") or t.startswith("-i")
+                   or t.startswith("--in-place") for t in rest):
+                return "sed -i writes in place"
+            if any(SED_WRITE.search(t) for t in rest if not t.startswith("-")):
+                return "sed script writes a file (w/W command or s///w flag)"
         for flag in WRITE_FLAGS.get(head, ()):
             if any(t == flag or t.startswith(flag) for t in rest):
                 return f"{head} {flag} writes"
