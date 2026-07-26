@@ -79,10 +79,42 @@ Opus。
   因為觸發內容還在 context。**編輯或移除那段內容**通常才解得掉，單純切回沒用。
 - 計費：input 階段被擋全按 Opus；串流中被擋，擋前按 Fable、其餘按 Opus。
 
-## 給 harness 的後續選項（未實作，待決定）
+## 設計方向（未實作，供日後評估）
 
-- **軟性啟發式 hook**：`UserPromptSubmit` 掃描四類關鍵訊號，命中時提示 main「建議拆給 Opus
-  leaf」。它是提示不是 gate（無法複製 Anthropic 的分類器，會有誤判），需你 opt-in 才值得做。
-- **routing 文件加一句**區分兩種 fallback，避免讀者混淆。
-- main-session 模型稽核缺口：產品層未提供機器可讀的「實際作答模型」出口，屬
-  [research](harness-engineering-research.md) 的「仍待本機驗證」。
+以下記錄做法與原理，尚未實作、也未決定要不要做。orchestration-plan 的未決項有指標。
+
+### 方向一：軟性啟發式 dispatch 提示 hook
+
+- **做法**：`UserPromptSubmit` hook 讀 main session 當前 prompt 文字，用關鍵訊號比對四類
+  （cyber：exploit／payload／shellcode／CVE 武器化；bio/chem：合成路線／病原／分子機制；
+  蒸餾：抽取 reasoning／summarized thinking；frontier LLM：加速器 kernel／分散式訓練基建）。
+  命中就印出建議（**非 exit 2**）：「這段可能觸發 Fable→Opus，建議拆給 Opus leaf，main 只收
+  結論」。只在 main 觸發（`agent_id` 為空）。
+- **原理**：提示，不是 gate。三個理由——(a) 無法複製 Anthropic 的真實分類器，硬 gate 會誤擋
+  正常工作；(b) 安全檢查讀全 context，hook 只看得到當前 prompt，看不到 memory／檔案／web，
+  本質是**不完整覆蓋**，只能提示不能保證；(c) 符合 harness「診斷型 fail-open、狹窄才
+  fail-closed」的分層，這種模糊判斷屬診斷型。
+- **待決**：訊號清單怎麼定才不過度誤判；是否值得那筆維護成本 vs 直接靠 main 判斷。
+
+### 方向二：把「fallback 避免」正式列為 dispatch payoff
+
+- **做法**：現有 dispatch payoff 有四種（parallelism／context-protection／fresh-context／
+  cheaper-tier）。可加一條約定：命中四類的工作，context-protection payoff 視為成立，main
+  預設派 Opus leaf。
+- **原理**：這其實是 context-protection 的既有情形，只是動機不同。所以傾向**只在本文件記錄**，
+  不進常駐契約——加常駐規則有稀釋成本，而這條靠本文件按需揭露即可。
+- **待決**：值不值得進常駐契約 vs 留按需文檔；會不會鼓勵過度派工。
+
+### 方向三：routing 文件區分兩種 fallback
+
+- **做法**：在 provider-routing 或 routing toml 加一句 cross-reference 指向本文。
+- **原理**：消歧義，避免把安全切換誤當跨 provider 單跳。
+- **待決**：provider-routing 預算已近上限，得先騰空間或放 `references/`。
+
+### 方向四：main-session 模型稽核缺口
+
+- **做法**：要讓 main-session 像 leaf 一樣有 route 證據，需要能讀「實際作答模型標示」的機器
+  出口。
+- **原理**：目前 ledger 對 main-session 的模型切換沒有承載欄位，靜默切換無從稽核。
+- **待決**：阻塞於產品層未提供機器可讀出口，屬 [research](harness-engineering-research.md) 的
+  「仍待本機驗證」。
