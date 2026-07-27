@@ -46,6 +46,7 @@ Hook 的「失敗模式」指的是它自己出錯時會怎樣，這是設計時
 | [experience-pending](../main/claude/hooks/experience-pending.py) | SubagentStart/Stop | 暫存 role、時間、token、（bridge 的）rollout 路由，供 QC 後寫入 ledger |
 | [weekly-integrity](../main/claude/hooks/weekly-integrity.py) | SessionStart | 每週一次檢查 source／HOME 漂移、pins、delegation alarm 與 ledger 狀態；覆蓋不完整即列 finding |
 | [runtime-guard](../main/claude/hooks/runtime-guard.py)（無 `--gate`） | SessionStart | 版本不足時先警告，讓使用者在派工前就知道 reviewer 會被擋 |
+| [compact-reseed](../main/claude/hooks/compact-reseed.py) | SessionStart[compact] | 壓縮後注入一句提醒，要求重新申報目標、進行中決策與未決項。PreCompact 無法塑造摘要，所以這件事只能落在壓縮**之後**這一刻 |
 
 ## 為什麼 hook 值得信任：三關驗證
 
@@ -66,3 +67,6 @@ Hook 建置規範（真實目錄先證明可跑 → 合成 pipe-test → `jq` �
   裡「artifact 所有權仍屬判斷」的由來。
 - Hook 是本機單機防線。重要規則不能只靠單機 hook，enforcement 分層是
   `Claude hook → pre-commit → CI → monitoring`，攔截點依序變晚（[playbook 第 9 節](harness-engineering.md#9-enforcement-層級與-bootstrap)）。
+- reviewer 的唯讀邊界是三層合力：frontmatter **allowlist**（只放行列出的工具，因此任何會變更狀態的
+  MCP 工具都不在其中）、`readonly-bash`（把 allowlist 給的 Bash 收成唯讀）、`runtime-guard`（版本不足
+  就擋派工）。用 allowlist 而非 denylist 的理由就在這裡：denylist 對沒列到的 MCP 工具會預設放行。

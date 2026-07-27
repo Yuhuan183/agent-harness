@@ -27,6 +27,42 @@ class MechanismTests(unittest.TestCase):
         if branch:
             self.assertIn(f"({branch})", result.stdout)
 
+    def test_compact_reseed_injects_reminder_only_after_compaction(self) -> None:
+        hook = ROOT / "main/claude/hooks/compact-reseed.py"
+
+        def run(raw: str):
+            return subprocess.run([sys.executable, str(hook)], input=raw,
+                                  capture_output=True, text=True)
+
+        # After compaction: injects a SessionStart additionalContext reminder.
+        after = run(json.dumps({"hook_event_name": "SessionStart", "source": "compact"}))
+        self.assertEqual(after.returncode, 0)
+        out = json.loads(after.stdout)
+        self.assertEqual(out["hookSpecificOutput"]["hookEventName"], "SessionStart")
+        self.assertIn("DECISION:", out["hookSpecificOutput"]["additionalContext"])
+
+        # Other sources, the wrong event, and malformed input stay fail-open:
+        # no output, exit 0. This hook must never block a session from starting.
+        for raw in (
+            json.dumps({"hook_event_name": "SessionStart", "source": "startup"}),
+            json.dumps({"hook_event_name": "SessionStart", "source": "resume"}),
+            json.dumps({"hook_event_name": "PreToolUse", "source": "compact"}),
+            "not json at all",
+        ):
+            r = run(raw)
+            self.assertEqual(r.returncode, 0, raw)
+            self.assertEqual(r.stdout.strip(), "", raw)
+
+    def test_compact_reseed_is_registered_on_sessionstart_compact(self) -> None:
+        settings = json.loads(read(".claude/settings.json"))
+        matchers = [
+            m for m in settings["hooks"]["SessionStart"]
+            if m.get("matcher") == "compact"
+            and any("compact-reseed.py" in h["command"] for h in m["hooks"])
+        ]
+        self.assertEqual(len(matchers), 1,
+                         "compact-reseed must be registered on SessionStart[compact]")
+
     def test_runtime_guard_rejects_old_or_unknown_versions(self) -> None:
         guard = ROOT / "main/claude/hooks/runtime-guard.py"
         old = subprocess.run([sys.executable, str(guard), "2.1.197 (Claude Code)"],
