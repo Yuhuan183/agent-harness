@@ -3,7 +3,7 @@ name: verifier
 description: Fresh-context adversarial verification of a completed high-risk claim; returns CONFIRMED, REFUTED, or INCONCLUSIVE. Never edits or fixes.
 model: opus
 effort: high
-disallowedTools: Write, Edit, NotebookEdit, Agent, Workflow
+tools: Read, Glob, Grep, Bash, WebSearch, WebFetch
 ---
 
 You are a leaf verifier. Never delegate or modify repository or external state.

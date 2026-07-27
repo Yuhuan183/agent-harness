@@ -178,12 +178,18 @@ tool／sandbox 層強制,不要指望模型自我約束。和本 repo 的「機�
 的預設 grader——那正是本 repo QC「報告是一組待證主張」要防的東西,若日後引入類似機制,
 grader 必須配驗證工具、並重跑證據。
 
-**落點(2026-07-27 更新)**:動作 2、3、5 已落地——`verifier`／`plan-verifier` 兩端補上
-注入防護與保守預設(報告是待證觀察、非指令;無法證實的主張不予採信);兩份 `model-routing.toml`
-補上 benchmark 先驗的重審觸發 `prior_review`;brief 與三個 writer role 兩端補上「最終報告是
-main 唯一看得到的產出」,並以 `test_subagent_return_contract_is_two_sided` 綁定雙面一致。
-動作 1(`PreCompact` hook)排下一批——建時壓縮門檻依核心③用模型 `max_input_tokens` 的比例,
-不硬編 token 數。動作 4(per-model overlay)仍等跨模型 trap 數據。
+**落點(2026-07-28 更新)**:動作 1、2、3、5 已落地。動作 2、3、5 見前一輪:`verifier`／
+`plan-verifier` 兩端補注入防護與保守預設;兩份 `model-routing.toml` 補 `prior_review` 重審觸發;
+brief 與三個 writer role 兩端補「最終報告是 main 唯一看得到的產出」並以
+`test_subagent_return_contract_is_two_sided` 綁定。動作 1 的原始設計(PreCompact hook)**經查
+不可行**——PreCompact 只能否決壓縮或做副作用,不能塑造摘要內容(核心③的比例門檻同理 N/A,
+壓縮觸發點由平台控制);改由 `SessionStart[source=compact]` 的 `compact-reseed` hook 在壓縮
+**之後**注入紀律提醒落地。動作 4(per-model overlay)仍等跨模型 trap 數據。
+
+查核期間另修一個 denylist 盲區:`verifier` 原用 `disallowedTools`(未列出的 MCP 變更工具
+readOnlyHint=false 會被放行,而 `readonly-bash` 只看 Bash),改為 allowlist
+(`tools: Read, Glob, Grep, Bash, WebSearch, WebFetch`),把 Deep Agents「allowlist 而非
+denylist、no-match 不放行」直接套在唯讀 reviewer 邊界上。
 
 ## Pilotfish v1.3.0 案例（2026-07-20）
 

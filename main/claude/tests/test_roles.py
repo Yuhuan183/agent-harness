@@ -53,7 +53,20 @@ class AgentRosterTests(unittest.TestCase):
             self.assertNotIn("Workflow", meta)
             self.assertNotIn("Bash", meta)
             self.assertIn("read-only leaf", read(f".claude/agents/{role}.md"))
-        for role in BASH_ROLES:
+        # verifier is a read-only role with one guarded tool (Bash): it uses an
+        # allowlist, not a denylist, so no unlisted tool - including any MCP
+        # mutation tool (readOnlyHint=false), which readonly-bash never sees -
+        # is reachable. A denylist would leave that whole class open.
+        for role in GUARDED_BASH_ROLES:
+            meta = frontmatter(f".claude/agents/{role}.md")
+            allow = re.search(r"(?m)^tools:\s*(.+)$", meta)
+            self.assertIsNotNone(allow, f"{role} must use a tools allowlist")
+            self.assertNotIn("disallowedTools", meta, role)
+            self.assertIn("Bash", allow.group(1), role)
+            self.assertNotIn("mcp__", meta, role)
+            for granted in ("Write", "Edit", "NotebookEdit", "Agent", "Workflow"):
+                self.assertNotIn(granted, allow.group(1), f"{role}: {granted}")
+        for role in WRITER_ROLES:
             meta = frontmatter(f".claude/agents/{role}.md")
             self.assertRegex(meta, r"(?m)^disallowedTools:.*\bAgent\b.*\bWorkflow\b")
 

@@ -81,6 +81,16 @@
             "timeout": 60
           }
         ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/compact-reseed.py\"",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "SubagentStart": [
