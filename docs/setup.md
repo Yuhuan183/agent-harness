@@ -18,6 +18,7 @@ Codex `config.toml`、Claude Code `~/.claude.json` 的 MCP entry）永不納入�
 | `main/claude/examples/headroom-mcp.legacy.json` | `~/.claude/mcp.json` | 僅供無 Claude CLI 的 legacy client 手動 merge |
 | `main/codex/AGENTS.contract.md`（部署為 `AGENTS.md`）、`README.md`、`ANALYSIS.md`、`DEPLOY.md`、`model-routing.toml`、`prompts/`、`agents/`、`scripts/`、skills（含 `leaf-dispatch` 與 symlink） | `~/.codex/` | script 自動 |
 | `main/codex/config.merge.toml` | `~/.codex/config.toml` | script 自動 **section-scoped merge**（只寫 `[agents]`／`[agents.*]`，見 `main/codex/DEPLOY.md`） |
+| Antigravity CLI settings／MCP | `~/.gemini/` | 機器狀態，不由本 repo 同步；只有原生 `headroom wrap agy` 可用時才由 wrapper 管理 |
 
 跨 agent runtime 知識（`headroom-runtime.md`）在 `main/.agents/docs/`，Claude 與 Codex 共用同一份，
 不在單一 agent 目錄下各留一份。舊機器若殘留 `~/.claude/docs/`（重整前的位置），可於套用後
@@ -80,59 +81,56 @@ claude plugin install codex@openai-codex
 cd ~/WorkSpace/agent-harness
 scripts/sync.sh            # 1. dry-run：檢視將發生的動作
 scripts/sync.sh --apply    # 2. 實際套用
-# 3a. Codex always-on proxy（machine-local，不由 sync 管理）
-rtk headroom install apply --profile default --preset persistent-service \
-  --runtime python --scope provider --providers manual --target codex \
-  --port 8787 --backend anthropic --no-telemetry
-# 3b. Claude Code MCP（installer 會解析 headroom 的 machine-local 絕對路徑）
+# 3. 安裝／更新 hclaude、hcodex、hagy 與 Auto Mode 快速指令
+scripts/install-zsh-functions.sh
+scripts/install-zsh-functions.sh --apply
+# 4. 選用：讓未經 wrap 的 Claude Code session 也能手動使用 Headroom MCP
 headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787
-# 3c. main/codex/config.merge.toml 已於步驟 2 由 sync.sh 以 merge-toml 併入；此處無需手動
-# 4. 開新 Claude Code / Codex session，確認契約與 skills 載入
+# 5. 開新 shell 與 agent session，確認契約、skills 與 functions 載入
 ```
 
-Claude Code 平常直接執行 `claude`，需要 Headroom proxy 時才執行
-`headroom wrap claude --no-context-tool`。不要把 `ANTHROPIC_BASE_URL` 永久寫進 shell
-profile；RTK 指引由本專案契約管理，`--no-context-tool` 可避免 wrapper 重寫契約。
+本專案採 **wrap-first、session-scoped** 的 Headroom 操作方式：Claude、Codex 分別使用
+`hclaude`、`hcodex`；原生 session 仍直接使用 `claude`、`codex`。不要把
+`ANTHROPIC_BASE_URL`、`OPENAI_BASE_URL` 或 Headroom provider 永久寫進 tracked config
+或 shell profile；`headroom doctor` 看見 routed 只代表當下 machine-local CLI／shell
+狀態，不能據此判斷 Codex App。
+
+Antigravity CLI 的直接入口是 `agy`。`agy-auto` 已可用；`hagy`／`hagy-auto` 只有在
+安裝版本真的提供 `headroom wrap agy` 時才會啟動，否則 exit 127。Headroom v0.32.1
+沒有這個 adapter，上游整合仍在
+[PR #1044](https://github.com/headroomlabs-ai/headroom/pull/1044)，因此不可用無效的
+base URL 環境變數或靜默 fallback 冒充成功 routing。
+
+Claude／Codex 的 `--no-context-tool` 由本專案管理 RTK 指引，避免 wrapper 重寫契約。
+Antigravity 上游 adapter 尚未提供同名選項，不傳未知參數。
 完整 lifecycle、Remote Control 與版本轉換說明見
 [`headroom-runtime.md`](../main/.agents/docs/headroom-runtime.md)。
 
-### 選用的 Auto Mode shell functions
+### Agent 與 Headroom 快速指令
 
-需要減少互動確認時，可把以下 functions 放進個人的 `~/.zshrc`。一般 Auto Mode
-保留 sandbox；不要把完全繞過安全機制的 `--dangerously-*` 設為 `claude` 或 `codex`
-的預設 alias。
+`scripts/install-zsh-functions.sh` 是唯一的 function 定義來源；預設 dry-run，`--apply`
+才修改個人的 `~/.zshrc`，並且寫入前自動備份。用 `--print-block` 可查看將安裝的完整
+定義。
 
-```bash
-claude-auto() {
-  command claude --permission-mode auto "$@"
-}
-
-codex-auto() {
-  command codex -a never -s workspace-write "$@"
-}
-
-hclaude-auto() {
-  command headroom wrap claude --no-context-tool -- \
-    --permission-mode auto "$@"
-}
-
-hcodex-auto() {
-  command headroom wrap codex --no-context-tool -- \
-    -a never -s workspace-write "$@"
-}
-```
-
-可手動貼進 `~/.zshrc`，或執行 `scripts/install-zsh-functions.sh`（dry-run 預設，
-`--apply` 才寫入；冪等、寫入前自動備份）套用同一份區塊。
+| 平台 | 原生 | 原生 Auto | Headroom | Headroom Auto |
+|---|---|---|---|---|
+| Claude Code | `claude` | `claude-auto` | `hclaude` | `hclaude-auto` |
+| Codex CLI | `codex` | `codex-auto` | `hcodex` | `hcodex-auto` |
+| Antigravity CLI | `agy` | `agy-auto` | `hagy` | `hagy-auto` |
 
 `claude-auto` 使用 Claude 原生 Auto Mode；`codex-auto` 不詢問但只允許 workspace
-寫入。`hclaude-auto`、`hcodex-auto` 行為相同，另外經過 Headroom。只有外層已有
-Docker、VM 或 disposable sandbox 時，才針對單次執行使用
+寫入；`agy-auto` 使用 `--mode accept-edits`。各 `h*-auto` 保留相同安全邊界，再經過
+對應的 Headroom wrapper。`hagy*` 的 capability probe 失敗時必須停止，不會改跑
+未壓縮的 `agy`。只有外層已有 Docker、VM 或 disposable sandbox 時，才針對單次執行使用
 `--dangerously-skip-permissions` 或 `--dangerously-bypass-approvals-and-sandbox`。
 保留 bypass 警告，不要在 Claude settings 設定
 `"skipDangerousModePermissionPrompt": true`。
 
-dry-run 與 apply 都會先跑 JSON／shell／兩側 routing／Claude pins／contract tests；任何失敗都在寫入前停止。
+若使用者明確需要 always-on provider routing，可另外使用
+`headroom install apply --preset persistent-service`。這是 machine-local 選用狀態，
+不是 `sync.sh`、快速指令、Codex CLI 或 Codex App 的預設。
+
+`scripts/sync.sh` 的 dry-run 與 apply 都會先跑 JSON／shell／兩側 routing／Claude pins／contract tests；任何失敗都在寫入前停止。
 所有可攜 source→HOME 映射只定義於 `scripts/deployment-manifest.tsv`；`sync.sh` 與 weekly integrity
 共同讀取它，新增或改名部署成品時不得另建第二份清單。
 全域 `settings.json` 以 `merge-json` 模式部署（manifest 第三欄），因為這個檔案有三個寫入者：本 repo、

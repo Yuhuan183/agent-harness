@@ -87,24 +87,36 @@ class MachineStateHygieneTests(unittest.TestCase):
         codex = read(".codex/AGENTS.contract.md")
         setup = read("docs/setup.md")
         for text in (runtime, setup):
-            self.assertIn("headroom wrap claude --no-context-tool", text)
+            self.assertIn("wrap-first", text)
             self.assertIn("`ANTHROPIC_BASE_URL`", text)
-            self.assertIn("永久", text)
+            self.assertIn("`OPENAI_BASE_URL`", text)
+            self.assertIn("Codex App", text)
         self.assertIn("This contract owns RTK guidance", codex)
+        self.assertIn("headroom wrap claude --no-context-tool", runtime)
         self.assertIn("headroom wrap codex --no-context-tool", runtime)
+        self.assertIn("headroom wrap agy", runtime)
+        self.assertIn("exit 127", runtime)
+        self.assertIn("只證明當下 shell environment", runtime)
+        self.assertIn("不代表本 repo 的預設", runtime)
         self.assertIn("Remote Control", runtime)
         self.assertIn("headroom learn", runtime)
-        self.assertIn("--profile default --preset persistent-service", runtime)
-        self.assertIn("--scope provider --providers manual --target codex", runtime)
+        self.assertNotIn("Codex 固定依賴", runtime)
+        self.assertNotIn("Codex 使用 `default` profile", runtime)
         for function_name in (
-            "claude-auto()",
-            "codex-auto()",
-            "hclaude-auto()",
-            "hcodex-auto()",
+            "agy-auto",
+            "hclaude",
+            "hcodex",
+            "hagy",
+            "claude-auto",
+            "codex-auto",
+            "hclaude-auto",
+            "hcodex-auto",
+            "hagy-auto",
         ):
             self.assertIn(function_name, setup)
         self.assertIn("--permission-mode auto", runtime)
         self.assertIn("-a never -s workspace-write", runtime)
+        self.assertIn("--mode accept-edits", runtime)
 
     def test_commit_gate_blocks_red_suites_and_skips_foreign_repos(self) -> None:
         # Behavioral proof with a planted failure — a gate that cannot catch a
