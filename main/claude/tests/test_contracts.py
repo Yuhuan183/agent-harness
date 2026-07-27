@@ -736,7 +736,7 @@ class DocumentationBudgetTests(unittest.TestCase):
 
     def test_harness_engineering_keeps_role_boundaries_local(self) -> None:
         doc = read("docs/harness-engineering.md")
-        research = read("docs/harness-engineering-research.md")
+        research = read("docs/research/model-evidence.md")
         self.assertIn("main-only 段必須短", doc)
         self.assertIn("角色檔要自足", doc)
         self.assertIn("每個可接受成果的預期總成本", doc)

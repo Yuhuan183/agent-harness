@@ -11,7 +11,7 @@
 | 理解整體架構與資料流 | [根 README](../README.md) | [Harness Engineering Playbook](harness-engineering.md) |
 | 安裝、同步或回滾 | [配置與部署](setup.md) | [Claude README](../main/claude/README.md)、[Codex README](../main/codex/README.md) |
 | 修改 leaf role 或派工契約 | [Playbook：Leaf 分派](harness-engineering.md#leaf-分派的三層契約) | [Briefs](../main/claude/skills/baton-dispatch/references/briefs-and-stops.md) |
-| 評估 model／effort／provider | [研究摘要](harness-engineering-research.md) | [Claude routing](../main/claude/model-routing.toml)、[Codex routing](../main/codex/model-routing.toml) |
+| 評估 model／effort／provider | [研究摘要](research/README.md) | [Claude routing](../main/claude/model-routing.toml)、[Codex routing](../main/codex/model-routing.toml) |
 | 用 Fable 5 時避免被切到 Opus | [Fable 5 安全 fallback](fable-5-fallback.md) | [provider-routing](../main/claude/skills/provider-routing/SKILL.md) |
 | 查 experience-ledger 指標 | [Metrics](../main/.agents/skills/experience-ledger/references/metrics.md) | [skill 本體](../main/.agents/skills/experience-ledger/SKILL.md) |
 | 驗證派工狀態與路由證據 | [派工生命週期](dispatch-lifecycle.md) | [bridge-liveness](../main/claude/skills/provider-routing/references/bridge-liveness.md) |
@@ -20,7 +20,7 @@
 | 理解 hook 系統怎麼運作 | [Hook 系統](hook-system.md) | [settings.json](../main/claude/settings.json) |
 | 跑行為 trap eval | [evals/traps/](../evals/traps/) 各 README | [QC 說明](qc-explainer.md)取證段 |
 | 深度審查本 repo 設計 | [harness-review](../.agents/skills/harness-review/SKILL.md)（dev-only） | [plan](../main/claude/plans/orchestration-plan.md) |
-| 理解目前決策與下一步 | [Orchestration plan](../main/claude/plans/orchestration-plan.md) | [仍待驗證](harness-engineering-research.md#仍待本機驗證) |
+| 理解目前決策與下一步 | [Orchestration plan](../main/claude/plans/orchestration-plan.md) | [仍待驗證](research/README.md#仍待本機驗證) |
 
 ## 文件責任
 
@@ -28,7 +28,7 @@
 |---|---|---|
 | [架構總覽](architecture.md) | 由上而下的骨幹敘事：架構圖、核心想法、QC、生命週期、hook、附檔導引 | 各層細節（指向專門文檔）、可變的 model 數值 |
 | [Harness Engineering Playbook](harness-engineering.md) | 可跨專案複用的設計與驗證方法 | 當前 route pins、實驗原始數據 |
-| [研究摘要](harness-engineering-research.md) | benchmark 快照、成本口徑、案例取捨、研究缺口 | runtime 強制規則、現行 route pins |
+| [研究摘要](research/README.md) | benchmark 快照、成本口徑、案例取捨、研究缺口 | runtime 強制規則、現行 route pins |
 | [配置與部署](setup.md) | bootstrap、apply、驗收與回滾步驟 | 模型選擇理由 |
 | [契約瘦身規範](contract-slimming.md) | CLAUDE.md／AGENTS.md 的內容判定、預算原則與驗收 | 歷史歷程、當前 orchestration 狀態 |
 | [派工生命週期](dispatch-lifecycle.md) | 派工五個狀態的承載物、不成立的推論、驗證清單 | 派工形狀與 QC（baton-dispatch）、provider 選擇（provider-routing） |

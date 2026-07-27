@@ -124,7 +124,7 @@ Claude 與 Codex 各有一份自足角色契約；leaf 不讀 main orchestration
 
 實際模型、effort、benchmark 快照與 availability evidence 在
 [Claude routing](main/claude/model-routing.toml) 和 [Codex routing](main/codex/model-routing.toml)。
-數據口徑與選擇理由見[研究摘要](docs/harness-engineering-research.md)。
+數據口徑與選擇理由見[研究摘要](docs/research/README.md)。
 
 ### 結構化派工回報
 
@@ -222,7 +222,7 @@ main/codex/scripts/model-routing resolve --surface claude-bridge --priority qual
 [docs/README.md](docs/README.md) 進入：
 
 - [Harness Engineering Playbook](docs/harness-engineering.md)：跨專案設計與維運方法。
-- [研究摘要](docs/harness-engineering-research.md)：Artificial Analysis、成本模型、本機實驗與證據限制。
+- [研究摘要](docs/research/README.md)：Artificial Analysis、成本模型、本機實驗與證據限制。
 - [配置與部署](docs/setup.md)：bootstrap、dry-run、apply、驗收與回滾。
 - [常駐契約瘦身規範](docs/contract-slimming.md)：CLAUDE.md 與 AGENTS.md 的內容判定、預算與驗收。
 - [目前 orchestration plan](main/claude/plans/orchestration-plan.md)：現況、未決項與短決策紀錄。

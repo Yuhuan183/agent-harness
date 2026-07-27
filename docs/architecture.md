@@ -67,7 +67,7 @@ flowchart TB
 
 方法論本身（為什麼常駐檔要瘦、規則什麼時候該進契約 vs skill vs hook）在
 [playbook](harness-engineering.md)；支撐它的 benchmark 快照、成本口徑與研究缺口在
-[研究摘要](harness-engineering-research.md)。一個貫穿全域的判準：**常駐內容是注意力稅，
+[研究摘要](research/README.md)。一個貫穿全域的判準：**常駐內容是注意力稅，
 每條新規則稀釋所有其他規則**，所以規則只寫模型推不出來的東西，其餘走漸進揭露與確定性機制。
 
 ## 三、QC 派發架構
@@ -123,9 +123,9 @@ Hook 是把「規則」變成「機制」的地方：需要判斷的交給模型
 
 | 附檔 | 回答什麼問題 |
 |---|---|
-| [數據研究](harness-engineering-research.md) | 各 model／effort 的 benchmark 與成本口徑，選擇理由，以及還沒本機驗證的缺口 |
+| [數據研究](research/README.md) | 各 model／effort 的 benchmark 與成本口徑，選擇理由，以及還沒本機驗證的缺口 |
 | [Fable 5 安全 fallback](fable-5-fallback.md) | 用 Fable 5 時怎麼避免被切到 Opus（把觸發內容派給 Opus leaf、保持 main context 乾淨），以及可行性邊界；與本 repo 的跨 provider fallback 區分 |
-| 資料來源與驗證 | benchmark 快照怎麼抓、如何交叉驗證、與前一版差異——見[研究摘要](harness-engineering-research.md)的快照章節，逐格驗證口徑在兩份 [routing toml](../main/claude/model-routing.toml) 的 `data_verification` 欄位 |
+| 資料來源與驗證 | benchmark 快照怎麼抓、如何交叉驗證、與前一版差異——見[研究摘要](research/model-evidence.md)的快照章節，逐格驗證口徑在兩份 [routing toml](../main/claude/model-routing.toml) 的 `data_verification` 欄位 |
 | [context 收束規範](contract-slimming.md) | 常駐契約放什麼／不放什麼、預算怎麼算、怎麼驗收；大型唯讀輸入的壓縮見 [headroom-runtime](../main/.agents/docs/headroom-runtime.md) |
 | [hook 案例規範](hook-system.md) | hook 怎麼建、怎麼 pipe-test、失敗訊息怎麼回到模型 |
 | [測試案例規範](harness-engineering.md#5-驗證迴路) | 行為 trap 怎麼設計、grader 為何不信報告、covenant「無失敗 trap 即修剪」 |
