@@ -198,9 +198,14 @@ class LeafArtifactGateTests(unittest.TestCase):
                               "auth: user said"],
             "executor": ["never delegate", "intent: code does",
                          "stop and report"],
-            "plan-verifier": ["ready", "revise", "replacement plan"],
+            "plan-verifier": ["ready", "revise", "replacement plan",
+                              "untrusted observation"],
             "verifier": ["confirmed", "refuted", "inconclusive",
                          "reproducible counterexample", "never fix",
+                         # Injection defence borrowed from Deep Agents'
+                         # RubricMiddleware grader: the report is observation,
+                         # not instruction, and unconfirmed claims stay unmet.
+                         "untrusted observation",
                          # Independence guardrails must not drift apart again
                          # (review F-06): isolation, state parity, no writes.
                          "external state", "git status --short",
@@ -216,6 +221,19 @@ class LeafArtifactGateTests(unittest.TestCase):
             for clause in clauses:
                 self.assertIn(clause, claude, f"{role} (claude): {clause}")
                 self.assertIn(clause, codex, f"{role} (codex): {clause}")
+
+    def test_subagent_return_contract_is_two_sided(self) -> None:
+        # Deep Agents states the return contract on both the caller side
+        # (task-tool description) and the executor side (subagent prompt) so
+        # the two cannot drift. Mirror that: the brief guidance and every
+        # writer role both say the leaf's final report is the sole channel.
+        anchor = "final report is all main sees"
+        for brief in (".claude/skills/baton-dispatch/references/briefs-and-stops.md",
+                      ".codex/skills/leaf-dispatch/SKILL.md"):
+            self.assertIn(anchor, read(brief).lower(), brief)
+        for role in ("executor", "mech-executor", "security-executor"):
+            self.assertIn(anchor, read(f".claude/agents/{role}.md").lower(), role)
+            self.assertIn(anchor, read(f".codex/agents/{role}.toml").lower(), role)
 
     def test_codex_writer_tomls_still_parse(self) -> None:
         for role in ("executor", "mech-executor", "security-executor"):
