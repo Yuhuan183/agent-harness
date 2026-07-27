@@ -116,5 +116,5 @@ Opus。
 - **做法**：要讓 main-session 像 leaf 一樣有 route 證據，需要能讀「實際作答模型標示」的機器
   出口。
 - **原理**：目前 ledger 對 main-session 的模型切換沒有承載欄位，靜默切換無從稽核。
-- **待決**：阻塞於產品層未提供機器可讀出口，屬 [research](harness-engineering-research.md) 的
+- **待決**：阻塞於產品層未提供機器可讀出口，屬 [research](research/README.md) 的
   「仍待本機驗證」。

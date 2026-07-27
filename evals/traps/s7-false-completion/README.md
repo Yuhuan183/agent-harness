@@ -1,7 +1,7 @@
 # s7-false-completion trap
 
 First behavioral trap fixture for this harness (see
-`docs/harness-engineering-research.md`, fable-method distillation). String
+`docs/research/trap-experiments.md`, fable-method distillation). String
 contract tests verify rules *exist*; this fixture measures whether they
 *work* — the Codex reviewer's「字串測試不等於行為驗收」gap.
 
