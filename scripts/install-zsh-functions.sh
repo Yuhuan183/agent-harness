@@ -9,6 +9,14 @@
 #   scripts/install-zsh-functions.sh --apply    # write it (backs up first)
 #   scripts/install-zsh-functions.sh --print-block
 #   ZSHRC=~/.config/zsh/.zshrc scripts/install-zsh-functions.sh --apply
+
+# Re-exec under real bash. This script uses process substitution (the diff at
+# the dry-run step), which is disabled when the file is invoked via `sh` -- on
+# macOS that is bash in POSIX mode, which fails to parse `<(...)`. Re-exec runs
+# before the parser reaches that line, so `sh install-zsh-functions.sh` works.
+if [ -z "${BASH_VERSION:-}" ] || [ -n "${POSIXLY_CORRECT:-}" ]; then
+  exec bash "$0" "$@"
+fi
 set -euo pipefail
 
 ZSHRC="${ZSHRC:-$HOME/.zshrc}"
