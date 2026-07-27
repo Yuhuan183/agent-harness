@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Installs the agent-harness Auto Mode shell functions into a zsh startup file.
+# Installs the agent-harness agent-launch shell functions into a zsh startup file.
 # Idempotent: the marked block is stripped and re-appended, so re-running never
 # duplicates. Machine-local only; NOT part of scripts/sync.sh or the deployment
-# manifest. Canonical function definitions also live in docs/setup.md.
+# manifest. This heredoc is the canonical function definition; docs/setup.md
+# describes the public command matrix without duplicating the implementation.
 # Usage:
 #   scripts/install-zsh-functions.sh            # dry-run: show block and diff
 #   scripts/install-zsh-functions.sh --apply    # write it (backs up first)
+#   scripts/install-zsh-functions.sh --print-block
 #   ZSHRC=~/.config/zsh/.zshrc scripts/install-zsh-functions.sh --apply
 set -euo pipefail
 
@@ -13,18 +15,32 @@ ZSHRC="${ZSHRC:-$HOME/.zshrc}"
 BEGIN='# >>> agent-harness auto-mode functions >>>'
 END='# <<< agent-harness auto-mode functions <<<'
 APPLY=0
+PRINT_BLOCK=0
 for arg in "$@"; do
   case "$arg" in
     --apply) APPLY=1 ;;
-    -h|--help) sed -n '2,10p' "$0"; exit 0 ;;
+    --print-block) PRINT_BLOCK=1 ;;
+    -h|--help) sed -n '2,11p' "$0"; exit 0 ;;
     *) printf 'ERROR: unknown argument: %s\n' "$arg" >&2; exit 2 ;;
   esac
 done
 
 read -r -d '' BLOCK <<'EOF' || true
 # >>> agent-harness auto-mode functions >>>
-# Source: agent-harness/docs/setup.md. Auto Mode keeps the sandbox; never alias
-# claude/codex to the fully-bypassing --dangerously-* flags.
+# Source: agent-harness/scripts/install-zsh-functions.sh.
+# Auto Mode keeps each agent's normal safety boundary; never alias an agent to
+# its fully-bypassing --dangerously-* flag.
+_agent_harness_headroom_wrap() {
+  local agent="$1"
+  shift
+  if ! command headroom wrap "$agent" --help >/dev/null 2>&1; then
+    printf "h%s: installed Headroom does not support 'wrap %s'; refusing to launch the agent directly.\n" \
+      "$agent" "$agent" >&2
+    return 127
+  fi
+  command headroom wrap "$agent" "$@"
+}
+
 claude-auto() {
   command claude --permission-mode auto "$@"
 }
@@ -33,17 +49,40 @@ codex-auto() {
   command codex -a never -s workspace-write "$@"
 }
 
+agy-auto() {
+  command agy --mode accept-edits "$@"
+}
+
+hclaude() {
+  _agent_harness_headroom_wrap claude --no-context-tool -- "$@"
+}
+
+hcodex() {
+  _agent_harness_headroom_wrap codex --no-context-tool -- "$@"
+}
+
+hagy() {
+  _agent_harness_headroom_wrap agy -- "$@"
+}
+
 hclaude-auto() {
-  command headroom wrap claude --no-context-tool -- \
-    --permission-mode auto "$@"
+  hclaude --permission-mode auto "$@"
 }
 
 hcodex-auto() {
-  command headroom wrap codex --no-context-tool -- \
-    -a never -s workspace-write "$@"
+  hcodex -a never -s workspace-write "$@"
+}
+
+hagy-auto() {
+  hagy --mode accept-edits "$@"
 }
 # <<< agent-harness auto-mode functions <<<
 EOF
+
+if [[ $PRINT_BLOCK -eq 1 ]]; then
+  printf '%s\n' "$BLOCK"
+  exit 0
+fi
 
 current=""
 [[ -f "$ZSHRC" ]] && current="$(cat "$ZSHRC")"
