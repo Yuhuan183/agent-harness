@@ -27,6 +27,13 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("valid: 3 profiles", result.stdout)
 
+    def test_priors_carry_a_review_trigger(self) -> None:
+        # Audit-anchor discipline (Deep Agents _anthropic_sonnet_4_6.py): a
+        # reviewed prior records when it should be revisited, not only when it
+        # was taken. Both routing files own that trigger beside as_of.
+        for rel in ("main/claude/model-routing.toml", "main/codex/model-routing.toml"):
+            self.assertIn("prior_review", (ROOT / rel).read_text(encoding="utf-8"), rel)
+
     def test_resolves_deployment_preset_routes(self) -> None:
         result = run("resolve", "--role", "executor")
         self.assertEqual(result.returncode, 0, result.stderr)
