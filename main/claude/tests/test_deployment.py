@@ -196,6 +196,93 @@ class MachineStateHygieneTests(unittest.TestCase):
             canonical_test.unlink()
             self.assertEqual(run_hook("git commit -m x", str(repo)).returncode, 0)
 
+    def test_commit_gate_runs_the_suite_on_a_modern_interpreter(self) -> None:
+        # 2026-07-27: the gate ran the suite on `sys.executable`, i.e. the agent
+        # process's `python3`. On a machine where that was 3.9.6 every module
+        # died on `import tomllib`, so a green suite reported RED and no commit
+        # could land. A planted suite that imports tomllib passes only if the
+        # gate resolved >= 3.11; an unusable AGENT_HARNESS_PYTHON must be
+        # stepped over rather than blocking, and a floor nothing can meet must
+        # say so instead of claiming the suite is red.
+        hook = ROOT / "main/claude/hooks/commit-test-gate.py"
+
+        def run_hook(cwd: str, env: dict[str, str] | None = None):
+            payload = json.dumps({"tool_input": {"command": "git commit -m x"}, "cwd": cwd})
+            return subprocess.run(
+                [sys.executable, str(hook)], input=payload,
+                capture_output=True, text=True, timeout=120,
+                env={**os.environ, **(env or {})},
+            )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+            tests = repo / ".claude" / "tests"
+            tests.mkdir(parents=True)
+            (tests / "test_needs_tomllib.py").write_text(
+                "import tomllib, unittest\n"
+                "class T(unittest.TestCase):\n"
+                "    def test_parses(self):\n"
+                "        self.assertEqual(tomllib.loads('a = 1'), {'a': 1})\n",
+                encoding="utf-8",
+            )
+            # Resolving the interpreter for `unittest` alone left the suite half
+            # upgraded: tests that spawn `#!/usr/bin/env python3` scripts still
+            # resolved through PATH onto the old python (this is the shape of
+            # the experience-ledger scripts, and it kept the gate red).
+            spawned = repo / "spawned-tool"
+            spawned.write_text(
+                "#!/usr/bin/env python3\n"
+                "import tomllib\n"
+                "print(tomllib.loads('a = 1')['a'])\n",
+                encoding="utf-8",
+            )
+            spawned.chmod(0o755)
+            (tests / "test_spawns_shebang.py").write_text(
+                "import subprocess, unittest\n"
+                "class T(unittest.TestCase):\n"
+                "    def test_shebang_child_matches_the_runner(self):\n"
+                f"        out = subprocess.run([{str(spawned)!r}],\n"
+                "            capture_output=True, text=True)\n"
+                "        self.assertEqual(out.returncode, 0, out.stderr)\n"
+                "        self.assertEqual(out.stdout.strip(), '1')\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(run_hook(str(repo)).returncode, 0)
+
+            # A pointed-at interpreter that cannot meet the floor is skipped,
+            # not obeyed: the override is a hint, not a way to disarm the gate.
+            stub = Path(temp_dir) / "too-old"
+            stub.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+            stub.chmod(0o755)
+            self.assertEqual(
+                run_hook(str(repo), {"AGENT_HARNESS_PYTHON": str(stub)}).returncode, 0
+            )
+
+            # With nothing able to meet the floor the gate still blocks, but
+            # names the interpreter rather than the suite — a subprocess cannot
+            # reach this branch because its own `sys.executable` always
+            # qualifies, so drive `main` in-process with the search starved.
+            import importlib.util
+            import io
+            from unittest import mock
+
+            spec = importlib.util.spec_from_file_location("commit_test_gate_probe", hook)
+            gate = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(gate)
+
+            self.assertIsNotNone(gate.suite_interpreter())
+            payload = json.dumps(
+                {"tool_input": {"command": "git commit -m x"}, "cwd": str(repo)}
+            )
+            stderr = io.StringIO()
+            with mock.patch.object(gate.shutil, "which", return_value=None), \
+                    mock.patch.object(gate.sys, "stdin", io.StringIO(payload)), \
+                    mock.patch.object(gate.sys, "stderr", stderr):
+                self.assertEqual(gate.main(), 2)
+            self.assertIn("no Python >=", stderr.getvalue())
+            self.assertNotIn("is RED", stderr.getvalue())
+
     def test_commit_gate_command_prefilters_non_commit_calls(self) -> None:
         # F-03: the PreToolUse gate command must skip the python interpreter
         # entirely when the Bash payload carries no "commit" token, so ordinary
