@@ -109,8 +109,9 @@ Antigravity 上游 adapter 尚未提供同名選項，不傳未知參數。
 ### Agent 與 Headroom 快速指令
 
 `scripts/install-zsh-functions.sh` 是唯一的 function 定義來源；預設 dry-run，`--apply`
-才修改個人的 `~/.zshrc`，並且寫入前自動備份。用 `--print-block` 可查看將安裝的完整
-定義。
+才修改個人的 `~/.zshrc`，並且寫入前自動備份。installer 會移除早期文件曾提供、內容
+逐字相符的未標記舊版 block；若內容曾被自行修改則保留，不擅自刪除。用
+`--print-block` 可查看將安裝的完整定義。
 
 | 平台 | 原生 | 原生 Auto | Headroom | Headroom Auto |
 |---|---|---|---|---|

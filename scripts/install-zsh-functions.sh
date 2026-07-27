@@ -79,6 +79,30 @@ hagy-auto() {
 # <<< agent-harness auto-mode functions <<<
 EOF
 
+# Before this installer existed, docs/setup.md instructed users to paste this
+# exact unmarked block. Remove only that historical byte-for-byte form during
+# migration; a locally edited lookalike is user-owned and must survive.
+read -r -d '' LEGACY_BLOCK <<'EOF' || true
+# Agent CLI session modes
+claude-auto() {
+  command claude --permission-mode auto "$@"
+}
+
+codex-auto() {
+  command codex -a never -s workspace-write "$@"
+}
+
+hclaude-auto() {
+  command headroom wrap claude --no-context-tool -- \
+    --permission-mode auto "$@"
+}
+
+hcodex-auto() {
+  command headroom wrap codex --no-context-tool -- \
+    -a never -s workspace-write "$@"
+}
+EOF
+
 if [[ $PRINT_BLOCK -eq 1 ]]; then
   printf '%s\n' "$BLOCK"
   exit 0
@@ -87,12 +111,19 @@ fi
 current=""
 [[ -f "$ZSHRC" ]] && current="$(cat "$ZSHRC")"
 
-# Drop any existing marked block (BEGIN..END inclusive), then trailing blanks.
+# Drop any existing marked block (BEGIN..END inclusive), migrate the exact
+# historical unmarked block, then trim trailing blanks.
 stripped="$(printf '%s\n' "$current" | awk -v b="$BEGIN" -v e="$END" '
   $0==b {skip=1; next}
   $0==e {skip=0; next}
   !skip {print}
-' | awk 'NF{n=NR} {a[NR]=$0} END{for(i=1;i<=n;i++)print a[i]}')"
+')"
+# Bash parameter replacement treats the needle as a glob pattern. Escape the
+# legacy block's literal backslashes before matching its line continuations.
+legacy_pattern="${LEGACY_BLOCK//\\/\\\\}"
+stripped="${stripped//$legacy_pattern/}"
+stripped="$(printf '%s\n' "$stripped" \
+  | awk 'NF{n=NR} {a[NR]=$0} END{for(i=1;i<=n;i++)print a[i]}')"
 
 if [[ -n "$stripped" ]]; then
   desired="$stripped"$'\n\n'"$BLOCK"

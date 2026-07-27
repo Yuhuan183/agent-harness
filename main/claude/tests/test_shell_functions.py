@@ -213,6 +213,77 @@ fi
             self.assertEqual(installed.count("# <<< agent-harness auto-mode functions <<<"), 1)
             self.assertIn("already up to date", second.stdout)
 
+    def test_apply_migrates_exact_legacy_unmarked_block(self) -> None:
+        legacy = """# user-owned preface
+
+# Agent CLI session modes
+claude-auto() {
+  command claude --permission-mode auto "$@"
+}
+
+codex-auto() {
+  command codex -a never -s workspace-write "$@"
+}
+
+hclaude-auto() {
+  command headroom wrap claude --no-context-tool -- \\
+    --permission-mode auto "$@"
+}
+
+hcodex-auto() {
+  command headroom wrap codex --no-context-tool -- \\
+    -a never -s workspace-write "$@"
+}
+"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            zshrc = Path(temp_dir) / ".zshrc"
+            zshrc.write_text(legacy, encoding="utf-8")
+            env = os.environ.copy()
+            env["ZSHRC"] = str(zshrc)
+            result = subprocess.run(
+                [str(INSTALLER), "--apply"],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            installed = zshrc.read_text(encoding="utf-8")
+            self.assertIn("# user-owned preface", installed)
+            self.assertNotIn("# Agent CLI session modes", installed)
+            installed_lines = installed.splitlines()
+            for function_name in (
+                "claude-auto",
+                "codex-auto",
+                "hclaude-auto",
+                "hcodex-auto",
+            ):
+                self.assertEqual(installed_lines.count(f"{function_name}() {{"), 1)
+            self.assertEqual(
+                installed.count("# >>> agent-harness auto-mode functions >>>"), 1
+            )
+
+    def test_apply_preserves_modified_legacy_lookalike(self) -> None:
+        custom = """# Agent CLI session modes
+claude-auto() {
+  command claude --permission-mode plan "$@"
+}
+"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            zshrc = Path(temp_dir) / ".zshrc"
+            zshrc.write_text(custom, encoding="utf-8")
+            env = os.environ.copy()
+            env["ZSHRC"] = str(zshrc)
+            result = subprocess.run(
+                [str(INSTALLER), "--apply"],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            installed = zshrc.read_text(encoding="utf-8")
+            self.assertIn('command claude --permission-mode plan "$@"', installed)
+            self.assertEqual(installed.splitlines().count("claude-auto() {"), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
