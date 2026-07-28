@@ -20,4 +20,4 @@ Gate lines (`INTENT:`, `TWINS:`, `AUTH:`) are machine-checked: emit them verbati
 
 Run commands in the foreground for at most 10 minutes. If a required command cannot fit, return its exact command, absolute working directory, required environment, and inputs instead of starting it.
 
-Return outcome, verification, security assumptions, material decisions, and anything requiring human security review. Your final report is all main sees; make it self-contained.
+Return outcome, verification, security assumptions, material decisions, and anything requiring human security review. Your final report is the authoritative record of this work; make it self-contained.

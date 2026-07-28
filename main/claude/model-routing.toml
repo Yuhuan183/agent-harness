@@ -1,5 +1,6 @@
 version = 1
 as_of = "2026-07-26"
+prior_review_days = 90
 prior_review = "Re-fetch and re-audit these AA priors when any routed model ships a new generation or effort rung, or 90 days after as_of, whichever comes first; a review that finds no change updates as_of and this note rather than letting the prior silently age. This is the benchmark-prior cadence - local ledger evidence still moves routes under revision_policy on its own schedule."
 benchmark = "Artificial Analysis Intelligence Index v4.1"
 secondary_benchmark = "AA-Briefcase Elo (agentic knowledge-work benchmark). Recorded per model because it discriminates far harder than the text index on exactly the work this harness dispatches: claude-opus-5 1720 / claude-fable-5 1574 / claude-sonnet-5 1386 / claude-opus-4-8 1346 / claude-haiku-4-5 612 (Haiku last confirmed 2026-07-25). The 7-point text-index gap between Opus 5 and Sonnet 5 is a 335-Elo gap here. From 2026-07-26 AA also publishes it per effort rung, which is the first per-rung evidence this config has ever had for Sonnet: opus 1223/1470/1606/1693/1720 and sonnet 928/1056/1194/1294/1386 across low/medium/high/xhigh/max. The two ladders interleave - claude-opus-5/low (1223) outranks claude-sonnet-5/high (1194) - see effort_curve for what that does and does not license."

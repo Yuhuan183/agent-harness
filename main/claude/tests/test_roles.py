@@ -62,10 +62,15 @@ class AgentRosterTests(unittest.TestCase):
             allow = re.search(r"(?m)^tools:\s*(.+)$", meta)
             self.assertIsNotNone(allow, f"{role} must use a tools allowlist")
             self.assertNotIn("disallowedTools", meta, role)
-            self.assertIn("Bash", allow.group(1), role)
             self.assertNotIn("mcp__", meta, role)
-            for granted in ("Write", "Edit", "NotebookEdit", "Agent", "Workflow"):
-                self.assertNotIn(granted, allow.group(1), f"{role}: {granted}")
+            granted = {name.strip() for name in allow.group(1).split(",") if name.strip()}
+            self.assertIn("Bash", granted, role)
+            # Upper bound, not a forbidden-name list — see GUARDED_BASH_TOOLS.
+            self.assertLessEqual(
+                granted, GUARDED_BASH_TOOLS,
+                f"{role} grants tools outside the read-only set: "
+                f"{sorted(granted - GUARDED_BASH_TOOLS)}",
+            )
         for role in WRITER_ROLES:
             meta = frontmatter(f".claude/agents/{role}.md")
             self.assertRegex(meta, r"(?m)^disallowedTools:.*\bAgent\b.*\bWorkflow\b")
@@ -240,13 +245,25 @@ class LeafArtifactGateTests(unittest.TestCase):
         # (task-tool description) and the executor side (subagent prompt) so
         # the two cannot drift. Mirror that: the brief guidance and every
         # writer role both say the leaf's final report is the sole channel.
-        anchor = "final report is all main sees"
-        for brief in (".claude/skills/baton-dispatch/references/briefs-and-stops.md",
-                      ".codex/skills/leaf-dispatch/SKILL.md"):
-            self.assertIn(anchor, read(brief).lower(), brief)
-        for role in ("executor", "mech-executor", "security-executor"):
-            self.assertIn(anchor, read(f".claude/agents/{role}.md").lower(), role)
-            self.assertIn(anchor, read(f".codex/agents/{role}.toml").lower(), role)
+        #
+        # The clause names no orchestrator. "all main sees" was Claude's word
+        # for the caller and had been copied verbatim into the Codex bundle,
+        # where nothing is called main; a leaf reading it either maps it to its
+        # own caller or treats the sentence as about somebody else. What the
+        # rule actually rests on is that no intermediate work survives the
+        # dispatch, which is true on both providers and is what the wording
+        # should say.
+        anchor = "final report is the authoritative record"
+        paths = [".claude/skills/baton-dispatch/references/briefs-and-stops.md",
+                 ".codex/skills/leaf-dispatch/SKILL.md"]
+        paths += [f".claude/agents/{role}.md" for role in WRITER_ROLES]
+        paths += [f".codex/agents/{role}.toml" for role in WRITER_ROLES]
+        for path in paths:
+            # Normalized: leaf-dispatch is hard-wrapped and the clause may span
+            # a line break.
+            body = " ".join(read(path).split()).lower()
+            self.assertIn(anchor, body, path)
+            self.assertNotIn("all main sees", body, path)
 
     def test_codex_writer_tomls_still_parse(self) -> None:
         for role in ("executor", "mech-executor", "security-executor"):
