@@ -65,6 +65,28 @@ Coverage and averages ignore malformed legacy telemetry, including negative valu
 - The pending hook and the outcome logger serialize append/consume through the same lock; overlapping completions still need `dispatch_id` for exact pairing. After validation, the logger cleans up using the first complete stop stub it reads, so a mid-flight new completion does not change the target; but ledger append and pending rewrite are two separate files, so a crash between them can still leave an already-logged stub behind, requiring manual dedup by `dispatch_id`. Cleanup keys on the dispatch id, not on `--from-pending`: a record logged entirely with explicit flags clears its stub too, and only a record logged without any dispatch id leaves one behind for `weekly-integrity` to report.
 - `experience-report --json` separates the two kinds of hint: `hints` holds one line per cohort, `hints_insufficient` names the cohorts whose line only says "collect more". Unattended consumers report the difference — a cohort exists per role × task class, so an insufficient-data hint would never clear and an alarm that is always on trains the reader to skip the real one.
 
+## Context-pressure diagnostics
+
+Context pressure and account quota are separate signals:
+
+- `codex-usage` reads the latest rollout `token_count` event and divides
+  `last_token_usage.total_tokens` by `model_context_window`. The cumulative
+  `total_token_usage` remains visible for cost diagnosis but is never used as
+  current-window occupancy.
+- Claude `usage-report` sums uncached input, cache creation, and cache read for
+  each assistant turn, then reports P50/P95 by source/model and optionally by
+  session. It does not add output tokens to the prompt-context proxy.
+- Claude 5 and Opus 4.8 windows are mapped from the current official model
+  table. Unknown or older model ids use a conservative 200k fallback; pass
+  `--context-window` when the runtime's actual limit is known.
+
+Both commands expose the same repository operations policy: `<30%` low,
+`30–<50%` watch, `50–<65%` checkpoint, and `>=65%` compact or start a new
+session before critical judgment. This is an intentionally early warning for
+context rot and conflicting instructions, not a claim that any model fails at
+a fixed percentage. Compare P95 trends and task outcomes before changing these
+thresholds.
+
 ## Evolution cadence
 
 Run `experience-report` weekly (can pair with the existing weekly-integrity cadence) and compare against `delegation-report`: when a hint changes, update the preference note in `provider-routing`; for roles with persistently high RB, revisit the brief template or cost-test criteria. `experience-revise` also uses only the route cells within the current deployment profile, to avoid mixing the different risk distributions of fast and quality-guarded routes. Policy adjustments change only the identical `revision_policy` on both sides, never an ad hoc CLI override.

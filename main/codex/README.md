@@ -40,3 +40,7 @@ Main route 只供開啟 task 前選擇；執行中的 main 不會切換模型。
 `codex:codex-rescue` 派 Codex twin 時，也必須以 `--surface claude-bridge` 解析同一份 profile。
 `~/.codex/skills/headroom-protocol` 回寫後應為指向 `~/.agents/` 的 symlink（`sync.sh` 以
 `--force` 將既有實體目錄替換為連結）。
+
+本機 Codex context／quota 診斷使用
+`${CODEX_HOME:-$HOME/.codex}/skills/experience-ledger/scripts/codex-usage`；
+預設輸出把最近一回合的實際 context 占用與累計 session token 分開，`--json` 可取得原始欄位。

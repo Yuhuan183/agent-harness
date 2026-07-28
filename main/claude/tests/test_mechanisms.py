@@ -1043,6 +1043,90 @@ class MechanismTests(unittest.TestCase):
         self.assertEqual(rows[0]["cache_read_input_tokens"], 1000)
         self.assertLess(rows[1]["cache_read_input_tokens"], rows[0]["cache_read_input_tokens"])
 
+    def test_usage_report_exposes_attention_percentiles_and_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            transcript = root / "project" / "session.jsonl"
+            transcript.parent.mkdir(parents=True)
+
+            def record(timestamp: str, input_tokens: int) -> str:
+                return json.dumps({
+                    "type": "assistant",
+                    "timestamp": timestamp,
+                    "message": {"model": "claude-opus-5", "usage": {
+                        "input_tokens": input_tokens,
+                        "output_tokens": 1,
+                        "cache_creation_input_tokens": 0,
+                        "cache_read_input_tokens": 0,
+                    }},
+                })
+
+            transcript.write_text(
+                record("2026-07-15T00:00:00Z", 100) + "\n"
+                + record("2026-07-15T01:00:00Z", 400) + "\n"
+                + record("2026-07-15T02:00:00Z", 800) + "\n",
+                encoding="utf-8",
+            )
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "main/claude/scripts/usage-report"),
+                 "--root", str(root), "--days", "2",
+                 "--now", "2026-07-16T00:00:00Z",
+                 "--context-window", "1000", "--by-session", "--json"],
+                check=True, capture_output=True, text=True,
+            )
+            report = json.loads(result.stdout)
+
+        attention = report["attention"]["main"]["claude-opus-5"]
+        self.assertEqual(attention["context_percent_p50"], 40.0)
+        self.assertEqual(attention["context_percent_p95"], 76.0)
+        self.assertEqual(attention["attention_level"], "compact")
+        self.assertEqual(
+            report["attention_policy"]["thresholds_percent"],
+            {"watch": 30.0, "checkpoint": 50.0, "compact": 65.0},
+        )
+        self.assertEqual(report["by_session"][0]["context_tokens_p95"], 760)
+
+    def test_codex_usage_reports_last_turn_attention_not_session_total(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            sessions = Path(temp_dir)
+            rollout = sessions / "2026" / "07" / "28" / "rollout-test.jsonl"
+            rollout.parent.mkdir(parents=True)
+            rollout.write_text(json.dumps({
+                "payload": {
+                    "type": "token_count",
+                    "info": {
+                        "total_token_usage": {"total_tokens": 99_999},
+                        "last_token_usage": {
+                            "input_tokens": 600,
+                            "cached_input_tokens": 100,
+                            "output_tokens": 100,
+                            "reasoning_output_tokens": 50,
+                            "total_tokens": 700,
+                        },
+                        "model_context_window": 1000,
+                    },
+                    "rate_limits": {},
+                },
+            }) + "\n", encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(
+                    ROOT / "main/.agents/skills/experience-ledger/scripts/codex-usage"
+                ), "--json"],
+                env={**os.environ, "CODEX_SESSIONS_DIR": str(sessions)},
+                check=True, capture_output=True, text=True,
+            )
+            report = json.loads(result.stdout)
+
+        self.assertEqual(report["attention"]["tokens"], 700)
+        self.assertEqual(report["attention"]["used_percent"], 70.0)
+        self.assertEqual(report["attention"]["remaining_tokens"], 300)
+        self.assertEqual(report["attention"]["attention_level"], "compact")
+        self.assertEqual(report["session_total"]["total_tokens"], 99_999)
+        self.assertEqual(
+            report["attention_policy"]["thresholds_percent"],
+            {"watch": 30.0, "checkpoint": 50.0, "compact": 65.0},
+        )
+
 
 
 class TrapGraderIntegrityTests(unittest.TestCase):
