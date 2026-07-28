@@ -50,6 +50,11 @@
         "hooks": [
           {
             "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/leaf-redispatch.py\"",
+            "timeout": 10
+          },
+          {
+            "type": "command",
             "command": "python3 \"$HOME/.claude/hooks/runtime-guard.py\" --gate",
             "timeout": 10
           },

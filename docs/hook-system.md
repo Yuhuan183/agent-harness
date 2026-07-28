@@ -16,7 +16,7 @@ Hook 的「失敗模式」指的是它自己出錯時會怎樣，這是設計時
 - **Fail-closed（gate 型）**：在狹窄且明確的條件下**主動攔截**（回傳 exit 2，訊息送回模型）。
   只有真正「寧可擋住也不要放過」的情況才配得上 fail-closed。
 
-預設是 fail-open。fail-closed 是刻意的例外，目前四個，每個都只在很窄的條件下攔截。
+預設是 fail-open. fail-closed 是刻意的例外, 目前五個, 每個都只在很窄的條件下攔截.
 
 ## 逐一說明
 
@@ -25,6 +25,7 @@ Hook 的「失敗模式」指的是它自己出錯時會怎樣，這是設計時
 | Hook | 事件 | 只在什麼條件攔截 | 逃生口 |
 |---|---|---|---|
 | [commit-test-gate](../main/claude/hooks/commit-test-gate.py) | PreToolUse[Bash] | 指令含 `git commit` 且目標 repo 的測試套件為紅（或逾時） | `AGENT_SKIP_TEST_GATE=1` 前綴（用於刻意提交紅狀態） |
+| [leaf-redispatch](../main/claude/hooks/leaf-redispatch.py) | PreToolUse[Agent] | caller `agent_type` 非空, 亦即 leaf 嘗試再派工 | 回到 main session 派工 |
 | [runtime-guard](../main/claude/hooks/runtime-guard.py) `--gate` | PreToolUse[Agent] | 派工受限 reviewer（verifier/plan-verifier/security-reviewer）但 CLI 版本過舊或未知，無法保證唯讀邊界 | 升級 CLI 重開 session，或改在 main session 做 |
 | [readonly-bash](../main/claude/hooks/readonly-bash.py) | PreToolUse[Bash] | 受限角色（如 verifier）發出的 Bash 不在唯讀允許清單內 | 把會寫入的檢查指令交回派工者執行 |
 | [verifier-quota](../main/claude/hooks/verifier-quota.py) | PreToolUse[Agent] | 同一 top-level task（以 prompt 為界）派第二個 outcome verifier | `AGENT_ALLOW_SECOND_VERIFIER=1`（確實是新任務時） |
@@ -35,8 +36,8 @@ Hook 的「失敗模式」指的是它自己出錯時會怎樣，這是設計時
   shell 的寫入途徑關不完——`rm` 有 `find -delete`、`>` 有 `tee`、什麼都有 `python -c`。
   允許清單預設關閉才守得住。允許清單裡有寫入模式的工具（`git --output`、`sed w`、
   `uniq` 第二個檔案參數等）也逐一封掉，案例見[測試](../main/claude/tests/test_roles.py)。
-- **safety 先於 budget**：PreToolUse[Agent] 上 `runtime-guard` 排在 `verifier-quota` 之前，
-  版本這種更根本的安全 gate 先評估；額度只是預算標記，不做安全決策。
+- **safety 先於 budget**: PreToolUse[Agent] 依序跑 `leaf-redispatch`、`runtime-guard`、
+  `verifier-quota`: 先拒絕 leaf orchestration, 再評估版本安全邊界, 最後才算 verifier 額度.
 
 ### Fail-open（只記錄／提醒）
 
