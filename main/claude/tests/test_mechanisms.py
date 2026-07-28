@@ -153,6 +153,56 @@ class MechanismTests(unittest.TestCase):
         self.assertEqual(run_gate("2.1.197 (Claude Code)", unrestricted).returncode, 0)
         self.assertEqual(run_gate("2.1.197 (Claude Code)", "not json").returncode, 0)
 
+    def test_leaf_redispatch_gate_uses_the_caller_identity(self) -> None:
+        hook = ROOT / "main/claude/hooks/leaf-redispatch.py"
+
+        def run(payload: object) -> subprocess.CompletedProcess[str]:
+            raw = payload if isinstance(payload, str) else json.dumps(payload)
+            return subprocess.run(
+                [sys.executable, str(hook)],
+                input=raw, capture_output=True, text=True,
+            )
+
+        main_dispatch = run({
+            "tool_name": "Agent",
+            "tool_input": {"subagent_type": "executor"},
+        })
+        self.assertEqual(main_dispatch.returncode, 0)
+        self.assertEqual(main_dispatch.stderr, "")
+
+        leaf_dispatch = run({
+            "tool_name": "Agent",
+            "agent_type": "executor",
+            "tool_input": {"subagent_type": "explore"},
+        })
+        self.assertEqual(leaf_dispatch.returncode, 2)
+        self.assertIn("leaf agent 'executor' cannot dispatch another agent",
+                      leaf_dispatch.stderr)
+        self.assertIn("Return the proposed dispatch to the main session",
+                      leaf_dispatch.stderr)
+
+        # Unknown input cannot be identified as an Agent call, and a malformed
+        # tool_input on an unrelated tool must not disturb that tool.
+        self.assertEqual(run("not json").returncode, 0)
+        unrelated = run({
+            "tool_name": "Bash",
+            "agent_type": "executor",
+            "tool_input": "malformed",
+        })
+        self.assertEqual(unrelated.returncode, 0)
+        self.assertEqual(unrelated.stderr, "")
+
+    def test_leaf_redispatch_gate_is_first_on_agent_pretooluse(self) -> None:
+        settings = json.loads(read(".claude/settings.json"))
+        agent_hooks = next(
+            group["hooks"] for group in settings["hooks"]["PreToolUse"]
+            if group.get("matcher") == "Agent"
+        )
+        commands = [hook["command"] for hook in agent_hooks]
+        self.assertIn("leaf-redispatch.py", commands[0])
+        self.assertEqual(sum("leaf-redispatch.py" in command
+                             for command in commands), 1)
+
     def test_weekly_integrity_stamps_only_after_completed_checks(self) -> None:
         hook = ROOT / "main/claude/hooks/weekly-integrity.py"
         with tempfile.TemporaryDirectory() as temp_home:

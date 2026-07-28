@@ -140,7 +140,7 @@ tool／sandbox 層強制,不要指望模型自我約束。和本 repo 的「機�
 | 完成判準執行點 | in-loop 自動 grader,預設只讀 transcript | gate lines 機械稽核＋重跑 grep＋diff 實體 worktree | **哲學不同**:他們便宜,本 repo 抗假完成更強 |
 | Memory 信任模型 | 5KB 專章 | 一行(委由 CLI 記憶層) | 平手;依稀釋原則,本 repo 的形式更省 |
 | Hook 系統 | 11 事件、完整型別系統、v1→v2 遷移 | 4 事件、fail-open／fail-closed 教義、逐 gate 論證 | **他們工程領先,本 repo 政策領先** |
-| Leaf 再派工 | 子 agent stack 不掛 `SubAgentMiddleware`(結構上不可能) | 讀取類 role 用 `tools:` 白名單(構不到);三個 writer role 用 `disallowedTools: Agent, Workflow` 黑名單＋`delegation-audit` 事後偵測 | **他們領先**:結構上不可能 vs 兩個名字的黑名單;見下方動作 6 |
+| Leaf 再派工 | 子 agent stack 不掛 `SubAgentMiddleware` (結構上不可能) | `PreToolUse[Agent]` 依 caller `agent_type` fail-closed; `delegation-audit` 保留事後 telemetry | **他們仍領先**: 兩邊都擋現有派工路徑, 但他們是結構上不可能; 見下方動作 6 |
 | 部署治理 | `HarnessProfileConfig`、`doctor.py` | manifest 驅動 sync、preflight、parity、漂移偵測、git rollback | **本 repo 明顯領先** |
 | 證據制度 | LangSmith Engine(商業)、IssueBench | experience-ledger、trap evals、sample floor、人核准修訂 | 同一想法,他們產品化 |
 
@@ -169,14 +169,14 @@ tool／sandbox 層強制,不要指望模型自我約束。和本 repo 的「機�
    就修剪候選),正確的下一步是實驗,不是機制,見[仍待本機驗證](README.md#仍待本機驗證)。
 5. **抽查子代理契約的雙面一致性**(成本小)。`briefs-and-stops.md` 管呼叫端、role 契約管
    執行端,結構和 Deep Agents 相同,但目前沒有測試鎖定兩邊講的是同一件事。
-6. **writer role 的再派工邊界仍是 denylist**(成本中)。讀取類 role 走 `tools:` 白名單,
-   構不到 `Agent`;但三個 writer role 走 `disallowedTools: Agent, Workflow`,擋的是兩個
-   名字而不是一個類別,平台日後新增或改名任何委派工具即穿透。`delegation-audit` 只是
-   fail-open 事後偵測(`spawn_depth >= 2` 標 `nested`,一律 exit 0),經 weekly-integrity
-   最晚 7 天才浮現,補不上這個缺口。這一項 Deep Agents 結構上更強,而且不能照抄——writer
-   需要的工具面太寬,窮舉白名單會在平台每次加工具時失效。可行的一步是把攔截從契約文字
-   移到已存在的 `PreToolUse[Agent]` 層(`runtime-guard` 現在只看 `subagent_type`,不看
-   呼叫者),對 `spawn_depth >= 2` 直接 exit 2,把同一個判斷從事後偵測改成事前 fail-closed。
+6. **writer role 的現有 Agent 再派工路徑已 fail-closed** (已落地). 讀取類 role 走
+   `tools:` 白名單, 構不到 `Agent`; 三個 writer role 仍保留
+   `disallowedTools: Agent, Workflow`, 再由 `PreToolUse[Agent]` 的 `leaf-redispatch`
+   依 payload 頂層 caller `agent_type` 判定: main-session 呼叫沒有這個欄位, leaf 呼叫則有,
+   後者直接 exit 2. 這個判斷不讀 `spawn_depth`; `delegation-audit` 仍是 fail-open 事後
+   telemetry. Deep Agents 的結構性邊界依然更強: 若平台日後新增或改名委派工具, 目前 matcher
+   不會自動涵蓋, 屆時必須擴充 gate, 但現有 `Agent` 路徑已不再只靠兩個名稱的 frontmatter
+   denylist.
 
 **兩邊獨立收斂之處**(這比差異更有訊號量):漸進揭露的形狀(frontmatter 常駐、正文按需
 讀取)逐字同義;memory 不可信;子代理契約雙面書寫;「邊界在工具層強制,不靠模型自律」。
