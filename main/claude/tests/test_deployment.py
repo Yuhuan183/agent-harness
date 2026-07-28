@@ -76,11 +76,23 @@ class MachineStateHygieneTests(unittest.TestCase):
             for g in settings["hooks"]["SessionStart"] for h in g["hooks"]
             if "weekly-integrity.py" in h["command"]
         )
-        inner = [int(m) for m in re.findall(
-            r"timeout=(\d+)", read(".claude/hooks/weekly-integrity.py"))]
+        source = read(".claude/hooks/weekly-integrity.py")
+        inner = [int(m) for m in re.findall(r"timeout=budget\((\d+)\)", source)]
         self.assertGreater(outer, max(inner),
                            "weekly-integrity outer timeout must exceed its "
                            "slowest internal subprocess timeout")
+        # outer > max(inner) is not enough on its own: the checks run in
+        # sequence, and their caps sum to well over the outer budget, so a
+        # drift-heavy run could still be killed before printing findings or
+        # writing its stamp. Every subprocess must draw from one monotonic
+        # deadline that fits inside the registration.
+        self.assertGreater(sum(inner), outer,
+                           "if the inner caps no longer oversubscribe the "
+                           "outer budget, this guard can be simplified")
+        self.assertNotIn("timeout=1", source.replace("timeout=budget(1", "@"))
+        deadline = float(re.search(r"BUDGET = ([\d.]+)", source).group(1))
+        self.assertLess(deadline, outer,
+                        "the global deadline must fit inside the hook timeout")
 
     def test_headroom_routing_ownership_is_explicit(self) -> None:
         runtime = read(".agents/docs/headroom-runtime.md")
@@ -158,6 +170,14 @@ class MachineStateHygieneTests(unittest.TestCase):
                 "git commit -m 'document AGENT_SKIP_TEST_GATE=1 behavior'", str(repo)
             )
             self.assertEqual(msg_form.returncode, 2)
+            # Shell quote concatenation runs a real commit while hiding the
+            # word from a plain substring/word match. Reproduced against this
+            # gate on 2026-07-28: both forms returned 0 on a red suite.
+            for evasion in ("git com''mit -m x", 'git com""mit -m x',
+                            "git -C . com''mit -m x"):
+                self.assertEqual(
+                    run_hook(evasion, str(repo)).returncode, 2,
+                    f"quote-concatenated commit slipped the gate: {evasion}")
             self.assertIn("commit blocked", msg_form.stderr)
             self.assertEqual(run_hook("git status", str(repo)).returncode, 0)
             # Repo-switching forms must gate on the command's target, not cwd
@@ -283,11 +303,49 @@ class MachineStateHygieneTests(unittest.TestCase):
             self.assertIn("no Python >=", stderr.getvalue())
             self.assertNotIn("is RED", stderr.getvalue())
 
+    def test_weekly_integrity_reports_drift_in_a_clean_git_managed_claude(self) -> None:
+        # A git-managed ~/.claude used to answer drift for the .claude targets
+        # by itself, via `git status`. That question is "does this checkout
+        # match its own HEAD", which is silent for a clean checkout pinned to
+        # an old commit — precisely the stale deployment worth catching. Parity
+        # against the source checkout must run for those targets regardless.
+        hook = ROOT / "main/claude/hooks/weekly-integrity.py"
+        with tempfile.TemporaryDirectory() as temp_home:
+            home = Path(temp_home)
+            agents = home / ".claude" / "agents"
+            agents.mkdir(parents=True)
+            # Committed and clean, but the content does not match the source.
+            (agents / "explore.md").write_text("stale\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(home / ".claude"), "init", "-q"], check=True)
+            subprocess.run(["git", "-C", str(home / ".claude"), "add", "-A"], check=True)
+            subprocess.run(
+                ["git", "-C", str(home / ".claude"), "-c", "user.email=t@t",
+                 "-c", "user.name=t", "commit", "-qm", "stale"],
+                check=True, env={**os.environ, "AGENT_SKIP_TEST_GATE": "1"},
+            )
+            status = subprocess.run(
+                ["git", "-C", str(home / ".claude"), "status", "--porcelain"],
+                capture_output=True, text=True)
+            self.assertEqual(status.stdout.strip(), "",
+                             "fixture must be clean, or it proves nothing")
+            result = subprocess.run(
+                [sys.executable, str(hook)], capture_output=True, text=True,
+                timeout=120,
+                env={**os.environ, "HOME": str(home),
+                     "AGENT_HARNESS_REPO": str(ROOT)},
+            )
+            self.assertIn(".claude/agents", result.stdout,
+                          "clean-but-stale git-managed ~/.claude reported no "
+                          f"drift for a manifest target:\n{result.stdout}")
+
     def test_commit_gate_command_prefilters_non_commit_calls(self) -> None:
         # F-03: the PreToolUse gate command must skip the python interpreter
-        # entirely when the Bash payload carries no "commit" token, so ordinary
-        # commands do not pay a per-call process spawn. A stub hook drops a
-        # marker whenever it actually runs.
+        # entirely for Bash payloads that can carry no commit at all, so
+        # ordinary commands do not pay a per-call process spawn (measured
+        # 25 ms). A stub hook drops a marker whenever it actually runs.
+        # The prefilter hands over on `git` as well as on `commit`, because
+        # `git com''mit` contains neither the word `commit` nor a spelling a
+        # substring match can see; the hook itself re-matches quote-stripped.
         settings = json.loads(read(".claude/settings.json"))
         pre = [h["command"] for g in settings["hooks"]["PreToolUse"] for h in g["hooks"]]
         command = next(c for c in pre if "commit-test-gate.py" in c)
@@ -315,6 +373,13 @@ class MachineStateHygieneTests(unittest.TestCase):
             # Commit: the gate runs and its exit code propagates.
             self.assertEqual(run_gate("git commit -m x").returncode, 2)
             self.assertTrue(marker.exists())
+            # A quote-concatenated commit must still reach the hook, which is
+            # the layer that can normalize it.
+            marker.unlink()
+            run_gate("git com''mit -m x")
+            self.assertTrue(
+                marker.exists(),
+                "prefilter dropped a quote-concatenated commit before the hook")
 
 
 if __name__ == '__main__':

@@ -17,6 +17,18 @@ import tomllib
 from datetime import date
 from pathlib import Path
 
+# Route provenance strong enough to move a route (user-directed 2026-07-28).
+# `rollout-verified` is attested by the provider's own rollout record;
+# `explicit` is the dispatcher's record of the route it selected. Excluded:
+# `resolver-assumed`, which is inferred from an alias and stops being true the
+# moment that alias is upgraded, and untagged records, which carry no
+# provenance at all. Both stay visible in the report's `ineligible_n` — the
+# gate is on what may drive a decision, not on what may be counted.
+# Only `rollout-verified` would be stricter, but no Claude-side dispatch can
+# ever earn it (there is no Claude rollout to read), so that would permanently
+# exclude one provider rather than raise the evidence bar.
+DECISION_ROUTE_SOURCES = ("rollout-verified", "explicit")
+
 SELECTION_KEYS = {"default", "fast", "quality_guarded", "high_risk"}
 REVISION_POLICY_KEYS = {
     "days",

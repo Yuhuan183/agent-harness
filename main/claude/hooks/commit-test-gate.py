@@ -10,7 +10,12 @@ the command can plausibly target carries test modules under `.claude/tests/`
 or the harness bundle's canonical `main/claude/tests/`. The target set is the
 payload `cwd` plus every `git -C <path>` and `cd <path>` operand in the command,
 so repo-switching forms cannot dodge the gate. Other repos and non-commit
-commands pass through untouched. Escape hatch for intentional red commits
+commands pass through untouched. The command is also matched with shell quote
+characters stripped, so quote-concatenated spellings (`git com''mit`) cannot
+dodge it either; the settings prefilter therefore hands over on `git` as well
+as on `commit`. Residual gap: spelling *both* words with embedded quotes
+(`g'i't com''mit`) still escapes, which the escape hatch below already allows
+declaratively. Escape hatch for intentional red commits
 (e.g. committing a failing reproduction): prefix the command with
 `AGENT_SKIP_TEST_GATE=1 `.
 
@@ -39,6 +44,14 @@ import tempfile
 from pathlib import Path
 
 COMMIT_RE = re.compile(r"\bgit\b[^|;&\n]*\bcommit\b")
+# Shell quote concatenation splits a keyword without changing what runs:
+# `git com''mit` and `git com""mit` both execute a real commit, but neither the
+# settings prefilter nor COMMIT_RE sees the word. Matching a quote-stripped
+# copy in addition to the raw command closes that (reproduced 2026-07-28).
+# Stripping can only reveal more matches, never hide one, so detection is
+# monotonic. False positives (`echo "git" "commit"`) only run the suite
+# needlessly, which the module already accepts.
+QUOTE_RE = re.compile(r"[\"'\\]")
 # The suite needs stdlib tomllib, so it cannot run below 3.11. Newest first;
 # `python3-run` in the .agents layer keeps the same ladder, but a fail-closed
 # gate must not depend on another layer being synced.
@@ -112,8 +125,12 @@ def main() -> int:
     # command, but the raw newline would otherwise split `git` from `commit`
     # and slip the gate. COMMIT_RE still stops at real `;|&` separators.
     command = re.sub(r"\\\n", " ", command)
-    if not COMMIT_RE.search(command):
+    if not (COMMIT_RE.search(command)
+            or COMMIT_RE.search(QUOTE_RE.sub("", command))):
         return 0
+    # The escape hatch is matched on the raw command only: it has to be a real
+    # leading shell assignment, and normalizing here would make it easier to
+    # disarm the gate rather than harder.
     if SKIP_RE.match(command):
         return 0
 
