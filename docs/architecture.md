@@ -114,7 +114,8 @@ Hook 是把「規則」變成「機制」的地方：需要判斷的交給模型
 **fail-open**（診斷型故障時放行，不阻塞工作）；刻意 **fail-closed** 的是四個有界 gate
 （commit-test、leaf-redispatch、runtime-guard、verifier-quota），每個只在很窄的條件下攔截。
 
-一個代表性設計：唯讀 Bash 邊界用**允許清單而非拒絕清單**，因為 shell 的寫入途徑關不完。
+一個代表性設計：唯讀角色的邊界是**能力面而非解析 shell**——no-write roles 根本不配 Bash，
+因為 shell 的寫入途徑關不完；需要跑指令的驗證改派 Codex `verifier` 並鎖 `sandbox_mode = "read-only"`。
 逐事件清單、失敗模式、以及「為什麼值得信任（三關驗證）」在 [hook 系統](hook-system.md)。
 
 ## 六、附檔導引

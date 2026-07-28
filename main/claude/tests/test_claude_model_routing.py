@@ -415,19 +415,22 @@ class ExperienceReviseTests(unittest.TestCase):
                       "role": "executor", "profile": "balanced",
                       "provider": "claude", "model": "claude-opus-5",
                       "effort": "medium", "task_class": "impl",
-                      "request_source": "claude-code", "outcome": "failed"}] * 10
+                      "request_source": "claude-code", "outcome": "failed",
+                      "route_source": "explicit"}] * 10
             # ...opus/high (meets the judgment floor) performs well...
             rows += [{"ts": "2026-07-20T00:00:00+00:00", "schema": 3,
                       "role": "executor", "profile": "balanced",
                       "provider": "claude", "model": "claude-opus-5",
                       "effort": "high", "task_class": "impl",
-                      "request_source": "claude-code", "outcome": "accepted"}] * 10
+                      "request_source": "claude-code", "outcome": "accepted",
+                      "route_source": "explicit"}] * 10
             # ...and sonnet/low also performs well but falls below the floor.
             rows += [{"ts": "2026-07-20T00:00:00+00:00", "schema": 3,
                       "role": "executor", "profile": "balanced",
                       "provider": "claude", "model": "claude-sonnet-5",
                       "effort": "low", "task_class": "impl",
-                      "request_source": "claude-code", "outcome": "accepted"}] * 10
+                      "request_source": "claude-code", "outcome": "accepted",
+                      "route_source": "explicit"}] * 10
             ledger.write_text("\n".join(json.dumps(r) for r in rows),
                               encoding="utf-8")
             result = subprocess.run(
@@ -473,6 +476,7 @@ class ExperienceReviseTests(unittest.TestCase):
                     "provider": "claude", "model": "claude-opus-5",
                     "effort": "medium", "task_class": "impl",
                     "request_source": "claude-code", "outcome": "failed",
+                    "route_source": "explicit",
                 }] * 5
             rows += [{
                 "ts": "2026-07-20T00:00:00+00:00", "schema": 3,
@@ -480,6 +484,7 @@ class ExperienceReviseTests(unittest.TestCase):
                 "provider": "claude", "model": "claude-opus-5",
                 "effort": "high", "task_class": "impl",
                 "request_source": "claude-code", "outcome": "accepted",
+                "route_source": "explicit",
             }] * 10
             ledger.write_text("\n".join(json.dumps(row) for row in rows),
                               encoding="utf-8")

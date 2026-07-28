@@ -29,7 +29,9 @@ and session automatically; a native Claude dispatch then only needs its outcome:
 - **Route flags by request source.** Native Claude records may omit
   `--profile/--model/--effort`: the resolver fills them and tags the record
   `route_source: resolver-assumed` (pins are aliases; the resolver maps them to
-  dated ids, so assumed routes never masquerade as verified evidence). Bridge
+  dated ids, so assumed routes never masquerade as verified evidence). Such a
+  record is reported but cannot drive a route change — pass the route
+  explicitly when the dispatch should count as routing evidence. Bridge
   records read model and effort from the dispatch's own Codex rollout and tag
   `route_source: rollout-verified`; pass only `--profile` (a harness label the
   provider does not record). A `--model/--effort` that contradicts the rollout

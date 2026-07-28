@@ -133,6 +133,46 @@ class SharedSkillTests(unittest.TestCase):
         self.assertIn("After QC, load `experience-ledger`", baton)
         self.assertIn("log the same route through `experience-ledger`", routing)
 
+    def test_native_claude_route_is_resolver_assumed(self) -> None:
+        """The convenience path still logs; it just cannot vote on routes.
+
+        Omitting `--profile/--model/--effort` for a native Claude dispatch is
+        documented and supported: the resolver fills the route so the record
+        stays readable. But it is filled from the pins as they are *now*, from
+        aliases that may since have moved, so it is tagged `resolver-assumed`
+        and stays out of the decision set (user-directed 2026-07-28).
+        """
+        base = ROOT / "main/.agents/skills/experience-ledger/scripts"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ledger = os.path.join(temp_dir, "experience.jsonl")
+            env = {**os.environ, "AGENT_EXPERIENCE_LEDGER": ledger,
+                   "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/claude/scripts/model-routing")}
+            subprocess.run(
+                [sys.executable, str(base / "experience-log"),
+                 "--role", "executor", "--provider", "claude",
+                 "--request-source", "claude-code", "--class", "impl",
+                 "--outcome", "accepted",
+                 "--now", "2026-07-20T00:00:00+00:00"],
+                env=env, check=True, capture_output=True, text=True,
+            )
+            record = json.loads(Path(ledger).read_text(encoding="utf-8").strip())
+            # The route is present and usable...
+            self.assertEqual(record["route_source"], "resolver-assumed")
+            for field in ("profile", "model", "effort"):
+                self.assertTrue(record[field], field)
+            # ...and still does not reach the decision set.
+            result = subprocess.run(
+                [sys.executable, str(base / "experience-report"), "--json",
+                 "--now", "2026-07-22T00:00:00+00:00"],
+                env=env, check=True, capture_output=True, text=True,
+            )
+        report = json.loads(result.stdout)
+        cohort = report["by_cohort_provider"]["executor/impl/claude"]
+        self.assertEqual(cohort["observed_n"], 1)
+        self.assertEqual(cohort["ineligible_n"], 1)
+        self.assertEqual(cohort["n"], 0)
+        self.assertEqual(report["decision_records"], 0)
+
     def test_experience_scripts_log_and_report(self) -> None:
         base = ROOT / "main/.agents/skills/experience-ledger/scripts"
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -146,9 +186,17 @@ class SharedSkillTests(unittest.TestCase):
                     env=env, check=True, capture_output=True, text=True,
                 )
 
+            # The route is passed explicitly. Omitting it still logs a usable
+            # record, but the resolver fills it and tags it `resolver-assumed`,
+            # which is reported and not decision-eligible (2026-07-28) — so the
+            # cohort metrics below would all be None and this test would be
+            # asserting nothing. `test_native_claude_route_is_resolver_assumed`
+            # covers the convenience path.
             for i in range(10):
                 log("--role", "executor", "--provider", "claude",
                     "--request-source", "claude-code", "--class", "impl",
+                    "--profile", "balanced", "--model", "claude-opus-5",
+                    "--effort", "medium",
                     "--outcome", "accepted", "--quality", "4",
                     "--tokens-in", "100", "--tokens-out", "20",
                     "--cache-write-tokens", "10", "--cache-read-tokens", "70",
@@ -480,6 +528,9 @@ class SharedSkillTests(unittest.TestCase):
                         "model": ("claude-opus-5" if provider == "claude"
                                   else "gpt-5.6-sol"),
                         "effort": "medium",
+                        # Attested route: this fixture is about cost scope, so
+                        # it must clear the provenance gate to reach the hint.
+                        "route_source": "explicit",
                     }
                     if provider == "claude":
                         row.update({"tokens_in": 100, "cache_write_tokens": 10,
@@ -534,6 +585,9 @@ class SharedSkillTests(unittest.TestCase):
                             "task_class": "impl", "provider": provider,
                             "request_source": source, "outcome": "accepted",
                             "profile": profile, "model": model, "effort": effort,
+                            # This fixture is about route pooling, not
+                            # provenance; keep every row decision-eligible.
+                            "route_source": "explicit",
                         })
             ledger.write_text(
                 "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8"
@@ -594,6 +648,67 @@ class SharedSkillTests(unittest.TestCase):
             self.assertEqual(row["ineligible_n"], 1)
             self.assertEqual(row["n"], 0)
 
+    def test_unattested_routes_are_reported_but_never_drive_decisions(self) -> None:
+        # User-directed 2026-07-28: `resolver-assumed` is inferred from an
+        # alias and stops being true once that alias is upgraded, and an
+        # untagged record has no provenance at all. Both stay visible in
+        # observed_n/ineligible_n — the gate is on driving a decision, not on
+        # being counted — while `explicit` and `rollout-verified` still count.
+        report_script = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-report"
+        base = {
+            "ts": "2026-07-20T00:00:00+00:00", "schema": 3,
+            "role": "executor", "task_class": "impl",
+            "provider": "codex", "request_source": "codex",
+            "outcome": "accepted", "profile": "balanced",
+            "model": "gpt-5.6-sol", "effort": "medium",
+        }
+        cases = {
+            "rollout-verified": 1,
+            "explicit": 1,
+            "resolver-assumed": 0,
+            None: 0,
+        }
+        for route_source, expected_n in cases.items():
+            with self.subTest(route_source=route_source):
+                row = dict(base)
+                if route_source is not None:
+                    row["route_source"] = route_source
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    ledger = Path(temp_dir) / "experience.jsonl"
+                    ledger.write_text(json.dumps(row) + "\n", encoding="utf-8")
+                    result = subprocess.run(
+                        [sys.executable, str(report_script), "--json",
+                         "--now", "2026-07-22T00:00:00+00:00"],
+                        env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger),
+                             "AGENT_CLAUDE_RESOLVER": str(
+                                 ROOT / "main/claude/scripts/model-routing")},
+                        check=True, capture_output=True, text=True,
+                    )
+                report = json.loads(result.stdout)
+                cohort = report["by_cohort_provider"]["executor/impl/codex"]
+                self.assertEqual(cohort["observed_n"], 1)
+                self.assertEqual(cohort["n"], expected_n)
+                self.assertEqual(cohort["ineligible_n"], 1 - expected_n)
+                self.assertEqual(report["decision_records"], expected_n)
+
+    def test_report_and_revise_share_one_eligibility_rule(self) -> None:
+        # Two surfaces read the same ledger: one reports the evidence, the
+        # other proposes route changes from it. If their filters drift, a
+        # record can be excluded from the report a human reads while still
+        # moving a route, which is the failure worth gating.
+        skills = ROOT / "main/.agents/skills/experience-ledger/scripts"
+        report = (skills / "experience-report").read_text(encoding="utf-8")
+        revise = (skills / "experience-revise").read_text(encoding="utf-8")
+        for source in (report, revise):
+            self.assertIn("core.DECISION_ROUTE_SOURCES", source)
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "routing_core_eligibility", ROOT / "main/.agents/scripts/routing_core.py")
+        routing_core = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(routing_core)
+        self.assertEqual(
+            routing_core.DECISION_ROUTE_SOURCES, ("rollout-verified", "explicit"))
+
     def test_experience_report_ignores_invalid_legacy_telemetry(self) -> None:
         report_script = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-report"
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -604,6 +719,7 @@ class SharedSkillTests(unittest.TestCase):
                 "provider": "codex", "request_source": "codex",
                 "outcome": "accepted", "profile": "balanced",
                 "model": "gpt-5.6-sol", "effort": "medium",
+                "route_source": "explicit",
                 "quality": 4, "tokens_in": 100, "tokens_out": 20,
                 "cache_write_tokens": 10, "cache_read_tokens": 70,
                 "secs": 5.0, "review_secs": 1.0, "rework_secs": 0.0,

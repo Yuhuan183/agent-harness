@@ -99,13 +99,14 @@ def load_shared_policy(paths: list[Path]) -> tuple[dict, list[dict]]:
 
 
 def decision_eligible(record: dict, excluded: set[str]) -> bool:
-    """Only complete v3 production records may drive routing decisions."""
+    """Only complete, attested v3 production records may drive routing decisions."""
     source = record.get("request_source")
     return (
         isinstance(record.get("schema"), int) and record["schema"] >= 3
         and record.get("task_class") not in excluded
         and REQUEST_SOURCE_PROVIDER.get(source) == record.get("provider")
         and record.get("outcome") in ("accepted", "corrected", "rebriefed", "failed")
+        and record.get("route_source") in core.DECISION_ROUTE_SOURCES
         and all(record.get(field) for field in (
             "role", "task_class", "profile", "model", "effort"
         ))

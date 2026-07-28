@@ -79,9 +79,15 @@ def load_cells(path: str, since: datetime, now: datetime, half_life: float,
             continue
         task_class = record.get("task_class", "other")
         source = record.get("request_source")
+        # Eligibility must stay identical to experience-report's
+        # decision_eligible: one surface reports the evidence and the other
+        # proposes route changes from it, so a record either counts in both or
+        # in neither. `route_source` is the attestation gate (see
+        # core.DECISION_ROUTE_SOURCES).
         if (timestamp < since or task_class in excluded
                 or not isinstance(record.get("schema"), int) or record["schema"] < 3
                 or REQUEST_SOURCE_PROVIDER.get(source) != record.get("provider")
+                or record.get("route_source") not in core.DECISION_ROUTE_SOURCES
                 or not all(record.get(field) for field in (
                     "role", "task_class", "profile", "model", "effort"
                 ))

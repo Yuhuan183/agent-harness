@@ -818,6 +818,18 @@ class DocumentationBudgetTests(unittest.TestCase):
         for path, limit in budgets.items():
             self.assertLessEqual(word_count(read(path)), limit, path)
 
+        # The word unit counts a run of non-space text as one word, so a single
+        # unbroken run — a giant URL, a minified block, a pasted payload — costs
+        # one budget unit no matter how much context it actually occupies. Cap
+        # the run length so the budget cannot be evaded that way. The longest
+        # legitimate run in these files today is a 106-character markdown link.
+        for path in budgets:
+            longest = max(re.findall(r"\S+", read(path)), key=len)
+            self.assertLessEqual(
+                len(longest), MAX_UNBROKEN_RUN,
+                f"{path}: {len(longest)}-character unbroken run evades the word "
+                f"budget; break it up or link to it: {longest[:80]}")
+
     def test_root_readme_is_a_complete_navigation_surface(self) -> None:
         readme = read("README.md")
         self.assertEqual(readme.count("```mermaid"), 2)

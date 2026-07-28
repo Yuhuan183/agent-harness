@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Weekly-throttled integrity check, run from SessionStart.
 
-Deterministic checks only: contract-repo drift (git status) and nested-delegation
-scan. Findings and check failures are printed to stdout for the active session.
-The hook is fail-open, but its throttle advances only after both checks run.
+Deterministic checks only: manifest parity between the source checkout and every
+deployed HOME target, routing pin/alias/prior freshness, delegation alarms, and
+ledger reconciliation. A git-managed ~/.claude additionally reports uncommitted
+changes, which is a supplement to parity and never a substitute for it.
+Findings and check failures are printed to stdout for the active session.
+The hook is fail-open, but its throttle advances only after the checks complete.
 """
 import json
 import os
@@ -13,6 +16,21 @@ import time
 
 PERIOD = 7 * 86400
 STAMP = os.path.expanduser("~/.claude/telemetry/.integrity-last-run")
+
+# The SessionStart hook registration allows 60 s. Per-subprocess timeouts alone
+# cannot honour that: a drift-heavy run chains one 30 s parity check, two 15 s
+# merge verifications and several 10 s resolver checks, and the host kills the
+# hook before it prints findings or writes its stamp — so it silently retries
+# every session, never completing. One monotonic deadline caps the whole run;
+# each subprocess takes the smaller of its own cap and the time left, so an
+# overrun surfaces as a normal timeout finding with output preserved.
+BUDGET = 50.0
+_deadline = time.monotonic() + BUDGET
+
+
+def budget(cap):
+    """Seconds for the next subprocess: its own cap, or whatever time is left."""
+    return max(1.0, min(cap, _deadline - time.monotonic()))
 
 
 def resolve_harness_repo():
@@ -103,22 +121,23 @@ try:
     checks_completed = True
     claude_dir = os.path.expanduser("~/.claude")
     # ~/.claude is normally populated by scripts/sync.sh rsync from the harness
-    # repo, not a git checkout. Drift check adapts to the deployment model:
-    # git status covers the .claude targets when ~/.claude is itself a repo;
-    # every other manifest target is always compared via an rsync dry-run
-    # against the source checkout (same paths sync.sh manages).
+    # repo, not a git checkout. Every manifest target is compared via an rsync
+    # dry-run against the source checkout (the same paths sync.sh manages).
     harness_repo = resolve_harness_repo()
     try:
-        # A git-managed ~/.claude answers drift for the .claude targets itself,
-        # but only for them: the other manifest targets (.codex, .agents) still
-        # need the rsync comparison against the source checkout.
+        # A git-managed ~/.claude gets one *extra* check, not a substitute one.
+        # `git status` answers "does this checkout match its own HEAD", which
+        # is silent when the checkout is clean but pinned to an old commit —
+        # exactly the stale deployment this hook exists to notice. So it
+        # reports uncommitted changes only, and manifest parity still runs for
+        # the .claude targets (2026-07-28).
         claude_git_managed = os.path.isdir(os.path.join(claude_dir, ".git"))
         if claude_git_managed:
             r = subprocess.run(
                 ["git", "-C", claude_dir, "status", "--porcelain"],
                 capture_output=True,
                 text=True,
-                timeout=10,
+                timeout=budget(10),
             )
             if r.returncode != 0:
                 checks_completed = False
@@ -144,8 +163,6 @@ try:
         else:
             drift = []
             for source_rel, target_rel, mode in load_deployment_manifest(harness_repo):
-                if claude_git_managed and target_rel.startswith(".claude/"):
-                    continue  # covered by the git status check above
                 src = os.path.join(harness_repo, source_rel)
                 if not os.path.lexists(src):
                     raise ValueError(f"deployment source missing: {source_rel}")
@@ -161,7 +178,7 @@ try:
                         [sys.executable,
                          os.path.join(harness_repo, "scripts", merger),
                          src, deployed, "--verify"],
-                        capture_output=True, text=True, timeout=15,
+                        capture_output=True, text=True, timeout=budget(15),
                     )
                     if verify.returncode != 0:
                         drift.append(
@@ -198,11 +215,11 @@ try:
                              "--exclude", "__pycache__/", "--exclude", "*.pyc",
                              "--exclude", ".DS_Store", "-n", "--itemize-changes",
                              check_src, os.path.dirname(check_deployed) + "/"],
-                            capture_output=True, text=True, timeout=30,
+                            capture_output=True, text=True, timeout=budget(30),
                         )
                     else:
                         same = subprocess.run(
-                            ["cmp", "-s", check_src, check_deployed], timeout=10,
+                            ["cmp", "-s", check_src, check_deployed], timeout=budget(10),
                         )
                         r = subprocess.CompletedProcess(
                             args=same.args, returncode=0,
@@ -239,7 +256,7 @@ try:
             [os.path.join(claude_dir, "scripts", "delegation-report"), "--days", "7"],
             capture_output=True,
             text=True,
-            timeout=10,
+            timeout=budget(10),
         )
         if rep.returncode == 1:
             findings.append("delegation audit alarm:\n" + rep.stdout.rstrip())
@@ -268,7 +285,7 @@ try:
                 [routing_script, "check-pins"],
                 capture_output=True,
                 text=True,
-                timeout=10,
+                timeout=budget(10),
             )
         if pins is None:
             pass
@@ -296,7 +313,7 @@ try:
                 [routing_script, "check-aliases"],
                 capture_output=True,
                 text=True,
-                timeout=10,
+                timeout=budget(10),
             )
             if aliases.returncode == 1:
                 findings.append(
@@ -323,7 +340,7 @@ try:
             )
         else:
             validated = subprocess.run(
-                [codex_routing, "validate"], capture_output=True, text=True, timeout=10
+                [codex_routing, "validate"], capture_output=True, text=True, timeout=budget(10)
             )
             if validated.returncode != 0:
                 checks_completed = False
@@ -347,7 +364,7 @@ try:
             if not os.access(resolver, os.X_OK):
                 continue  # an unavailable resolver is already a finding above
             priors = subprocess.run(
-                [resolver, "check-priors"], capture_output=True, text=True, timeout=10
+                [resolver, "check-priors"], capture_output=True, text=True, timeout=budget(10)
             )
             if priors.returncode == 1:
                 findings.append(
@@ -383,7 +400,7 @@ try:
              "--json"],
             capture_output=True,
             text=True,
-            timeout=10,
+            timeout=budget(10),
         )
         report = json.loads(exp.stdout) if exp.returncode == 0 else {}
         insufficient = set(report.get("hints_insufficient") or ())

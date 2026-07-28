@@ -128,3 +128,10 @@ def word_count(text: str) -> int:
     non-space text count as one. Plain split() would let Chinese prose dodge
     the resident-attention budget entirely."""
     return len(re.findall(r"[\u4e00-\u9fff]|[^\s\u4e00-\u9fff]+", text))
+
+
+# Companion ceiling to word_count: one unbroken run costs one word however long
+# it is, so the word budget alone is evadable by a single giant token. The
+# longest legitimate run across the budgeted files is a 106-character markdown
+# link, so this leaves room for a long link without leaving room for a payload.
+MAX_UNBROKEN_RUN = 200
