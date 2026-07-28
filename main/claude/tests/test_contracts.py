@@ -664,6 +664,36 @@ class DocumentationBudgetTests(unittest.TestCase):
         self.assertEqual(set(census["providers"]), {"claude", "codex"})
         managed_sources = {source for source, _target in deployment_manifest()}
         self.assertNotIn("scripts/prompt-surface-census.py", managed_sources)
+        for provider, skills_dir in (
+            ("claude", "main/claude/skills"),
+            ("codex", "main/codex/skills"),
+        ):
+            expected_skills = {
+                path.relative_to(ROOT).as_posix()
+                for path in (ROOT / skills_dir).glob("*/SKILL.md")
+            }
+            provider_layers = census["providers"][provider]
+            resident_metadata = {
+                record["path"]
+                for record in provider_layers["resident"]
+                if record.get("kind") == "skill-metadata"
+            }
+            metadata_records = [
+                record
+                for record in provider_layers["resident"]
+                if record.get("kind") == "skill-metadata"
+            ]
+            dispatch_bodies = {
+                record["path"]
+                for record in provider_layers["dispatch"]
+                if record.get("kind") == "skill-body"
+            }
+            self.assertEqual(resident_metadata, expected_skills)
+            self.assertEqual(dispatch_bodies, expected_skills)
+            self.assertTrue(
+                all(record["words"] > 5 for record in metadata_records),
+                f"{provider} skill descriptions must be fully counted",
+            )
         for provider in ("claude", "codex"):
             self.assertEqual(
                 set(census["providers"][provider]),
