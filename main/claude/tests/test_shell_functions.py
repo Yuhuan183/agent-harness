@@ -105,7 +105,7 @@ fi
             "codex-auto 'two words'": [
                 "codex",
                 "-a",
-                "never",
+                "on-request",
                 "-s",
                 "workspace-write",
                 "two words",
@@ -158,7 +158,7 @@ fi
                 "--no-context-tool",
                 "--",
                 "-a",
-                "never",
+                "on-request",
                 "-s",
                 "workspace-write",
                 "two words",
