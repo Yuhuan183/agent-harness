@@ -33,6 +33,8 @@ Use `recon` for locating and summarizing; use `review` for adversarial inspectio
 
 ## Ownership
 
+During parallel discovery, declare main-owned and agent-owned read scopes; an active agent scope is temporarily exclusive until collection or explicit cancellation/redirection. Launch one selected independent batch back-to-back and collect it before cross-surface synthesis.
+
 For each workstream, list required reads, allowed writes, forbidden writes, secondary writes, and integration owner. Shared schemas, registries, indexes, generated output, config, and lockfiles need one owner or pre-fan-out convergence. An isolated worktree's changes are lost unless the integration owner harvests them on completion.
 
 ## Stop guide

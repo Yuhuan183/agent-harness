@@ -21,6 +21,22 @@
 
 漏掉任一個承載物，該狀態就只能靠自述。這正是 2026-07-26 兩個 finding 的共同形狀。
 
+## Plan readiness 與 discovery ownership
+
+大型工作先建立共享 constraints 的 program envelope, 再建立 independently approvable slices.
+每個 readiness unit 都要有 stable ID; slice 另帶 ready envelope, prerequisites, owner, rollback
+與 acceptance. `plan-verifier` 先審 envelope, 之後只審 next executable slice. `REVISE` 必須提供
+`Blocker`, `Evidence`, `Minimum revision`, `Acceptance check`; 同 unit 兩次自動 revision 後停下,
+不把上限當成 `READY`. Security-sensitive unit 在第一次 readiness review 前先完成 read-only
+security review, Plan 記錄每個 finding 的 disposition.
+Readiness 的承載物是帶 stable ID 的 Plan/brief 與該次 `plan-verifier` output; 兩次 revision
+由 main 對同一 ID 的輸出計數, 不是跨 prompt hook quota. 缺 ID, 只換 ID 或 cosmetic split
+都不能重設共享 blocker.
+
+平行 discovery 在 launch 前劃分 main-owned 與 agent-owned read scopes. Active agent scope
+暫時排他; 要重疊先 cancel/redirect. 同批 agents back-to-back 啟動, 全部 collected 後才做
+cross-surface synthesis. 這是避免重複讀與錯誤整合的 ownership boundary, 不是新的派工理由.
+
 ## 不成立的推論
 
 **launcher 死了 ≠ 派工死了（只發生在 bridge）。** Codex job 不是 forwarder 的子行程；

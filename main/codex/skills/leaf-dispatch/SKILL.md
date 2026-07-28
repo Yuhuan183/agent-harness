@@ -56,6 +56,11 @@ read-only exploration.
   batch work coupled to main's evolving evidence.
 - Converge shared schemas, registries, config, generated output, and lockfiles
   before parallel writes.
+- Map main-owned and agent-owned read scopes before parallel discovery. An
+  active agent-owned read scope is temporarily exclusive: main does not read
+  or analyze it unless it first cancels or redirects that agent. Launch every
+  selected agent in one independent batch back-to-back, collect all required
+  results, then begin cross-surface synthesis.
 
 ## Briefs and stops
 
@@ -101,10 +106,21 @@ construct across the scope first
 repository-wide, live, or expensive gates; preserve partial evidence when
 stopping.
 
-Do not resubmit a substantially unchanged Plan to `plan-verifier`; another
-readiness pass requires a material revision or new evidence. If disagreement
-remains unresolved, simplify the Plan, surface the blocker, or defer the
-blocked scope — never silently overrule it.
+For large work, define a program envelope for shared constraints and
+independently approvable execution slices. Give each readiness unit a stable
+ID; each slice names its ready envelope, prerequisites, owner, rollback, and
+acceptance. Review the envelope first, then only the next executable slice;
+unrelated downstream slices do not block approval, and shared blockers cannot
+be hidden by cosmetic splitting.
+
+Before the first readiness review of a security-sensitive unit, complete
+`security-reviewer` and carry every finding plus its disposition into the
+Plan. Ask `plan-verifier` for bare `READY` or `REVISE` blocks with `Blocker`,
+`Evidence`, `Minimum revision`, and `Acceptance check`. Materially revise
+after `REVISE`; after two automatic revisions of the same readiness-unit ID,
+stop and surface options. Never resubmit a substantially unchanged Plan
+without material revision or new evidence; simplify, surface, or defer
+unresolved scope rather than silently overrule the verifier.
 
 ## Verifier triggers and placement
 

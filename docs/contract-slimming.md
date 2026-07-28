@@ -55,6 +55,11 @@
 變更前後各跑一次，比較鐵律有無遺漏、routing 是否仍正確觸發、常駐 token 差異。
 格式紀律類規則另以 `evals/traps/` 的對應 trap 做 A/B（無失敗 trap 的規則是刪除候選）。
 
+`main/.agents/scripts/python3-run scripts/prompt-surface-census.py --check docs/research/prompt-surface-census.json`
+另行鎖定 Claude/Codex 的 resident, dispatch-time skill
+與 role body words, UTF-8 bytes, SHA-256. Prompt 變更要刻意刷新 snapshot; census 只證明
+surface identity 與大小, 不能取代上述 lifecycle/trap 行為驗收.
+
 矛盾稽核（原則 2b）另外做，因為預算與 trap 都測不到它：對照當期供應商 system prompt
 與兩份常駐契約逐條比，找重述與牴觸各一類；`/doctor`（Claude Code）可先跑一次當粗篩，
 但它評的是肥瘦不是矛盾，仍需人工對照。CLI 大版本更新後重跑——system prompt 會變，

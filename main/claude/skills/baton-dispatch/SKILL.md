@@ -35,10 +35,12 @@ An already-diagnosed review finding with a known root cause and remedy is execut
 
 1. Stabilize outcome, scope/non-scope, constraints, evidence, ledger task class, and scenario/lens.
 2. Converge shared schemas, registries, config, generated output, and lockfiles.
-3. Assign one owner to every writable artifact and name the integration owner.
+3. Assign one owner to every writable artifact, name the integration owner, and map read scopes for parallel discovery.
 4. Brief only minimum paths, local checks, output, and stop conditions.
 5. Keep local checks local; run expensive or repository-wide gates after integration.
 6. Preserve partial evidence when stopping or changing shape.
+
+An active agent-owned read scope is temporarily exclusive: main must not read or analyze it until collection unless it first cancels or redirects that agent. Launch every selected agent in one independent batch back-to-back, collect all required results, then begin cross-surface synthesis.
 
 Keep the three routing dimensions separate: **role** defines authority and tools; **task class** forms the ledger cohort; **scenario/lens** focuses the brief without creating another role. Use `review` rather than `recon` for adversarial repository review. Do not change a model route merely because a new scenario label was added; collect comparable outcomes first.
 
@@ -48,7 +50,9 @@ The approved Plan or release slice is a hard boundary. Agents may report adjacen
 
 Use focused tests, builds, and static checks as intermediate evidence while iterating. If `provider-routing` establishes an independent-verifier trigger, place that verifier at the smallest coherent integration boundary where the complete acceptance claim can be refuted; do not re-verify every small fix. Trigger eligibility remains in `provider-routing`; this skill owns placement after that decision.
 
-Do not resubmit a substantially unchanged Plan to `plan-verifier`. Another readiness pass requires a material revision or new evidence. If disagreement remains unresolved, simplify the Plan, surface the blocker to the user, or defer the blocked scope; main must not silently overrule the verifier.
+For large work, define a program envelope for shared constraints and independently approvable execution slices. Give each readiness unit a stable ID; each slice names its ready envelope, prerequisites, owner, rollback, and acceptance. Review the envelope first, then only the next executable slice. Unrelated downstream slices do not block approval; shared blockers cannot be hidden by cosmetic splitting.
+
+Before the first readiness review of a security-sensitive unit, complete `security-reviewer` and carry every finding plus its disposition into the Plan. Ask `plan-verifier` for bare `READY` or `REVISE` blocks with `Blocker`, `Evidence`, `Minimum revision`, and `Acceptance check`. Materially revise after `REVISE`; after two automatic revisions of the same readiness-unit ID, stop and surface options. Never resubmit a substantially unchanged Plan without material revision or new evidence; simplify, surface, or defer unresolved scope rather than silently overrule the verifier.
 
 ## Result collection
 

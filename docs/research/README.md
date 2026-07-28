@@ -12,6 +12,7 @@ engineering、常駐指令檔該留下什麼、以及該用哪些能力／時間
 | [Trap 實驗紀錄](trap-experiments.md) | Fable Method、Codex 鏡射、trap fixture 各輪取證 |
 | [模型與 routing 證據](model-evidence.md) | Sonnet／Opus effort 曲線、AA 快照、成本口徑與 routing 框架 |
 | [本機案例](local-experiments.md) | pixi-game review 深度的檔位實驗 |
+| [Prompt surface census](prompt-surface-census.json) | Claude/Codex resident, dispatch skill, role body 的 deterministic words/bytes/hash 快照 |
 
 ## 結論與證據強度
 

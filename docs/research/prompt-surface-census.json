@@ -1,0 +1,205 @@
+{
+  "generated_by": "scripts/prompt-surface-census.py",
+  "providers": {
+    "claude": {
+      "dispatch": [
+        {
+          "bytes": 7865,
+          "path": "main/claude/skills/baton-dispatch/SKILL.md",
+          "sha256": "c6b400814e3f3c496c9e1bc7a1f80f4f3490062ad9394117d920cfd83ac65c49",
+          "words": 1113
+        },
+        {
+          "bytes": 9307,
+          "path": "main/claude/skills/provider-routing/SKILL.md",
+          "sha256": "17b65c31d143ba200366078055de3bde2243db2847433c227d97fcd147e862cf",
+          "words": 1293
+        }
+      ],
+      "resident": [
+        {
+          "bytes": 2748,
+          "path": "main/claude/CLAUDE.contract.md",
+          "sha256": "e16e88c09f5f363ef57580a47de3bc0fb6ce17131fc75b2d74ce462a1847c0f0",
+          "words": 397
+        }
+      ],
+      "roles": [
+        {
+          "bytes": 867,
+          "file_bytes": 1083,
+          "file_sha256": "e680251ffa2896e88110f897e99291f941ba8cab652307db91253b7077f699d3",
+          "path": "main/claude/agents/explore.md",
+          "sha256": "a777519551ae2b57275f56f7d9bdad92b2ac003218cc623ffb5662e8c323b045",
+          "words": 133
+        },
+        {
+          "bytes": 1169,
+          "file_bytes": 1380,
+          "file_sha256": "9b2752b20480e04b8eaf249365b3c44e9251d648d5a395136b44fa0ac681524e",
+          "path": "main/claude/agents/plan-verifier.md",
+          "sha256": "3cef12b6917f22c0428ac278e7529785fba6d648f323c414086934c78c9e06b8",
+          "words": 161
+        },
+        {
+          "bytes": 664,
+          "file_bytes": 934,
+          "file_sha256": "60005eee282863fb2a72fbe3feb92f4b6618b6000267c7e938e84cd332626451",
+          "path": "main/claude/agents/security-reviewer.md",
+          "sha256": "e0266ed92096aebcc421e1d333766dc95a6d7cdcd86bc89848fd49a5c655ac8f",
+          "words": 85
+        },
+        {
+          "bytes": 1479,
+          "file_bytes": 1728,
+          "file_sha256": "8dbb3639c9d07e0c144a3b35b576f4fd50d794c6e9e335a0b2b74a20322c22b2",
+          "path": "main/claude/agents/mech-executor.md",
+          "sha256": "8cd9e2598c512531f14a2fb0d9af98a067d0ada19da4798d9fcc633e2e0c6d83",
+          "words": 233
+        },
+        {
+          "bytes": 2523,
+          "file_bytes": 2790,
+          "file_sha256": "9b84b5d171559edfd58882e8a95772e7944164ddf43c9fad9ac3b17f47e78329",
+          "path": "main/claude/agents/executor.md",
+          "sha256": "bb5bdfdb20ca958c48a39b8bc42361a9cd57b1f55fce2d9b2ae9f3287e913e20",
+          "words": 391
+        },
+        {
+          "bytes": 1611,
+          "file_bytes": 1862,
+          "file_sha256": "0c7cc086df3df8200e887fc31566b959cc91c1acbf0c24ad202a3154f3efa2f2",
+          "path": "main/claude/agents/verifier.md",
+          "sha256": "af7d63311e2dc7ae0f6e627b13a452aae562d7c55476d88c6a5de57561d67f5f",
+          "words": 232
+        },
+        {
+          "bytes": 2192,
+          "file_bytes": 2434,
+          "file_sha256": "4e70af9b0d01fbade4dcd8b1e0ae8c15f798944d81de074f68665a1f026ae5e4",
+          "path": "main/claude/agents/security-executor.md",
+          "sha256": "eaadf1937674949df1568242823748cb69e63702bce7cc0d1fb463e887d26d42",
+          "words": 332
+        }
+      ]
+    },
+    "codex": {
+      "dispatch": [
+        {
+          "bytes": 7410,
+          "path": "main/codex/skills/leaf-dispatch/SKILL.md",
+          "sha256": "77feeddd65f7d6b1b53407d4468879077501d1260eeefd34359b7a0534ba0238",
+          "words": 996
+        }
+      ],
+      "resident": [
+        {
+          "bytes": 3696,
+          "path": "main/codex/AGENTS.contract.md",
+          "sha256": "21d9731937d6d68190399df49490a1138a5e822f2608b5917358fc34b7b6902c",
+          "words": 527
+        }
+      ],
+      "roles": [
+        {
+          "bytes": 851,
+          "file_bytes": 1140,
+          "file_sha256": "98d7927a4e97dc4eeccfd02f8670c44619c1ec1b5dd72f9b4af1af48d01c8814",
+          "path": "main/codex/agents/explore.toml",
+          "sha256": "77ba9d3f1081523379035ab35f24d3a7744e21807721f23cb1013d7970b82581",
+          "words": 131
+        },
+        {
+          "bytes": 1166,
+          "file_bytes": 1475,
+          "file_sha256": "726a3962e74b729d390ec2d547117eb97698623a96224fa5e571330c45c682df",
+          "path": "main/codex/agents/plan-verifier.toml",
+          "sha256": "71fa080a11f72a841541f74170e69f4da97f4d70db06dbd06439e3854b5bed8b",
+          "words": 160
+        },
+        {
+          "bytes": 669,
+          "file_bytes": 936,
+          "file_sha256": "48789788e0fc5cdffa5d0945f93b5244db2c799fbd9be0776438feb9bea6db7c",
+          "path": "main/codex/agents/security-reviewer.toml",
+          "sha256": "dc56b9b1e0981a6722398b8382f744b8a65849c1246976c38ca1efb053c72795",
+          "words": 86
+        },
+        {
+          "bytes": 1479,
+          "file_bytes": 1790,
+          "file_sha256": "c9cfa82fa5327a3e27b3c0e1493b2883f352dd6a3b84c69d5b142d6ae5156e5e",
+          "path": "main/codex/agents/mech-executor.toml",
+          "sha256": "8cd9e2598c512531f14a2fb0d9af98a067d0ada19da4798d9fcc633e2e0c6d83",
+          "words": 233
+        },
+        {
+          "bytes": 2523,
+          "file_bytes": 2810,
+          "file_sha256": "c2aec67b1051a29a2a7c9405ffbc40a0edc5390c6725de9e2cb3e1b854a82e1f",
+          "path": "main/codex/agents/executor.toml",
+          "sha256": "bb5bdfdb20ca958c48a39b8bc42361a9cd57b1f55fce2d9b2ae9f3287e913e20",
+          "words": 391
+        },
+        {
+          "bytes": 1796,
+          "file_bytes": 2136,
+          "file_sha256": "b0850636241067de1f433c7f2d6b02ba839675911f3e4520fa80554de30d95c9",
+          "path": "main/codex/agents/verifier.toml",
+          "sha256": "841d67296ad4eaca990fc164a22d448b351b7f914f98ca2db5e2d9030aca0c85",
+          "words": 266
+        },
+        {
+          "bytes": 2190,
+          "file_bytes": 2401,
+          "file_sha256": "1f5b24ef0bd8c4b5c38275af54c46443295a88621ac9806cd4c274bb7c44a9ed",
+          "path": "main/codex/agents/security-executor.toml",
+          "sha256": "efefbace8b20049dbbf2cd18c615f4e425cd98d8b577d24ab7097b85d1ad455e",
+          "words": 332
+        }
+      ]
+    }
+  },
+  "schema": 1,
+  "totals": {
+    "claude": {
+      "dispatch": {
+        "bytes": 17172,
+        "payload_sha256": "2c77b66cd86f20ad630c183cd907924120995dea44bd7338dea9989976244aa7",
+        "words": 2406
+      },
+      "resident": {
+        "bytes": 2748,
+        "payload_sha256": "d2f8c07925b5c7d129762950b86fbb1d4e2683b2cde2ee919c3c2bba15348a16",
+        "words": 397
+      },
+      "roles": {
+        "bytes": 10505,
+        "payload_sha256": "fa27ea66a3bde6f0630deae0129b1e02a0f045d940ac5318812ff873f3009cac",
+        "words": 1567
+      }
+    },
+    "codex": {
+      "dispatch": {
+        "bytes": 7410,
+        "payload_sha256": "b11c5b528c10048ef0676173075f16d975bba15783e9f78145031711f004e9fd",
+        "words": 996
+      },
+      "resident": {
+        "bytes": 3696,
+        "payload_sha256": "96af8487ba56bbaac0561bc7448319ac2f0071be1e295c4b0b59a011184a5822",
+        "words": 527
+      },
+      "roles": {
+        "bytes": 10674,
+        "payload_sha256": "96e595d57f3836ef57ee03ab77246339e46fa2058de1766f1d7f85d7e646b2ad",
+        "words": 1599
+      }
+    }
+  },
+  "unit": {
+    "bytes": "UTF-8 bytes of the effective prompt text",
+    "roles": "role body only; file_bytes/file_sha256 bind frontmatter or TOML",
+    "words": "one CJK character or one non-space non-CJK run"
+  }
+}

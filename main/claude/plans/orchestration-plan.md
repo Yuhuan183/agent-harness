@@ -2,17 +2,17 @@
 
 > 只保留當前最新方案。Runtime 規則以 `CLAUDE.md` 為準；使用方式以 `README.md` 與 `docs/` 為準；決策歷程見 [orchestration-history.md](orchestration-history.md)，完整差異由 Git 保存。
 
-## Current architecture — 2026-07-22
+## Current architecture — 2026-07-28
 
 | Surface | Current design | Evidence |
 |---|---|---|
 | CLI output | `rtk` PreToolUse rewrite, fail-open | `settings.json`, `RTK.md` |
 | Context compression | Headroom wrap mode (recommended default) + optional persistent install; no durable proxy routing in tracked settings | `../../.agents/docs/headroom-runtime.md` |
-| Orchestration | Direct-first brake from Baton `0ab4d2e`, plus Pilotfish v1.3 shape-based batching and Plan anti-churn | `CLAUDE.md`, `skills/baton-dispatch/` |
+| Orchestration | Direct-first brake from Baton `0ab4d2e`, shape-based batching, readiness-unit envelope/slices, security sequencing, and exclusive live-discovery read scopes | `CLAUDE.md`, `skills/baton-dispatch/`, `agents/plan-verifier.md` |
 | Roles | Seven self-contained capability contracts; task class and scenario refine work without role proliferation | `agents/`, `skills/baton-dispatch/` |
 | Routing data | Per-provider routing files with quality floors and priority profiles | `../model-routing.toml`, `../../.codex/model-routing.toml` |
 | Verification | Plan/outcome roles stay capability-separated; fresh outcome verification uses the smallest coherent integration boundary | `agents/plan-verifier.md`, `agents/verifier.md` |
-| Monitoring | Delegation audit, weekly drift check, usage metadata report, runtime guard | `hooks/`, `scripts/` |
+| Monitoring | Delegation audit, weekly drift check, usage metadata report, runtime guard, deterministic prompt-surface census | `hooks/`, `scripts/`, `docs/research/prompt-surface-census.json` |
 | Portability | Claude source of truth distilled into Codex and ChatGPT bundles after local review | `../../.codex/` |
 
 ## Routing policy (summary)
@@ -89,6 +89,7 @@ the rest recorded as audited-not-a-defect so they are not re-opened blindly.
 ## Open items
 
 - **All**: OTel stays deferred unless JSONL/transcript telemetry cannot answer a concrete real-time routing question.
+- **Mechanical default**: keep direct-first until matching Claude/Codex mechanical and unknown-bug controls show stable net benefit in comparable ledger cohorts; do not infer efficiency from topology reachability.
 - **Codex**: Codex App may rewrite machine `config.toml`; deployment must merge and recheck local state instead of replacing it.
 - **Fable fallback avoidance**: four unimplemented directions recorded in [fable-5-fallback](../../../docs/fable-5-fallback.md) (heuristic dispatch-hint hook, payoff codification, routing disambiguation, main-session model audit) — approach and principle noted, decision deferred.
 - **Punctuation sweep**: rule stated ([docs/README.md](../../../docs/README.md) rule 7); converting the ~1695 remaining full-width marks is approved but low priority (2026-07-28) — convert per edited paragraph, never repo-wide.
