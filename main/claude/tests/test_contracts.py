@@ -629,7 +629,13 @@ class DocumentationBudgetTests(unittest.TestCase):
             # +70 (2026-07-26): navigation and responsibility rows for the
             # top-down architecture overview, now the recommended entry point.
             # +20 (2026-07-26): nav row for the Fable 5 fallback research doc.
-            "docs/README.md": 950,
+            # +100 (2026-07-28): the punctuation rule. Rule 6 fixed which
+            # *language* each layer writes in but left the width of the marks
+            # unstated, and the repo drifted into both conventions (481
+            # half-width vs 1695 full-width CJK-adjacent marks). One stated
+            # convention is what lets a reviewer call a mixed file drift
+            # instead of taste.
+            "docs/README.md": 1050,
             # Verification entry point for dispatch state and route evidence.
             # Cheaper here than in the resident contracts or the two skills it
             # ties together, both of which sit within ten words of their own
@@ -665,7 +671,10 @@ class DocumentationBudgetTests(unittest.TestCase):
             # in contract-slimming's placement table. What is left is 13 lines of
             # reusable rule with no home elsewhere.
             "docs/harness-engineering.md": 2760,
-            ".claude/plans/orchestration-plan.md": 1300,
+            # +30 (2026-07-28): the deferred punctuation sweep as an open item.
+            # A user-approved-but-deprioritized decision that lives only in a
+            # chat log is indistinguishable from one nobody made.
+            ".claude/plans/orchestration-plan.md": 1330,
             # -50 (2026-07-26): route resolution, priority selection, and
             # unavailability reporting moved to the on-demand `leaf-dispatch`,
             # where the invocation mechanics already lived. The ceiling drops

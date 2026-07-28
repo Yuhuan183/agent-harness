@@ -91,6 +91,7 @@ the rest recorded as audited-not-a-defect so they are not re-opened blindly.
 - **All**: OTel stays deferred unless JSONL/transcript telemetry cannot answer a concrete real-time routing question.
 - **Codex**: Codex App may rewrite machine `config.toml`; deployment must merge and recheck local state instead of replacing it.
 - **Fable fallback avoidance**: four unimplemented directions recorded in [fable-5-fallback](../../../docs/fable-5-fallback.md) (heuristic dispatch-hint hook, payoff codification, routing disambiguation, main-session model audit) — approach and principle noted, decision deferred.
+- **Punctuation sweep**: rule stated ([docs/README.md](../../../docs/README.md) rule 7); converting the ~1695 remaining full-width marks is approved but low priority (2026-07-28) — convert per edited paragraph, never repo-wide.
 
 ## Decision history
 
