@@ -12,7 +12,19 @@ for candidate in "${AGENT_HARNESS_PYTHON:-}" python3.13 python3.12 python3.11 py
   command -v "$candidate" >/dev/null 2>&1 || continue
   if "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' \
       >/dev/null 2>&1; then
-    exec "$candidate" "$@"
+    selected="$("$candidate" -c 'import sys; print(sys.executable)')"
+  shim_dir="$(mktemp -d "${TMPDIR:-/tmp}/agent-harness-python.XXXXXX")"
+  ln -s "$selected" "$shim_dir/python3"
+  cleanup() {
+    rm -f "$shim_dir/python3"
+    rmdir "$shim_dir"
+  }
+  trap cleanup EXIT
+  PATH="$shim_dir:$PATH"
+  AGENT_HARNESS_PYTHON="$selected"
+  export PATH AGENT_HARNESS_PYTHON
+  "$selected" "$@"
+  exit $?
   fi
 done
 

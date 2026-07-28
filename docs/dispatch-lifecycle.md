@@ -109,9 +109,9 @@ prompt 的同一個任務會拿到新的額度**——它會少擋，不會誤�
 改動派工管理相關的東西之後，跑這些：
 
 ```bash
-python3 -m unittest discover -s main/claude/tests          # 全套；下面兩個是重點
-python3 -m unittest discover -s main/claude/tests -k BridgeJobLiveness
-python3 -m unittest discover -s main/claude/tests -k BridgeRouteEvidence
+main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests          # 全套；下面兩個是重點
+main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests -k BridgeJobLiveness
+main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests -k BridgeRouteEvidence
 ~/.codex/scripts/bridge-jobs --duplicates                  # 對真實狀態的煙霧測試
 ```
 
