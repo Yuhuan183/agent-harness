@@ -7,7 +7,7 @@
 | `ts` | ✓ | ISO 8601 UTC | Timestamp of ledger write (when quality-check completes) |
 | `role` | ✓ | one of the seven leaf role names | Dispatched role |
 | `provider` | ✓ | `claude` \| `codex` | Provider that actually executed |
-| `request_source` | ✓ (v3) | `claude-code` \| `codex` \| `claude-code-plugin-codex` | Request origin and calling surface |
+| `request_source` | ✓ (v3) | `claude-code` \| `codex` \| `claude-code-plugin-codex` \| `codex-claude-cli` | Request origin and calling surface |
 | `dispatch_id` / `rollout_id` | automatic (when available) | string | Ties outcome, hook, and provider telemetry to the same dispatch |
 | `outcome` | ✓ | `accepted` \| `corrected` \| `rebriefed` \| `failed` | Main session's quality verdict |
 | `profile` / `model` / `effort` | ✓ (production decision) | | Actual route; for Claude, backfilled from the active deployment preset |

@@ -2,13 +2,15 @@ backups/
 .DS_Store
 
 # Deployable bundle machine state — never commit (portable equivalents are
-# tracked; see docs/setup.md and main/.codex/DEPLOY.md). Root-level .claude/
+# tracked; see docs/setup.md and main/codex/DEPLOY.md). Root-level .claude/
 # and .codex/ are intentionally free for project-specific configuration.
 main/claude/mcp_servers.json
 # Machine-local Claude settings. The usual `**/.claude/settings.local.json`
 # pattern stopped matching once the bundle lost its dot, so name it here.
 main/claude/settings.local.json
 main/codex/config.toml
+main/.agents/.skill-lock.json
+.agents/.skill-lock.json
 
 # Python bytecode
 __pycache__/

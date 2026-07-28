@@ -57,20 +57,6 @@ class AgentRosterTests(unittest.TestCase):
         # allowlist, not a denylist, so no unlisted tool - including any MCP
         # mutation tool (readOnlyHint=false), which readonly-bash never sees -
         # is reachable. A denylist would leave that whole class open.
-        for role in GUARDED_BASH_ROLES:
-            meta = frontmatter(f".claude/agents/{role}.md")
-            allow = re.search(r"(?m)^tools:\s*(.+)$", meta)
-            self.assertIsNotNone(allow, f"{role} must use a tools allowlist")
-            self.assertNotIn("disallowedTools", meta, role)
-            self.assertNotIn("mcp__", meta, role)
-            granted = {name.strip() for name in allow.group(1).split(",") if name.strip()}
-            self.assertIn("Bash", granted, role)
-            # Upper bound, not a forbidden-name list — see GUARDED_BASH_TOOLS.
-            self.assertLessEqual(
-                granted, GUARDED_BASH_TOOLS,
-                f"{role} grants tools outside the read-only set: "
-                f"{sorted(granted - GUARDED_BASH_TOOLS)}",
-            )
         for role in WRITER_ROLES:
             meta = frontmatter(f".claude/agents/{role}.md")
             self.assertRegex(meta, r"(?m)^disallowedTools:.*\bAgent\b.*\bWorkflow\b")
@@ -104,9 +90,9 @@ class AgentRosterTests(unittest.TestCase):
         self.assertIn("REFUTED", outcome)
         self.assertIn("INCONCLUSIVE", outcome)
         self.assertNotIn("READY", outcome)
-        self.assertIn("isolated worktree", outcome)
-        self.assertIn("git status --short", outcome)
-        self.assertIn("must be identical", outcome)
+        self.assertIn('sandbox_mode = "read-only"', outcome)
+        self.assertIn("intermediate evidence", outcome)
+        self.assertNotIn("Bash", frontmatter(".claude/agents/verifier.md"))
 
     def test_security_review_and_execute_are_capability_separated(self) -> None:
         for suffix in ("",):
@@ -345,77 +331,19 @@ class LeafArtifactGateTests(unittest.TestCase):
             self.assertIn("fruitless lookups", body, path)
             self.assertIn("provenance-labelled direct quote", body, path)
 
-    def test_no_write_role_has_an_unguarded_bash(self) -> None:
-        """The Claude twin of the Codex `sandbox_mode = "read-only"` guarantee.
-
-        Claude Code has no per-agent sandbox, so a role that keeps Bash needs
-        the hook to draw the boundary. Either way the invariant is the same:
-        a role that claims read-only isolation cannot mutate the repository.
-        """
-        guarded = read(".claude/hooks/readonly-bash.py")
+    def test_no_write_roles_have_no_bash_surface(self) -> None:
         settings = json.loads(read(".claude/settings.json"))
         registered = [
             hook["command"]
             for matcher in settings["hooks"]["PreToolUse"]
-            if matcher.get("matcher") == "Bash"
             for hook in matcher["hooks"]
         ]
-        self.assertTrue(
-            any("readonly-bash.py" in command for command in registered),
-            "the read-only Bash boundary is not registered on PreToolUse[Bash]")
+        self.assertFalse(
+            any("readonly-bash.py" in command for command in registered)
+        )
+        self.assertFalse((ROOT / "main/claude/hooks/readonly-bash.py").exists())
         for role in NO_WRITE_ROLES:
-            meta = frontmatter(f".claude/agents/{role}.md")
-            tools = re.search(r"(?m)^tools:\s*(.+)$", meta)
-            has_bash = tools is None or "Bash" in tools.group(1)
-            if has_bash:
-                self.assertIn(f'"{role}"', guarded,
-                              f"{role} holds Bash but the hook does not guard it")
-
-    def test_the_read_only_allowlist_refuses_the_obvious_escapes(self) -> None:
-        hook = ROOT / "main/claude/hooks/readonly-bash.py"
-
-        def verdict(command: str, agent: str = "verifier") -> int:
-            return subprocess.run(
-                [sys.executable, str(hook)], capture_output=True, text=True,
-                input=json.dumps({"tool_name": "Bash", "agent_type": agent,
-                                  "tool_input": {"command": command}})).returncode
-
-        for command in ("git status --short", "rtk git diff", "sed -n '1,5p' f",
-                        "grep -rn foo src | head -20"):
-            self.assertEqual(verdict(command), 0, command)
-        for command in ("rm -rf /tmp/x", "git reset --hard", "echo x > f",
-                        "find . -delete", "python3 -c 'x'", "sed -i s/a/b/ f",
-                        "cat f | tee out", "echo $(rm x)", "git stash",
-                        "git config --global user.name x",
-                        # Escapes a first pass missed: prefix runners, git's
-                        # command-injecting/file-writing global flags, sed's
-                        # write command, and rg's preprocessor.
-                        "env rm -rf /tmp/x", "command rm -rf /tmp/x",
-                        "nice rm x", "git -c core.pager=touch log",
-                        "git log --output=/tmp/p", "git log -o /tmp/p",
-                        "sed -n 1w/tmp/p f", "rg --pre /bin/rm x .",
-                        "uniq in.txt /tmp/pwn", "uniq -f 2 in out",
-                        # Chained/newline escapes: `shlex.split` glued the
-                        # operator to a token or swallowed a post-newline head,
-                        # walking a second command past the allowlist.
-                        "rg needle .;rm -rf /tmp/x", "rg needle .&&rm -rf /x",
-                        "grep x . || rm -rf /", "(rm -rf /)",
-                        "git status\nrm -rf /tmp/x", "ls\nrm -rf /x",
-                        # Bash combine-and-write redirects.
-                        "grep x . >& /tmp/pwn", "grep x . &>/tmp/pwn"):
-            self.assertEqual(verdict(command), 2, command)
-        # Read-only forms that must survive the tightening.
-        for command in ("git -C /other/repo status", "grep -f patterns.txt src",
-                        "command -v git", "command git status", "env FOO=1 git log",
-                        "sed -n 5p sword.py", "uniq -c in.txt", "uniq -f 2 in.txt",
-                        # A pipe into another read-only command is fine; each
-                        # segment is validated on its own, and fd redirects
-                        # (2>&1, 2>/dev/null) are not file writes.
-                        "uniq -c a.txt | head", "grep x . 2>/dev/null",
-                        "grep x . 2>&1"):
-            self.assertEqual(verdict(command), 0, command)
-        # Writers and the main session are untouched by this boundary.
-        self.assertEqual(verdict("rm -rf /tmp/x", agent="executor"), 0)
+            self.assertNotIn("Bash", frontmatter(f".claude/agents/{role}.md"))
 
     def test_bridge_brief_skeleton_carries_stops_and_authorization(self) -> None:
         body = read(".codex/scripts/bridge-brief")

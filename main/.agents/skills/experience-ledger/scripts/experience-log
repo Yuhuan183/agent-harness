@@ -38,7 +38,12 @@ TIERS = ("spot", "full")  # QC tier by task shape
 CLASSES = (
     "recon", "review", "plan", "impl", "verify", "security", "smoke", "other",
 )
-REQUEST_SOURCES = ("claude-code", "codex", "claude-code-plugin-codex")
+REQUEST_SOURCES = (
+    "claude-code",
+    "codex",
+    "claude-code-plugin-codex",
+    "codex-claude-cli",
+)
 SPOT_QC_ROLES = ("explore", "mech-executor")
 DEFAULT_CLASSES = {
     "explore": "recon",
@@ -142,7 +147,7 @@ def main() -> int:
     parser.add_argument("--tier", choices=TIERS, default=None)
     parser.add_argument("--class", dest="task_class", choices=CLASSES, default=None)
     parser.add_argument("--request-source", choices=REQUEST_SOURCES, default=None,
-                        help="claude-code, codex, or claude-code-plugin-codex")
+                        help="claude-code, codex, claude-code-plugin-codex, or codex-claude-cli")
     parser.add_argument("--profile", default=None,
                         help="resolved provider routing profile")
     parser.add_argument("--task", default=None, help="short neutral label; no sensitive content")
@@ -218,6 +223,7 @@ def main() -> int:
         "claude-code": "claude",
         "codex": "codex",
         "claude-code-plugin-codex": "codex",
+        "codex-claude-cli": "claude",
     }[args.request_source]
     if args.provider != expected_provider:
         parser.error(

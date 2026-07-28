@@ -38,13 +38,14 @@ An already-diagnosed review finding with a known root cause and remedy is execut
 3. Assign one owner to every writable artifact, name the integration owner, and map read scopes for parallel discovery.
 4. Brief only minimum paths, local checks, output, and stop conditions.
 5. Keep local checks local; run expensive or repository-wide gates after integration.
-6. Preserve partial evidence when stopping or changing shape.
 
 An active agent-owned read scope is temporarily exclusive: main must not read or analyze it until collection unless it first cancels or redirects that agent. Launch every selected agent in one independent batch back-to-back, collect all required results, then begin cross-surface synthesis.
 
 Keep the three routing dimensions separate: **role** defines authority and tools; **task class** forms the ledger cohort; **scenario/lens** focuses the brief without creating another role. Use `review` rather than `recon` for adversarial repository review. Do not change a model route merely because a new scenario label was added; collect comparable outcomes first.
 
 The approved Plan or release slice is a hard boundary. Agents may report adjacent opportunities but must stop before adding a domain, table, API, service, deployment responsibility, or materially larger file/schema surface.
+
+Claude no-write roles cannot execute Bash. Command-required independent verification belongs to a Codex `verifier` with `sandbox_mode = "read-only"`.
 
 ## Gate placement and Plan convergence
 
@@ -55,6 +56,12 @@ For large work, define a program envelope for shared constraints and independent
 Before the first readiness review of a security-sensitive unit, complete `security-reviewer` and carry every finding plus its disposition into the Plan. Ask `plan-verifier` for bare `READY` or `REVISE` blocks with `Blocker`, `Evidence`, `Minimum revision`, and `Acceptance check`. Materially revise after `REVISE`; after two automatic revisions of the same readiness-unit ID, stop and surface options. Never resubmit a substantially unchanged Plan without material revision or new evidence; simplify, surface, or defer unresolved scope rather than silently overrule the verifier.
 
 ## Result collection
+
+
+```text
+[LEAF_DISPATCH] dispatch_id=<id>|task=<label>|role=<role>|class=<class>|request_source=<request_source>|route=<profile>/<provider>/<model>/<effort>|reason=<payoff>
+[LEAF_RESULT] dispatch_id=<id>|task=<label>|outcome=<accepted|corrected|rebriefed|failed>|qc=<spot|full>|ledger=<logged|skipped(reason)>
+```
 
 A finished agent's final response is its deliverable — the harness returns it on completion. Collect it from the finished task; never relaunch or ask a read-only recon agent (`explore`, `plan-verifier`, `security-reviewer`) to relay, restate, or report back a result it already produced. Use the resume channel only for genuinely new or redirected work. Treat a single load-bearing recon fact as an unverified input: sanity-check or re-run it in main, since the `verifier` gate covers executor output, not reconnaissance.
 

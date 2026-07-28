@@ -33,6 +33,7 @@ REQUEST_SOURCE_PROVIDER = {
     "claude-code": "claude",
     "codex": "codex",
     "claude-code-plugin-codex": "codex",
+    "codex-claude-cli": "claude",
 }
 ROOT = Path(__file__).resolve().parents[4]
 

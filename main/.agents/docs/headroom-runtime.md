@@ -1,5 +1,7 @@
 # Headroom Runtime Guide
 
+> 2026-07-28 查核：PyPI package 為 `headroom-ai 0.32.1`，GitHub latest release tag 為 `v0.32.0`，PR [#1044](https://github.com/headroomlabs-ai/headroom/pull/1044) 仍 open。package、release tag、未合併 PR 與本機 live service state 是四種不同證據，不得合併宣稱為單一「目前版本」。
+
 > 只記錄跨機器的架構、操作邊界與版本轉換。venv、PID、port 與 profile 名稱屬 machine-local state，不進 git。
 
 ## 專案採用方式

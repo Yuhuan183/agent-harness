@@ -62,7 +62,7 @@ worktree、派工剎車)system prompt 都沒有涵蓋。所以這次整合**不�
 
 ### OpenAI：GPT-5.6 model guidance（讀取 2026-07-26）
 
-<https://developers.openai.com/api/docs/guides/prompt-guidance-gpt-5p6>
+<https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.6#prompting-best-practices>
 
 **官方數字**:在內部 coding-agent eval 上,精簡 system prompt 讓評分升約 **10–15%**、
 總 token 降 **41–66%**、成本降 **33–67%**(官方註明是方向性區間,要自己驗)。

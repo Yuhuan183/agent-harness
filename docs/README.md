@@ -16,11 +16,11 @@
 | 查 experience-ledger 指標 | [Metrics](../main/.agents/skills/experience-ledger/references/metrics.md) | [skill 本體](../main/.agents/skills/experience-ledger/SKILL.md) |
 | 驗證派工狀態與路由證據 | [派工生命週期](dispatch-lifecycle.md) | [bridge-liveness](../main/claude/skills/provider-routing/references/bridge-liveness.md) |
 | 診斷 context 或工具輸出 | [Headroom runtime](../main/.agents/docs/headroom-runtime.md) | [RTK](../main/claude/RTK.md) |
+| 審視文檔與開發指引是否對齊 | [2026-07-28 統一稽核](document-audit-2026-07-28.md) | [可重跑 inventory](document-inventory.json) |
 | 理解 QC 怎麼把關 | [QC 白話說明](qc-explainer.md) | [baton-dispatch](../main/claude/skills/baton-dispatch/SKILL.md) |
 | 理解 hook 系統怎麼運作 | [Hook 系統](hook-system.md) | [settings.json](../main/claude/settings.json) |
 | 跑行為 trap eval | [evals/traps/](../evals/traps/) 各 README | [QC 說明](qc-explainer.md)取證段 |
 | 深度審查本 repo 設計 | [harness-review](../.agents/skills/harness-review/SKILL.md)（dev-only） | [plan](../main/claude/plans/orchestration-plan.md) |
-| 理解目前決策與下一步 | [Orchestration plan](../main/claude/plans/orchestration-plan.md) | [仍待驗證](research/README.md#仍待本機驗證) |
 
 ## 文件責任
 

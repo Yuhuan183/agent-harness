@@ -21,7 +21,6 @@
 | `skills/speak-human-tw/` | 共用 skill 本體：繁中去 AI 味改寫（蒸餾自上游，見其 `ATTRIBUTION.md`）；同以 symlink 雙端引用 |
 | `skills/task-observer/` | skill 使用受挫時主動詢問、明確同意後才記錄改善觀察；append-only JSONL 帳本在 `~/.agents/telemetry/`，不會自動修改 skill |
 | `skills/INSTALLED.txt` | 本專案擁有並部署的共用 skill 清單；同時界定 merge 時的管理範圍 |
-| `.skill-lock.json` | skill installer 的版本快照；不界定本專案擁有或部署哪些 skill |
 | `scripts/` | 跨端共用腳本：gate-line 正則的單一來源（`gate_lines.py`，供部署版 `qc-gate-lines` 稽核與 repo 內 trap graders 共用） |
 | `docs/headroom-runtime.md` | Headroom runtime 的跨 agent 架構與操作邊界（Claude 與 Codex 流量共用同一 proxy，故置於此、不各留一份） |
 

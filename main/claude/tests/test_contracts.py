@@ -48,6 +48,7 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertIn("Never brief a subagent to delegate further", policy)
         self.assertIn("agent-to-agent briefs stay in precise, concise English", policy)
         skill = read(".claude/skills/baton-dispatch/SKILL.md")
+        self.assertIn("dispatch_id=<id>", skill)
         for field in ("task=<label>", "role=<role>", "class=<class>",
                       "request_source=<request_source>", "route=<profile>/<provider>/<model>/<effort>",
                       "ledger=<logged|skipped(reason)>"):
@@ -279,6 +280,7 @@ class CodexBundleTests(unittest.TestCase):
 
     def test_codex_dispatch_detail_lives_in_leaf_dispatch_skill(self) -> None:
         skill = " ".join(read(".codex/skills/leaf-dispatch/SKILL.md").split())
+        self.assertIn("dispatch_id=<id>", skill)
         for phrase in (
             "request_source=codex",
             "[LEAF_DISPATCH]",
@@ -821,10 +823,10 @@ class DocumentationBudgetTests(unittest.TestCase):
     def test_documented_baseline_matches_runtime_contract(self) -> None:
         plan = read(".claude/plans/orchestration-plan.md")
         readme = read("README.md")
-        self.assertIn("Baton `0ab4d2e`", plan)
+        self.assertIn("Current as of 2026-07-28", plan)
         self.assertIn("MIT", readme)
         self.assertIn("Yuhuan", read("LICENSE"))
-        self.assertIn("P(win)>=0.90", plan)
+        self.assertIn("same-role, same-task-class", plan)
         self.assertNotIn("AR lead >=10pt", plan)
 
     def test_harness_engineering_keeps_role_boundaries_local(self) -> None:

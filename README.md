@@ -131,11 +131,11 @@ Claude 與 Codex 各有一份自足角色契約；leaf 不讀 main orchestration
 Main 必須把派工與 QC 結果獨立成固定紀錄，不混在一般對話中：
 
 ```text
-[LEAF_DISPATCH] task=semantic seam review | role=explore | class=review | request_source=claude-code | route=balanced/claude/claude-sonnet-5/low | reason=context-protection
-[LEAF_RESULT] task=semantic seam review | outcome=accepted | qc=full | ledger=logged
+[LEAF_DISPATCH] dispatch_id=review-01 | task=semantic seam review | role=explore | class=review | request_source=claude-code | route=balanced/claude/claude-sonnet-5/low | reason=context-protection
+[LEAF_RESULT] dispatch_id=review-01 | task=semantic seam review | outcome=accepted | qc=full | ledger=logged
 ```
 
-`request_source` 可區分 `claude-code`、`codex`、`claude-code-plugin-codex`。相同中性 task label 會寫入
+`request_source` 可區分 `claude-code`、`codex`、`claude-code-plugin-codex`、`codex-claude-cli`。相同 `dispatch_id` 與中性 task label 會寫入
 machine-local experience ledger，方便人類回顧與 telemetry 對照。
 
 ## 機制與護欄
@@ -145,7 +145,7 @@ machine-local experience ledger，方便人類回顧與 telemetry 對照。
 | Routing validator／pin check | 阻止不完整 profile、品質門檻以下 route 與 Claude pin 漂移 | `main/claude/scripts/model-routing`、`main/codex/scripts/model-routing` |
 | Alias generation check | `opus` 指向哪個世代由 CLI 決定；以 leaf transcript 的真實 model id 驗證 config 的宣稱 | [model-routing.py](main/claude/scripts/model-routing.py) |
 | Runtime guard | 需要新版能力的 reviewer 在版本過舊或未知時停止 | [runtime-guard.py](main/claude/hooks/runtime-guard.py) |
-| 唯讀 Bash 邊界 | Claude Code 沒有 per-agent sandbox；`verifier` 保留重現能力，但只允許唯讀指令，其餘一律拒絕 | [readonly-bash.py](main/claude/hooks/readonly-bash.py) |
+| Capability-aware verifier | Claude 的 no-write role 不提供 Bash；需要執行命令的獨立驗證改派 Codex read-only sandbox | [provider-routing](main/claude/skills/provider-routing/SKILL.md) |
 | Verifier 額度 | 同一 task 的第二個 outcome verifier 直接拒絕；artifact 所有權仍屬判斷，刻意不做成假 gate | [verifier-quota.py](main/claude/hooks/verifier-quota.py)、[dispatch-lifecycle](docs/dispatch-lifecycle.md) |
 | Delegation audit | 記錄 start/stop 並偵測 leaf 再派 leaf | [delegation-audit.py](main/claude/hooks/delegation-audit.py) |
 | Experience pending／ledger | 將 dispatch、route、source、token、時間與 QC outcome 綁在一起 | [experience-ledger](main/.agents/skills/experience-ledger/SKILL.md) |
