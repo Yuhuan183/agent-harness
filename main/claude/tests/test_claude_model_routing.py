@@ -8,7 +8,9 @@ import os
 import shutil
 import subprocess
 import tempfile
+import tomllib
 import unittest
+from datetime import date, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -31,8 +33,82 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         # Audit-anchor discipline (Deep Agents _anthropic_sonnet_4_6.py): a
         # reviewed prior records when it should be revisited, not only when it
         # was taken. Both routing files own that trigger beside as_of.
+        #
+        # The prose trigger is not enough on its own — nothing reads it, so
+        # as_of can age past its own stated cadence without anything noticing.
+        # `prior_review_days` is the machine-readable twin, and `check-priors`
+        # is what actually ages it; assert the behaviour, not the substring.
         for rel in ("main/claude/model-routing.toml", "main/codex/model-routing.toml"):
-            self.assertIn("prior_review", (ROOT / rel).read_text(encoding="utf-8"), rel)
+            text = (ROOT / rel).read_text(encoding="utf-8")
+            self.assertIn("prior_review", text, rel)
+            self.assertIn("prior_review_days = 90", text, rel)
+
+    def test_check_priors_ages_as_of_against_the_declared_cadence(self) -> None:
+        for script in (SCRIPT, ROOT / "main/codex/scripts/model-routing"):
+            config = tomllib.loads(
+                (script.parent.parent / "model-routing.toml").read_text(encoding="utf-8")
+            )
+            as_of = date.fromisoformat(config["as_of"])
+            cadence = config["prior_review_days"]
+
+            def check(day: date) -> subprocess.CompletedProcess:
+                return subprocess.run(
+                    [str(script), "check-priors", "--today", day.isoformat()],
+                    capture_output=True, text=True,
+                )
+
+            fresh = check(as_of + timedelta(days=cadence))
+            self.assertEqual(fresh.returncode, 0, f"{script}: {fresh.stderr}")
+            # Strictly past the cadence, not merely at it.
+            stale = check(as_of + timedelta(days=cadence + 1))
+            self.assertEqual(stale.returncode, 1, f"{script}: {stale.stdout}")
+            self.assertIn("re-fetch and re-audit", stale.stderr)
+
+    def test_stale_priors_cannot_fail_validate(self) -> None:
+        """An aging prior must alarm, never abort a deployment.
+
+        `scripts/sync.sh` runs `validate` under `set -euo pipefail`, so routing
+        the staleness check through validation would make the 91st day after
+        as_of break sync — and the cheapest way out of a broken sync is to
+        raise the number until it stops complaining, which is how a cadence
+        stops meaning anything.
+        """
+        for script in (SCRIPT, ROOT / "main/codex/scripts/model-routing"):
+            source = (script.parent.parent / "model-routing.toml").read_text(
+                encoding="utf-8"
+            )
+            with tempfile.TemporaryDirectory() as tmp:
+                aged = Path(tmp) / "model-routing.toml"
+                aged.write_text(
+                    source.replace('as_of = "2026-07-26"', 'as_of = "2000-01-01"'),
+                    encoding="utf-8",
+                )
+                result = subprocess.run(
+                    [str(script), "--config", str(aged), "validate"],
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode, 0, f"{script}: {result.stderr}")
+
+    def test_validate_rejects_a_malformed_review_cadence(self) -> None:
+        for script in (SCRIPT, ROOT / "main/codex/scripts/model-routing"):
+            source = (script.parent.parent / "model-routing.toml").read_text(
+                encoding="utf-8"
+            )
+            for bad, expected in (
+                ("prior_review_days = 0", "positive integer"),
+                ('prior_review_days = "90"', "positive integer"),
+            ):
+                with tempfile.TemporaryDirectory() as tmp:
+                    broken = Path(tmp) / "model-routing.toml"
+                    broken.write_text(
+                        source.replace("prior_review_days = 90", bad), encoding="utf-8"
+                    )
+                    result = subprocess.run(
+                        [str(script), "--config", str(broken), "validate"],
+                        capture_output=True, text=True,
+                    )
+                    self.assertEqual(result.returncode, 1, f"{script}: {bad}")
+                    self.assertIn(expected, result.stderr, f"{script}: {bad}")
 
     def test_resolves_deployment_preset_routes(self) -> None:
         result = run("resolve", "--role", "executor")

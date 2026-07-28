@@ -336,6 +336,35 @@ try:
         checks_completed = False
         findings.append(f"Codex model-routing check failed: {exc}")
 
+    # `prior_review` says to re-audit the benchmark priors 90 days after as_of,
+    # but a cadence stated only in prose, inside the config it governs, is a
+    # note nobody is scheduled to read: as_of ages silently while the routes go
+    # on citing it as current evidence. This is that scheduled reader. It
+    # alarms without withholding the stamp, like pin drift — the finding
+    # recurs weekly until someone re-audits and moves as_of.
+    for label, resolver in (("Claude", routing_script), ("Codex", codex_routing)):
+        try:
+            if not os.access(resolver, os.X_OK):
+                continue  # an unavailable resolver is already a finding above
+            priors = subprocess.run(
+                [resolver, "check-priors"], capture_output=True, text=True, timeout=10
+            )
+            if priors.returncode == 1:
+                findings.append(
+                    "benchmark priors overdue:\n"
+                    + (priors.stderr or priors.stdout).rstrip()
+                )
+            elif priors.returncode != 0:
+                checks_completed = False
+                detail = (priors.stderr or priors.stdout).rstrip()
+                findings.append(
+                    f"{label} prior-review check failed "
+                    f"(exit {priors.returncode}):\n{detail}"
+                )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            checks_completed = False
+            findings.append(f"{label} prior-review check failed: {exc}")
+
     # Informational only: surface dispatch-experience hints or a missing-data
     # warning. Best-effort — a failure here neither blocks the throttle nor alarms.
     #

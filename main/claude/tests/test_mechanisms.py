@@ -23,7 +23,21 @@ class MechanismTests(unittest.TestCase):
             )
         self.assertEqual(script.count("| jq "), 1)
         self.assertIn('git -C "$DIR"', script)
-        self.assertIn(ROOT.name, result.stdout)
+        # The claim under test is that the label comes from the payload
+        # workspace and not the process cwd (a temp dir here). *Which* label is
+        # the script's own choice: it prefers the origin remote's repo name and
+        # falls back to the directory basename. Asserting ROOT.name alone made
+        # this pass only where the checkout is named after the repo — in a git
+        # worktree the two differ, and the test failed on a statusline that was
+        # behaving correctly.
+        remote = git("remote", "get-url", "origin").stdout.strip()
+        expected = {ROOT.name}
+        if remote:
+            expected.add(remote.removesuffix(".git").rsplit("/", 1)[-1])
+        self.assertTrue(
+            any(name in result.stdout for name in expected),
+            f"statusline named none of {sorted(expected)}: {result.stdout!r}",
+        )
         if branch:
             self.assertIn(f"({branch})", result.stdout)
 
@@ -346,6 +360,40 @@ class MechanismTests(unittest.TestCase):
         self.assertIn("alias moved generation", result.stdout)
         # Drift is a finding to relay, not a resolver failure.
         self.assertNotIn("alias check failed", result.stdout)
+
+    def test_weekly_integrity_surfaces_overdue_benchmark_priors(self) -> None:
+        """`prior_review` needs a scheduled reader or it is only a note.
+
+        Both routing files say to re-audit the AA priors 90 days after as_of.
+        That sentence lives inside the config it governs, so nothing was ever
+        going to read it on the 91st day: as_of would age quietly while the
+        routes went on citing it as current evidence. This hook is the reader.
+        """
+        hook = ROOT / "main/claude/hooks/weekly-integrity.py"
+        stub = (
+            "#!/bin/sh\n"
+            "case \"$1\" in\n"
+            "  check-priors) echo 'priors are 120 days old (cadence 90)' >&2; exit 1;;\n"
+            "  *) exit 0;;\n"
+            "esac\n"
+        )
+        for provider in (".claude", ".codex"):
+            with tempfile.TemporaryDirectory() as temp_home:
+                scripts_dir = Path(temp_home) / provider / "scripts"
+                scripts_dir.mkdir(parents=True)
+                routing = scripts_dir / "model-routing"
+                routing.write_text(stub, encoding="utf-8")
+                routing.chmod(0o755)
+                result = subprocess.run(
+                    [sys.executable, str(hook)],
+                    env={**os.environ, "HOME": temp_home,
+                         "AGENT_HARNESS_REPO": str(Path(temp_home) / "repo")},
+                    check=True, capture_output=True, text=True,
+                )
+            self.assertIn("benchmark priors overdue", result.stdout, provider)
+            self.assertIn("120 days old", result.stdout, provider)
+            # Overdue is a finding to relay, not a broken resolver.
+            self.assertNotIn("prior-review check failed", result.stdout, provider)
 
     def test_un_reconciled_dispatches_are_judged_against_the_ledger(self) -> None:
         """Only a stub the ledger has no record of counts as un-reconciled.
