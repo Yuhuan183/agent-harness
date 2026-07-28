@@ -54,3 +54,4 @@
 4. 已落地的 runtime 規則從 plan 移出；歷史判斷留在 Git 或明確標示的決策紀錄。
 5. 文件改動仍需通過 contract tests、連結檢查、`git diff --check` 與部署 dry-run。
 6. 語言分層：runtime 檔案（contracts、roles、skills、script 註解）的**操作本體**（指令、流程、格式）用英文，人讀文件用 zh-TW。窄例外：skill／agent `description` 的**觸發詞**與對使用者輸出的**模板**可用所需語言以對上使用者；`speak-human-tw` 是繁中素材。其餘 runtime 中文即漂移。
+7. 標點: 人讀文件寫 zh-TW 文字 + 英文術語 + 半形標點 (`, . : ; ? ! ( ) " ' -`), 標點後空一格, 本條自身即範例. 全形只留給逐字引用的外部原文與 `speak-human-tw` 繁中素材. 既有全形檔案漸進轉換, 改到哪段轉哪段, 不為轉換單獨開 commit.
