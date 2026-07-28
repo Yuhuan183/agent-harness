@@ -49,6 +49,7 @@ source 漂移，並以 leaf transcript 的真實 model id 驗證 `opus` 這類�
 ```bash
 main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests -v
 scripts/usage-report --days 7
+scripts/usage-report --days 7 --by-session --top 20
 jq empty settings.json examples/headroom-mcp.legacy.json
 sh -n sh/statusline.sh && git diff --check
 ```

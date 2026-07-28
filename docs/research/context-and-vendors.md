@@ -22,6 +22,61 @@
 **啟發式**:`CLAUDE.md`／`AGENTS.md` 目標抓 40–80 行,context 明顯膨脹時就在收斂點壓縮。
 這是維運預算,不是已被證明的通用臨界值;要不要調,看真實任務回歸的結果。
 
+## 實際量測與操作分級（2026-07-28）
+
+**已驗證的容量**:目前
+[Claude Fable 5、Opus 5、Sonnet 5 與 Opus 4.8](https://platform.claude.com/docs/en/about-claude/models/overview)
+官方 context window 都是 1M tokens；Codex 使用的
+[GPT-5.6 Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol)官方 context window 是 1,050,000 tokens
+（最大 input 922,000、最大 output 128,000）。容量只是硬上限，不代表接近上限時仍能無損
+保留每條規則的注意力。
+
+本 repo 現在提供兩種不同但同口徑的診斷：
+
+```bash
+# Claude：最近 7 天每回合 prompt-context P50/P95，並列出壓力最高的 sessions
+~/.claude/scripts/usage-report --days 7 --by-session --top 20
+
+# Codex：最近一回合實際占用、剩餘 context，以及帳號 quota
+~/.codex/skills/experience-ledger/scripts/codex-usage
+```
+
+| 占用 | 分級 | 操作 |
+|---:|---|---|
+| `<30%` | low | 不需額外動作 |
+| `30–<50%` | watch | 保持單一主題，階段邊界留下 checkpoint |
+| `50–<65%` | checkpoint | 換階段前先收斂，避免再灌入無關大型輸出 |
+| `>=65%` | compact | 關鍵判斷前 compact，或從 checkpoint 開新 session |
+
+這組數字是**專案操作啟發式**，不是供應商公布的故障線。它刻意在硬上限前預警，理由是上面的
+context-rot 證據與本專案的多層契約形狀；後續應拿 P95 與返工／漏規則案例一起校準。
+
+**口徑邊界**：
+
+- Claude transcript 沒有直接寫「本回合已占 window 幾成」；報表以該 assistant turn 的
+  `input_tokens + cache_creation_input_tokens + cache_read_input_tokens` 當 prompt-context
+  代理值，輸出 P50/P95。未知舊模型先用保守的 200k；已知實際容量時用
+  `--context-window` 覆寫。
+- Codex rollout 已提供 `last_token_usage.total_tokens` 與 `model_context_window`，所以用兩者
+  算最近一回合占用。`total_token_usage` 是整個 session 累計消耗，只能看成本，不能拿來當
+  當前 context occupancy。
+- account quota（例如 5h／weekly window）是能不能繼續呼叫的限制；attention pressure 是
+  單次判斷是否可能被長 context 稀釋。兩者都要看，但不能互相替代。
+
+**本機基準快照（2026-07-28，最近 7 天）**：
+
+| 路徑 | P50 | P95 | 判讀 |
+|---|---:|---:|---|
+| Claude main／Fable 5 | 22.8% | 51.9% | 一般回合不高，但長 session 已進 checkpoint 區 |
+| Claude main／Opus 5 | 28.9% | 86.0% | 尾端明顯過長，關鍵判斷前應 compact／換 session |
+| Claude subagent／Opus 5 | 12.8% | 19.8% | leaf context 保持在低區，context protection 有實際差異 |
+| Claude subagent／Sonnet 5 | 4.8% | 11.6% | leaf context 低 |
+
+同一時間的 Codex rollout 回報有效 `model_context_window=258,400`，最近一回合約
+59.2k／22.9%，屬 low；整個 session 累計約 56.0M tokens，證明累計量若誤當占用會得出完全
+錯誤的警報。這個 258,400 是**當下 Codex runtime 的實際限制**，操作判斷優先於上面
+GPT-5.6 Sol API 頁面的產品容量；snapshot 會隨 runtime、模型與 session 更新，應以指令重查。
+
 ## 供應商官方指引（2026-07）
 
 同一週裡,兩家把「常駐指令要瘦」從社群經驗法則升級成帶數字的官方立場。兩份都是**一手來源**,

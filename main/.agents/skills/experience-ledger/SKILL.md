@@ -81,7 +81,12 @@ local `~/.codex/sessions/` rollouts. `--quota` shows account windows — check
 before heavy dispatch; the short window (e.g. 5h) outranks the weekly one
 because exhausting it stalls tasks immediately, so near its limit dispatch
 Claude or wait for reset. Without flags it also prints recent session totals
-and last-turn usage, usable as `--tokens-out` input.
+and last-turn usage, usable as `--tokens-out` input. Its `attention` line uses
+the runtime-reported **last-turn total / model context window**, not cumulative
+session tokens or subscription quota. Treat 30% as watch, 50% as checkpoint,
+and 65% as compact/new-session before critical judgment; these are repository
+operations thresholds, not provider guarantees. Use `--json` for the exact
+counter fields and policy.
 
 Profile revision: `scripts/experience-revise` reads each side's
 `revision_policy`, compares route cells only within the same role/task class
