@@ -200,43 +200,85 @@ readOnlyHint=false 會被放行,而 `readonly-bash` 只看 Bash),改為 allowlis
 (`tools: Read, Glob, Grep, Bash, WebSearch, WebFetch`),把 Deep Agents「allowlist 而非
 denylist、no-match 不放行」直接套在唯讀 reviewer 邊界上。
 
-## Pilotfish v1.3.0 案例（2026-07-20）
+## Pilotfish v1.3.4 (2026-07-25)
 
-**已驗證**:[`Nanako0129/pilotfish` v1.3.0](https://github.com/Nanako0129/pilotfish/releases/tag/v1.3.0)
-對 v1.2.1 的核心政策增量很小,主要是把兩場長時間實務 session 的失敗形狀,轉成三條
-backend-neutral guardrail;其餘大量變更是 policy tests、Baton compatibility Gate 和
-[field report](https://github.com/Nanako0129/pilotfish/blob/v1.3.0/docs/field-report-tokscale-2026-07.zh-TW.md)。
-tag commit 是 `bd6552f4bd4c3faa273cb4d15b31eace03c86ff4`,本次 checkout 的 19 項測試全數通過。
+### 最新政策形狀
 
-Field report 的精確計數顯示:一場 26 小時 session 有 1,267 次 main 直接編輯、12 次派工;
-兩場合計 judgment tier 佔 92% output tokens,並用了 201 次 outcome verifier,其中約 42% 回覆
-`REFUTED`,證明 fresh verification 有效,但平均每次不到六分鐘,粒度過細。`plan-verifier`
-曾對 2 份 Plan 呼叫 24 次,`REVISE` 率 71%,顯示 readiness gate 也會產生 review churn。
-外部 review 另外曾在單一 PR 到第 6 輪,R2 之後邊際收益已低。這些資料來自同一個使用者、同一
-產品家族、GPT-5.6 gateway 的兩場 session,不是 native Claude A/B,也不能推導通用的派工次數、
-review 輪數、成本或模型路由門檻。
+**已驗證**: 本次以
+[`v1.3.4`](https://github.com/Nanako0129/pilotfish/releases/tag/v1.3.4)
+tag `a4c5852924b7a4112b4fab7e5121b62ac2de0d2b` 為準, 比對 changelog, 政策模板, 八個 role,
+installer, tests 與 Gate evidence. Upstream checkout 的
+`python3 -m unittest discover -s tests -v` 為 29/29 通過.
 
-v1.3.0 因此改採「可證明的工作形狀」,而不是數字門檻:剩餘項目必須彼此獨立、同型,而且一份
-stable one-shot brief 能完整描述 goal、constraints、done criteria、ownership 和逐項 acceptance,
-才可以合批;已診斷且修法明確的 review finding 可視為 execution,但 main 仍保留例外、整合和驗收。
-Outcome verifier 則移到能反駁完整主張的 smallest coherent integration boundary;security、FFI、
-serialization／pre-aggregation、不可逆或會阻塞後續整合的邊界才提前驗。未實質變更的 Plan
-不再重送,除非有 material revision 或新證據;分歧收斂不了時,必須簡化、揭露 blocker 或延後 scope。
+最新版保留下來的核心不是固定流程, 而是幾個可檢查的邊界:
 
-### 對本專案的取捨
+- **工作形狀決定派工**: recurrent work 只有在項目同型, 彼此獨立, 且一份 stable one-shot
+  brief 能完整描述 goal, constraints, done criteria, ownership, integration 與逐項 acceptance
+  時才可合批. 已知修法的 review finding 屬於 execution; 未知 bug 的 root cause, 第一個 minimal
+  fix 與 live verification 仍留在 main.
+- **機械派工是可反駁預設**: 符合上述條件的多檔機械工作預設交給唯一 `mech-executor`;
+  main 若直接做, 必須先指出 evolving evidence, ownership conflict, worker unavailable 或
+  non-positive net benefit 等具體 blocker. Main 仍負責 triage, 例外, 整合與最終驗收.
+- **大 Plan 以 envelope 和 slice 收斂**: program envelope 保存共享 constraints; 每個 execution
+  slice 有 stable ID, owner, prerequisites, acceptance, rollback. 先審 envelope, 再只審下一個
+  可執行 slice; 無關的下游 slice 不阻擋眼前核准, 共享 blocker 也不能靠切小 scope 規避.
+- **readiness 與 outcome 分工**: `plan-verifier` 只回裸 `READY`, 或包含 `Blocker`, `Evidence`,
+  `Minimum revision`, `Acceptance check` 的 `REVISE`. 同一 readiness unit 連續兩次自動
+  `REVISE`, 或同一 outcome claim 連續兩次 `REFUTED`, 就停止自動循環並交還使用者; 上限不代表通過.
+  Outcome verifier 放在能反駁完整主張的 smallest coherent integration boundary, focused tests,
+  build 與 static checks 只是 iteration evidence.
+- **安全與 ownership 有先後順序**: 安全敏感 unit 在第一次 readiness review 前先完成 read-only
+  `security-reviewer`, 並把 findings 與 disposition 帶進 Plan. 平行 discovery 先劃分 read scope;
+  agent 執行期間該 scope 暫時排他, 同批背景 calls back-to-back 啟動, 收齊後才做 cross-surface
+  synthesis.
+- **模型與角色分離**: 新安裝的 main 使用 provider-resolved `opus` alias, `sonnet` fallback;
+  一般 `executor` 和 `mech-executor` 走 Sonnet, acceptance 與 security roles 保留 Opus.
+  這是安裝與成本預設, 不是模型品質結論; 既有使用者設定不會在未同意時被覆蓋.
 
-| 類別 | 判斷 | 本地處理 |
+### 證據強度與限制
+
+Pilotfish 把 exact policy/prompt hash, role payload, 唯一 writer, tests, verifier verdict, 失敗與
+superseded candidate 一起保存. 這個 provenance 形狀比單次成本數字更值得保留:
+
+- [Spontaneous-dispatch Gate](https://github.com/Nanako0129/pilotfish/blob/v1.3.4/benchmarks/spontaneous-dispatch/README.md)
+  證明一個 mechanical fixture 可走唯一 `mech-executor`, unknown-bug control 可留在 main;
+  它只證明這兩個 topology 可達, 不代表派工頻率或普遍效率.
+- [Baton activation Gate](https://github.com/Nanako0129/pilotfish/blob/v1.3.4/benchmarks/baton-dispatch-effect/README.md)
+  的失敗 attempts 實際促成 read-scope 排他與 back-to-back launch; final replay 證明該拓撲可達,
+  不是 causal A/B.
+- [Prompt compression Gate](https://github.com/Nanako0129/pilotfish/blob/v1.3.4/benchmarks/prompt-compression/README.md)
+  將 policy 從 16,874 降到 12,714 bytes, 八個 role templates 從 15,686 降到 13,601 bytes,
+  合計減少 19.180%; 單次 context census 少 747 input tokens. 大型 lifecycle 仍停在 `REVISE`,
+  只有縮小後的 lifecycle 完成 `READY`->approval->唯一 writer->12/12->`CONFIRMED`.
+  所以它證明 exact bytes, static contracts 與小型 lifecycle compatibility, 不證明完整行為 parity.
+
+### 與本專案的收斂判斷
+
+| 最新版機制 | 本專案現況 | 決定 |
 |---|---|---|
-| 值得借鑑 | recurrence 的 shape-based batching | 寫入 Claude Baton skill、brief reference 和 Codex resident contract,不設「做滿 N 次」門檻 |
-| 值得借鑑 | coherent-boundary verification | focused checks 留作中間證據;fresh verifier 只在完整主張可反駁時啟動,特殊邊界提前驗 |
-| 值得借鑑 | unchanged-Plan anti-churn | 重送必須有實質 revision 或新證據;未解分歧不得由 main 靜默推翻 |
-| 已有等價 | direct-first、單一未知 bug reasoning chain、完成結果直接收回、scope／ownership／stop boundary | 保留現行契約,不複製 Pilotfish 文字與 phase ceremony |
-| 已有等價 | 可重現部署證據 | 本專案用 manifest、transactional sync、parity 與 contract tests;不另引入 marker-block installer |
-| 不採用 | 固定 `best`／fallbackModel、固定八角色與模型 aliases | 主模型仍由使用者掌控;沿用本地七角色、quality floor 與 experience-ledger |
-| 不採用 | 用單次 client cost 或 field 次數直接改 routing | client cost 只算觀察值;route 仍需同 cohort、同 harness、可接受成果與 revision policy 證據 |
+| shape-based batching, coherent-boundary verification, unchanged-Plan anti-churn | Claude/Codex 兩側已有等價契約與 tests | 保留現況, 不重複搬字 |
+| envelope + independently approvable slice, 結構化 `REVISE` | 已有 approved Plan/release slice hard boundary, 但缺 readiness-unit schema | 採用 schema 與 twin tests, 不放寬核准 |
+| security findings 在第一次 readiness review 前進 Plan | 已分離 `security-reviewer`/`security-executor`, 尚未鎖 sequencing | 採用順序與 cross-surface contract test |
+| agent-owned read scope 暫時排他, 同批 back-to-back launch | 只有 writable artifact 單一 owner | 放進 on-demand dispatch skill/brief, 不增加 resident payload |
+| mechanical work 預設必派 | 本專案 direct-first, 高階 leaf 未必比 main 便宜 | 暫不採用; 先以同 cohort ledger evidence 驗淨收益 |
+| 固定 main alias, fallback 與角色模型 | main model/effort 由使用者擁有, routing 有 quality floor, generation check, ledger revision | 不採用 |
+| exact-byte prompt compression Gate | 已有 word budget, contract tests, trap evals, 缺分層 census | 採用 resident/on-demand/role 的 words, bytes, hash census |
+| exact inputs + failed candidate provenance | manifest, transactional sync, parity, ledger eligibility 已有等價原則 | 研究 fixture 補 input hash, 不另建 installer |
 
-Pilotfish 的 Baton release Gate 另外證明:政策 bytes 和執行證據可以一起封存。成功 candidate 記錄
-policy／prompt SHA-256、invocation、唯一寫入、測試和 verifier verdict;中斷和 superseded candidate
-仍保留,但不冒充 final evidence。它成功 Gate 的 client 欄位是 US$3.5088455、wall time 323.978 秒,
-只證明 compatibility／provenance,不證明 native-Claude 的成本或效率。本專案借用的是「證據分級、
-失敗紀錄不漂白」的精神,實作上沿用既有的 deployment manifest、ledger eligibility 和 parity checks。
+### 採用順序
+
+1. **P0, 收斂 Plan boundary**: 定義 envelope, readiness-unit ID, next executable slice,
+   prerequisites, owner, rollback, acceptance 與結構化 `REVISE`; 同步 Claude/Codex roles,
+   dispatch skills, `docs/dispatch-lifecycle.md` 和 twin contract tests.
+2. **P0, 鎖安全 sequencing**: security review 必須先於 affected unit 的第一次 readiness review,
+   Plan 要記錄 finding disposition; 保持 reviewer read-only, executor approval-gated.
+3. **P1, 補 discovery ownership 與 prompt census**: read scope 暫時排他, 同批 back-to-back launch;
+   prompt surface 分 resident/on-demand/role 記錄 words, bytes, hash, 壓縮後仍需一小一大 lifecycle
+   fixture, 大型 Plan 未收斂就不得宣稱 parity.
+4. **P2, 再評估 mechanical default**: Claude/Codex 使用同一 mechanical fixture 與 unknown-bug
+   negative control, 比較 topology, 唯一 writer, correctness, wall time, token, QC outcome.
+   只有同 cohort 的可接受成果顯示穩定淨收益, 才考慮翻轉 direct-first.
+
+**DECISION:** 研究文檔以 `v1.3.4` 現況為唯一主體. 保留跨版本存續的 policy shape, 最新 Gate
+證據與本地採用邊界; 移除逐版流水帳, 早期 client cost, 已被新版取代的 tag/commit 細節.
+
