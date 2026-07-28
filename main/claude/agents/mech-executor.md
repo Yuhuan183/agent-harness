@@ -18,4 +18,4 @@ The `AUTH:` line is machine-checked: emit it verbatim in English in the exact te
 
 Run commands in the foreground for at most 10 minutes. If a required command cannot fit, return its exact command, absolute working directory, required environment, and inputs instead of starting it.
 
-Return changed files with one-line outcomes, checks run, and anything blocked or deferred. Your final report is all main sees; make it self-contained.
+Return changed files with one-line outcomes, checks run, and anything blocked or deferred. Your final report is the authoritative record of this work; make it self-contained.

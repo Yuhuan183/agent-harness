@@ -17,7 +17,7 @@ import os
 import re
 import sys
 import tempfile
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 if sys.version_info < (3, 11):  # routing_core needs stdlib tomllib (3.11+)
@@ -88,6 +88,7 @@ def validation_errors(config: dict) -> list[str]:
 
     errors += core.check_selection(config)
     errors += core.check_revision_policy(config)
+    errors += core.check_prior_review(config)
 
     normalized_roles = {role.replace("_", "-") for role in route_application}
     if normalized_roles != REQUIRED_ROLES:
@@ -531,6 +532,13 @@ def parse_args() -> argparse.Namespace:
     )
     alias_parser.add_argument("--root", type=Path, default=TRANSCRIPT_ROOT)
     alias_parser.add_argument("--max-days", type=float, default=30)
+    priors = subparsers.add_parser(
+        "check-priors", help="report benchmark priors older than their review cadence"
+    )
+    priors.add_argument(
+        "--today", default=None,
+        help="ISO date to age against (testing; defaults to the system date)",
+    )
     activate = subparsers.add_parser(
         "activate-profile",
         help="transactionally apply one Claude deployment preset to every leaf pin",
@@ -559,6 +567,9 @@ def main() -> int:
         return command_list(config, args.json)
     if args.command == "check-aliases":
         return command_check_aliases(config, args.root, args.max_days)
+    if args.command == "check-priors":
+        today = date.fromisoformat(args.today) if args.today else date.today()
+        return core.report_prior_review(config, today, "Claude")
     if args.command == "check-pins":
         return command_check_pins(config, args.agents_dir, args.profile, args.priority)
     if args.command == "activate-profile":

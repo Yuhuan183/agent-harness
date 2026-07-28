@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import date
 from pathlib import Path
 
 if sys.version_info < (3, 11):  # routing_core needs stdlib tomllib (3.11+)
@@ -92,6 +93,7 @@ def validation_errors(config: dict) -> list[str]:
     allowed_by_tier = quality_floor.get("allowed", {})
     errors += core.check_selection(config)
     errors += core.check_revision_policy(config)
+    errors += core.check_prior_review(config)
     errors += core.check_quality_floor_roles(config, REQUIRED_ROLES)
     if set(route_application) != REQUIRED_ROLES:
         errors.append("route_application.roles must cover main and every leaf role")
@@ -326,6 +328,13 @@ def parse_args() -> argparse.Namespace:
     source = resolve_parser.add_mutually_exclusive_group()
     source.add_argument("--profile")
     source.add_argument("--priority", choices=core.PRIORITY_CHOICES)
+    priors = subparsers.add_parser(
+        "check-priors", help="report benchmark priors older than their review cadence"
+    )
+    priors.add_argument(
+        "--today", default=None,
+        help="ISO date to age against (testing; defaults to the system date)",
+    )
     return parser.parse_args()
 
 
@@ -345,6 +354,9 @@ def main() -> int:
         return command_validate(config)
     if args.command == "list":
         return command_list(config, args.json)
+    if args.command == "check-priors":
+        today = date.fromisoformat(args.today) if args.today else date.today()
+        return core.report_prior_review(config, today, "Codex")
     return command_resolve(config, args.role, args.profile, args.priority, args.surface)
 
 

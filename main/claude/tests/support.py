@@ -7,8 +7,24 @@ import re
 import subprocess
 import sys
 import tempfile
-import tomllib
-import unittest
+
+# Fail with the actual cause before `import tomllib` fails with a misleading
+# one. Below 3.11 every module in this suite dies on that import, and unittest
+# reports it as an error in each test file — a wall of red that reads like the
+# harness is broken. It happened for real: /usr/bin/python3 is 3.9 on macOS, so
+# any agent or hook that inherits the system PATH lands here. commit-test-gate
+# resolves an interpreter for exactly this reason; the suite should say the
+# same thing when it is run by hand.
+if sys.version_info < (3, 11):
+    raise SystemExit(
+        f"agent-harness tests need Python >= 3.11 for stdlib tomllib; this is "
+        f"{sys.version.split()[0]} at {sys.executable}. Run the suite with a "
+        f"newer interpreter (and put it on PATH — subprocess-spawned scripts "
+        f"resolve `python3` themselves)."
+    )
+
+import tomllib  # noqa: E402  (guarded above; the guard must run first)
+import unittest  # noqa: E402
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -39,6 +55,14 @@ READ_ONLY_ROLES = (
 # guarded tool, not a writer — grouping it with the writers is what let it
 # claim a sandbox it did not have.
 GUARDED_BASH_ROLES = ("verifier",)
+# The tools a guarded read-only role may hold. Asserted as an upper bound, not
+# as a list of forbidden names: enumerating what must be absent (Write, Edit,
+# Agent, ...) rebuilds in the test the denylist the frontmatter allowlist
+# exists to avoid, and anything nobody thought to enumerate - a new mutating
+# built-in, an MCP tool - would be granted silently.
+GUARDED_BASH_TOOLS = frozenset(
+    {"Read", "Glob", "Grep", "Bash", "WebSearch", "WebFetch"}
+)
 WRITER_ROLES = (
     "mech-executor",
     "executor",
