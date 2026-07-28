@@ -1,61 +1,118 @@
 # Harness review probes
 
-Concrete, reproducible, read-only probes for the six review dimensions. Run from the repository root. Prefix every command with `rtk`; use raw output only when RTK hides evidence needed for the review.
+Use this file as a menu of read-only discovery and falsification probes. Run
+from the repository root. Prefix every shell command and chained segment with
+`rtk`; use raw output only when filtering hides evidence needed for a claim.
+Do not run every command mechanically.
 
-## 1. Logic chain
+## Contents
+
+- Establish scope
+- Inventory and authority
+- Contract enforcement and routing
+- Flow, state, and handoff closure
+- Language and wording
+- Modularity, sharing, and deployment ownership
+- Fixed context overhead
+- Validation layers
+- Remediation re-review
+
+## Establish scope
 
 ```sh
-rtk rg -n 'block|reject|refuse|prevent|enforce|guard' README.md docs main/claude main/codex --glob '*.md'
-rtk rg -n 'sys\\.exit|parser\\.error|raise|returncode' main/claude/hooks main/claude/scripts main/codex/scripts
+rtk git status --short
+rtk git branch --show-current
+rtk git rev-parse HEAD
+rtk git diff --stat
+rtk git diff --check
+rtk git diff -- <reviewed paths>
+```
+
+For a historical range, replace the final command with the exact base and
+head. Read changed files whole after inspecting the diff.
+
+## Inventory and authority
+
+```sh
+rtk rg --files README.md docs main scripts .agents/skills/harness-review
+rtk find main -maxdepth 5 -type f
+rtk awk -F '\t' 'NF && $1 !~ /^#/ {print $1, $2, $3}' scripts/deployment-manifest.tsv
+rtk rg -n 'must|never|always|only|default|block|reject|enforce' README.md docs main --glob '*.md' --glob '*.toml'
+```
+
+Classify each result as repository policy, deployable source, machine-local
+state, or live state before drawing conclusions.
+
+## Contract enforcement and routing
+
+```sh
+rtk rg -n 'block|reject|refuse|prevent|enforce|guard|fail.closed|fail.open' README.md docs main --glob '*.md' --glob '*.py' --glob '*.sh' --glob '*.toml'
+rtk rg -n 'sys\.exit|parser\.error|raise|returncode|exit [1-9]' main scripts
 rtk rg -n 'request_source|origin_provider|fallback_hops|dispatch_id|rollout_id' main docs
+rtk rg -n 'provider|model|priority|fallback|quota|unavailable' main/claude main/codex
 ```
 
-For every prose guarantee, locate the field, gate, test, or sandbox boundary that carries it. If none exists, report it as policy only.
+For each strong policy verb, locate the carrier, executable gate, failure
+result, and regression test. Search is only the start of the trace.
 
-## 2. Flow
+## Flow, state, and handoff closure
 
 ```sh
-rtk rg -n 'READY|REVISE|CONFIRMED|REFUTED|INCONCLUSIVE' main/claude main/codex docs
-rtk rg -n 'rollback|prerequisite|acceptance|owner|readiness-unit|slice' main/claude/plans docs
-rtk rg -n 'dispatch|collect|QC|ledger' main/claude/skills main/codex/skills main/.agents/skills
+rtk rg -n 'READY|REVISE|CONFIRMED|REFUTED|INCONCLUSIVE|blocked|complete' main docs
+rtk rg -n 'rollback|prerequisite|acceptance|owner|readiness|stop.condition|handoff' main docs
+rtk rg -n 'dispatch|collect|quality.check|verifier|ledger|approval' main docs
+rtk rg -n 'retry|cancel|timeout|concurrent|stale|idempot' main scripts
 ```
 
-Trace one direct task, one parallel dispatch, one provider fallback, one Plan revision, and one verifier flow end to end. Check stop conditions and identity handoff.
+Trace at least one direct task, one dispatched task, one fallback or
+unavailability path, one approval boundary, and one verifier flow when each is
+present in scope. Identify the owner and stop condition at every edge.
 
-## 3. Language
+## Language and wording
 
 ```sh
-rtk rg -n '后|软|们|信息|通过|优化|数据' README.md docs main --glob '*.md'
+rtk rg -n '后|软件|信息|通过|优化|数据' README.md docs main --glob '*.md'
 rtk rg -n '[，。；：]' main/claude/CLAUDE.contract.md main/codex/AGENTS.contract.md
-rtk rg -n '(^|[^`])(python3|git|rg|find|sed|jq) ' README.md docs main --glob '*.md'
+rtk rg -n '\b[A-Z]{2,}\b' README.md docs main --glob '*.md'
+rtk rg -n 'exactly one|at most one|one or more|stack|single|唯一|至多|至少' README.md docs main --glob '*.md'
 ```
 
-Taiwan-facing documents use Traditional Chinese and Taiwan terminology. Code, identifiers, commands, comments, and commit messages stay in English. Half-width punctuation is required only in agent-consumed resident contracts; human-facing documents may use normal Traditional Chinese punctuation.
+Classify the audience first. Runtime agent text, code, identifiers, commands,
+comments, and commit messages use English. Human-facing prose uses Traditional
+Chinese with Taiwan terminology. Acronym and cardinality hits are candidates,
+not automatic defects.
 
-## 4. Wording and context load
+## Modularity, sharing, and deployment ownership
 
 ```sh
-rtk wc -l main/claude/CLAUDE.contract.md main/codex/AGENTS.contract.md main/claude/agents/*.md main/claude/skills/*/SKILL.md
+rtk rg -n 'expanduser|HOME|CODEX_HOME|CLAUDE_HOME' main scripts
+rtk git ls-files | rtk rg '(^|/)(settings\.local|\.skill-lock|telemetry|session|credentials)'
+rtk rg -n 'CLAUDE\.contract|AGENTS\.contract|deployment-manifest|sync\.sh' main scripts docs
+rtk scripts/sync.sh
+```
+
+Confirm that deployable content originates under `main/`, dev-only root
+content is absent from the manifest, preflight does not rely on the installed
+copy, and mirrored contracts have an explicit source or parity gate. Treat
+`scripts/sync.sh` as a dry-run unless the user separately authorizes apply.
+
+## Fixed context overhead
+
+```sh
+rtk wc -l -w -c main/claude/CLAUDE.contract.md main/codex/AGENTS.contract.md
+rtk wc -l -w -c main/claude/agents/*.md main/codex/agents/*.md
 rtk scripts/prompt-census --check
-rtk rg -n 'always|never|must|only|default' main/claude main/codex --glob '*.md' --glob '*.toml'
+rtk rg -n 'load|resident|always.loaded|budget|limit|cache|probe' README.md docs main
 ```
 
-Identify duplicated resident rules, historical narrative in current guidance, vague terms without a shared definition, and strong wording unsupported by enforcement.
+Locate the actual load point before assigning cost. Measure the unit named by
+the budget and test whether long lines, generated duplication, CJK text, or
+conditional content can evade it.
 
-## 5. Module boundaries
-
-```sh
-rtk rg -n 'expanduser|HOME|CODEX_HOME|CLAUDE_HOME' main/.agents/skills/*/scripts main/claude/hooks main/claude/scripts main/codex/scripts
-rtk git ls-files | rtk rg '(^|/)(settings\\.local|\\.skill-lock|telemetry|session|credentials)'
-rtk awk -F '\\t' 'NF && $1 !~ /^#/ {print $1, $2, $3}' scripts/deployment-manifest.tsv
-```
-
-Separate repository policy, machine-local installer or service state, and current live state. Verify that deployable files live under `main/` and that dev-only material is absent from the manifest.
-
-## 6. Verifiability
+## Validation layers
 
 ```sh
-rtk <HOME>/.local/bin/python3 -m unittest discover -s main/claude/tests -v
+rtk main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests -v
 rtk main/claude/scripts/model-routing validate
 rtk main/codex/scripts/model-routing validate
 rtk main/claude/scripts/check-agent-pins
@@ -63,15 +120,20 @@ rtk main/claude/scripts/check-alias-generation
 rtk scripts/sync.sh
 ```
 
-Green static tests prove contract consistency, not runtime effectiveness. Name missing lifecycle, concurrency, provider, UI, network, or deployment evidence explicitly.
+Run the narrowest relevant checks first. Record what each command is capable of
+proving, not only whether it passed. Recheck `git status --short` afterward and
+remove temporary review artifacts.
 
-## Diff re-review
+## Remediation re-review
 
 ```sh
 rtk git diff --check
 rtk git diff --stat
-rtk git diff -- README.md docs main .agents/skills/harness-review
+rtk git diff -- README.md docs main scripts .agents/skills/harness-review
 rtk git status --short
 ```
 
-Classify every original finding as resolved, accepted residual risk, or out of scope. Also inspect new contradictions introduced by the remediation itself.
+For every prior finding, classify `resolved`, `partially resolved`,
+`accepted risk`, or `out of scope`. Then inspect sibling invalid inputs,
+changed budget units, generated copies, exact-string tests, deployment
+semantics, and rollback paths for second-order defects.
