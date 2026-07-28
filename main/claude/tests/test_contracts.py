@@ -120,7 +120,7 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertIn("LEAF_DISPATCH", skill)
         self.assertIn("LEAF_RESULT", skill)
 
-    def test_pilotfish_v130_guardrails_are_backend_neutral_and_cross_surface(self) -> None:
+    def test_pilotfish_guardrails_are_backend_neutral_and_cross_surface(self) -> None:
         skill = read(".claude/skills/baton-dispatch/SKILL.md")
         brief = read(".claude/skills/baton-dispatch/references/briefs-and-stops.md")
         claude = read(".claude/CLAUDE.contract.md")
@@ -153,6 +153,51 @@ class ClaudeContractTests(unittest.TestCase):
             self.assertIn("substantially unchanged Plan", text)
             self.assertIn("material revision or new evidence", text)
             self.assertRegex(text, r"silently (overrule|overriding)")
+
+    def test_pilotfish_v134_readiness_and_discovery_are_cross_surface(self) -> None:
+        claude_dispatch = read(".claude/skills/baton-dispatch/SKILL.md")
+        codex_dispatch = read(".codex/skills/leaf-dispatch/SKILL.md")
+        brief = read(".claude/skills/baton-dispatch/references/briefs-and-stops.md")
+        claude_plan = read(".claude/agents/plan-verifier.md")
+        codex_plan = tomllib.loads(
+            read(".codex/agents/plan-verifier.toml"))["developer_instructions"]
+        claude_security = read(".claude/agents/security-reviewer.md")
+        codex_security = tomllib.loads(
+            read(".codex/agents/security-reviewer.toml"))["developer_instructions"]
+
+        for text in (claude_dispatch, codex_dispatch):
+            for phrase in (
+                "program envelope",
+                "next executable slice",
+                "readiness-unit ID",
+                "first readiness review",
+                "after two automatic revisions",
+                "Blocker",
+                "Minimum revision",
+                "Acceptance check",
+            ):
+                self.assertIn(phrase, text)
+        for text in (claude_dispatch, codex_dispatch, brief):
+            self.assertIn("temporarily exclusive", text)
+            self.assertIn("back-to-back", text)
+            self.assertIn("cross-surface synthesis", text)
+        for text in (claude_plan, codex_plan):
+            self.assertIn("stable readiness-unit ID", text)
+            self.assertIn("READY", text)
+            self.assertIn("with no other text", text)
+            for field in (
+                "Blocker:",
+                "Evidence:",
+                "Minimum revision:",
+                "Acceptance check:",
+            ):
+                self.assertIn(field, text)
+            self.assertIn("security-reviewer", text)
+            self.assertIn("disposition", text)
+        for text in (claude_security, codex_security):
+            self.assertIn("stable ID", text)
+            self.assertIn("affected Plan", text)
+            self.assertIn("first readiness review", text)
 
     def test_provider_routing_owns_model_and_fallback_policy(self) -> None:
         skill = read(".claude/skills/provider-routing/SKILL.md")
@@ -601,6 +646,36 @@ class AppPromptSurfaceTests(unittest.TestCase):
 
 
 class DocumentationBudgetTests(unittest.TestCase):
+    def test_prompt_surface_census_is_current(self) -> None:
+        snapshot = ROOT / "docs/research/prompt-surface-census.json"
+        command = [
+            str(ROOT / "main/.agents/scripts/python3-run"),
+            str(ROOT / "scripts/prompt-surface-census.py"),
+            "--check",
+            str(snapshot),
+        ]
+        result = subprocess.run(command, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+        census = json.loads(snapshot.read_text(encoding="utf-8"))
+        self.assertEqual(census["schema"], 1)
+        self.assertEqual(set(census["providers"]), {"claude", "codex"})
+        managed_sources = {source for source, _target in deployment_manifest()}
+        self.assertNotIn("scripts/prompt-surface-census.py", managed_sources)
+        for provider in ("claude", "codex"):
+            self.assertEqual(
+                set(census["providers"][provider]),
+                {"resident", "dispatch", "roles"},
+            )
+            self.assertEqual(
+                len(census["providers"][provider]["roles"]), len(ROLES)
+            )
+            for layer in ("resident", "dispatch", "roles"):
+                total = census["totals"][provider][layer]
+                self.assertGreater(total["bytes"], 0)
+                self.assertGreater(total["words"], 0)
+                self.assertRegex(total["payload_sha256"], r"^[0-9a-f]{64}$")
+
     def test_docs_stay_distilled(self) -> None:
         # Word budgets, not line budgets — a line count is gameable by long
         # lines; words track resident attention cost. Raising a budget is a
@@ -640,7 +715,9 @@ class DocumentationBudgetTests(unittest.TestCase):
             # Cheaper here than in the resident contracts or the two skills it
             # ties together, both of which sit within ten words of their own
             # ceilings.
-            "docs/dispatch-lifecycle.md": 1650,
+            # +250 (2026-07-28): readiness-unit state and live-discovery
+            # ownership now have a verification entry point outside prompts.
+            "docs/dispatch-lifecycle.md": 1900,
             # The hook-system concept doc: fail-open/fail-closed semantics, the
             # per-event inventory, and why each gate is trustworthy. The
             # guardrail table in the README pointed at individual hooks but no
@@ -674,7 +751,9 @@ class DocumentationBudgetTests(unittest.TestCase):
             # +30 (2026-07-28): the deferred punctuation sweep as an open item.
             # A user-approved-but-deprioritized decision that lives only in a
             # chat log is indistinguishable from one nobody made.
-            ".claude/plans/orchestration-plan.md": 1330,
+            # +50 (2026-07-28): current-state rows for v1.3.4 readiness,
+            # discovery ownership, prompt census, and deferred mech evidence.
+            ".claude/plans/orchestration-plan.md": 1380,
             # -50 (2026-07-26): route resolution, priority selection, and
             # unavailability reporting moved to the on-demand `leaf-dispatch`,
             # where the invocation mechanics already lived. The ceiling drops
@@ -686,7 +765,10 @@ class DocumentationBudgetTests(unittest.TestCase):
             # +90 (2026-07-23): record template and QC fraud checklist moved
             # in from the resident contract / provider-routing (net resident
             # payload down; skill is mandatory before every dispatch).
-            ".claude/skills/baton-dispatch/SKILL.md": 980,
+            # +150 (2026-07-28): v1.3.4 readiness-unit schema, security review
+            # sequencing, and live-discovery ownership. These remain on-demand;
+            # the census records their cost instead of charging resident turns.
+            ".claude/skills/baton-dispatch/SKILL.md": 1130,
             # QC mechanics and fixed records belong to baton-dispatch; keep
             # provider-routing focused on route, fallback, and eligibility.
             ".claude/skills/provider-routing/SKILL.md": 1300,
@@ -697,7 +779,9 @@ class DocumentationBudgetTests(unittest.TestCase):
             # words while staying under its own ceiling.
             # +85 (2026-07-26): the receiving side of the trade above. Paid
             # once per dispatch instead of once per task.
-            ".codex/skills/leaf-dispatch/SKILL.md": 850,
+            # +160 (2026-07-28): Claude-twin readiness, security sequencing,
+            # and discovery ownership; still paid only when dispatch proceeds.
+            ".codex/skills/leaf-dispatch/SKILL.md": 1010,
         }
         for path, limit in budgets.items():
             self.assertLessEqual(word_count(read(path)), limit, path)
