@@ -43,9 +43,10 @@ and session automatically; a native Claude dispatch then only needs its outcome:
 - Fallback hops record `--origin-provider`, `--parent-dispatch-id`, and
   `--fallback-hops`; the logger rejects hops > 1 (single-hop policy is
   enforced, not advisory).
-- Hooks record `request_source` (`claude-code` / `claude-code-plugin-codex`),
-  dispatch, rollout, input/output/cache tokens, and `secs` when available;
-  native Codex uses `codex`. An ambiguous bridge rollout window is flagged and
+- Hooks record `request_source` (`claude-code` / `claude-code-plugin-codex`);
+  native Codex uses `codex`, and Codex-launched Claude CLI uses `codex-claude-cli`.
+  Hooks also record dispatch, rollout, input/output/cache tokens, and `secs`
+  when available. An ambiguous bridge rollout window is flagged and
   logged without tokens rather than misattributed. After QC add
   `--review-secs` / `--rework-secs`; add `--api-cost-usd` only from a reliable
   billing value.

@@ -47,31 +47,18 @@ CODEX_ROLES = ROLES
 READ_ONLY_ROLES = (
     "explore",
     "plan-verifier",
+    "verifier",
     "security-reviewer",
-)
-# `verifier` holds Bash because its contract forbids believing a test report it
-# has not reproduced, and Claude Code cannot grant a partial Bash: the boundary
-# is drawn by hooks/readonly-bash.py instead. It is a read-only role with a
-# guarded tool, not a writer — grouping it with the writers is what let it
-# claim a sandbox it did not have.
-GUARDED_BASH_ROLES = ("verifier",)
-# The tools a guarded read-only role may hold. Asserted as an upper bound, not
-# as a list of forbidden names: enumerating what must be absent (Write, Edit,
-# Agent, ...) rebuilds in the test the denylist the frontmatter allowlist
-# exists to avoid, and anything nobody thought to enumerate - a new mutating
-# built-in, an MCP tool - would be granted silently.
-GUARDED_BASH_TOOLS = frozenset(
-    {"Read", "Glob", "Grep", "Bash", "WebSearch", "WebFetch"}
 )
 WRITER_ROLES = (
     "mech-executor",
     "executor",
     "security-executor",
 )
-BASH_ROLES = GUARDED_BASH_ROLES + WRITER_ROLES
+BASH_ROLES = WRITER_ROLES
 # Roles that must not be able to mutate the repository, whatever tools they hold.
 # Mirrors the Codex twins' enforced sandbox_mode = "read-only".
-NO_WRITE_ROLES = READ_ONLY_ROLES + GUARDED_BASH_ROLES
+NO_WRITE_ROLES = READ_ONLY_ROLES
 # Role bodies are budgeted in words on both providers. `executor` is the
 # largest at 378 (2026-07-26); raise this deliberately with a reason, the way
 # the contract budgets are raised, rather than by lengthening lines.

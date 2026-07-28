@@ -37,12 +37,7 @@
             "type": "command",
             "command": "j=$(cat); case \"$j\" in *commit*) printf %s \"$j\" | python3 \"$HOME/.claude/hooks/commit-test-gate.py\";; esac",
             "timeout": 300
-          },
-          {
-            "type": "command",
-            "command": "python3 \"$HOME/.claude/hooks/readonly-bash.py\"",
-            "timeout": 10
-          }
+        }
         ]
       },
       {

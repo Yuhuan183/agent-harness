@@ -1,133 +1,77 @@
-# Probe commands and known traps
+# Harness review probes
 
-Concrete, reproducible probes per dimension. All read-only.
+Concrete, reproducible, read-only probes for the six review dimensions. Run from the repository root. Prefix every command with `rtk`; use raw output only when RTK hides evidence needed for the review.
 
-## Inventory (run first)
+## 1. Logic chain
 
-```bash
-# Resident/doc sizes vs budgets (word budgets live in main/claude/tests/test_contracts.py)
-wc -l main/claude/CLAUDE.contract.md main/codex/AGENTS.contract.md \
-      main/claude/agents/*.md main/claude/skills/*/SKILL.md
-
-# Chinese-content ratio per file (zh lines / total) — grounds dimension 3
-for f in main/claude/CLAUDE.contract.md main/codex/AGENTS.contract.md \
-         main/claude/agents/*.md main/claude/skills/*/SKILL.md README.md docs/*.md; do
-  echo "$(grep -c '[一-龥]' "$f" 2>/dev/null || echo 0)/$(wc -l < "$f") $f"
-done
+```sh
+rtk rg -n 'block|reject|refuse|prevent|enforce|guard' README.md docs main/claude main/codex --glob '*.md'
+rtk rg -n 'sys\\.exit|parser\\.error|raise|returncode' main/claude/hooks main/claude/scripts main/codex/scripts
+rtk rg -n 'request_source|origin_provider|fallback_hops|dispatch_id|rollout_id' main docs
 ```
 
-## Dimension 1 — logic chain
+For every prose guarantee, locate the field, gate, test, or sandbox boundary that carries it. If none exists, report it as policy only.
 
-```bash
-# Enforcement verbs that must map to a real mechanism
-rg -in 'block|reject|refuse|prevent|enforce|guard' --type md \
-  main/claude main/codex README.md
+## 2. Flow
 
-# For each hit inside a hook/script claim: verify the mechanism can actually fail
-rg -n 'sys.exit|parser.error|raise|returncode' main/claude/hooks/*.py main/claude/scripts/* main/codex/scripts/*
-# A "guard" with no non-zero exit path is a warning, not a guard.
-
-# Bootstrap self-dependency: repo tooling that resolves $HOME-deployed state
-rg -n 'expanduser|HOME' main/.agents/skills/*/scripts/* main/claude/hooks/*.py | rg -v 'AGENT_[A-Z_]+'
-# Rule: repo-internal callers must be overridable by env and default sanely inside the checkout.
+```sh
+rtk rg -n 'READY|REVISE|CONFIRMED|REFUTED|INCONCLUSIVE' main/claude main/codex docs
+rtk rg -n 'rollback|prerequisite|acceptance|owner|readiness-unit|slice' main/claude/plans docs
+rtk rg -n 'dispatch|collect|QC|ledger' main/claude/skills main/codex/skills main/.agents/skills
 ```
 
-Cross-file contradiction hunt: for each routing question (fallback target,
-effort cap, mandatory-skill trigger), list every file answering it and diff the
-answers. Known past pair: SKILL routing prose vs `model-routing.toml` presets.
+Trace one direct task, one parallel dispatch, one provider fallback, one Plan revision, and one verifier flow end to end. Check stop conditions and identity handoff.
 
-## Dimension 2 — flow
+## 3. Language
 
-For every prose invariant, name the field or record that carries it
-(`origin_provider`? `fallback_hops`? approval step in the loop diagram?).
-No field → finding. Check README mermaid diagrams end in a closed loop, not at
-"suggestion".
-
-## Dimension 3 — language
-
-```bash
-# PRC variants in zh-TW prose (extend list as found)
-rg -n '后|软|们|信息|通过|优化|数据' --type md . docs
-# Runtime (agent-consumed) files should be English: agents/, skills consumed at
-# dispatch time, script comments. Human docs (README, docs/) stay zh-TW.
+```sh
+rtk rg -n '后|软|们|信息|通过|优化|数据' README.md docs main --glob '*.md'
+rtk rg -n '[，。；：]' main/claude/CLAUDE.contract.md main/codex/AGENTS.contract.md
+rtk rg -n '(^|[^`])(python3|git|rg|find|sed|jq) ' README.md docs main --glob '*.md'
 ```
 
-## Dimension 4 — wording
+Taiwan-facing documents use Traditional Chinese and Taiwan terminology. Code, identifiers, commands, comments, and commit messages stay in English. Half-width punctuation is required only in agent-consumed resident contracts; human-facing documents may use normal Traditional Chinese punctuation.
 
-Term census: for each load-bearing term (`source`, `verifier`, `fast`,
-`accepted`, acronyms like `CP-first`), `rg` all uses and check one definition,
-one meaning. Flag: undefined acronyms, cardinality stated differently in two
-places, claims a validator does not actually check.
+## 4. Wording and context load
 
-## Dimension 5 — modularity
-
-```bash
-# Deployment surface: everything deployed should be read by some runtime
-cat scripts/deployment-manifest.tsv
-# Twin parity: diff role semantics, not just registration
-diff <(sed -n '/^---$/,$p' main/claude/agents/verifier.md) <(cat main/codex/agents/verifier.toml)
-# Ownership: personal prefs (theme/tui/notifications) must not sit in tracked settings
-jq 'keys' main/claude/settings.json
+```sh
+rtk wc -l main/claude/CLAUDE.contract.md main/codex/AGENTS.contract.md main/claude/agents/*.md main/claude/skills/*/SKILL.md
+rtk scripts/prompt-census --check
+rtk rg -n 'always|never|must|only|default' main/claude main/codex --glob '*.md' --glob '*.toml'
 ```
 
-## Dimension 6 — overhead
+Identify duplicated resident rules, historical narrative in current guidance, vague terms without a shared definition, and strong wording unsupported by enforcement.
 
-Budgets: check the test enforces a unit that cannot be gamed (words/tokens, not
-lines). Hooks: list per-session work (`settings.json` hooks) and ask what a
-cache would eliminate. Compare Claude vs Codex resident size for the same
-policy content.
+## 5. Module boundaries
 
-## Bridge (dual-provider pass)
-
-- Resolve route first: `~/.codex/scripts/model-routing resolve --surface
-  claude-bridge --priority quality-guarded --role verifier`; pass model/effort
-  explicitly; prepend the role contract; state read-only prohibitions
-  explicitly (bridge is write-capable by default).
-- The rescue subagent is a one-shot forwarder: it cannot poll. The Codex job
-  keeps running after the subagent returns "Task started" — and also after the
-  forwarder *dies*. A forwarder killed by the 2-minute Bash cap reads its own
-  timeout as failure and relaunches, leaving two live jobs on one workspace
-  (observed 2026-07-26). Before relaunching anything, run
-  `~/.codex/scripts/bridge-jobs --workspace "$PWD" --duplicates`: exit 1 lists
-  the twins with their cancel lines, exit 2 means the check could not answer
-  and clears nothing. Full rule: `provider-routing/references/bridge-liveness.md`.
-- Poll from main:
-  `node ~/.claude/plugins/cache/openai-codex/codex/<ver>/scripts/codex-companion.mjs
-  status <task-id>`, then `result <task-id>`.
-- Poll trap: status output contains progress lines like "Command completed:" —
-  match the job's own status line (`^- <task-id> \| running`), never the bare
-  word "completed".
-- `result` on a still-running job returns "No job found" — that means not
-  finished, not lost.
-- Two id spaces: the rescue subagent reports its own task id, the companion
-  keys jobs as `task-<slug>`. `status` on the wrong one answers "No job found",
-  which looks identical to "not finished". Get the companion's id from bare
-  `status` (or `bridge-jobs`) before polling.
-- Ledger: `experience-log --from-pending` reads model and effort from the
-  dispatch's own rollout and tags `route_source: rollout-verified`; pass
-  `--profile` (and `--dispatch-id` when multiple completions are pending), and
-  do not hand-type a route the provider can be asked about.
-
-## Remediation-round probes (second-order defects)
-
-```bash
-# Validation completeness: for every new reject rule, probe the sibling shapes
-# (negative, zero, missing-companion-field, equal-to-self) — not just the one
-# the finding named.
-# Budget recalibration: after changing the budget unit, re-measure every
-# budgeted file in the NEW unit before touching the numbers.
-# CJK budget check — split() counts a zh sentence as 1; word_count() must not:
-python3 -c "print(len('常駐指令檔縮到只剩模型推不出來的東西'.split()))"   # 1 == gameable
-# Punctuation policy (zh-TW full-width) — should return nothing:
-rg -n '[一-鿿][,;:]' --glob '*.md' README.md docs main/claude main/.agents
+```sh
+rtk rg -n 'expanduser|HOME|CODEX_HOME|CLAUDE_HOME' main/.agents/skills/*/scripts main/claude/hooks main/claude/scripts main/codex/scripts
+rtk git ls-files | rtk rg '(^|/)(settings\\.local|\\.skill-lock|telemetry|session|credentials)'
+rtk awk -F '\\t' 'NF && $1 !~ /^#/ {print $1, $2, $3}' scripts/deployment-manifest.tsv
 ```
 
-## Route/latency calibration (observed 2026-07-22)
+Separate repository policy, machine-local installer or service state, and current live state. Verify that deployable files live under `main/` and that dev-only material is absent from the manifest.
 
-- Full-repo GPT pass, Sol/high, quality-guarded: ~6–10 min wall-clock,
-  ~20 tool turns, ~3.3M input tokens (94% cached), ~21k output (13.5k
-  reasoning). This is inherent to adversarial full-repo review, not a hang.
-- Re-review of a remediation: prefer `priority=balanced` and `scope=diff` —
-  roughly half the reasoning cost; keep quality-guarded for first passes and
-  security-adjacent scopes. Log both kinds in the ledger so the choice becomes
-  evidence-driven.
+## 6. Verifiability
+
+```sh
+rtk /Users/zack/.local/bin/python3 -m unittest discover -s main/claude/tests -v
+rtk main/claude/scripts/model-routing validate
+rtk main/codex/scripts/model-routing validate
+rtk main/claude/scripts/check-agent-pins
+rtk main/claude/scripts/check-alias-generation
+rtk scripts/sync.sh
+```
+
+Green static tests prove contract consistency, not runtime effectiveness. Name missing lifecycle, concurrency, provider, UI, network, or deployment evidence explicitly.
+
+## Diff re-review
+
+```sh
+rtk git diff --check
+rtk git diff --stat
+rtk git diff -- README.md docs main .agents/skills/harness-review
+rtk git status --short
+```
+
+Classify every original finding as resolved, accepted residual risk, or out of scope. Also inspect new contradictions introduced by the remediation itself.

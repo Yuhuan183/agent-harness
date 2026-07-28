@@ -70,10 +70,10 @@ claude plugin install codex@openai-codex
 
 - **其他 Claude plugins**（figma、warp、ui-ux-pro-max…）：非本 repo 依賴。要用的話
   自行安裝，並把 enable 設定寫在 `~/.claude/settings.local.json`——`settings.json`
-  會被 sync 整份覆蓋，本機偏好一律放 `settings.local.json`（不入庫、不同步）。
+  `settings.json` 會以 ownership-aware `merge-json` 更新 repo 擁有的 hook group，其他 top-level key 與第三方 group 會保留；本機偏好仍建議放 `settings.local.json`（不入庫、不同步）。
 - **第三方 skills（lark 全套等）**：本機自帶、非必要依賴，不列入本專案的
   `INSTALLED.txt`，也不由本 repo 部署；managed merge 會保留其既有目錄。
-  `.skill-lock.json` 只是 installer 版本快照，不是專案 skill ownership 清單。
+  `.skill-lock.json` 只是 installer 的 machine-local 版本快照，不是專案 skill ownership 清單，也不由本 repo 追蹤或部署。
 
 ## 套用步驟
 

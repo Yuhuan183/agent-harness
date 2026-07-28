@@ -791,5 +791,20 @@ class BridgeRouteEvidenceTests(unittest.TestCase):
             self.assertEqual(record["route_source"], "explicit")
 
 
+class RequestSourceSchemaTests(unittest.TestCase):
+    def test_codex_launched_claude_cli_is_representable(self) -> None:
+        for script in ("experience-log", "experience-report", "experience-revise"):
+            body = (
+                ROOT
+                / "main/.agents/skills/experience-ledger/scripts"
+                / script
+            ).read_text(encoding="utf-8")
+            self.assertIn("codex-claude-cli", body, script)
+        self.assertIn(
+            "codex-claude-cli",
+            read(".agents/skills/experience-ledger/references/metrics.md"),
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

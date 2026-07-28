@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "audit_id": "DOC-AUDIT-2026-07-28-ENVELOPE",
+  "base_commit": "728936f",
+  "reviewed_current_guidance": [
+    "README.md",
+    "docs/*.md",
+    "docs/**/*.md",
+    "main/claude/*.md",
+    "main/claude/agents/*.md",
+    "main/claude/plans/orchestration-plan.md",
+    "main/claude/prompts/*.md",
+    "main/claude/skills/**/*.md",
+    "main/codex/*.md",
+    "main/codex/agents/*.toml",
+    "main/codex/prompts/*.md",
+    "main/codex/skills/**/*.md",
+    "main/.agents/*.md",
+    "main/.agents/docs/*.md",
+    "main/.agents/skills/**/*.md",
+    ".agents/skills/harness-review/*.md",
+    ".agents/skills/harness-review/**/*.md"
+  ],
+  "evidence_not_current_guidance": [
+    "main/claude/plans/orchestration-history.md",
+    "evals/**/*.md",
+    "evals/**/*.json",
+    "docs/research/prompt-surface-census.json"
+  ],
+  "excluded_from_semantic_currentness": [
+    "**/ATTRIBUTION.md",
+    "**/LICENSE*",
+    "**/results/**",
+    "**/fixtures/**"
+  ],
+  "truth_sources_reviewed_separately": [
+    "main/claude/settings.json",
+    "main/claude/model-routing.toml",
+    "main/codex/model-routing.toml",
+    "scripts/deployment-manifest.tsv",
+    "scripts/sync.sh",
+    "main/claude/hooks/**",
+    "main/claude/scripts/**",
+    "main/codex/scripts/**",
+    "main/claude/tests/**"
+  ]
+}

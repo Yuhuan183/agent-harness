@@ -13,7 +13,7 @@ Own provider/model/role selection, bridge resolution, cross-provider fallback, a
 ## Model profiles
 
 - The user owns the main-session model and effort through the session selector; tracked settings pin neither. Never switch silently.
-- Reference profiles: **H** = Opus/high or Fable/low; **X** = Opus/high or Fable at medium–xhigh. Opus leads both: as of 2026-07-25 Opus 5 outscores Fable 5 on the index and the agentic Briefcase benchmark while costing less per task. Effort is capped at high for every named role and bridge call; only the main session under X may raise effort to xhigh.
+- Reference profiles: **H** = Opus/high or Fable/low; **X** = Opus/high or Fable at medium–xhigh. Effort is capped at high for every named role and bridge call; only the main session under X may raise effort to xhigh.
 - Model names are dated operational references, not guarantees. External indices are priors only: prefer the task-relevant model + harness + setting result, then update it with local outcomes.
 - **Provider choice is CP-first** (cost-performance first — best expected cost per acceptable outcome): compare only the same role and non-smoke task class. Until each side reaches the configured sample floor, deliberately explore instead of naming a winner. Once sampled, local ledger evidence overrides external priors. A usage alarm — Codex via `codex-usage --quota`, Claude via `/usage` — may switch to the provider with headroom; ask via the three-option gate when material.
 - Optimize cost per acceptable outcome, not raw token price. Include retries, review/rework, wall-clock, and failure risk. Compare a cost field only when both providers have the same coverage; never compare one side's total tokens with the other's output-only tokens.
@@ -45,6 +45,8 @@ Own provider/model/role selection, bridge resolution, cross-provider fallback, a
 | `security-reviewer` / `security-executor` | Security review (read-only) / approved security implementation; provider by CP-first choice, either side routes at its critical floor |
 
 Named Claude roles own model and effort in frontmatter; omit invocation-level `model`. Security keeps its capability split on either provider: review is read-only; implementation starts only from an approved contract. Dual-provider review may use independent read-only perspectives; implementation has one writer — never two writers on the same artifacts. Cross-provider fallback is one hop to the matching role on the other provider, at that role's active preset route (named-role presets never include Fable). In dual-provider implementation one provider writes and the other verifies after integration.
+
+Claude no-write roles lack Bash. Executable verdicts use a Codex `verifier` with `sandbox_mode = "read-only"`; main-run commands remain intermediate evidence.
 
 ## Route evidence and provider experience
 

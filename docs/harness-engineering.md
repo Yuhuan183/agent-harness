@@ -135,8 +135,8 @@ role、class、source、完整 route 與 dispatch payoff；`LEAF_RESULT` 固定�
 ledger 是否成功寫入。task label 必須和 ledger 相同，讓人類回顧與 machine-local 遙測可對照。
 
 ```text
-[LEAF_DISPATCH] task=semantic seam review | role=explore | class=review | request_source=claude-code | route=balanced/claude/claude-sonnet-5/low | reason=context-protection
-[LEAF_RESULT] task=semantic seam review | outcome=accepted | qc=full | ledger=logged
+[LEAF_DISPATCH] dispatch_id=review-01|task=semantic seam review | role=explore | class=review | request_source=claude-code | route=balanced/claude/claude-sonnet-5/low | reason=context-protection
+[LEAF_RESULT] dispatch_id=review-01 | task=semantic seam review | outcome=accepted | qc=full | ledger=logged
 ```
 
 ## 8. Skill 與第三方內容

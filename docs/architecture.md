@@ -112,7 +112,7 @@ launcher 長命，重啟前要對帳，否則同一 prompt 雙寫）、**派工�
 
 Hook 是把「規則」變成「機制」的地方：需要判斷的交給模型，能機械判定的交給 hook。預設
 **fail-open**（診斷型故障時放行，不阻塞工作）；刻意 **fail-closed** 的是四個有界 gate
-（commit-test、runtime-guard、readonly-bash、verifier-quota），每個只在很窄的條件下攔截。
+（commit-test、leaf-redispatch、runtime-guard、verifier-quota），每個只在很窄的條件下攔截。
 
 一個代表性設計：唯讀 Bash 邊界用**允許清單而非拒絕清單**，因為 shell 的寫入途徑關不完。
 逐事件清單、失敗模式、以及「為什麼值得信任（三關驗證）」在 [hook 系統](hook-system.md)。
