@@ -37,7 +37,12 @@ def read_bytes(relative: str) -> bytes:
     return (ROOT / relative).read_bytes()
 
 
-def text_record(relative: str, effective_text: str | None = None) -> dict:
+def text_record(
+    relative: str,
+    effective_text: str | None = None,
+    *,
+    kind: str | None = None,
+) -> dict:
     file_data = read_bytes(relative)
     text = file_data.decode("utf-8")
     effective = text if effective_text is None else effective_text
@@ -48,18 +53,25 @@ def text_record(relative: str, effective_text: str | None = None) -> dict:
         "sha256": sha256(effective_data),
         "words": word_count(effective),
     }
+    if kind is not None:
+        record["kind"] = kind
     if effective_data != file_data:
         record["file_bytes"] = len(file_data)
         record["file_sha256"] = sha256(file_data)
     return record
 
 
-def claude_role(relative: str) -> dict:
+def split_frontmatter(relative: str) -> tuple[str, str]:
     text = read_bytes(relative).decode("utf-8")
     parts = text.split("---", 2)
     if len(parts) != 3:
         raise ValueError(f"{relative}: expected YAML frontmatter")
-    return text_record(relative, parts[2].lstrip("\r\n"))
+    return parts[1], parts[2].lstrip("\r\n")
+
+
+def claude_role(relative: str) -> dict:
+    _, body = split_frontmatter(relative)
+    return text_record(relative, body)
 
 
 def codex_role(relative: str) -> dict:
@@ -69,6 +81,53 @@ def codex_role(relative: str) -> dict:
     if not isinstance(body, str):
         raise ValueError(f"{relative}: missing developer_instructions")
     return text_record(relative, body)
+
+
+def skill_paths(directory: str) -> list[str]:
+    return [
+        path.relative_to(ROOT).as_posix()
+        for path in sorted((ROOT / directory).glob("*/SKILL.md"))
+    ]
+
+
+def skill_frontmatter_fields(frontmatter: str) -> dict[str, str]:
+    """Read the two resident skill fields without adding a YAML dependency."""
+    fields: dict[str, str] = {}
+    lines = frontmatter.splitlines()
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        key, separator, value = line.partition(":")
+        key = key.strip()
+        scalar = value.strip()
+        if separator and not line[:1].isspace() and key in {"name", "description"}:
+            if scalar in {"|", "|-", "|+", ">", ">-", ">+"}:
+                block: list[str] = []
+                index += 1
+                while index < len(lines):
+                    continuation = lines[index]
+                    if continuation and not continuation[:1].isspace():
+                        break
+                    block.append(continuation.strip())
+                    index += 1
+                separator_text = "\n" if scalar.startswith("|") else " "
+                fields[key] = separator_text.join(block).strip()
+                continue
+            fields[key] = scalar.strip("\"'")
+        index += 1
+    return fields
+
+
+def skill_parts(relative: str) -> tuple[dict, dict]:
+    frontmatter, body = split_frontmatter(relative)
+    fields = skill_frontmatter_fields(frontmatter)
+    if set(fields) != {"name", "description"}:
+        raise ValueError(f"{relative}: expected name and description frontmatter")
+    metadata = f"{fields['name']} {fields['description']}"
+    return (
+        text_record(relative, metadata, kind="skill-metadata"),
+        text_record(relative, body, kind="skill-body"),
+    )
 
 
 def layer_total(records: list[dict]) -> dict:
@@ -86,14 +145,22 @@ def layer_total(records: list[dict]) -> dict:
 
 
 def build_census() -> dict:
+    claude_skills = [
+        skill_parts(relative)
+        for relative in skill_paths("main/claude/skills")
+    ]
+    codex_skills = [
+        skill_parts(relative)
+        for relative in skill_paths("main/codex/skills")
+    ]
     providers = {
         "claude": {
             "resident": [
                 text_record("main/claude/CLAUDE.contract.md"),
+                *(metadata for metadata, _ in claude_skills),
             ],
             "dispatch": [
-                text_record("main/claude/skills/baton-dispatch/SKILL.md"),
-                text_record("main/claude/skills/provider-routing/SKILL.md"),
+                *(body for _, body in claude_skills),
             ],
             "roles": [
                 claude_role(f"main/claude/agents/{role}.md") for role in ROLES
@@ -102,9 +169,10 @@ def build_census() -> dict:
         "codex": {
             "resident": [
                 text_record("main/codex/AGENTS.contract.md"),
+                *(metadata for metadata, _ in codex_skills),
             ],
             "dispatch": [
-                text_record("main/codex/skills/leaf-dispatch/SKILL.md"),
+                *(body for _, body in codex_skills),
             ],
             "roles": [
                 codex_role(f"main/codex/agents/{role}.toml") for role in ROLES
@@ -122,6 +190,7 @@ def build_census() -> dict:
         "schema": 1,
         "generated_by": "scripts/prompt-surface-census.py",
         "unit": {
+            "skills": "name and description are resident; body is dispatch-time",
             "bytes": "UTF-8 bytes of the effective prompt text",
             "words": "one CJK character or one non-space non-CJK run",
             "roles": "role body only; file_bytes/file_sha256 bind frontmatter or TOML",
