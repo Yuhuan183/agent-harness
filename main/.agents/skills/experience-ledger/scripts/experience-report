@@ -18,10 +18,22 @@ from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+if sys.version_info < (3, 11):
+    runner = Path(__file__).resolve().parents[3] / "scripts" / "python3-run"
+    if runner.is_file():
+        os.execv(
+            str(runner),
+            [str(runner), str(Path(__file__).resolve()), *sys.argv[1:]],
+        )
+    sys.stderr.write("ERROR: Python 3.11+ required; shared python3-run missing\n")
+    sys.exit(2)
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
 try:
     import routing_core as core
-except ImportError:
+except ModuleNotFoundError as error:
+    if error.name != "routing_core":
+        raise
     sys.stderr.write("ERROR: shared routing core missing "
                      "(<root>/.agents/scripts/routing_core.py)\n")
     sys.exit(2)

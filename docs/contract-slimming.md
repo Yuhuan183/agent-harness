@@ -69,5 +69,5 @@ surface identity 與大小, 不能取代上述 lifecycle/trap 行為驗收.
 
 1. 在 source checkout 編修（源檔刻意不叫 `CLAUDE.md`／`AGENTS.md`，避免在本 repo 內
    開 session 時與全域版重複載入；sync 時依 manifest 改名部署）。
-2. `python3 -m unittest discover -s main/claude/tests`（含預算與 twin-parity）全綠。
+2. `main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests`（含預算與 twin-parity）全綠。
 3. `scripts/sync.sh` dry-run → `--apply` → 開新 session 跑驗收任務。

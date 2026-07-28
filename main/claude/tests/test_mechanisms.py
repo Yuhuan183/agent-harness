@@ -964,13 +964,47 @@ class MechanismTests(unittest.TestCase):
             selected.symlink_to(sys.executable)
             result = subprocess.run(
                 [str(selector), "-c", "import sys; print(sys.version_info.major)"],
-                env={"PATH": temp_dir},
+                env={"PATH": f"{temp_dir}:/usr/bin:/bin"},
                 capture_output=True,
                 text=True,
             )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip(), "3")
         self.assertIn("3.11", read("docs/setup.md"))
+
+    def test_python_selector_propagates_to_env_shebang_children(self) -> None:
+        selector = ROOT / "main/.agents/scripts/python3-run"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tools = Path(temp_dir)
+            (tools / "python3.13").symlink_to(sys.executable)
+            child = tools / "child"
+            child.write_text(
+                "#!/usr/bin/env python3\n"
+                "import sys\n"
+                "print(sys.version_info[:2])\n",
+                encoding="utf-8",
+            )
+            child.chmod(0o755)
+            result = subprocess.run(
+                [str(selector), str(child)],
+                capture_output=True,
+                text=True,
+                env={"PATH": f"{temp_dir}:/usr/bin:/bin"},
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), str(sys.version_info[:2]))
+
+        for relative in (
+            ".agents/skills/experience-ledger/scripts/experience-report",
+            ".agents/skills/experience-ledger/scripts/experience-revise",
+        ):
+            script = read(relative)
+            self.assertLess(
+                script.index("sys.version_info < (3, 11)"),
+                script.index("import routing_core"),
+                relative,
+            )
+            self.assertIn(' / "scripts" / "python3-run"', script, relative)
 
     def test_usage_report_separates_sources_and_finds_rolling_peak(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

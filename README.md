@@ -233,7 +233,7 @@ main/codex/scripts/model-routing resolve --surface claude-bridge --priority qual
 ## 驗證
 
 ```bash
-python3 -m unittest discover -s main/claude/tests -v
+main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests -v
 main/claude/scripts/model-routing validate
 main/claude/scripts/model-routing check-pins
 main/claude/scripts/model-routing check-aliases
