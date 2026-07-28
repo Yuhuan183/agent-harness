@@ -100,8 +100,8 @@ copy, and mirrored contracts have an explicit source or parity gate. Treat
 
 ```sh
 rtk wc -l -w -c main/claude/CLAUDE.contract.md main/codex/AGENTS.contract.md
-rtk wc -l -w -c main/claude/agents/*.md main/codex/agents/*.md
-rtk scripts/prompt-census --check
+rtk wc -l -w -c main/claude/agents/*.md main/codex/agents/*.toml
+rtk main/.agents/scripts/python3-run scripts/prompt-surface-census.py --check docs/research/prompt-surface-census.json
 rtk rg -n 'load|resident|always.loaded|budget|limit|cache|probe' README.md docs main
 ```
 
@@ -115,8 +115,8 @@ conditional content can evade it.
 rtk main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests -v
 rtk main/claude/scripts/model-routing validate
 rtk main/codex/scripts/model-routing validate
-rtk main/claude/scripts/check-agent-pins
-rtk main/claude/scripts/check-alias-generation
+rtk main/claude/scripts/model-routing check-pins
+rtk main/claude/scripts/model-routing check-aliases
 rtk scripts/sync.sh
 ```
 
