@@ -119,8 +119,8 @@ Antigravity 上游 adapter 尚未提供同名選項，不傳未知參數。
 | Codex CLI | `codex` | `codex-auto` | `hcodex` | `hcodex-auto` |
 | Antigravity CLI | `agy` | `agy-auto` | `hagy` | `hagy-auto` |
 
-`claude-auto` 使用 Claude 原生 Auto Mode；`codex-auto` 不詢問但只允許 workspace
-寫入；`agy-auto` 使用 `--mode accept-edits`。各 `h*-auto` 保留相同安全邊界，再經過
+`claude-auto` 使用 Claude 原生 Auto Mode；`codex-auto` 預設只允許 workspace
+寫入，需要越界時才詢問；`agy-auto` 使用 `--mode accept-edits`。各 `h*-auto` 保留相同安全邊界，再經過
 對應的 Headroom wrapper。`hagy*` 的 capability probe 失敗時必須停止，不會改跑
 未壓縮的 `agy`。只有外層已有 Docker、VM 或 disposable sandbox 時，才針對單次執行使用
 `--dangerously-skip-permissions` 或 `--dangerously-bypass-approvals-and-sandbox`。

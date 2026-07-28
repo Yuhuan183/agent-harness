@@ -44,7 +44,7 @@ Claude App 使用 OAuth 直連，不經 proxy，只能透過 MCP 做手動文字
 - **Claude**：需要 Headroom 時使用 `hclaude`；Auto Mode 使用 `hclaude-auto`。底層是 `headroom wrap claude --no-context-tool`。只有 context 明確不足時才加 `--1m`。
 - **Codex**：需要 Headroom 時使用 `hcodex`；Auto Mode 使用 `hcodex-auto`。底層是 `headroom wrap codex --no-context-tool`，不依賴預先存在的永久 provider。
 - **Antigravity CLI**：原生 Auto Mode 使用 `agy-auto`（`agy --mode accept-edits`）。Headroom 入口保留為 `hagy`／`hagy-auto`，但會先確認安裝版本真的提供 `headroom wrap agy`；沒有就 exit 127，不能降級成未壓縮的 `agy`。
-- **權限**：一般自動執行分別使用 Claude `--permission-mode auto`、Codex `-a never -s workspace-write`、Antigravity `--mode accept-edits`。`--dangerously-skip-permissions` 與 `--dangerously-bypass-approvals-and-sandbox` 不是 Auto Mode，也不是 Headroom 的必要參數；只有外層已有隔離環境時才能針對單次任務明確選用。可重用的 shell functions 見 `docs/setup.md`。
+- **權限**：一般自動執行分別使用 Claude `--permission-mode auto`、Codex `-a on-request -s workspace-write`、Antigravity `--mode accept-edits`。`--dangerously-skip-permissions` 與 `--dangerously-bypass-approvals-and-sandbox` 不是 Auto Mode，也不是 Headroom 的必要參數；只有外層已有隔離環境時才能針對單次任務明確選用。可重用的 shell functions 見 `docs/setup.md`。
 - **選用常駐 runtime**：`headroom install apply --preset persistent-service` 只供使用者明確選擇 always-on provider routing 的情境，不是本 repo 預設，也不是快速指令的前置依賴。profile、target、port 與 provider 設定均屬 machine-local state；使用者自行以 `headroom install {status,start,stop,restart,remove}` 維護。
 - **套件管理**：CLI 由 `uv tool` 與 uv 管理的 Python 提供，`~/.local/bin/headroom` 是 MCP 設定應使用的絕對路徑。
 - **升級**：先執行 `headroom update --check`，再用 `headroom update` 或 `uv tool upgrade headroom-ai`。升級後重開 wrapped session；若使用者另有 persistent profile 才 restart，最後用 `headroom doctor` 確認 CLI 與 proxy 版本一致。

@@ -115,7 +115,7 @@ class MachineStateHygieneTests(unittest.TestCase):
         ):
             self.assertIn(function_name, setup)
         self.assertIn("--permission-mode auto", runtime)
-        self.assertIn("-a never -s workspace-write", runtime)
+        self.assertIn("-a on-request -s workspace-write", runtime)
         self.assertIn("--mode accept-edits", runtime)
 
     def test_commit_gate_blocks_red_suites_and_skips_foreign_repos(self) -> None:

@@ -54,7 +54,7 @@ claude-auto() {
 }
 
 codex-auto() {
-  command codex -a never -s workspace-write "$@"
+  command codex -a on-request -s workspace-write "$@"
 }
 
 agy-auto() {
@@ -78,7 +78,7 @@ hclaude-auto() {
 }
 
 hcodex-auto() {
-  hcodex -a never -s workspace-write "$@"
+  hcodex -a on-request -s workspace-write "$@"
 }
 
 hagy-auto() {
