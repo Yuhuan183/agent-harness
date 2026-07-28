@@ -89,6 +89,7 @@ def validation_errors(config: dict) -> list[str]:
     errors += core.check_selection(config)
     errors += core.check_revision_policy(config)
     errors += core.check_prior_review(config)
+    errors += core.check_model_metrics(models)
 
     normalized_roles = {role.replace("_", "-") for role in route_application}
     if normalized_roles != REQUIRED_ROLES:
