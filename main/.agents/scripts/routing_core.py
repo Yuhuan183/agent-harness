@@ -11,6 +11,7 @@ and per-route floor checks, plus the shared validate reporter.
 
 from __future__ import annotations
 
+import math
 import sys
 import tomllib
 from datetime import date
@@ -33,6 +34,36 @@ _PRIORITY_MAP = {
     "quality-guarded": "quality_guarded",
     "high-risk": "high_risk",
 }
+
+
+def is_finite_number(value: object) -> bool:
+    """Return true for finite int/float values, excluding booleans."""
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+    )
+
+
+def check_model_metrics(models: dict) -> list[str]:
+    """Reject non-finite numerics anywhere under the model evidence tree."""
+    errors: list[str] = []
+
+    def visit(value: object, path: str) -> None:
+        if isinstance(value, dict):
+            for key, child in value.items():
+                visit(child, f"{path}.{key}")
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                visit(child, f"{path}[{index}]")
+        elif isinstance(value, (int, float)) and (
+            isinstance(value, bool) or not math.isfinite(value)
+        ):
+            errors.append(f"{path} must be a finite number")
+
+    for model_name, model in models.items():
+        visit(model, f"models.{model_name}")
+    return errors
 
 
 def load_config(path: Path) -> dict:
@@ -65,16 +96,28 @@ def check_revision_policy(config: dict) -> list[str]:
     if set(policy) != REVISION_POLICY_KEYS:
         errors.append("revision_policy keys must exactly match the routing schema")
         return errors
-    if not isinstance(policy["days"], int) or policy["days"] <= 0:
+    if (
+        not isinstance(policy["days"], int)
+        or isinstance(policy["days"], bool)
+        or policy["days"] <= 0
+    ):
         errors.append("revision_policy.days must be a positive integer")
-    if not isinstance(policy["min_samples"], int) or policy["min_samples"] < 2:
+    if (
+        not isinstance(policy["min_samples"], int)
+        or isinstance(policy["min_samples"], bool)
+        or policy["min_samples"] < 2
+    ):
         errors.append("revision_policy.min_samples must be an integer >= 2")
-    if not isinstance(policy["half_life_days"], (int, float)) \
-            or policy["half_life_days"] < 0:
-        errors.append("revision_policy.half_life_days must be >= 0")
+    if (
+        not is_finite_number(policy["half_life_days"])
+        or policy["half_life_days"] < 0
+    ):
+        errors.append("revision_policy.half_life_days must be finite and >= 0")
     probability = policy["prefer_probability"]
-    if not isinstance(probability, (int, float)) or not 0.5 < probability < 1:
-        errors.append("revision_policy.prefer_probability must be between 0.5 and 1")
+    if not is_finite_number(probability) or not 0.5 < probability < 1:
+        errors.append(
+            "revision_policy.prefer_probability must be finite and between 0.5 and 1"
+        )
     if policy["cohort_fields"] != ["role", "task_class"]:
         errors.append(
             "revision_policy.cohort_fields must be ['role', 'task_class']"
@@ -207,10 +250,10 @@ def route_score(config: dict, model_name: str, effort: str):
     """
     model = config.get("models", {}).get(model_name, {})
     per_effort = (model.get("efforts", {}).get(effort) or {}).get("score")
-    if isinstance(per_effort, (int, float)):
+    if is_finite_number(per_effort):
         return per_effort, "per-effort"
     aggregate = model.get("aggregate", {}).get("score_max_effort")
-    if isinstance(aggregate, (int, float)):
+    if is_finite_number(aggregate):
         return aggregate, "per-effort" if effort == "max" else "upper-bound"
     return None, "none"
 

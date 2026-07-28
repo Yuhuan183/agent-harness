@@ -94,6 +94,7 @@ def validation_errors(config: dict) -> list[str]:
     errors += core.check_selection(config)
     errors += core.check_revision_policy(config)
     errors += core.check_prior_review(config)
+    errors += core.check_model_metrics(models)
     errors += core.check_quality_floor_roles(config, REQUIRED_ROLES)
     if set(route_application) != REQUIRED_ROLES:
         errors.append("route_application.roles must cover main and every leaf role")
@@ -126,7 +127,7 @@ def validation_errors(config: dict) -> list[str]:
                     f"{', '.join(sorted(missing_metrics))}"
                 )
                 continue
-            if any(not isinstance(metrics[key], (int, float)) or metrics[key] <= 0
+            if any(not core.is_finite_number(metrics[key]) or metrics[key] <= 0
                    for key in REQUIRED_METRICS):
                 errors.append(f"model {model_name}/{effort} metrics must be positive numbers")
             token_sum = (

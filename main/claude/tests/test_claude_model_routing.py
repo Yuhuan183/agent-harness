@@ -110,6 +110,60 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
                     self.assertEqual(result.returncode, 1, f"{script}: {bad}")
                     self.assertIn(expected, result.stderr, f"{script}: {bad}")
 
+    def test_validate_rejects_nonfinite_revision_policy_values(self) -> None:
+        for script in (SCRIPT, ROOT / "main/codex/scripts/model-routing"):
+            source = (script.parent.parent / "model-routing.toml").read_text(
+                encoding="utf-8"
+            )
+            for value in ("nan", "inf", "-inf", "true"):
+                with self.subTest(script=script, value=value):
+                    with tempfile.TemporaryDirectory() as tmp:
+                        broken = Path(tmp) / "model-routing.toml"
+                        broken.write_text(
+                            source.replace(
+                                "half_life_days = 45.0",
+                                f"half_life_days = {value}",
+                                1,
+                            ),
+                            encoding="utf-8",
+                        )
+                        result = subprocess.run(
+                            [str(script), "--config", str(broken), "validate"],
+                            capture_output=True,
+                            text=True,
+                        )
+                    self.assertEqual(result.returncode, 1, f"{script}: {result.stderr}")
+                    self.assertIn("finite", result.stderr)
+
+    def test_validate_rejects_nonfinite_model_metrics(self) -> None:
+        score_lines = {
+            SCRIPT: "score = 50.61",
+            ROOT / "main/codex/scripts/model-routing": "score = 49.4440",
+        }
+        for script, score_line in score_lines.items():
+            source = (script.parent.parent / "model-routing.toml").read_text(
+                encoding="utf-8"
+            )
+            for value in ("nan", "inf", "-inf"):
+                with self.subTest(script=script, value=value):
+                    with tempfile.TemporaryDirectory() as tmp:
+                        broken = Path(tmp) / "model-routing.toml"
+                        broken.write_text(
+                            source.replace(
+                                score_line,
+                                f"score = {value}",
+                                1,
+                            ),
+                            encoding="utf-8",
+                        )
+                        result = subprocess.run(
+                            [str(script), "--config", str(broken), "validate"],
+                            capture_output=True,
+                            text=True,
+                        )
+                    self.assertEqual(result.returncode, 1, f"{script}: {result.stderr}")
+                    self.assertIn("finite", result.stderr)
+
     def test_resolves_deployment_preset_routes(self) -> None:
         result = run("resolve", "--role", "executor")
         self.assertEqual(result.returncode, 0, result.stderr)
