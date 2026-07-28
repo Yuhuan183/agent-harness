@@ -44,7 +44,7 @@ Hook 的「失敗模式」指的是它自己出錯時會怎樣，這是設計時
 |---|---|---|
 | [delegation-audit](../main/claude/hooks/delegation-audit.py) | SubagentStart/Stop | 記錄派工起訖、偵測 leaf 再派 leaf 的違規 |
 | [experience-pending](../main/claude/hooks/experience-pending.py) | SubagentStart/Stop | 暫存 role、時間、token、（bridge 的）rollout 路由，供 QC 後寫入 ledger |
-| [weekly-integrity](../main/claude/hooks/weekly-integrity.py) | SessionStart | 每週一次檢查 source／HOME 漂移、pins、delegation alarm 與 ledger 狀態；覆蓋不完整即列 finding |
+| [weekly-integrity](../main/claude/hooks/weekly-integrity.py) | SessionStart | 每週一次檢查 source／HOME 漂移、pins、benchmark prior 逾期、delegation alarm 與 ledger 狀態；覆蓋不完整即列 finding |
 | [runtime-guard](../main/claude/hooks/runtime-guard.py)（無 `--gate`） | SessionStart | 版本不足時先警告，讓使用者在派工前就知道 reviewer 會被擋 |
 | [compact-reseed](../main/claude/hooks/compact-reseed.py) | SessionStart[compact] | 壓縮後注入一句提醒，要求重新申報目標、進行中決策與未決項。PreCompact 無法塑造摘要，所以這件事只能落在壓縮**之後**這一刻 |
 
