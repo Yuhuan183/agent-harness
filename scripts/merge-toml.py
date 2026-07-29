@@ -163,6 +163,8 @@ def main() -> int:
     args = parser.parse_args()
 
     repo_text = args.repo.read_text(encoding="utf-8")
+    managed_path = args.managed or args.deployed.with_name(
+        f".{args.deployed.stem}-managed.json")
     if not args.deployed.exists():
         if args.verify:
             print(f"ERROR: merged target missing: {args.deployed}", file=sys.stderr)
@@ -171,15 +173,18 @@ def main() -> int:
             print(f"[dry-run] no deployed config; would create {args.deployed}")
             return 0
         args.deployed.parent.mkdir(parents=True, exist_ok=True)
-        owned = [b for n, b in parse_sections(repo_text) if is_owned(n, args.prefix)]
-        args.deployed.write_text("".join("".join(normalize(list(b))) for b in owned),
+        owned = [(n, b) for n, b in parse_sections(repo_text) if is_owned(n, args.prefix)]
+        args.deployed.write_text("".join("".join(normalize(list(b))) for _, b in owned),
                                  encoding="utf-8")
+        # Record what this install owns, for the same reason the merge path
+        # does: a missing sidecar means "provenance unknown, retract nothing",
+        # so a fresh install that skipped it left its own sections
+        # unretractable for good (2026-07-29).
+        write_managed(managed_path, [n for n, _ in owned], dry_run=False)
         print(f"created config from owned sections: {args.deployed}")
         return 0
 
     deployed_text = args.deployed.read_text(encoding="utf-8")
-    managed_path = args.managed or args.deployed.with_name(
-        f".{args.deployed.stem}-managed.json")
     try:
         managed = json.loads(managed_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):

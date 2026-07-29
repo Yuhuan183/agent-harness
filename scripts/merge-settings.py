@@ -301,6 +301,9 @@ def main() -> int:
     if args.deployed is None:
         parser.error("deployed path is required unless --check is given")
 
+    managed_path = args.managed or args.deployed.with_name(
+        f".{args.deployed.stem}-managed.json")
+
     if not args.deployed.exists():
         if args.verify:
             print(f"ERROR: merged target missing: {args.deployed}", file=sys.stderr)
@@ -310,12 +313,16 @@ def main() -> int:
             return 0
         args.deployed.parent.mkdir(parents=True, exist_ok=True)
         args.deployed.write_text(json.dumps(repo, indent=2) + "\n", encoding="utf-8")
+        # A fresh install owns everything it just wrote, and "no sidecar" means
+        # "provenance unknown, keep everything". Returning without recording it
+        # made the first install the one deployment whose entries could never be
+        # retracted: the next sync would read its own v1 entries as machine
+        # state and preserve them forever (2026-07-29).
+        write_managed(managed_path, repo, dry_run=False)
         print(f"installed fresh settings: {args.deployed}")
         return 0
 
     deployed = json.loads(args.deployed.read_text(encoding="utf-8"))
-    managed_path = args.managed or args.deployed.with_name(
-        f".{args.deployed.stem}-managed.json")
     try:
         managed = json.loads(managed_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):

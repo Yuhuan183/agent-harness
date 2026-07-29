@@ -205,6 +205,29 @@ class MachineStateHygieneTests(unittest.TestCase):
             self.assertEqual(intra_word.returncode, 2)
             self.assertIn("commit blocked", intra_word.stderr)
 
+            # Expansion is the same evasion one layer later: the payload text
+            # is not a commit, the process the shell starts is. Every spelling
+            # here is proved to be a real commit by the test below; each of
+            # them returned 0 on this red suite until 2026-07-29.
+            for evasion in ("EMPTY=; g${EMPTY}it com${EMPTY}mit -m x",
+                            "C=commit; git $C -m x",
+                            "$(echo git) commit -m x",
+                            "`echo git` commit -m x",
+                            'E=""; git ${E}commit -m x',
+                            "git com$(true)mit -m x"):
+                self.assertEqual(
+                    run_hook(evasion, str(repo)).returncode, 2,
+                    f"expansion-built commit slipped the gate: {evasion}")
+            # ...and the price stays narrow. A git command whose subcommand is
+            # right there in the text costs nothing even though it expands, so
+            # the fix is not "gate everything containing a dollar sign".
+            for ordinary in ("git log $(git rev-parse HEAD)",
+                             "git diff --stat $(git merge-base main HEAD)",
+                             "ls $HOME", "echo ${FOO}"):
+                self.assertEqual(
+                    run_hook(ordinary, str(repo)).returncode, 0,
+                    f"ordinary command paid for the commit gate: {ordinary}")
+
             # The harness keeps its deployable suite under main/claude/tests.
             # A stale root cache must neither trigger a zero-test false block
             # nor hide the canonical suite.
@@ -225,6 +248,70 @@ class MachineStateHygieneTests(unittest.TestCase):
             self.assertIn("main/claude/tests", canonical_blocked.stderr)
             canonical_test.unlink()
             self.assertEqual(run_hook("git commit -m x", str(repo)).returncode, 0)
+
+    def test_every_spelling_that_really_commits_is_blocked(self) -> None:
+        """Let the shell decide what a commit is, then require the gate to agree.
+
+        The gate reads text; the shell runs a program. Every earlier hole came
+        from asserting that some spelling was an evasion instead of showing it,
+        so each command here is first executed in a scratch repo and kept only
+        if it actually produced a commit. Whatever survives that filter must be
+        blocked on a red suite - the contract is about commits, not about the
+        substrings the gate happens to recognize.
+        """
+        hook = ROOT / "main/claude/hooks/commit-test-gate.py"
+        spellings = [
+            "git commit -m x",                          # plain
+            "git com''mit -m x",                        # quote concatenation
+            "g'i't com''mit -m x",
+            'g"i"t com""mit -m x',
+            "git com\\\nmit -m x",                      # continuation, intra-word
+            "EMPTY=; g${EMPTY}it com${EMPTY}mit -m x",  # parameter expansion
+            "C=commit; git $C -m x",
+            'E=""; git ${E}commit -m x',
+            "$(echo git) commit -m x",                  # command substitution
+            "`echo git` commit -m x",
+            "git com$(true)mit -m x",
+            "true && git commit -m x",                  # operators
+            "false; git commit -m x",
+            "eval \"gi\"\"t com\"\"mit -m x\"",         # eval
+        ]
+        identity = {
+            "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
+            "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid",
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for index, spelling in enumerate(spellings):
+                repo = Path(temp_dir) / f"repo{index}"
+                repo.mkdir()
+                subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+                (repo / "f.txt").write_text("x", encoding="utf-8")
+                subprocess.run(["git", "-C", str(repo), "add", "f.txt"], check=True)
+                subprocess.run(["sh", "-c", spelling], cwd=repo,
+                               env={**os.environ, **identity},
+                               capture_output=True, text=True)
+                counted = subprocess.run(
+                    ["git", "-C", str(repo), "rev-list", "--count", "HEAD"],
+                    capture_output=True, text=True)
+                self.assertEqual(counted.stdout.strip(), "1",
+                                 f"spelling did not actually commit: {spelling!r}")
+
+                tests = repo / ".claude" / "tests"
+                tests.mkdir(parents=True)
+                (tests / "test_red.py").write_text(
+                    "import unittest\n"
+                    "class T(unittest.TestCase):\n"
+                    "    def test_red(self):\n"
+                    "        self.fail('planted')\n",
+                    encoding="utf-8",
+                )
+                payload = json.dumps({"tool_input": {"command": spelling},
+                                      "cwd": str(repo)})
+                blocked = subprocess.run(
+                    [sys.executable, str(hook)], input=payload,
+                    capture_output=True, text=True, timeout=120)
+                self.assertEqual(blocked.returncode, 2,
+                                 f"real commit slipped the gate: {spelling!r}")
 
     def test_commit_gate_runs_the_suite_on_a_modern_interpreter(self) -> None:
         # 2026-07-27: the gate ran the suite on `sys.executable`, i.e. the agent
@@ -393,12 +480,28 @@ class MachineStateHygieneTests(unittest.TestCase):
             # prefilter dropped outright.
             for evasion in ("git com''mit -m x", "g'i't com''mit -m x",
                             "g\"i\"t com\"\"mit -m x",
-                            "git com\\\nmit -m x", "g'i't com\\\nmit -m x"):
+                            "git com\\\nmit -m x", "g'i't com\\\nmit -m x",
+                            # An expansion leaves nothing for a `case` glob to
+                            # recognize - deleting `$`, `{` and `}` from
+                            # `g${EMPTY}it` yields `gEMPTYit` - so the prefilter
+                            # stops trying to classify these and hands every
+                            # payload carrying an expansion to the hook, which
+                            # can (2026-07-29).
+                            "EMPTY=; g${EMPTY}it com${EMPTY}mit -m x",
+                            "C=commit; git $C -m x",
+                            "$(echo git) commit -m x",
+                            "`echo git` commit -m x"):
                 marker.unlink(missing_ok=True)
                 run_gate(evasion)
                 self.assertTrue(
                     marker.exists(),
                     f"prefilter dropped a real commit before the hook: {evasion!r}")
+            # The handover stays a prefilter: a payload with neither a git-ish
+            # word nor an expansion still costs no interpreter spawn.
+            for ordinary in ("ls -la", "python3 -m unittest", "echo hello"):
+                marker.unlink(missing_ok=True)
+                self.assertEqual(run_gate(ordinary).returncode, 0)
+                self.assertFalse(marker.exists(), ordinary)
 
 
 if __name__ == '__main__':

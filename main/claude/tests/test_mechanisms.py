@@ -1382,6 +1382,52 @@ class SettingsRetractionTests(unittest.TestCase):
             self.assertIn("[agents.mine]", text)
             self.assertIn("[model]", text)
 
+    def test_a_fresh_install_records_what_it_owns(self) -> None:
+        """The install that writes the file also owns every entry in it.
+
+        Both mergers used to write the target and return before touching the
+        sidecar, so provenance began at the *second* sync. A missing sidecar
+        means "unknown, keep everything", which made a v1 fresh install the one
+        deployment whose entries could never be withdrawn: v2 read them back as
+        machine state (2026-07-29). Every retraction test before this one
+        pre-created the target, so none of them went through that branch.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            self._merge(temp, {"permissions": {"allow": ["Bash(ls:*)",
+                                                         "Bash(rm:*)"]}})
+            deployed = json.loads((temp / "dst.json").read_text(encoding="utf-8"))
+            deployed["permissions"]["allow"].append("Bash(machine:*)")
+            (temp / "dst.json").write_text(json.dumps(deployed), encoding="utf-8")
+
+            allow = self._merge(temp, {"permissions": {"allow": ["Bash(ls:*)"]}})
+            self.assertNotIn("Bash(rm:*)", allow)
+            self.assertIn("Bash(machine:*)", allow)
+            self.assertIn("Bash(ls:*)", allow)
+
+        script = ROOT / "scripts/merge-toml.py"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            src, dst, man = temp / "src.toml", temp / "dst.toml", temp / "m.json"
+
+            def merge(repo: str) -> str:
+                src.write_text(repo, encoding="utf-8")
+                result = subprocess.run(
+                    [sys.executable, str(script), str(src), str(dst),
+                     "--managed", str(man)], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                return dst.read_text(encoding="utf-8")
+
+            merge('[agents.verifier]\nconfig_file = "v"\n\n'
+                  '[agents.executor]\nconfig_file = "e"\n')
+            dst.write_text(dst.read_text(encoding="utf-8")
+                           + '\n[agents.mine]\nconfig_file = "x"\n',
+                           encoding="utf-8")
+            text = merge('[agents.verifier]\nconfig_file = "v"\n')
+            self.assertNotIn("[agents.executor]", text)
+            self.assertIn("[agents.mine]", text)
+            self.assertIn("[agents.verifier]", text)
+
     def test_entries_of_unknown_provenance_are_never_deleted(self) -> None:
         """An upgrade has no sidecar yet; unknown must not mean machine-owned."""
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1415,12 +1461,37 @@ class VerifierQuotaTests(unittest.TestCase):
             capture_output=True, text=True,
             env={**os.environ, "HOME": str(home), **env}).returncode
 
-    def test_the_second_verifier_in_one_task_is_refused(self) -> None:
+    def test_the_second_verifier_in_one_prompt_is_refused(self) -> None:
         with tempfile.TemporaryDirectory() as home:
             self.assertEqual(self._dispatch(Path(home)), 0)
             self.assertEqual(self._dispatch(Path(home)), 2)
-            # A new prompt is a new task boundary; the quota resets.
+            # A new prompt gets a new quota. This is the enforcement gap, not
+            # the enforcement: a task continued in the next prompt is the same
+            # task under the contract's rule, and no payload field says so. The
+            # gate under-enforces here on purpose (keying on the session would
+            # refuse every later task's legitimate verifier), so the scope has
+            # to be stated as "prompt" everywhere it is described.
             self.assertEqual(self._dispatch(Path(home), prompt="p2"), 0)
+
+    def test_nothing_describes_the_gate_as_enforcing_per_task(self) -> None:
+        """The disclosure is the fix, so the disclosure is load-bearing.
+
+        A reader who believes the hook is per-task trusts it in exactly the
+        case it does not cover. Until a stable task id reaches the payload,
+        every place that describes the *mechanism* says prompt; the contracts
+        keep saying task because that is the judgment rule the gate backs up.
+        """
+        scoped = {
+            "main/claude/hooks/verifier-quota.py": "per user prompt",
+            "README.md": "同一個 prompt 內的第二個",
+            "docs/hook-system.md": "以 prompt 為界",
+            "docs/dispatch-lifecycle.md": "托底的單位是",
+        }
+        for path, disclosure in scoped.items():
+            self.assertIn(disclosure, read(path), path)
+        for contract in ("main/claude/CLAUDE.contract.md",
+                         "main/codex/AGENTS.contract.md"):
+            self.assertIn("per top-level task", read(contract), contract)
 
     def test_only_the_outcome_verifier_spends_the_quota(self) -> None:
         with tempfile.TemporaryDirectory() as home:

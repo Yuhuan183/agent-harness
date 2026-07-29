@@ -724,7 +724,11 @@ class DocumentationBudgetTests(unittest.TestCase):
             # +90 (2026-07-26): the accurate fail-closed gate set (four bounded
             # gates, not two) plus the architecture and hook-system pointers. A
             # guardrail the index does not list is a guardrail nobody verifies.
-            "README.md": 2460,
+            # +15 (2026-07-29): the verifier-quota row said the gate refuses a
+            # second verifier per task; it refuses one per prompt. The index
+            # naming a stronger guarantee than the mechanism has is worse than
+            # the words it saves.
+            "README.md": 2475,
             # +80 (2026-07-26): navigation and responsibility rows for the
             # dispatch-lifecycle doc. A navigation surface has to grow when the
             # thing it navigates to appears, or it stops being complete.
@@ -753,7 +757,10 @@ class DocumentationBudgetTests(unittest.TestCase):
             # The Claude side gained its own evidence chain, and the tier list
             # gained the rule that decides which tiers move a route — the part
             # a reader needs before trusting any of the numbers downstream.
-            "docs/dispatch-lifecycle.md": 2030,
+            # +10 (2026-07-29): what a real per-task quota would need (a stable
+            # task id in the payload) and why there isn't one. A disclosed gap
+            # that does not say what would close it reads as an oversight.
+            "docs/dispatch-lifecycle.md": 2040,
             # The hook-system concept doc: fail-open/fail-closed semantics, the
             # per-event inventory, and why each gate is trustworthy. The
             # guardrail table in the README pointed at individual hooks but no

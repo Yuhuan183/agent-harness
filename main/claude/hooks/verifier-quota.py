@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
-"""PreToolUse[Agent] gate: at most one outcome verifier per top-level task.
+"""PreToolUse[Agent] gate: at most one outcome verifier per user prompt.
 
-The contracts have carried this rule as prose since the beginning, with
-nothing able to refuse a second dispatch. "Distinct failure surfaces do not
-add quota" is the part that makes it worth enforcing: the second verifier
-usually feels justified at the time, which is exactly why the budget needs to
-be spent by a mechanism rather than by judgment.
+The rule in the contracts is per *top-level task*, and it is a judgment rule:
+this gate enforces the part of it that a payload field can carry, which is one
+verifier per prompt. Say that plainly rather than let the two be read as the
+same thing (2026-07-29 review) — a reader who believes the gate is per-task
+will trust it in exactly the case it does not cover.
+
+The contracts have carried the rule as prose since the beginning, with nothing
+able to refuse a second dispatch. "Distinct failure surfaces do not add quota"
+is the part that makes it worth enforcing: the second verifier usually feels
+justified at the time, which is exactly why the budget needs to be spent by a
+mechanism rather than by judgment.
 
 Carrier and its limit: a top-level task is a judgment boundary, not a field.
 The closest thing the payload offers is `prompt_id` (a common field on every
@@ -13,8 +19,10 @@ hook payload, alongside `session_id` and `permission_mode`), so the quota
 resets on each new user prompt. A task that spans prompts therefore gets a
 fresh verifier per prompt — this under-enforces, never over-enforces, and the
 alternative (keying on the session) would refuse a legitimate verifier for
-every later task in a long session. The contracts state the rule per top-level
-task, which is the judgment this gate backs up rather than replaces.
+every later task in a long session, which is the error that would teach people
+to disarm the gate. Closing the gap needs a stable task id carried from the
+orchestrator into the payload; nothing in the runtime offers one today, so the
+gap is disclosed rather than papered over.
 
 Budget guard, not a safety boundary: if the payload carries no `prompt_id`
 there is nothing to key on, and the dispatch proceeds with a note rather than
@@ -130,7 +138,7 @@ def main() -> int:
         spent = load()
         if key in spent:
             print(
-                "[verifier-quota] blocked: this task already spent its outcome "
+                "[verifier-quota] blocked: this prompt already spent its outcome "
                 f"verifier ({spent[key]}). Distinct failure surfaces do not add "
                 "quota — verify at the smallest coherent integration boundary "
                 "instead of stacking gates. If this really is a new top-level "
