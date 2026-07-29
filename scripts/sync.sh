@@ -139,32 +139,20 @@ validate_project_skill_inventory() {
 
 # The commit gate's other half. The Bash hook decides before the shell runs the
 # command and therefore has to infer the target from text; this points git at a
-# tracked hooks directory, so a commit in *this* checkout is checked however it
-# was spelled. Repo-local and reversible with `git config --unset
-# core.hooksPath`; an existing setting that points elsewhere is another tool's
-# and is reported rather than overwritten.
+# tracked hooks directory, so a commit in *this* checkout goes through the same
+# check whatever the command looked like. The installer is a separate script so
+# both of its outcomes are testable against a scratch repo; a non-zero status
+# means this deployment does not have the gate.
+GIT_HOOK_STATUS=0
 install_git_hooks() {
-  local want="main/claude/githooks" current
-  # Repo-local config is the one piece of machine state a temporary HOME does
-  # not isolate, and the suite runs a real `--apply` as a fixture. The sentinel
-  # already marks "this run is inside another harness run", which is exactly
-  # when writing to the developer's checkout would be a surprise.
-  if [[ "${AGENT_HARNESS_PREFLIGHT_ACTIVE:-0}" == "1" ]]; then
-    log "git hooks: nested run, leaving core.hooksPath alone"
-    return 0
+  # Spelled out rather than built as an array: under `set -u`, bash 3.2 (which
+  # is what /usr/bin/env bash is on macOS) treats an empty "${args[@]}" as
+  # unbound and kills the whole sync.
+  if [[ $APPLY -eq 1 ]]; then
+    "$REPO/scripts/install-git-hooks.sh" || GIT_HOOK_STATUS=$?
+  else
+    "$REPO/scripts/install-git-hooks.sh" --dry-run || GIT_HOOK_STATUS=$?
   fi
-  current="$(git -C "$REPO" config --local --get core.hooksPath || true)"
-  if [[ "$current" == "$want" ]]; then
-    log "git hooks: core.hooksPath already set"
-    return 0
-  fi
-  if [[ -n "$current" ]]; then
-    log "WARNING: core.hooksPath is '$current', not this repo's '$want'; left alone."
-    log "         The pre-commit test gate is not installed in this checkout."
-    return 0
-  fi
-  run git -C "$REPO" config --local core.hooksPath "$want"
-  log "git hooks: core.hooksPath -> $want (undo: git config --unset core.hooksPath)"
 }
 
 preflight() {
@@ -481,4 +469,13 @@ if [[ $APPLY -eq 1 ]]; then
   log "done. All synced paths verified consistent; open a new session to verify contract loading."
 else
   log "dry-run complete; once confirmed, run scripts/sync.sh --apply"
+fi
+
+# The file copying is real work and stays done. But a deployment that could not
+# install the commit gate is a deployment without the commit gate, and the only
+# thing a caller reads is the exit status - reporting success here is how a
+# missing boundary becomes invisible until someone commits red.
+if [[ $GIT_HOOK_STATUS -ne 0 ]]; then
+  log "ERROR: files are deployed, but the git-side commit gate is not installed (see above)."
+  exit $GIT_HOOK_STATUS
 fi

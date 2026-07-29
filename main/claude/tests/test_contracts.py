@@ -732,7 +732,11 @@ class DocumentationBudgetTests(unittest.TestCase):
             # every repo a command targets and stopped there. A limit that is
             # not written down reads as a guarantee, so the row now names the
             # class only the Git argv boundary can catch.
-            "README.md": 2520,
+            # +40 (2026-07-30): a review reproduced `git -c core.hooksPath=...`
+            # inside a wrapper, which no client-side hook survives. The row now
+            # names that residue and the layer that closes it; the fifth gate
+            # is also counted where the four were listed.
+            "README.md": 2560,
             # +80 (2026-07-26): navigation and responsibility rows for the
             # dispatch-lifecycle doc. A navigation surface has to grow when the
             # thing it navigates to appears, or it stops being complete.
@@ -777,7 +781,13 @@ class DocumentationBudgetTests(unittest.TestCase):
             # what the two boundaries do and do not each cover. A second gate
             # documented only in the first one's caveat is a gate readers will
             # attribute the wrong guarantee to.
-            "docs/hook-system.md": 1600,
+            # +130 (2026-07-30): the paragraph naming what a client-side gate
+            # cannot close (`--no-verify`, `-c core.hooksPath=...`,
+            # `commit-tree`, all hidable in a wrapper) and where it is closed
+            # instead, plus what the installer does when another tool already
+            # owns core.hooksPath. Both were reproduced by review before the
+            # prose claimed otherwise.
+            "docs/hook-system.md": 1730,
             # Top-down architecture spine: one diagram then a concise walk
             # through every layer, each pointing at its specialized doc. The
             # connective narrative the README (a repo landing page) and the

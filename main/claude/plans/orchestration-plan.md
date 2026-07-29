@@ -37,7 +37,7 @@ Profile names are routing intent, not model names. Model aliases are verified fr
 
 The current fail-closed gates are:
 
-- `commit-test-gate.py`
+- `commit-test-gate.py`（Bash 側）與 `githooks/pre-commit`（git argv 側）
 - `leaf-redispatch.py`
 - `runtime-guard.py --gate`
 - `verifier-quota.py`

@@ -151,11 +151,11 @@ machine-local experience ledger，方便人類回顧與 telemetry 對照。
 | Experience pending／ledger | 將 dispatch、route、source、token、時間與 QC outcome 綁在一起 | [experience-ledger](main/.agents/skills/experience-ledger/SKILL.md) |
 | Bridge 存活對帳 | bridge job 比 launcher 長命；重啟前擋下同一 prompt 的雙寫 | [dispatch-lifecycle](docs/dispatch-lifecycle.md)、[bridge-jobs](main/codex/scripts/bridge-jobs) |
 | Weekly integrity | 檢查 source／HOME 漂移、pins、delegation alarm 與 ledger 狀態；覆蓋不完整（如 resolver 缺失）即列 finding 並扣住週章 | [weekly-integrity.py](main/claude/hooks/weekly-integrity.py) |
-| Commit test gate | 紅測試套件不得 commit。兩道互補的閘：Bash hook 在執行前解析指令實際指向的每個 repo（指不出目標即擋），git pre-commit 則在 argv 邊界涵蓋本 repo 所有拼法（wrapper、function、PATH 覆蓋）。逃生口 `AGENT_SKIP_TEST_GATE=1` | [commit-test-gate.py](main/claude/hooks/commit-test-gate.py)、[githooks/pre-commit](main/claude/githooks/pre-commit) |
+| Commit test gate | 紅測試套件不得 commit。兩道互補的閘：Bash hook 在執行前解析指令實際指向的每個 repo（指不出目標即擋），git pre-commit 則在 argv 邊界涵蓋本 repo 經 git hook 路徑的 commit（wrapper、function、PATH 覆蓋）。兩者都是本機閘：`--no-verify`、`-c core.hooksPath=…`、`commit-tree` 能自行停用 hook，藏進 wrapper 就兩邊都看不見，只有 CI 關得掉。逃生口 `AGENT_SKIP_TEST_GATE=1` | [commit-test-gate.py](main/claude/hooks/commit-test-gate.py)、[githooks/pre-commit](main/claude/githooks/pre-commit) |
 | Gate-line QC／trap evals | 機械稽核 leaf 報告的 INTENT/TWINS/AUTH owed lines；行為 trap fixtures 作回歸資產 | [gate_lines.py](main/.agents/scripts/gate_lines.py)、[evals/traps/](evals/traps/) |
 | RTK／Headroom | 控制工具輸出與大型唯讀 context；不可冒充模型配額 | [RTK](main/claude/RTK.md)、[Headroom runtime](main/.agents/docs/headroom-runtime.md) |
 
-診斷型 hook（delegation audit、experience pending、weekly integrity）一律 fail-open，避免本機工具故障阻塞正常工作。刻意 fail-closed 的是四個有界 gate：commit test gate（紅套件或逾時擋 commit）、leaf-redispatch（leaf 嘗試再派工）、runtime guard 的 PreToolUse gate（版本過舊或未知時擋受限 reviewer 派工）與 verifier 額度（同一個 prompt 內的第二個 outcome verifier）。它們各自只在狹窄條件下攔截；真正的 correctness gate 仍由 focused tests、contract tests、主 session QC 與必要時的獨立 verifier 負責。hook 系統的完整語意見 [hook 系統](docs/hook-system.md)。
+診斷型 hook（delegation audit、experience pending、weekly integrity）一律 fail-open，避免本機工具故障阻塞正常工作。刻意 fail-closed 的是五個有界 gate：commit test gate 的 Bash 與 git pre-commit 兩側（紅套件或逾時擋 commit）、leaf-redispatch（leaf 嘗試再派工）、runtime guard 的 PreToolUse gate（版本過舊或未知時擋受限 reviewer 派工）與 verifier 額度（同一個 prompt 內的第二個 outcome verifier）。它們各自只在狹窄條件下攔截；真正的 correctness gate 仍由 focused tests、contract tests、主 session QC 與必要時的獨立 verifier 負責。hook 系統的完整語意見 [hook 系統](docs/hook-system.md)。
 
 ## Repository 佈局
 

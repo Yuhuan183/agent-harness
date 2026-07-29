@@ -111,6 +111,24 @@ def deployment_manifest_entries() -> list[tuple[str, str, str]]:
     return entries
 
 
+def read_repo(path: str) -> str:
+    """Literal repo-relative read. `read()` resolves deployed (HOME-relative)
+    spellings, which silently rewrites a real repo path like
+    `main/.agents/...` - fine for manifest work, wrong for a file listing."""
+    return (ROOT / path).read_text(encoding="utf-8")
+
+
+def tracked_markdown() -> list[str]:
+    """Every markdown file in the repo, repo-relative.
+
+    Invariants about what the prose may claim are worth only as much as their
+    file list: a hard-coded pair of filenames stops covering the docs the day
+    someone documents the same mechanism in a third place.
+    """
+    listed = git("ls-files", "*.md").stdout.split()
+    return [path for path in listed if not path.startswith("evals/")]
+
+
 def frontmatter(path: str) -> str:
     return read(path).split("---", 2)[1]
 

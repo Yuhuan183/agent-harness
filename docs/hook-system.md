@@ -16,7 +16,7 @@ Hook 的「失敗模式」指的是它自己出錯時會怎樣，這是設計時
 - **Fail-closed（gate 型）**：在狹窄且明確的條件下**主動攔截**（回傳 exit 2，訊息送回模型）。
   只有真正「寧可擋住也不要放過」的情況才配得上 fail-closed。
 
-預設是 fail-open。fail-closed 是刻意的例外，目前四個，每個都只在很窄的條件下攔截。
+預設是 fail-open。fail-closed 是刻意的例外，目前五個，每個都只在很窄的條件下攔截。
 
 ## 逐一說明
 
@@ -28,9 +28,11 @@ Hook 的「失敗模式」指的是它自己出錯時會怎樣，這是設計時
 | [leaf-redispatch](../main/claude/hooks/leaf-redispatch.py) | PreToolUse[Agent] | caller `agent_type` 非空, 亦即 leaf 嘗試再派工 | 回到 main session 派工 |
 | [runtime-guard](../main/claude/hooks/runtime-guard.py) `--gate` | PreToolUse[Agent] | 派工受限 reviewer（verifier/plan-verifier/security-reviewer）但 CLI 版本過舊或未知，無法保證唯讀邊界 | 升級 CLI 重開 session，或改在 main session 做 |
 | [verifier-quota](../main/claude/hooks/verifier-quota.py) | PreToolUse[Agent] | 同一 top-level task（以 prompt 為界）派第二個 outcome verifier | `AGENT_ALLOW_SECOND_VERIFIER=1`（確實是新任務時） |
-| [githooks/pre-commit](../main/claude/githooks/pre-commit) | Git pre-commit | 本 repo 的任何 commit 且套件為紅（或逾時）。這是 shell 的另一側：git 已經在動手了，不必從文字推測目標，所以 wrapper script、名為 `git` 的 function、PATH 覆蓋一律涵蓋 | `AGENT_SKIP_TEST_GATE=1` 或 `--no-verify`（兩者都留在指令裡看得見） |
+| [githooks/pre-commit](../main/claude/githooks/pre-commit) | Git pre-commit | 本 repo 走 git hook 路徑的 commit 且套件為紅（或逾時）。這是 shell 的另一側：git 已經在動手了，不必從文字推測目標，所以 wrapper script、名為 `git` 的 function、PATH 覆蓋都涵蓋 | `AGENT_SKIP_TEST_GATE=1`、`--no-verify` |
 
-commit 的兩道閘是互補而非取代：Bash gate 涵蓋「agent 在**任何** repo 的 commit，執行前」，pre-commit 涵蓋「**這個** repo 的任何 commit，不論拼法」。判斷本體（套件集合、直譯器下限、300 秒預算、訊息措辭）只有一份，由 pre-commit 匯入 commit-test-gate 共用。安裝方式是 repo-local 的 `core.hooksPath`，由 `sync.sh` 設定，`git config --unset core.hooksPath` 即可還原；其他 clone 沒跑過 sync 就沒有這道閘。
+commit 的兩道閘是互補而非取代：Bash gate 涵蓋「agent 在**任何** repo 的 commit，執行前」，pre-commit 涵蓋「**這個** repo 走 git hook 路徑的 commit，不管指令怎麼拼」。判斷本體（套件集合、直譯器下限、300 秒預算、訊息措辭）只有一份，由 pre-commit 匯入 commit-test-gate 共用。安裝方式是 repo-local 的 `core.hooksPath`，由 `sync.sh` 呼叫 `scripts/install-git-hooks.sh` 設定，`git config --unset core.hooksPath` 即可還原；已被別的工具（husky 之類）佔用時不覆寫，改為報錯並讓 sync 以非零狀態結束——git 只允許一個 hooks 目錄，怎麼串要人決定。其他 clone 沒跑過 sync 就沒有這道閘。
+
+**client-side 關不掉的殘餘**：`--no-verify`、`-c core.hooksPath=…`、`commit-tree` 都能讓 git 不跑 hook；藏進 wrapper script 後外層指令看不出痕跡，Bash gate 也攔不到。本機沒有機制能關掉這段，真正關得掉的是 server-side（CI、protected branch）——這就是 enforcement 分層不停在 pre-commit 的原因。
 
 兩個設計要點：
 
