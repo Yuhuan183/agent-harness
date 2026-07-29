@@ -728,7 +728,11 @@ class DocumentationBudgetTests(unittest.TestCase):
             # second verifier per task; it refuses one per prompt. The index
             # naming a stronger guarantee than the mechanism has is worse than
             # the words it saves.
-            "README.md": 2475,
+            # +45 (2026-07-29): the commit-gate row claimed the gate resolves
+            # every repo a command targets and stopped there. A limit that is
+            # not written down reads as a guarantee, so the row now names the
+            # class only the Git argv boundary can catch.
+            "README.md": 2520,
             # +80 (2026-07-26): navigation and responsibility rows for the
             # dispatch-lifecycle doc. A navigation surface has to grow when the
             # thing it navigates to appears, or it stops being complete.
@@ -765,7 +769,11 @@ class DocumentationBudgetTests(unittest.TestCase):
             # per-event inventory, and why each gate is trustworthy. The
             # guardrail table in the README pointed at individual hooks but no
             # doc explained the system as a whole.
-            "docs/hook-system.md": 1300,
+            # +100 (2026-07-29): the commit-gate row described how the text is
+            # matched but not which repo the match is checked against, nor that
+            # a program can commit with the word nowhere in the command. Both
+            # are what a reader needs to know when the gate stays silent.
+            "docs/hook-system.md": 1400,
             # Top-down architecture spine: one diagram then a concise walk
             # through every layer, each pointing at its specialized doc. The
             # connective narrative the README (a repo landing page) and the
