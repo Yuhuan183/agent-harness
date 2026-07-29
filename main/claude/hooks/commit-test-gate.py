@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PreToolUse[Bash] gate: a git commit only proceeds on a green test suite.
+r"""PreToolUse[Bash] gate: a git commit only proceeds on a green test suite.
 
 Motivation (2026-07-23): three times in one session a red suite was committed
 because `unittest | tail` swallowed the exit code and `;` broke the chain.
@@ -10,15 +10,37 @@ the command can plausibly target carries test modules under `.claude/tests/`
 or the harness bundle's canonical `main/claude/tests/`. The target set is the
 payload `cwd` plus every `git -C <path>` and `cd <path>` operand in the command,
 so repo-switching forms cannot dodge the gate. Other repos and non-commit
-commands pass through untouched. The command is also matched with shell quote
-characters stripped and line continuations folded, so quote-concatenated and
-continuation-split spellings (`git com''mit`, `g'i't com''mit`, `git com\`+NL+`mit`)
-cannot dodge it either. The settings prefilter applies the same normalization to
-the raw payload before deciding whether to hand over (2026-07-29): normalizing in
-only one of the two places is what left `g'i't com''mit` unreachable while this
-module was already able to catch it. Escape hatch for intentional red commits
+commands pass through untouched. Escape hatch for intentional red commits
 (e.g. committing a failing reproduction): prefix the command with
 `AGENT_SKIP_TEST_GATE=1 `.
+
+Spellings that only become `git commit` in the shell (2026-07-28 .. 2026-07-29).
+The gate reads the command as text while the shell reads it as a program, so
+every construct that rewrites the text before execution is a way past a naive
+substring match. Three classes, all of them reproduced against real commits:
+
+  quoting/continuations  `g'i't com''mit`, `git com\` + NL + `mit`
+  parameter expansion    `E=; g${E}it com${E}mit`, `C=commit; git $C`
+  substitution           `$(echo git) commit`, `` `echo git commit` ``
+
+The first class is handled by deleting quote characters and folding
+continuations; the other two by deleting the expansion spans. Deletion (never
+substitution) keeps detection monotone: dropping characters can only bring a
+match closer, and none of the deleted characters appear in `git` or `commit`.
+A match in *any* of the copies gates the command, so a spelling that hides in
+one still fires from another.
+
+What deletion cannot recover is a subcommand that exists only at run time:
+`git $C` normalizes to `git`, which is not a commit and not not-a-commit. That
+one is decided structurally instead - if an expansion sits in the subcommand
+slot of a `git` invocation, the command is gated. `git log $(git rev-parse x)`
+keeps its visible subcommand and stays untouched, so the fail-closed case is
+narrow rather than "any command containing a dollar sign".
+
+The settings prefilter cannot do any of this in a `case` glob, so it hands over
+whenever the payload carries an expansion at all and lets this module decide;
+normalizing in only one of the two places is what left `g'i't com''mit`
+unreachable while this module was already able to catch it.
 
 Exit 0 = allow; exit 2 = block, stderr goes back to the model. A suite that
 exceeds its 300 s budget blocks rather than failing open. COMMIT_RE also
@@ -53,6 +75,24 @@ COMMIT_RE = re.compile(r"\bgit\b[^|;&\n]*\bcommit\b")
 # monotonic. False positives (`echo "git" "commit"`) only run the suite
 # needlessly, which the module already accepts.
 QUOTE_RE = re.compile(r"[\"'\\]")
+# Expansions do the same thing one layer later: the text `g${E}it com${E}mit`
+# is not a commit, the process it starts is (reproduced 2026-07-29). Deleting
+# the spans reads them as the empty string, which is what evasion uses them
+# for; a spelling where the expansion produces the real word is still caught by
+# the raw copy, since every copy is matched.
+EXPANSION_RE = re.compile(
+    r"\$\((?:[^()]|\([^()]*\))*\)"   # $( ... ), one level of nesting
+    r"|`[^`]*`"                      # legacy backtick substitution
+    r"|\$\{[^}]*\}"                  # ${VAR}, ${VAR:-default}
+    r"|\$[A-Za-z_][A-Za-z0-9_]*"     # $VAR
+)
+# Marks where an expansion stood, for the structural check below. It has to be
+# a character no command line contains, so it cannot be typed into place.
+EXPANDED = "\x00"
+GIT_RE = re.compile(r"\bgit\b([^|;&\n]*)")
+# `git -C <path>`, `git -c k=v` and friends take a value; git's remaining own
+# options do not, so the first token that is neither is the subcommand.
+GIT_VALUE_OPTIONS = ("-C", "-c", "--git-dir", "--work-tree", "--namespace")
 # The suite needs stdlib tomllib, so it cannot run below 3.11. Newest first;
 # `python3-run` in the .agents layer keeps the same ladder, but a fail-closed
 # gate must not depend on another layer being synced.
@@ -63,6 +103,29 @@ INTERPRETERS = ("python3.14", "python3.13", "python3.12", "python3.11", "python3
 SKIP_RE = re.compile(r"^\s*(?:env\s+)?AGENT_SKIP_TEST_GATE=1(?=\s)")
 DASH_C_RE = re.compile(r"\bgit\s+(?:[^|;&\n]*?\s)?-C[= ]\s*(\"[^\"]+\"|'[^']+'|\S+)")
 CD_RE = re.compile(r"\bcd\s+(\"[^\"]+\"|'[^']+'|\S+)")
+
+
+def runtime_subcommand(command: str) -> bool:
+    """True if some `git` invocation gets its subcommand from an expansion.
+
+    `C=commit; git $C` deletes down to `git`, which no amount of text matching
+    can classify: the word that decides it does not exist until the shell runs.
+    Treat only that shape as a possible commit - an expansion standing where
+    the subcommand goes - so `git log $(git rev-parse HEAD)`, whose subcommand
+    is right there, keeps costing nothing.
+    """
+    marked = EXPANSION_RE.sub(EXPANDED, QUOTE_RE.sub("", command))
+    for rest in GIT_RE.findall(marked):
+        if EXPANDED not in rest:
+            continue
+        tokens = rest.split()
+        while tokens and tokens[0].startswith("-"):
+            option = tokens.pop(0)
+            if option in GIT_VALUE_OPTIONS and tokens:
+                tokens.pop(0)
+        if not tokens or EXPANDED in tokens[0]:
+            return True
+    return False
 
 
 def candidate_dirs(command: str, cwd: str) -> list[str]:
@@ -128,8 +191,11 @@ def main() -> int:
     # split `com\<newline>mit` into `com mit`, which runs a real commit and
     # matches nothing. COMMIT_RE still stops at real `;|&` separators.
     command = re.sub(r"\\\n", "", command)
+    unquoted = QUOTE_RE.sub("", command)
     if not (COMMIT_RE.search(command)
-            or COMMIT_RE.search(QUOTE_RE.sub("", command))):
+            or COMMIT_RE.search(unquoted)
+            or COMMIT_RE.search(EXPANSION_RE.sub("", unquoted))
+            or runtime_subcommand(command)):
         return 0
     # The escape hatch is matched on the raw command only: it has to be a real
     # leading shell assignment, and normalizing here would make it easier to

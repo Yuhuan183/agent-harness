@@ -88,10 +88,11 @@ effort 在 Claude 沒有 provider 記錄，由 `check-pins` 顧。
 
 ## 兩條所有權規則，一條擋得住、一條擋不住
 
-**「每個 top-level task 至多一個 outcome verifier」現在會被拒絕。** 承載欄位是
-payload 的 `prompt_id`，同一個 prompt 內第二次派 `verifier` 直接 exit 2。要留意它的
-邊界：top-level task 是判斷邊界、不是欄位，`prompt_id` 只是最接近的代理，所以**跨
-prompt 的同一個任務會拿到新的額度**——它會少擋，不會誤擋。真的是新任務就用
+**「每個 top-level task 至多一個 outcome verifier」現在有機制托底，但托底的單位是
+prompt、不是 task。** 承載欄位是 payload 的 `prompt_id`，同一個 prompt 內第二次派
+`verifier` 直接 exit 2。top-level task 是判斷邊界、不是欄位，`prompt_id` 只是最接近的
+代理，所以**跨 prompt 的同一個任務會拿到新的額度**——少擋，不誤擋。要真正 per-task 得有
+orchestrator 帶進 payload 的穩定 task id，runtime 目前沒有，所以缺口攤開講。真的是新任務就用
 `AGENT_ALLOW_SECOND_VERIFIER=1` 重派。payload 沒有 `prompt_id` 時放行並附註：這是預算
 護欄，不是安全邊界，不該在讀不到承載欄位時盲目拒絕。
 
