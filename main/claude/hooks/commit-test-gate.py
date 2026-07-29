@@ -53,11 +53,21 @@ among its words is gated, and a commit-shaped command whose target still holds
 an expansion is *blocked with a reason*, because a target the gate could not
 resolve is a check that did not run, not a check that passed.
 
-The residue is stated instead of hidden: `G=git; C=commit; $G $C` puts neither
-word anywhere and neither value in reach, and gating it means gating every
-`$A $B`. Only enforcement at the argv boundary - a `git` that reads its own
-arguments after the shell is done with them - closes that class, and that is a
-deployment decision rather than a parsing one.
+A third review (2026-07-29) reproduced two more. `git -C ~/repo commit` was
+matched and then resolved to nothing, because `~` is rewritten by the shell
+with no expansion character to notice and `git rev-parse` does not expand it;
+targets are now expanded, and globs - which stand for a set of paths - are
+reported unresolved. And `G=$(printf git); C=$(printf commit); $G $C` puts
+neither word in the text and neither value in reach, which the structural check
+now reads as what it is: a program and an argument that both appear only at run
+time. `eval "$C"` is the same thing behind a literal executable whose job is to
+run its argument.
+
+What is left needs the argv boundary, and is left deliberately: a program that
+commits without the word anywhere - a wrapper script, a shell function named
+`git`, a PATH shadow. No amount of reading the command text finds those; only a
+`git` that inspects its own arguments after the shell is done with them does,
+and that is a deployment decision rather than a parsing one.
 
 The settings prefilter cannot do any of this in a `case` glob, so it hands over
 whenever the payload carries an expansion at all and lets this module decide;
@@ -140,6 +150,16 @@ KNOWN_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*
 # expansion. Wrong-way-round here means calling a literal path unresolved,
 # which blocks with a reason; the other way round means allowing a commit.
 EXPANSION_CHARS = "$`"
+# A path the shell rewrites without any expansion character in it. `~` is the
+# one that mattered in practice: `git -C ~/repo commit` reached a real commit
+# while this hook handed `~/repo` to `git rev-parse`, which does not expand it
+# (2026-07-29 review). Globs are rewritten too, but into a *set* of paths, so
+# they are reported unresolved instead of guessed at.
+GLOB_CHARS = "*?["
+# Executables that take a command as data. `eval "$C"` has a perfectly literal
+# executable, so the checks on command position see nothing - what runs is the
+# argument, and an argument this hook cannot read could be anything.
+SHELL_RUNNERS = ("eval", "sh", "bash", "zsh", "dash", "ksh", "xargs")
 
 
 def holds_expansion(text: str) -> bool:
@@ -211,20 +231,37 @@ def runtime_subcommand(command: str) -> bool:
 
 
 def runtime_executable(command: str) -> bool:
-    """True if a segment runs an expansion-produced program on `commit`.
+    """True if a segment runs something this hook cannot read as a program.
 
-    `G=git; $G commit` with G unreachable leaves no `git` anywhere, so every
-    text copy is blind to it - but the shape is still readable: an executable
-    that does not exist until run time, invoked with `commit` among its
-    arguments. Gate that and nothing else. `echo "git commit" && cd "$HOME"`
-    keeps a literal executable in both segments and stays free.
+    Three shapes, each one a way of putting the commit out of textual reach:
+
+      unknown program on `commit`   `G=git; $G commit`
+      unknown program, unknown arg  `G=$(printf git); C=$(printf commit); $G $C`
+      command as data               `C=$(...); eval "$C"`, `sh -c "$C"`
+
+    The first two say the same thing at different strengths: with the program
+    unnamed, a literal `commit` settles it, and when nothing is literal either,
+    what is left is a program and an argument that both appear only at run time
+    - which is exactly how the double-unknown spelling hid. The third has a
+    perfectly literal executable whose *job* is to run its argument.
+
+    The cost is stated rather than assumed: `$EDITOR "$FILE"` and
+    `sh -c "$SETUP"` are blocked in a repo that has a suite, with the reason
+    and the escape hatch. `$PYTHON -m unittest`, `git log $(...)` and
+    `echo "git commit" && cd "$HOME"` all keep something literal and stay free.
     """
     marked = EXPANSION_RE.sub(EXPANDED, expand_known(QUOTE_RE.sub("", command)))
     for segment in SEGMENT_RE.split(marked):
         tokens = segment.split()
         while tokens and ASSIGN_RE.fullmatch(tokens[0]):
             tokens.pop(0)  # leading assignments are not the command
-        if tokens and EXPANDED in tokens[0] and "commit" in tokens[1:]:
+        if not tokens:
+            continue
+        head, rest = tokens[0], tokens[1:]
+        opaque_argument = any(EXPANDED in token for token in rest)
+        if EXPANDED in head and ("commit" in rest or opaque_argument):
+            return True
+        if os.path.basename(head) in SHELL_RUNNERS and opaque_argument:
             return True
     return False
 
@@ -237,13 +274,23 @@ def resolve_targets(command: str, cwd: str) -> tuple[list[str], list[str]]:
     reach. Anything still carrying an expansion is returned as unresolved
     rather than passed to `git rev-parse`, where it would fail and quietly
     leave the gate with nothing to check - the caller blocks on those instead.
+
+    A path can also be rewritten with no expansion in it at all: `~` is the
+    shell's own, and `git rev-parse` does not do it, so `git -C ~/repo commit`
+    used to resolve to nothing and pass. `~` is therefore expanded here, and
+    reported unresolved if it cannot be (no HOME). Globs stand for a set of
+    paths rather than one, so they are never guessed at.
     """
     expanded = expand_known(command)
     dirs = [cwd]
     unresolved: list[str] = []
     for match in DASH_C_RE.findall(expanded) + CD_RE.findall(expanded):
         target = match.strip("\"'")
-        if holds_expansion(target):
+        if holds_expansion(target) or any(char in target for char in GLOB_CHARS):
+            unresolved.append(target)
+            continue
+        target = os.path.expanduser(target)
+        if target.startswith("~"):
             unresolved.append(target)
         elif target not in dirs:
             dirs.append(target)

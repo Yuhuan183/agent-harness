@@ -260,11 +260,14 @@ class MachineStateHygieneTests(unittest.TestCase):
         substrings the gate happens to recognize.
         """
         hook = ROOT / "main/claude/hooks/commit-test-gate.py"
-        # The one spelling whose target the gate cannot name. It has to block
+        # The spellings whose target the gate cannot name. They have to block
         # for *that* reason: every other target here resolves, and asserting
         # only the exit code would let "blocked because unknown" stand in for
         # "blocked because the suite is red" everywhere.
-        unresolvable = 'cd "$(echo {repo})" && git commit -m x'
+        unresolvable = {
+            'cd "$(echo {repo})" && git commit -m x',
+            "git -C {repo_glob} commit -m x",
+        }
         # (spelling, environment). `{repo}` stands for the scratch repo's path;
         # a spelling that names its own target is handed to the gate from a cwd
         # that is not a repository at all, so the target resolution has to be
@@ -293,21 +296,46 @@ class MachineStateHygieneTests(unittest.TestCase):
             ("R={repo}; cd \"$R\" && git commit -m x", {}),
             ('git -C "$PRE_REPO" commit -m x', {"PRE_REPO": "{repo}"}),
             ('cd "$PRE_REPO" && git commit -m x', {"PRE_REPO": "{repo}"}),
-            # Unresolvable target: blocked for that reason, not silently allowed.
-            (unresolvable, {}),
+            # Neither the program nor its argument is in the text, and neither
+            # value is in reach: only the structure says what this is.
+            ("G=$(printf git); C=$(printf commit); $G $C -m x", {}),
+            # Literal executable, and it is the argument that runs.
+            ('G=$(printf git); C=$(printf commit); eval "$G $C -m x"', {}),
+            # `~` is rewritten by the shell with no expansion character in it,
+            # and `git rev-parse` does not rewrite it back.
+            ("git -C {tilde_repo} commit -m x", {}),
+            ("cd {tilde_repo} && git commit -m x", {}),
+            # Unresolvable targets: blocked for that reason, not silently allowed.
+            ('cd "$(echo {repo})" && git commit -m x', {}),
+            ("git -C {repo_glob} commit -m x", {}),
         ]
         identity = {
             "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
             "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid",
         }
-        with tempfile.TemporaryDirectory() as temp_dir:
+        # `~` only means anything for a path under HOME, and the platform temp
+        # dir is not one, so the tilde spellings get a scratch repo that is.
+        with (tempfile.TemporaryDirectory() as temp_dir,
+              tempfile.TemporaryDirectory(dir=Path.home(),
+                                          prefix=".gate-test-") as home_dir):
             for index, (template, template_env) in enumerate(spellings):
-                repo = Path(temp_dir) / f"repo{index}"
-                repo.mkdir()
                 written = "".join([template, *template_env.values()])
-                names_target = "{repo}" in written
-                spelling = template.replace("{repo}", str(repo))
-                case_env = {name: value.replace("{repo}", str(repo))
+                base = home_dir if "{tilde_repo}" in written else temp_dir
+                repo = Path(base) / f"repo{index}"
+                repo.mkdir()
+                names_target = any(mark in written for mark in
+                                   ("{repo}", "{tilde_repo}", "{repo_glob}"))
+
+                def fill(text: str) -> str:
+                    return (text
+                            .replace("{tilde_repo}",
+                                     "~/" + str(repo.relative_to(Path.home()))
+                                     if base == home_dir else str(repo))
+                            .replace("{repo_glob}", f"{repo}*")
+                            .replace("{repo}", str(repo)))
+
+                spelling = fill(template)
+                case_env = {name: fill(value)
                             for name, value in template_env.items()}
                 subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
                 (repo / "f.txt").write_text("x", encoding="utf-8")
@@ -338,10 +366,31 @@ class MachineStateHygieneTests(unittest.TestCase):
                     env={**os.environ, **case_env})
                 self.assertEqual(blocked.returncode, 2,
                                  f"real commit slipped the gate: {spelling!r}")
-                reason = ("could not be resolved" if template == unresolvable
+                reason = ("could not be resolved" if template in unresolvable
                           else "is RED")
                 self.assertIn(reason, blocked.stderr,
                               f"blocked for the wrong reason: {spelling!r}")
+
+    def test_the_docs_say_where_text_matching_stops(self) -> None:
+        """A gate documented as shell-accurate has to name its own limit.
+
+        The matrix above is the list of spellings that are covered; what it
+        cannot cover is a program that commits with the word nowhere in the
+        command - a wrapper script, a shell function named `git`, a PATH
+        shadow. Only the Git argv boundary sees those. The prose claimed
+        shell-actual semantics without saying so (2026-07-29 review), which
+        reads as a guarantee, so the disclosure is asserted rather than
+        intended.
+        """
+        for path in ("README.md", "docs/hook-system.md"):
+            claims = [line for line in read(path).splitlines()
+                      if "commit-test-gate" in line]
+            self.assertTrue(claims, path)
+            for line in claims:
+                self.assertIn("argv", line,
+                              f"{path}: describes the commit gate without naming "
+                              "the boundary its text matching cannot reach:\n"
+                              f"{line}")
 
     def test_commit_gate_runs_the_suite_on_a_modern_interpreter(self) -> None:
         # 2026-07-27: the gate ran the suite on `sys.executable`, i.e. the agent
