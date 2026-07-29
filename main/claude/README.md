@@ -16,7 +16,7 @@
 | `skills/` | 依需求載入的工作流源檔（部署為 `~/.claude/skills/<name>`；改名理由同 `CLAUDE.contract.md`——Claude Code 會掃巢狀 `.claude/skills/`，同名時本 repo 內會列兩份、載兩次）；`baton-dispatch`、`provider-routing` 為自有，`headroom-protocol`、`speak-human-tw`、`experience-ledger`、`task-observer` symlink 至 `../.agents/skills/`；`task-observer` 可在 skill 使用受挫後主動詢問是否記錄改善觀察 |
 | `settings.json` | Hooks、最小唯讀 allowlist、codex plugin（唯一強依賴）與介面設定；不指定主模型、effort 或 fallback。其他 plugin 屬本機自理，enable 寫 `settings.local.json`（不入庫、sync 不覆蓋） |
 | `examples/headroom-mcp.legacy.json` | 舊版 MCP 宣告範例，僅供不支援 Headroom installer 的環境參考；一般安裝使用 `headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787` |
-| `hooks/`, `scripts/`, `sh/` | 監控、用量診斷、路由檢核（`scripts/model-routing`）、執行版本防護、紅測試 commit 閘（`hooks/commit-test-gate.py`，逃生口 `AGENT_SKIP_TEST_GATE=1`）與 statusline |
+| `hooks/`, `scripts/`, `sh/` | 監控、用量診斷、路由檢核（`scripts/model-routing`）、執行版本防護、紅測試 commit 閘（`hooks/commit-test-gate.py` 配 `githooks/pre-commit`，逃生口 `AGENT_SKIP_TEST_GATE=1`；`--no-verify`／`-c core.hooksPath=…` 這類自行停用 hook 的殘餘留給 CI）與 statusline |
 | `plans/orchestration-plan.md` | 現況、待觀察事項與精簡決策紀錄 |
 | `prompts/` | Claude App 與 Cowork 可直接貼用的配置 |
 | `tests/` | 不需額外相依套件的契約與機制測試 |

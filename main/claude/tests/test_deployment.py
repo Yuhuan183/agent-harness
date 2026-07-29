@@ -4,6 +4,14 @@ import shutil
 from support import *  # noqa: F401,F403
 
 
+def hooks_path(repo: Path) -> str:
+    """What git in `repo` would actually run hooks from, as configured."""
+    got = subprocess.run(["git", "-C", str(repo), "config", "--local",
+                          "--get", "core.hooksPath"],
+                         capture_output=True, text=True)
+    return got.stdout.strip()
+
+
 class MachineStateHygieneTests(unittest.TestCase):
     def test_no_absolute_home_paths_leak_into_tracked_config(self) -> None:
         sources = set()
@@ -461,11 +469,58 @@ class MachineStateHygieneTests(unittest.TestCase):
         same command that deploys everything else - otherwise the boundary
         exists in the tree and not in any checkout.
         """
-        sync = read("scripts/sync.sh")
-        self.assertIn("core.hooksPath \"$want\"", sync)
-        self.assertIn("\ninstall_git_hooks\n", sync)
+        installer = str(ROOT / "scripts/install-git-hooks.sh")
         hook = ROOT / "main/claude/githooks/pre-commit"
         self.assertTrue(os.access(hook, os.X_OK), "pre-commit is not executable")
+
+        # sync.sh is what a person runs, so the installer has to be on its path
+        # and its status has to reach the exit code. The branches themselves are
+        # proved below against scratch repos; they cannot be proved through
+        # sync.sh, whose REPO is the developer's own checkout by construction.
+        sync = read("scripts/sync.sh")
+        self.assertIn("scripts/install-git-hooks.sh", sync)
+        self.assertIn("\ninstall_git_hooks\n", sync)
+        self.assertIn("exit $GIT_HOOK_STATUS", sync)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            fresh = Path(tmp) / "fresh"
+            fresh.mkdir()
+            subprocess.run(["git", "init", "-q", str(fresh)], check=True,
+                           capture_output=True)
+            done = subprocess.run([installer, str(fresh)],
+                                  capture_output=True, text=True)
+            self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+            self.assertEqual(hooks_path(fresh), "main/claude/githooks")
+            # Running it twice is what every re-sync does.
+            again = subprocess.run([installer, str(fresh)],
+                                   capture_output=True, text=True)
+            self.assertEqual(again.returncode, 0, again.stderr + again.stdout)
+            self.assertEqual(hooks_path(fresh), "main/claude/githooks")
+
+    def test_a_hooks_directory_owned_by_another_tool_fails_the_deployment(self) -> None:
+        """Git allows one hooks directory, so a clash cannot be merged away.
+
+        The first version of this warned and returned 0: sync printed a line
+        nobody reads and then reported success, leaving a checkout that has the
+        policy in its tree and no gate in its git. Overwriting is worse - that
+        directory is husky's or someone's - so the remaining honest outcome is
+        to leave it alone and fail, which is what the exit code says.
+        """
+        installer = str(ROOT / "scripts/install-git-hooks.sh")
+        with tempfile.TemporaryDirectory() as tmp:
+            taken = Path(tmp) / "taken"
+            taken.mkdir()
+            subprocess.run(["git", "init", "-q", str(taken)], check=True,
+                           capture_output=True)
+            subprocess.run(["git", "-C", str(taken), "config", "--local",
+                            "core.hooksPath", ".husky"], check=True)
+            clash = subprocess.run([installer, str(taken)],
+                                   capture_output=True, text=True)
+            self.assertNotEqual(clash.returncode, 0,
+                                "sync reported success without installing the gate")
+            self.assertIn("NOT installed", clash.stdout + clash.stderr)
+            self.assertEqual(hooks_path(taken), ".husky",
+                             "another tool's hooks directory was taken over")
 
     def test_running_the_suite_does_not_configure_the_developers_checkout(self) -> None:
         """A temporary HOME does not isolate repo-local git config.
@@ -494,16 +549,52 @@ class MachineStateHygieneTests(unittest.TestCase):
         points at it. Describing either one by itself reads as a guarantee it
         does not have - which is what the prose did until 2026-07-29 - so the
         pairing is asserted instead of intended.
+
+        The list used to be two hard-coded filenames, which is why a third file
+        (`main/claude/README.md`) described the Bash half alone for a day. Every
+        tracked doc that names the gate is in scope now; contracts are exempt
+        because they are prompts, budgeted separately.
         """
-        for path in ("README.md", "docs/hook-system.md"):
-            claims = [line for line in read(path).splitlines()
-                      if "commit-test-gate" in line]
-            self.assertTrue(claims, path)
-            for line in claims:
-                self.assertIn("pre-commit", line,
-                              f"{path}: describes the Bash commit gate without the "
-                              "git-side gate that covers what text cannot reach:\n"
-                              f"{line}")
+        # Contracts are prompts, budgeted separately. Dated history entries are
+        # exempt for the opposite reason: they record what was true on a date,
+        # and editing them to match today would falsify the record.
+        exempt = ("main/claude/plans/orchestration-history.md",)
+        docs = [path for path in tracked_markdown()
+                if not path.endswith(".contract.md") and path not in exempt]
+        named = [path for path in docs if "commit-test-gate" in read_repo(path)]
+        self.assertGreaterEqual(len(named), 3, "the gate is documented somewhere")
+        for path in named:
+            self.assertIn("pre-commit", read_repo(path),
+                          f"{path}: describes the Bash commit gate without the "
+                          "git-side gate that covers what text cannot reach")
+
+    def test_no_doc_sells_a_client_side_gate_as_unconditional(self) -> None:
+        """The git hook only runs if the program committing lets it run.
+
+        `--no-verify`, `git -c core.hooksPath=...` and `commit-tree` all skip
+        it, and a wrapper script hides every one of them from the Bash gate too.
+        The docs claimed "涵蓋所有拼法" until 2026-07-30, which reads as a
+        guarantee the machine cannot make; the residue and the layer that does
+        close it (CI) have to be named wherever the git-side gate is described.
+        """
+        overclaims = ("所有拼法", "任何拼法", "不論拼法", "一律涵蓋", "任何 commit")
+        for path in tracked_markdown():
+            body = read_repo(path)
+            if "githooks/pre-commit" not in body:
+                continue
+            for claim in overclaims:
+                self.assertNotIn(claim, body,
+                                 f"{path}: '{claim}' promises coverage no "
+                                 "client-side hook has")
+            # An inventory may name the hook without describing its reach. The
+            # disclosure is owed by whoever makes the coverage claim.
+            if "涵蓋" not in body and "covers" not in body:
+                continue
+            self.assertIn("--no-verify", body, path)
+            self.assertIn("core.hooksPath", body, path)
+            self.assertIn("CI", body,
+                          f"{path}: names the residue without the layer that "
+                          "closes it")
 
     def test_commit_gate_runs_the_suite_on_a_modern_interpreter(self) -> None:
         # 2026-07-27: the gate ran the suite on `sys.executable`, i.e. the agent

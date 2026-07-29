@@ -19,8 +19,15 @@ in *any* repository before they start.
 The decision itself is not duplicated: `run_suites` is imported from the Bash
 gate, so the suite set, the interpreter floor, the 300 s budget and the wording
 are shared. Escape hatch, deliberately the same one: `AGENT_SKIP_TEST_GATE=1`.
-`git commit --no-verify` also skips it, which is fine - it is visible in the
-command, which is exactly what the spellings this hook exists for are not.
+
+Where this stops, and it is not a detail: a client-side hook only runs if the
+program committing lets it. `git commit --no-verify` and `git -c
+core.hooksPath=/dev/null commit` both turn it off, `git commit-tree` never
+consults it, and a wrapper script can carry any of those without the outer
+command showing a thing - so "hidden in a wrapper" is not closed here, it is
+only moved. Nothing installed on this machine closes it; the layer that does is
+server-side (CI, a protected branch), which is why the enforcement chain in the
+playbook does not end at pre-commit.
 """
 
 from __future__ import annotations
