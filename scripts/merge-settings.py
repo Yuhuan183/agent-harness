@@ -9,19 +9,29 @@ overwrite` abort) means the repo's own updates never land.
 
 The merge resolves that by ownership rather than by position:
 
-  * A hook group is *owned* when any command in it matches OWNED_HOOK_PATTERNS.
-    Owned groups are replaced wholesale by the repo's, so a stale command is
-    updated rather than duplicated. Foreign groups are preserved verbatim, and
-    a foreign hook found inside an owned group is rescued into its own group
-    rather than dropped.
+  * A hook group is *owned* when any command in it names a hook this repo
+    actually ships. Owned groups are replaced wholesale by the repo's, so a
+    stale command is updated rather than duplicated. Foreign groups are
+    preserved verbatim, and a foreign hook found inside an owned group is
+    rescued into its own group rather than dropped.
   * Hook events the repo does not define at all are preserved untouched.
   * Lists elsewhere (notably permissions.allow) become a union: every repo
     entry is present, and entries only the machine has survive.
   * Top-level keys the repo does not define (`model`, `effortLevel`) survive.
 
+Ownership is per hook, not per directory (2026-07-29). `~/.claude/hooks/` is
+the documented place for *every* Claude Code hook, third-party ones included,
+so treating that path as this repo's territory read a vendor's
+`~/.claude/hooks/vendor.py` as ours and deleted its whole event on the next
+deploy. The identities come from the repo's own settings file — the script
+basenames it references — plus the sidecar record of what it deployed last
+time, so a hook this repo drops is still retracted while one it never shipped
+is never touched.
+
 The repo is the sole authority on its own entries and never an authority on
-anyone else's. `--check` asserts that every group in a settings file is owned,
-which is what keeps OWNED_HOOK_PATTERNS honest as hooks are added.
+anyone else's. `--check` asserts that every group in a settings file is owned
+and that every hook script it names exists in the repo, which is what keeps
+ownership honest as hooks are added.
 """
 
 from __future__ import annotations
@@ -29,17 +39,20 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import re
 import sys
 from pathlib import Path
 
-# A hook belongs to this repo when its command matches one of these. Every
-# group in main/claude/settings.json must match (enforced by --check and by
-# the deployment tests), so adding a hook without extending this list fails
-# loudly instead of silently making the new hook un-updatable.
-OWNED_HOOK_PATTERNS = (
-    "$HOME/.claude/hooks/",
+# Commands that are this repo's without naming a script under the shared hooks
+# directory. Kept as an explicit list because each one is a whole-command
+# identity, not a namespace.
+OWNED_HOOK_MARKERS = (
     "rtk hook claude",
 )
+# A hook script this repo ships, however the deployed command spells the path
+# to it: `$HOME/.claude/hooks/x.py`, `~/.claude/hooks/x.py`, or a fully
+# expanded absolute path. The basename is the identity.
+HOOK_REF_RE = re.compile(r"/\.claude/hooks/([A-Za-z0-9._+-]+)")
 
 
 def canonical(value) -> str:
@@ -51,15 +64,36 @@ def hook_commands(group: dict) -> list[str]:
             if isinstance(h, dict)]
 
 
-def is_owned_command(command: str) -> bool:
-    return any(pattern in command for pattern in OWNED_HOOK_PATTERNS)
+def hook_scripts(command: str) -> list[str]:
+    """Hook script basenames a command invokes out of the shared hooks dir."""
+    return HOOK_REF_RE.findall(command)
 
 
-def is_owned_group(group: dict) -> bool:
-    return any(is_owned_command(command) for command in hook_commands(group))
+def declared_identities(settings: dict) -> set[str]:
+    """Every hook script the given settings file claims as its own."""
+    return {
+        name
+        for groups in (settings.get("hooks") or {}).values()
+        if isinstance(groups, list)
+        for group in groups
+        if isinstance(group, dict)
+        for command in hook_commands(group)
+        for name in hook_scripts(command)
+    }
 
 
-def split_foreign_hooks(group: dict) -> list[dict]:
+def is_owned_command(command: str, identities: set[str]) -> bool:
+    if any(marker in command for marker in OWNED_HOOK_MARKERS):
+        return True
+    return any(name in identities for name in hook_scripts(command))
+
+
+def is_owned_group(group: dict, identities: set[str]) -> bool:
+    return any(is_owned_command(command, identities)
+               for command in hook_commands(group))
+
+
+def split_foreign_hooks(group: dict, identities: set[str]) -> list[dict]:
     """Foreign hooks sitting inside an owned group, as standalone groups.
 
     Replacing an owned group would otherwise delete a third-party hook that had
@@ -67,7 +101,8 @@ def split_foreign_hooks(group: dict) -> list[dict]:
     repo's own update.
     """
     foreign = [h for h in group.get("hooks", [])
-               if isinstance(h, dict) and not is_owned_command(h.get("command", ""))]
+               if isinstance(h, dict)
+               and not is_owned_command(h.get("command", ""), identities)]
     if not foreign:
         return []
     rescued = {k: v for k, v in group.items() if k != "hooks"}
@@ -75,7 +110,7 @@ def split_foreign_hooks(group: dict) -> list[dict]:
     return [rescued]
 
 
-def merge_hooks(repo: dict, deployed: dict) -> dict:
+def merge_hooks(repo: dict, deployed: dict, identities: set[str]) -> dict:
     merged: dict[str, list] = {}
     for event in list(repo) + [e for e in deployed if e not in repo]:
         repo_groups = repo.get(event, [])
@@ -84,8 +119,8 @@ def merge_hooks(repo: dict, deployed: dict) -> dict:
         for group in deployed_groups:
             if not isinstance(group, dict):
                 preserved.append(group)
-            elif is_owned_group(group):
-                preserved.extend(split_foreign_hooks(group))
+            elif is_owned_group(group, identities):
+                preserved.extend(split_foreign_hooks(group, identities))
             else:
                 preserved.append(group)
         groups = list(repo_groups) + preserved
@@ -141,6 +176,22 @@ def managed_entries(repo, path: str = "", into: dict | None = None) -> dict:
     return into
 
 
+MANAGED_HOOKS_KEY = "hooks.scripts"
+
+
+def merge_identities(repo: dict, managed: dict | None) -> set[str]:
+    """Hook scripts the repo ships now, plus the ones it deployed before.
+
+    A hook the repo has since dropped is no longer in the settings file, so
+    identity alone could never retract its deployed group. The sidecar carries
+    that history — and only that history, so a hook this repo never deployed
+    can never enter the set.
+    """
+    previous = (managed or {}).get(MANAGED_HOOKS_KEY) or []
+    return declared_identities(repo) | {
+        name for name in previous if isinstance(name, str)}
+
+
 def merge_settings(repo: dict, deployed: dict, managed: dict | None = None,
                    retracted: list | None = None) -> dict:
     merged = merge_value(
@@ -149,16 +200,33 @@ def merge_settings(repo: dict, deployed: dict, managed: dict | None = None,
         managed or {}, "", retracted,
     )
     if "hooks" in repo or "hooks" in deployed:
-        merged["hooks"] = merge_hooks(repo.get("hooks", {}), deployed.get("hooks", {}))
+        identities = merge_identities(repo, managed)
+        if retracted is not None:
+            for event, groups in (deployed.get("hooks") or {}).items():
+                for group in groups:
+                    if not isinstance(group, dict):
+                        continue
+                    dropped = [name for command in hook_commands(group)
+                               for name in hook_scripts(command)
+                               if name in identities
+                               and name not in declared_identities(repo)]
+                    for name in dropped:
+                        retracted.append(f"hooks.{event}: {name}")
+        merged["hooks"] = merge_hooks(
+            repo.get("hooks", {}), deployed.get("hooks", {}), identities)
     return merged
 
 
-def preserved_report(repo: dict, merged: dict) -> list[str]:
+def preserved_report(repo: dict, merged: dict,
+                     identities: set[str] | None = None) -> list[str]:
     """What survived that the repo does not define - the merge's whole point."""
+    if identities is None:
+        identities = declared_identities(repo)
     kept = [key for key in merged if key not in repo and key != "hooks"]
     lines = [f"kept machine key: {key}" for key in sorted(kept)]
     for event, groups in merged.get("hooks", {}).items():
-        foreign = [g for g in groups if isinstance(g, dict) and not is_owned_group(g)]
+        foreign = [g for g in groups
+                   if isinstance(g, dict) and not is_owned_group(g, identities)]
         if foreign:
             lines.append(f"kept {len(foreign)} foreign hook group(s) in {event}")
     return lines
@@ -168,11 +236,10 @@ def write_managed(path: Path, repo: dict, dry_run: bool) -> None:
     """Record what the repo owns now, so the next merge can retract removals."""
     if dry_run:
         return
+    entries = managed_entries({k: v for k, v in repo.items() if k != "hooks"})
+    entries[MANAGED_HOOKS_KEY] = sorted(declared_identities(repo))
     try:
-        path.write_text(
-            json.dumps(managed_entries({k: v for k, v in repo.items()
-                                        if k != "hooks"}), indent=2) + "\n",
-            encoding="utf-8")
+        path.write_text(json.dumps(entries, indent=2) + "\n", encoding="utf-8")
     except OSError as exc:
         # Losing provenance costs a future retraction, never the merge itself.
         print(f"  warning: could not record managed entries: {exc}",
@@ -187,7 +254,8 @@ def main() -> int:
                         help="provenance sidecar; defaults to a dotfile beside "
                              "the deployed file")
     parser.add_argument("--check", action="store_true",
-                        help="verify every hook group in `repo` is owned")
+                        help="verify every hook group in `repo` is owned and "
+                             "every hook script it names exists")
     parser.add_argument("--dry-run", action="store_true",
                         help="report the merge without writing")
     parser.add_argument("--verify", action="store_true",
@@ -199,19 +267,35 @@ def main() -> int:
     repo = json.loads(args.repo.read_text(encoding="utf-8"))
 
     if args.check:
+        identities = declared_identities(repo)
         unowned = [
             f"{event}[{index}]: {hook_commands(group)}"
             for event, groups in repo.get("hooks", {}).items()
             for index, group in enumerate(groups)
-            if not is_owned_group(group)
+            if not is_owned_group(group, identities)
         ]
         if unowned:
-            print("ERROR: hook groups not matched by OWNED_HOOK_PATTERNS; the "
-                  "merge could not update them on deploy:", file=sys.stderr)
+            print("ERROR: hook groups this repo could not claim; the merge "
+                  "could not update them on deploy. A repo hook must invoke a "
+                  "script under .claude/hooks/ or match an OWNED_HOOK_MARKERS "
+                  "entry:", file=sys.stderr)
             for line in unowned:
                 print(f"  - {line}", file=sys.stderr)
             return 1
-        print(f"ownership ok: every hook group in {args.repo.name} is owned")
+        # An identity that names no shipped script would claim a hook file this
+        # repo does not have — which is how a typo turns into silently
+        # adopting, and then deleting, someone else's hook.
+        hooks_dir = args.repo.parent / "hooks"
+        missing = sorted(name for name in identities
+                         if not (hooks_dir / name).exists())
+        if missing:
+            print(f"ERROR: {args.repo.name} claims hook scripts that do not "
+                  f"exist in {hooks_dir}:", file=sys.stderr)
+            for name in missing:
+                print(f"  - {name}", file=sys.stderr)
+            return 1
+        print(f"ownership ok: every hook group in {args.repo.name} is owned "
+              f"by a shipped script ({len(identities)} claimed)")
         return 0
 
     if args.deployed is None:
@@ -238,7 +322,8 @@ def main() -> int:
         managed = {}  # no provenance recorded yet: keep everything
     retracted: list[str] = []
     merged = merge_settings(repo, deployed, managed, retracted)
-    report = preserved_report(repo, merged) + [
+    report = preserved_report(
+        repo, merged, merge_identities(repo, managed)) + [
         f"retracted (repo no longer grants it): {line}" for line in retracted]
 
     if merged == deployed:

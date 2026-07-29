@@ -26,17 +26,17 @@ and session automatically; a native Claude dispatch then only needs its outcome:
   `--from-pending` refuses to guess — pass the hook-generated `--dispatch-id`.
   Any run that names a `--dispatch-id` clears that dispatch's staged stub, so a
   fully explicit record reconciles the pending file the same way.
-- **Route flags by request source.** Native Claude records may omit
-  `--profile/--model/--effort`: the resolver fills them and tags the record
-  `route_source: resolver-assumed` (pins are aliases; the resolver maps them to
-  dated ids, so assumed routes never masquerade as verified evidence). Such a
-  record is reported but cannot drive a route change — pass the route
-  explicitly when the dispatch should count as routing evidence. Bridge
-  records read model and effort from the dispatch's own Codex rollout and tag
-  `route_source: rollout-verified`; pass only `--profile` (a harness label the
-  provider does not record). A `--model/--effort` that contradicts the rollout
-  is rejected as a routing violation rather than logged. Stub-less native
-  Codex records need
+- **Route flags by request source.** Omit `--profile/--model/--effort` on
+  native Claude records: the model comes from the dispatch's own transcript and
+  the rest from the resolver, tagged `route_source: transcript-verified`. Only
+  provider-attested tiers may drive a route change, so typing the route in
+  cannot make a record count — with no staged evidence the resolver's fill is
+  tagged `resolver-assumed` and a hand-typed route is tagged `explicit`, and
+  neither enters a cohort. Bridge records read model and effort from the
+  dispatch's own Codex rollout and tag `route_source: rollout-verified`; pass
+  only `--profile` (a harness label the provider does not record). A
+  `--model/--effort` that contradicts the provider's record is rejected as a
+  routing violation rather than logged. Stub-less native Codex records need
   `--request-source codex` plus role, provider, and the full route.
 - Log **every** dispatch — Claude roles and Codex bridge alike. Outcome is the
   main session's quality verdict: `accepted` (clean) / `corrected` (fixed

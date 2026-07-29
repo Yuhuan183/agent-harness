@@ -174,7 +174,11 @@ class MachineStateHygieneTests(unittest.TestCase):
             # word from a plain substring/word match. Reproduced against this
             # gate on 2026-07-28: both forms returned 0 on a red suite.
             for evasion in ("git com''mit -m x", 'git com""mit -m x',
-                            "git -C . com''mit -m x"):
+                            "git -C . com''mit -m x",
+                            # Splitting both words escaped until 2026-07-29:
+                            # the hook always caught it, the settings
+                            # prefilter never handed it over.
+                            "g'i't com''mit -m x", 'g"i"t com""mit -m x'):
                 self.assertEqual(
                     run_hook(evasion, str(repo)).returncode, 2,
                     f"quote-concatenated commit slipped the gate: {evasion}")
@@ -194,6 +198,12 @@ class MachineStateHygieneTests(unittest.TestCase):
             cont_form = run_hook("git \\\n  commit -m x", str(repo))
             self.assertEqual(cont_form.returncode, 2)
             self.assertIn("commit blocked", cont_form.stderr)
+            # The shell deletes the continuation rather than replacing it with
+            # a space, so an intra-word split still runs a real commit. Folding
+            # to a space turned it into `com mit` and matched nothing.
+            intra_word = run_hook("git com\\\nmit -m x", str(repo))
+            self.assertEqual(intra_word.returncode, 2)
+            self.assertIn("commit blocked", intra_word.stderr)
 
             # The harness keeps its deployable suite under main/claude/tests.
             # A stale root cache must neither trigger a zero-test false block
@@ -343,9 +353,13 @@ class MachineStateHygieneTests(unittest.TestCase):
         # entirely for Bash payloads that can carry no commit at all, so
         # ordinary commands do not pay a per-call process spawn (measured
         # 25 ms). A stub hook drops a marker whenever it actually runs.
-        # The prefilter hands over on `git` as well as on `commit`, because
-        # `git com''mit` contains neither the word `commit` nor a spelling a
-        # substring match can see; the hook itself re-matches quote-stripped.
+        # The prefilter matches a normalized copy of the payload - quotes,
+        # backslashes and `n` deleted - because `g'i't com''mit` contains
+        # neither bare word, and `*git*` alone therefore let it through
+        # untouched while the hook behind it was already able to catch it
+        # (reproduced 2026-07-29). Deleting characters can only bring a match
+        # closer, never hide one, and neither `git` nor `commit` contains any
+        # deleted character, so the normalization is monotone.
         settings = json.loads(read(".claude/settings.json"))
         pre = [h["command"] for g in settings["hooks"]["PreToolUse"] for h in g["hooks"]]
         command = next(c for c in pre if "commit-test-gate.py" in c)
@@ -373,13 +387,18 @@ class MachineStateHygieneTests(unittest.TestCase):
             # Commit: the gate runs and its exit code propagates.
             self.assertEqual(run_gate("git commit -m x").returncode, 2)
             self.assertTrue(marker.exists())
-            # A quote-concatenated commit must still reach the hook, which is
-            # the layer that can normalize it.
-            marker.unlink()
-            run_gate("git com''mit -m x")
-            self.assertTrue(
-                marker.exists(),
-                "prefilter dropped a quote-concatenated commit before the hook")
+            # Every spelling the shell still runs as a commit must reach the
+            # hook, which is the layer that can normalize it. Splitting *both*
+            # words (`g'i't com''mit`) is the form the old `*commit*|*git*`
+            # prefilter dropped outright.
+            for evasion in ("git com''mit -m x", "g'i't com''mit -m x",
+                            "g\"i\"t com\"\"mit -m x",
+                            "git com\\\nmit -m x", "g'i't com\\\nmit -m x"):
+                marker.unlink(missing_ok=True)
+                run_gate(evasion)
+                self.assertTrue(
+                    marker.exists(),
+                    f"prefilter dropped a real commit before the hook: {evasion!r}")
 
 
 if __name__ == '__main__':

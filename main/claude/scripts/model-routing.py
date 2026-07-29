@@ -108,7 +108,7 @@ def validation_errors(config: dict) -> list[str]:
             return f"references unknown effort: {effort!r}"
         return None
 
-    errors += core.check_allowed_routes(config, route_ok)
+    errors += core.check_approved_routes(config, route_ok)
     errors += core.check_availability(models, AVAILABILITY_SCHEMA)
 
     for profile_name, profile in profiles.items():

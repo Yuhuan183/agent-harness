@@ -17,17 +17,21 @@ import tomllib
 from datetime import date
 from pathlib import Path
 
-# Route provenance strong enough to move a route (user-directed 2026-07-28).
-# `rollout-verified` is attested by the provider's own rollout record;
-# `explicit` is the dispatcher's record of the route it selected. Excluded:
-# `resolver-assumed`, which is inferred from an alias and stops being true the
-# moment that alias is upgraded, and untagged records, which carry no
-# provenance at all. Both stay visible in the report's `ineligible_n` — the
-# gate is on what may drive a decision, not on what may be counted.
-# Only `rollout-verified` would be stricter, but no Claude-side dispatch can
-# ever earn it (there is no Claude rollout to read), so that would permanently
-# exclude one provider rather than raise the evidence bar.
-DECISION_ROUTE_SOURCES = ("rollout-verified", "explicit")
+# Route provenance strong enough to move a route: the provider's own account
+# of what it ran, on both sides. `rollout-verified` is Codex's applied thread
+# settings (model and effort); `transcript-verified` is the model Claude names
+# on every assistant turn, checked against the resolved pin, with effort left
+# to check-pins because Claude reports none.
+#
+# Excluded: `resolver-assumed`, inferred from an alias and false the moment
+# that alias is upgraded, and `explicit`, which is only the dispatcher's own
+# claim — nothing checks it against what ran, so a mistyped or wishful route
+# would move every later route toward a model that never ran (2026-07-29;
+# `explicit` was admitted here when Claude had no attestation path at all).
+# Untagged records carry no provenance either. All of them stay visible in the
+# report's `ineligible_n`: the gate is on what may drive a decision, not on
+# what may be counted.
+DECISION_ROUTE_SOURCES = ("rollout-verified", "transcript-verified")
 
 SELECTION_KEYS = {"default", "fast", "quality_guarded", "high_risk"}
 REVISION_POLICY_KEYS = {
@@ -214,29 +218,40 @@ def check_quality_floor_roles(
     errors = []
     quality_floor = config.get("quality_floor", {})
     role_tiers = quality_floor.get("roles", {})
-    allowed_by_tier = quality_floor.get("allowed", {})
+    approved_by_tier = quality_floor.get("approved_routes", {})
+    # The key was `allowed` until 2026-07-29, and an unread table is not an
+    # empty one: every check below tests membership in a tier that is simply
+    # absent, so a config left on the old name would pass validation with no
+    # floor in force at all. Name the rename rather than fail vaguely.
+    if "allowed" in quality_floor:
+        errors.append(
+            "quality_floor.allowed was renamed to quality_floor.approved_routes "
+            "(2026-07-29); the old table is not read"
+        )
+    if not approved_by_tier:
+        errors.append("quality_floor.approved_routes must list at least one tier")
     if set(role_tiers) != required_roles:
         errors.append("quality_floor.roles must cover main and every leaf role")
     for role, tier in role_tiers.items():
-        if tier not in allowed_by_tier:
+        if tier not in approved_by_tier:
             errors.append(f"quality_floor role {role} references unknown tier: {tier!r}")
     return errors
 
 
-def check_allowed_routes(
+def check_approved_routes(
     config: dict, route_ok
 ) -> list[str]:
-    """Validate quality_floor.allowed route lists.
+    """Validate quality_floor.approved_routes route lists.
 
     route_ok(model_name, effort) -> error string or None, supplied by the
     wrapper to apply its own model/effort schema.
     """
     errors = []
-    allowed_by_tier = config.get("quality_floor", {}).get("allowed", {})
-    for tier, allowed_routes in allowed_by_tier.items():
-        if not allowed_routes:
-            errors.append(f"quality_floor tier {tier} must allow at least one route")
-        for route_key in allowed_routes:
+    approved_by_tier = config.get("quality_floor", {}).get("approved_routes", {})
+    for tier, approved_routes in approved_by_tier.items():
+        if not approved_routes:
+            errors.append(f"quality_floor tier {tier} must approve at least one route")
+        for route_key in approved_routes:
             if "/" not in route_key:
                 errors.append(
                     f"quality_floor tier {tier} has malformed route: {route_key!r}"
@@ -271,16 +286,16 @@ def route_score(config: dict, model_name: str, effort: str):
 
 
 def floor_coverage(config: dict) -> dict:
-    """Report how much of quality_floor.allowed is backed by measured scores.
+    """Report how much of quality_floor.approved_routes has measured scores.
 
     `quality_floor` reads like a numeric threshold but is implemented as a
     curated list: route_floor_error can only test membership, never magnitude.
     This makes the gap visible - per tier, how many listed rungs have a real
     per-rung score, and whether the tier minima actually separate.
     """
-    allowed = config.get("quality_floor", {}).get("allowed", {})
+    approved = config.get("quality_floor", {}).get("approved_routes", {})
     tiers: dict[str, dict] = {}
-    for tier, routes in allowed.items():
+    for tier, routes in approved.items():
         measured, unmeasured, scores = [], [], []
         for route_key in routes:
             if "/" not in route_key:
@@ -313,7 +328,7 @@ def floor_coverage(config: dict) -> dict:
     for tier, data in tiers.items():
         if data["unmeasured"]:
             warnings.append(
-                f"tier {tier} allows {len(data['unmeasured'])} route(s) with no "
+                f"tier {tier} approves {len(data['unmeasured'])} route(s) with no "
                 f"per-rung score: {', '.join(sorted(data['unmeasured']))}"
             )
     return {"tiers": tiers, "warnings": warnings}
@@ -326,10 +341,21 @@ def route_floor_error(
     """Return an error when a chosen route falls below the role's tier."""
     quality_floor = config.get("quality_floor", {})
     tier = quality_floor.get("roles", {}).get(role)
-    allowed_by_tier = quality_floor.get("allowed", {})
+    if tier is None:
+        return None  # role coverage is check_quality_floor_roles' job
+    approved_by_tier = quality_floor.get("approved_routes", {})
+    where = f" {context}" if context else ""
+    approved = approved_by_tier.get(tier)
+    if not approved:
+        # A tier with no list used to mean "nothing to check against", so the
+        # floor vanished for exactly the config that had lost it. An unreadable
+        # floor is a failure of the check, not a pass.
+        return (
+            f"profile {profile_name}/{role}{where} cannot be checked: "
+            f"quality_floor.approved_routes has no tier {tier}"
+        )
     route_key = f"{model_name}/{effort}"
-    if tier in allowed_by_tier and route_key not in allowed_by_tier[tier]:
-        where = f" {context}" if context else ""
+    if route_key not in approved:
         return (
             f"profile {profile_name}/{role}{where} route {route_key} "
             f"falls below quality tier {tier}"

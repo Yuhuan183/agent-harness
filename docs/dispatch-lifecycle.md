@@ -80,6 +80,12 @@ rollout，那才是 provider 記錄的證據，也正是
 
 `--profile` 仍然由呼叫端提供：那是 harness 的標籤，provider 端沒有對應物。
 
+Claude 側跑同一條規則、用自己的證據（2026-07-29）：subagent transcript 每個 assistant
+turn 都帶 `message.model`，pending hook 在算 token 的同一趟讀出來，`experience-log` 拿它
+對照 resolver 解出的 pin，相符才記 `transcript-verified`（日期版算同一世代；對不上就是
+alias 在 pin 底下移動過，照樣拒絕）。一份 transcript 出現兩個 model 就什麼都不背書。
+effort 在 Claude 沒有 provider 記錄，由 `check-pins` 顧。
+
 ## 兩條所有權規則，一條擋得住、一條擋不住
 
 **「每個 top-level task 至多一個 outcome verifier」現在會被拒絕。** 承載欄位是
@@ -96,13 +102,18 @@ prompt 的同一個任務會拿到新的額度**——它會少擋，不會誤�
 因為那裡的重複是同一個 prompt 的機械性複製，判得出來。native 側請在派工前自己確認可寫
 範圍不相交。
 
-## 三種 `route_source` 的強度
+## 四種 `route_source` 的強度
 
 由強到弱，寫在 [metrics](../main/.agents/skills/experience-ledger/references/metrics.md)：
 
-- `rollout-verified` — model／effort 與 provider 自己的 rollout 相符
-- `explicit` — 派工者宣告，且沒有 provider telemetry 可以對照。**是主張，不是證據**
+- `rollout-verified` — model／effort 與 Codex 自己的 rollout 相符
+- `transcript-verified` — Claude transcript 記的 model 與 pin 相符
 - `resolver-assumed` — 由 resolver 從 alias 推得；alias 一旦升版就不能當已驗證
+- `explicit` — 派工者宣告，沒有東西對照過。**是主張，不是證據**
+
+**只有前兩個（provider 自己記下來的）能改變路由**（`core.DECISION_ROUTE_SOURCES`）；
+其餘照樣進 ledger 與 `ineligible_n`，但不進 cohort。2026-07-29 收緊：在那之前
+`explicit` 也算數，打錯的 route 就能推著後續路由往沒跑過的 model 走。
 
 ## 驗證清單
 
@@ -112,11 +123,13 @@ prompt 的同一個任務會拿到新的額度**——它會少擋，不會誤�
 main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests          # 全套；下面兩個是重點
 main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests -k BridgeJobLiveness
 main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests -k BridgeRouteEvidence
+main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests -k ClaudeRouteEvidence
 ~/.codex/scripts/bridge-jobs --duplicates                  # 對真實狀態的煙霧測試
 ```
 
 `BridgeJobLivenessTests` 釘住雙胞胎偵測（含「查不到不等於沒有」這條）；
-`BridgeRouteEvidenceTests` 釘住路由證據鏈（含矛盾必須被拒）。
+`BridgeRouteEvidenceTests` 與 `ClaudeRouteEvidenceTests` 釘住兩側的路由證據鏈
+（含矛盾必須被拒、未經證實的主張不得改變路由）。
 
 Codex plugin 升級後，job 狀態格式與 rollout 欄位都可能變，複查項目列在
 [bridge-liveness](../main/claude/skills/provider-routing/references/bridge-liveness.md)

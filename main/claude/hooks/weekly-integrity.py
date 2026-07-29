@@ -47,6 +47,26 @@ def resolve_harness_repo():
     return os.path.expanduser(marked or "~/WorkSpace/agent-harness")
 
 
+def load_deployment_inventory():
+    """HOME-relative paths sync.sh last deployed, grouped by target root.
+
+    Absent or unreadable means unknown, never "nothing is ours": a missing
+    inventory costs a retired-file finding, and inventing ownership from the
+    directory listing is exactly the error this replaced.
+    """
+    inventory = {}
+    try:
+        with open(os.path.expanduser("~/.agents/.deployed-files.tsv"),
+                  encoding="utf-8") as stream:
+            for line in stream:
+                root, _, rel = line.rstrip("\n").partition("\t")
+                if root and rel:
+                    inventory.setdefault(root, []).append(rel)
+    except OSError:
+        pass
+    return inventory
+
+
 def load_deployment_manifest(repo):
     """Return validated repo-relative source, HOME-relative target, and mode."""
     path = os.path.join(repo, "scripts", "deployment-manifest.tsv")
@@ -162,6 +182,8 @@ try:
             )
         else:
             drift = []
+            home_dir = os.path.expanduser("~")
+            inventory = load_deployment_inventory()
             for source_rel, target_rel, mode in load_deployment_manifest(harness_repo):
                 src = os.path.join(harness_repo, source_rel)
                 if not os.path.lexists(src):
@@ -204,17 +226,23 @@ try:
                 for check_src, check_deployed, check_target_rel in checks:
                     if os.path.isdir(check_src):
                         r = subprocess.run(
-                            # --delete (drift: deployed file the repo dropped)
-                            # but deliberately NOT --delete-excluded. This is a
+                            # Deliberately NOT --delete-excluded. This is a
                             # read-only comparison, and the excluded patterns
                             # are bytecode the deployed scripts regenerate as
                             # they run. Counting those as drift produced an
                             # alarm that could never clear, which is worse than
                             # no alarm: it trains the reader to skip the real one.
-                            ["rsync", "-a", "--checksum", "--links", "--delete",
-                             "--exclude", "__pycache__/", "--exclude", "*.pyc",
-                             "--exclude", ".DS_Store", "-n", "--itemize-changes",
-                             check_src, os.path.dirname(check_deployed) + "/"],
+                            # --delete only where the whole directory is this
+                            # repo's (a merge-mode skill). A plain target such
+                            # as ~/.claude/hooks is a shared namespace, and
+                            # --delete there reported a third-party installer's
+                            # file as our drift; retired files are found from
+                            # the deployment inventory instead (2026-07-29).
+                            ["rsync", "-a", "--checksum", "--links"]
+                            + (["--delete"] if mode == "merge" else [])
+                            + ["--exclude", "__pycache__/", "--exclude", "*.pyc",
+                               "--exclude", ".DS_Store", "-n", "--itemize-changes",
+                               check_src, os.path.dirname(check_deployed) + "/"],
                             capture_output=True, text=True, timeout=budget(30),
                         )
                     else:
@@ -241,6 +269,19 @@ try:
                             drift.append(f"~/{check_target_rel}: {line}")
                 if not checks_completed:
                     break
+                # The other half of what --delete used to cover, without its
+                # ownership error: a file this repo deployed before and no
+                # longer ships is drift; one it never deployed is not ours.
+                if mode == "" and os.path.isdir(src):
+                    for rel in inventory.get(target_rel, ()):
+                        source_path = os.path.join(
+                            src, os.path.relpath(rel, target_rel))
+                        if (not os.path.lexists(source_path)
+                                and os.path.lexists(
+                                    os.path.join(home_dir, rel))):
+                            drift.append(
+                                f"~/{rel}: deployed file the repo no longer "
+                                "ships (run scripts/sync.sh --apply)")
             if drift:
                 findings.append(
                     "deployment drift (managed HOME targets differ from repo — "
@@ -493,6 +534,26 @@ try:
                 "--dispatch-id <id> --outcome <o>):\n" + "\n".join(stale)
             )
     except OSError:
+        pass
+
+    # A gate that stopped being able to read its carrier stops gating, and the
+    # only sign is a note on the stderr of one dispatch nobody re-reads.
+    # verifier-quota counts consecutive dispatches whose payload carried no
+    # `prompt_id` and clears the count the moment one does, so a standing count
+    # means the field is gone (a CLI change), not absent once.
+    try:
+        with open(os.path.expanduser("~/.claude/telemetry/.verifier-quota.json"),
+                  encoding="utf-8") as stream:
+            misses = ((json.load(stream) or {}).get("_carrier") or {}).get("misses")
+        if isinstance(misses, int) and misses >= 3:
+            findings.append(
+                f"verifier quota not enforceable: {misses} consecutive Agent "
+                "dispatches carried no prompt_id, so the one-outcome-verifier "
+                "budget has been allowing every dispatch. Check whether the "
+                "CLI still sends prompt_id on hook payloads "
+                "(main/claude/hooks/verifier-quota.py)"
+            )
+    except (OSError, ValueError, AttributeError):
         pass
 
     if checks_completed:

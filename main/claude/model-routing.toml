@@ -203,7 +203,7 @@ cost_usd_per_index_task = 0.237
 score_note = "Briefcase Elo 611.83 is roughly 1100 below claude-opus-5 and 770 below claude-sonnet-5 on the agentic benchmark; the 2026-07-22 user-directed Sonnet floor for support roles is corroborated, not merely asserted. The Elo figure was last confirmed on 2026-07-25 - Haiku has since dropped out of the Briefcase chart on every page retrieved on 07-26, so it is carried forward rather than re-verified. The index figure is current."
 
 [quality_floor]
-policy = "Meet the role quality tier first; optimize the selected secondary objective only within allowed routes. `allowed` is a curated list of approved routes, not a measured threshold: the validator tests membership and can never test magnitude, so a rung listed here is approved, not proven above a floor. `model-routing validate` reports, as warnings, how much of each tier is actually backed by per-rung scores."
+policy = "Meet the role quality tier first; optimize the selected secondary objective only within approved routes. `approved_routes` is a curated list, not a measured threshold: the validator tests membership and can never test magnitude, so a rung listed here is approved, not proven above a floor. It was named `allowed` until 2026-07-29, which read as a threshold the code does not implement. `model-routing validate` reports, as warnings, how much of each tier is actually backed by per-rung scores."
 
 [quality_floor.roles]
 main = "judgment"
@@ -215,7 +215,7 @@ verifier = "critical"
 security-reviewer = "critical"
 security-executor = "critical"
 
-[quality_floor.allowed]
+[quality_floor.approved_routes]
 support = ["claude-sonnet-5/low", "claude-sonnet-5/medium", "claude-opus-5/low"]
 judgment = ["claude-sonnet-5/medium", "claude-opus-5/low", "claude-opus-5/medium", "claude-opus-5/high", "claude-fable-5/medium", "claude-fable-5/high", "claude-fable-5/xhigh"]
 critical = ["claude-opus-5/medium", "claude-opus-5/high"]

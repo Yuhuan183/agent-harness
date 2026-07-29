@@ -348,7 +348,7 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         self.assertIn("claude-sonnet-5/medium", result.stdout)
 
         # Both providers share one reporter, and the Codex table — which does
-        # carry a per-effort score for every allowed rung — must come back clean.
+        # carry a per-effort score for every approved rung — must come back clean.
         codex = subprocess.run(
             [str(ROOT / "main/codex/scripts/model-routing"), "validate"],
             capture_output=True, text=True,
@@ -371,7 +371,7 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
             "models": {
                 "m": {"efforts": {"low": {"score": 40.0}, "high": {"score": 60.0}}},
             },
-            "quality_floor": {"allowed": {
+            "quality_floor": {"approved_routes": {
                 "support": ["m/high"],
                 "judgment": ["m/low"],
             }},
@@ -381,13 +381,52 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         # An upper-bound-only rung is not counted as measured.
         bound = {
             "models": {"m": {"aggregate": {"score_max_effort": 53.0}}},
-            "quality_floor": {"allowed": {"support": ["m/medium"]}},
+            "quality_floor": {"approved_routes": {"support": ["m/medium"]}},
         }
         self.assertEqual(
             routing_core.route_score(bound, "m", "medium"), (53.0, "upper-bound")
         )
         self.assertEqual(
             routing_core.route_score(bound, "m", "max"), (53.0, "per-effort")
+        )
+
+    def test_a_floor_that_cannot_be_read_fails_instead_of_passing(self) -> None:
+        """The rename's real risk is a config left on the old key.
+
+        `allowed` became `approved_routes` on 2026-07-29 because the old name
+        read as a threshold the code never implemented. Every floor check works
+        by membership in a tier, so a table under the wrong name is not a
+        stricter floor or a looser one — it is no floor, silently. Both twins
+        must refuse that config, and the per-route check must refuse a tier it
+        cannot look up rather than wave the route through.
+        """
+        for twin in ("main/claude/model-routing.toml", "main/codex/model-routing.toml"):
+            original = (ROOT / twin).read_text(encoding="utf-8")
+            legacy = original.replace("[quality_floor.approved_routes]",
+                                      "[quality_floor.allowed]", 1)
+            self.assertNotEqual(legacy, original, twin)
+            with tempfile.TemporaryDirectory() as temp_dir:
+                config = Path(temp_dir) / "model-routing.toml"
+                config.write_text(legacy, encoding="utf-8")
+                script = ROOT / twin.replace("model-routing.toml",
+                                             "scripts/model-routing")
+                result = subprocess.run(
+                    [str(script), "--config", str(config), "validate"],
+                    capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0, twin)
+            self.assertIn("renamed to quality_floor.approved_routes", result.stderr, twin)
+
+        spec = importlib.util.spec_from_file_location(
+            "routing_core_floor_probe", ROOT / "main/.agents/scripts/routing_core.py"
+        )
+        routing_core = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(routing_core)
+        unreadable = {"quality_floor": {"roles": {"verifier": "critical"},
+                                        "allowed": {"critical": ["m/high"]}}}
+        self.assertIn(
+            "cannot be checked",
+            routing_core.route_floor_error(unreadable, "balanced", "verifier",
+                                           "m", "low") or "",
         )
 
     def test_revision_policy_is_required(self) -> None:
@@ -416,21 +455,21 @@ class ExperienceReviseTests(unittest.TestCase):
                       "provider": "claude", "model": "claude-opus-5",
                       "effort": "medium", "task_class": "impl",
                       "request_source": "claude-code", "outcome": "failed",
-                      "route_source": "explicit"}] * 10
+                      "route_source": "transcript-verified"}] * 10
             # ...opus/high (meets the judgment floor) performs well...
             rows += [{"ts": "2026-07-20T00:00:00+00:00", "schema": 3,
                       "role": "executor", "profile": "balanced",
                       "provider": "claude", "model": "claude-opus-5",
                       "effort": "high", "task_class": "impl",
                       "request_source": "claude-code", "outcome": "accepted",
-                      "route_source": "explicit"}] * 10
+                      "route_source": "transcript-verified"}] * 10
             # ...and sonnet/low also performs well but falls below the floor.
             rows += [{"ts": "2026-07-20T00:00:00+00:00", "schema": 3,
                       "role": "executor", "profile": "balanced",
                       "provider": "claude", "model": "claude-sonnet-5",
                       "effort": "low", "task_class": "impl",
                       "request_source": "claude-code", "outcome": "accepted",
-                      "route_source": "explicit"}] * 10
+                      "route_source": "transcript-verified"}] * 10
             ledger.write_text("\n".join(json.dumps(r) for r in rows),
                               encoding="utf-8")
             result = subprocess.run(
@@ -476,7 +515,7 @@ class ExperienceReviseTests(unittest.TestCase):
                     "provider": "claude", "model": "claude-opus-5",
                     "effort": "medium", "task_class": "impl",
                     "request_source": "claude-code", "outcome": "failed",
-                    "route_source": "explicit",
+                    "route_source": "transcript-verified",
                 }] * 5
             rows += [{
                 "ts": "2026-07-20T00:00:00+00:00", "schema": 3,
@@ -484,7 +523,7 @@ class ExperienceReviseTests(unittest.TestCase):
                 "provider": "claude", "model": "claude-opus-5",
                 "effort": "high", "task_class": "impl",
                 "request_source": "claude-code", "outcome": "accepted",
-                "route_source": "explicit",
+                "route_source": "transcript-verified",
             }] * 10
             ledger.write_text("\n".join(json.dumps(row) for row in rows),
                               encoding="utf-8")

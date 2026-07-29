@@ -185,7 +185,7 @@ answer_tokens_per_index_task = 5006.4891
 output_tokens_per_index_task = 18912.0053
 
 [quality_floor]
-policy = "Meet the role quality tier first; optimize the selected secondary objective only within allowed routes. `allowed` is a curated list of approved routes, not a measured threshold: the validator tests membership and can never test magnitude, so a rung listed here is approved, not proven above a floor. `model-routing validate` reports, as warnings, how much of each tier is actually backed by per-rung scores."
+policy = "Meet the role quality tier first; optimize the selected secondary objective only within approved routes. `approved_routes` is a curated list, not a measured threshold: the validator tests membership and can never test magnitude, so a rung listed here is approved, not proven above a floor. It was named `allowed` until 2026-07-29, which read as a threshold the code does not implement. `model-routing validate` reports, as warnings, how much of each tier is actually backed by per-rung scores."
 
 [quality_floor.roles]
 main = "judgment"
@@ -197,7 +197,7 @@ verifier = "critical"
 security-reviewer = "critical"
 security-executor = "critical"
 
-[quality_floor.allowed]
+[quality_floor.approved_routes]
 support = ["gpt-5.6-terra/low", "gpt-5.6-sol/low", "gpt-5.6-sol/medium", "gpt-5.6-sol/high"]
 judgment = ["gpt-5.6-sol/medium", "gpt-5.6-sol/high"]
 critical = ["gpt-5.6-sol/high"]
