@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""Git pre-commit gate: the same green-before-commit rule, one layer lower.
+
+`commit-test-gate.py` reads the Bash command *before* the shell runs it, so it
+has to work out from text which repositories a command would commit to. Four
+review rounds closed one spelling class after another there (quoting,
+expansions, expanded executables, expanded targets, `~`), and the residue was
+always the same shape: a program that commits with the word nowhere in the
+command - a wrapper script, a shell function named `git`, a PATH shadow. No
+reading of the text finds those.
+
+This hook is on the other side of that boundary. Git runs it when a commit is
+actually happening, in the repository it is actually happening in, so there is
+nothing left to infer: no parsing, no target resolution, no spellings. The two
+gates are complements, not alternatives - this one sees every commit in *this*
+repository however it was spelled, the Bash gate sees commits the agent makes
+in *any* repository before they start.
+
+The decision itself is not duplicated: `run_suites` is imported from the Bash
+gate, so the suite set, the interpreter floor, the 300 s budget and the wording
+are shared. Escape hatch, deliberately the same one: `AGENT_SKIP_TEST_GATE=1`.
+`git commit --no-verify` also skips it, which is fine - it is visible in the
+command, which is exactly what the spellings this hook exists for are not.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+def load_gate(root: Path):
+    """Import the Bash gate's machinery from this checkout, or None."""
+    path = root / "main" / "claude" / "hooks" / "commit-test-gate.py"
+    spec = importlib.util.spec_from_file_location("commit_test_gate", path)
+    if spec is None or spec.loader is None:
+        return None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def main() -> int:
+    if os.environ.get("AGENT_SKIP_TEST_GATE") == "1":
+        return 0
+    top = subprocess.run(["git", "rev-parse", "--show-toplevel"],
+                         capture_output=True, text=True)
+    if top.returncode != 0:
+        return 0  # not a work tree; let git report its own error
+    root = Path(top.stdout.strip())
+    try:
+        gate = load_gate(root)
+    except (OSError, SyntaxError, ValueError):
+        gate = None
+    if gate is None:
+        # Fail closed: this hook is only ever reached because a checkout asked
+        # for it by pointing core.hooksPath here, so a missing gate is a broken
+        # installation rather than a repository that opted out.
+        sys.stderr.write(
+            "pre-commit: cannot load main/claude/hooks/commit-test-gate.py - "
+            "commit blocked.\n"
+            "This is not a red suite: the gate this hook shares its decision with "
+            "is missing from the checkout.\n"
+            "Restore it, unset core.hooksPath, or commit with "
+            "AGENT_SKIP_TEST_GATE=1 / --no-verify.\n"
+        )
+        return 1
+    suites = gate.test_suites(root)
+    if not suites:
+        return 0
+    return gate.run_suites([(root, tests) for tests in suites], "pre-commit")
+
+
+if __name__ == "__main__":
+    sys.exit(main())

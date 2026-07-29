@@ -137,6 +137,36 @@ validate_project_skill_inventory() {
   done
 }
 
+# The commit gate's other half. The Bash hook decides before the shell runs the
+# command and therefore has to infer the target from text; this points git at a
+# tracked hooks directory, so a commit in *this* checkout is checked however it
+# was spelled. Repo-local and reversible with `git config --unset
+# core.hooksPath`; an existing setting that points elsewhere is another tool's
+# and is reported rather than overwritten.
+install_git_hooks() {
+  local want="main/claude/githooks" current
+  # Repo-local config is the one piece of machine state a temporary HOME does
+  # not isolate, and the suite runs a real `--apply` as a fixture. The sentinel
+  # already marks "this run is inside another harness run", which is exactly
+  # when writing to the developer's checkout would be a surprise.
+  if [[ "${AGENT_HARNESS_PREFLIGHT_ACTIVE:-0}" == "1" ]]; then
+    log "git hooks: nested run, leaving core.hooksPath alone"
+    return 0
+  fi
+  current="$(git -C "$REPO" config --local --get core.hooksPath || true)"
+  if [[ "$current" == "$want" ]]; then
+    log "git hooks: core.hooksPath already set"
+    return 0
+  fi
+  if [[ -n "$current" ]]; then
+    log "WARNING: core.hooksPath is '$current', not this repo's '$want'; left alone."
+    log "         The pre-commit test gate is not installed in this checkout."
+    return 0
+  fi
+  run git -C "$REPO" config --local core.hooksPath "$want"
+  log "git hooks: core.hooksPath -> $want (undo: git config --unset core.hooksPath)"
+}
+
 preflight() {
   log "== preflight =="
   # Use the same portable Python 3.11+ selector as deployed routing entrypoints.
@@ -165,6 +195,7 @@ preflight() {
 
 trap sync_cleanup EXIT
 preflight
+install_git_hooks
 
 # Overwrite targets via rsync. --links copies symlinks inside shared entries and
 # platform wrappers as-is; relative links still hold because the shared root

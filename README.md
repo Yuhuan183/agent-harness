@@ -151,7 +151,7 @@ machine-local experience ledger，方便人類回顧與 telemetry 對照。
 | Experience pending／ledger | 將 dispatch、route、source、token、時間與 QC outcome 綁在一起 | [experience-ledger](main/.agents/skills/experience-ledger/SKILL.md) |
 | Bridge 存活對帳 | bridge job 比 launcher 長命；重啟前擋下同一 prompt 的雙寫 | [dispatch-lifecycle](docs/dispatch-lifecycle.md)、[bridge-jobs](main/codex/scripts/bridge-jobs) |
 | Weekly integrity | 檢查 source／HOME 漂移、pins、delegation alarm 與 ledger 狀態；覆蓋不完整（如 resolver 缺失）即列 finding 並扣住週章 | [weekly-integrity.py](main/claude/hooks/weekly-integrity.py) |
-| Commit test gate | 紅測試套件不得 commit；解析指令實際指向的每個 repo，指不出目標就以此為由擋下。文字層有其極限：程式名稱裡沒有 `commit` 的 wrapper 只能靠 Git argv 邊界攔。逃生口 `AGENT_SKIP_TEST_GATE=1` | [commit-test-gate.py](main/claude/hooks/commit-test-gate.py) |
+| Commit test gate | 紅測試套件不得 commit。兩道互補的閘：Bash hook 在執行前解析指令實際指向的每個 repo（指不出目標即擋），git pre-commit 則在 argv 邊界涵蓋本 repo 所有拼法（wrapper、function、PATH 覆蓋）。逃生口 `AGENT_SKIP_TEST_GATE=1` | [commit-test-gate.py](main/claude/hooks/commit-test-gate.py)、[githooks/pre-commit](main/claude/githooks/pre-commit) |
 | Gate-line QC／trap evals | 機械稽核 leaf 報告的 INTENT/TWINS/AUTH owed lines；行為 trap fixtures 作回歸資產 | [gate_lines.py](main/.agents/scripts/gate_lines.py)、[evals/traps/](evals/traps/) |
 | RTK／Headroom | 控制工具輸出與大型唯讀 context；不可冒充模型配額 | [RTK](main/claude/RTK.md)、[Headroom runtime](main/.agents/docs/headroom-runtime.md) |
 

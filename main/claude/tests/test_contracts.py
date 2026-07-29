@@ -773,7 +773,11 @@ class DocumentationBudgetTests(unittest.TestCase):
             # matched but not which repo the match is checked against, nor that
             # a program can commit with the word nowhere in the command. Both
             # are what a reader needs to know when the gate stays silent.
-            "docs/hook-system.md": 1400,
+            # +200 (2026-07-29): the git-side pre-commit gate — its own row, and
+            # what the two boundaries do and do not each cover. A second gate
+            # documented only in the first one's caveat is a gate readers will
+            # attribute the wrong guarantee to.
+            "docs/hook-system.md": 1600,
             # Top-down architecture spine: one diagram then a concise walk
             # through every layer, each pointing at its specialized doc. The
             # connective narrative the README (a repo landing page) and the

@@ -339,6 +339,70 @@ def suite_interpreter() -> str | None:
     return None
 
 
+def run_suites(gated_suites: list[tuple[Path, Path]], label: str) -> int:
+    """Run each gated suite; 0 if every one is green, 2 with a reason if not.
+
+    Shared with the repo's `pre-commit` hook, which reaches the same decision
+    from the other side of the shell: this module has to work out which repos a
+    command *would* commit to, while the git hook is already inside the one it
+    is committing to. Keeping the running, the interpreter floor, the timeout
+    and the wording here means the two boundaries cannot drift into disagreeing
+    about what a red suite is.
+    """
+    interpreter = suite_interpreter()
+    if interpreter is None:
+        sys.stderr.write(
+            f"{label}: no Python >= "
+            f"{'.'.join(str(part) for part in MIN_PYTHON)} available - commit blocked.\n"
+            "This is not a red suite: the suite needs stdlib tomllib, and an older "
+            "interpreter turns every module into an import error.\n"
+            "Install a newer Python, put it on PATH, or set AGENT_HARNESS_PYTHON to one "
+            "(or prefix with AGENT_SKIP_TEST_GATE=1) and retry.\n"
+        )
+        return 2
+
+    with tempfile.TemporaryDirectory(prefix="commit-test-gate-") as shim_dir:
+        # Picking the interpreter for `unittest` only fixes the top frame. Tests
+        # that spawn `#!/usr/bin/env python3` scripts resolve through PATH and
+        # would still land on the agent's old python, so the suite would stay
+        # half-upgraded and still report false failures. Front PATH with a
+        # `python3` shim pointing at the same interpreter.
+        env = dict(os.environ)
+        env["AGENT_HARNESS_PYTHON"] = interpreter
+        shim = Path(shim_dir) / "python3"
+        try:
+            shim.symlink_to(interpreter)
+            front = shim_dir
+        except OSError:
+            front = str(Path(interpreter).parent)  # best effort; never fatal
+        env["PATH"] = os.pathsep.join([front, env.get("PATH", "")])
+
+        for root, tests_dir in gated_suites:
+            try:
+                result = subprocess.run(
+                    [interpreter, "-m", "unittest", "discover",
+                     "-s", str(tests_dir), "-p", "test_*.py"],
+                    capture_output=True, text=True, timeout=300, env=env,
+                )
+            except subprocess.TimeoutExpired:
+                sys.stderr.write(
+                    f"{label}: suite {tests_dir} exceeded 300s - commit blocked.\n"
+                    "Investigate the hang (or prefix with AGENT_SKIP_TEST_GATE=1) and retry.\n"
+                )
+                return 2
+            if result.returncode == 0:
+                continue
+            tail = "\n".join(result.stderr.strip().splitlines()[-15:])
+            sys.stderr.write(
+                f"{label}: test suite {tests_dir} is RED - commit blocked.\n"
+                f"{tail}\n"
+                "Fix the failures (or prefix with AGENT_SKIP_TEST_GATE=1 to commit a "
+                "deliberately red state) and retry.\n"
+            )
+            return 2
+    return 0
+
+
 def main() -> int:
     try:
         payload = json.load(sys.stdin)
@@ -397,59 +461,7 @@ def main() -> int:
 
     if not gated_suites:
         return 0
-
-    interpreter = suite_interpreter()
-    if interpreter is None:
-        sys.stderr.write(
-            "commit-test-gate: no Python >= "
-            f"{'.'.join(str(part) for part in MIN_PYTHON)} available - commit blocked.\n"
-            "This is not a red suite: the suite needs stdlib tomllib, and an older "
-            "interpreter turns every module into an import error.\n"
-            "Install a newer Python, put it on PATH, or set AGENT_HARNESS_PYTHON to one "
-            "(or prefix with AGENT_SKIP_TEST_GATE=1) and retry.\n"
-        )
-        return 2
-
-    with tempfile.TemporaryDirectory(prefix="commit-test-gate-") as shim_dir:
-        # Picking the interpreter for `unittest` only fixes the top frame. Tests
-        # that spawn `#!/usr/bin/env python3` scripts resolve through PATH and
-        # would still land on the agent's old python, so the suite would stay
-        # half-upgraded and still report false failures. Front PATH with a
-        # `python3` shim pointing at the same interpreter.
-        env = dict(os.environ)
-        env["AGENT_HARNESS_PYTHON"] = interpreter
-        shim = Path(shim_dir) / "python3"
-        try:
-            shim.symlink_to(interpreter)
-            front = shim_dir
-        except OSError:
-            front = str(Path(interpreter).parent)  # best effort; never fatal
-        env["PATH"] = os.pathsep.join([front, env.get("PATH", "")])
-
-        for root, tests_dir in gated_suites:
-            try:
-                result = subprocess.run(
-                    [interpreter, "-m", "unittest", "discover",
-                     "-s", str(tests_dir), "-p", "test_*.py"],
-                    capture_output=True, text=True, timeout=300, env=env,
-                )
-            except subprocess.TimeoutExpired:
-                sys.stderr.write(
-                    f"commit-test-gate: suite {tests_dir} exceeded 300s - commit blocked.\n"
-                    "Investigate the hang (or prefix with AGENT_SKIP_TEST_GATE=1) and retry.\n"
-                )
-                return 2
-            if result.returncode == 0:
-                continue
-            tail = "\n".join(result.stderr.strip().splitlines()[-15:])
-            sys.stderr.write(
-                f"commit-test-gate: test suite {tests_dir} is RED - commit blocked.\n"
-                f"{tail}\n"
-                "Fix the failures (or prefix with AGENT_SKIP_TEST_GATE=1 to commit a "
-                "deliberately red state) and retry.\n"
-            )
-            return 2
-    return 0
+    return run_suites(gated_suites, "commit-test-gate")
 
 
 if __name__ == "__main__":

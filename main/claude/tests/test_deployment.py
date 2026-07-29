@@ -1,4 +1,6 @@
 """Deployment boundary: machine-state hygiene and manifest-driven sync."""
+import shutil
+
 from support import *  # noqa: F401,F403
 
 
@@ -371,25 +373,136 @@ class MachineStateHygieneTests(unittest.TestCase):
                 self.assertIn(reason, blocked.stderr,
                               f"blocked for the wrong reason: {spelling!r}")
 
-    def test_the_docs_say_where_text_matching_stops(self) -> None:
-        """A gate documented as shell-accurate has to name its own limit.
+    def test_the_git_hook_catches_what_no_text_matching_can(self) -> None:
+        """The other boundary: a commit the Bash gate is right not to see.
 
-        The matrix above is the list of spellings that are covered; what it
-        cannot cover is a program that commits with the word nowhere in the
-        command - a wrapper script, a shell function named `git`, a PATH
-        shadow. Only the Git argv boundary sees those. The prose claimed
-        shell-actual semantics without saying so (2026-07-29 review), which
-        reads as a guarantee, so the disclosure is asserted rather than
-        intended.
+        `sh release.sh` contains no `git`, no `commit`, and no expansion - the
+        command text is honest and says nothing, because the commit is inside
+        the script. That is the residue four review rounds kept arriving at, so
+        this test asserts both halves: the Bash gate allows it (there is
+        nothing there to find) and the commit is refused anyway, by git, in the
+        repository it was actually happening in.
+        """
+        gate = ROOT / "main/claude/hooks/commit-test-gate.py"
+        githook = ROOT / "main/claude/githooks/pre-commit"
+        identity = {
+            "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
+            "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid",
+        }
+        red = ("import unittest\n"
+               "class T(unittest.TestCase):\n"
+               "    def test_red(self):\n"
+               "        self.fail('planted')\n")
+        green = ("import unittest\n"
+                 "class T(unittest.TestCase):\n"
+                 "    def test_green(self):\n"
+                 "        pass\n")
+
+        def commits(repo: Path) -> int:
+            counted = subprocess.run(
+                ["git", "-C", str(repo), "rev-list", "--count", "HEAD"],
+                capture_output=True, text=True)
+            return int(counted.stdout.strip()) if counted.returncode == 0 else 0
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir) / "repo"
+            (repo / "main/claude/hooks").mkdir(parents=True)
+            (repo / "main/claude/githooks").mkdir(parents=True)
+            shutil.copy(gate, repo / "main/claude/hooks/commit-test-gate.py")
+            shutil.copy(githook, repo / "main/claude/githooks/pre-commit")
+            tests = repo / ".claude" / "tests"
+            tests.mkdir(parents=True)
+            (tests / "test_red.py").write_text(red, encoding="utf-8")
+            (repo / "release.sh").write_text("git commit -m x\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+            subprocess.run(["git", "-C", str(repo), "config", "core.hooksPath",
+                            "main/claude/githooks"], check=True)
+            subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+
+            spelling = "sh release.sh"
+            payload = json.dumps({"tool_input": {"command": spelling},
+                                  "cwd": str(repo)})
+            seen = subprocess.run([sys.executable, str(gate)], input=payload,
+                                  capture_output=True, text=True, timeout=120)
+            self.assertEqual(seen.returncode, 0,
+                             "the premise changed: the Bash gate now sees this")
+
+            env = {**os.environ, **identity}
+            subprocess.run(["sh", "-c", spelling], cwd=repo, env=env,
+                           capture_output=True, text=True, timeout=300)
+            self.assertEqual(commits(repo), 0, "the git hook let a red suite commit")
+
+            (tests / "test_red.py").write_text(green, encoding="utf-8")
+            subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+            subprocess.run(["sh", "-c", spelling], cwd=repo, env=env,
+                           capture_output=True, text=True, timeout=300)
+            self.assertEqual(commits(repo), 1, "the git hook blocked a green suite")
+
+            (tests / "test_red.py").write_text(red, encoding="utf-8")
+            subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+            subprocess.run(["sh", "-c", spelling], cwd=repo,
+                           env={**env, "AGENT_SKIP_TEST_GATE": "1"},
+                           capture_output=True, text=True, timeout=300)
+            self.assertEqual(commits(repo), 2, "the escape hatch does not work")
+
+            # A checkout that points git here and then cannot load the shared
+            # decision is broken, not opted out.
+            (repo / "main/claude/hooks/commit-test-gate.py").unlink()
+            subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+            subprocess.run(["sh", "-c", spelling], cwd=repo, env=env,
+                           capture_output=True, text=True, timeout=300)
+            self.assertEqual(commits(repo), 2,
+                             "the git hook committed without being able to check")
+
+    def test_sync_installs_the_git_side_of_the_commit_gate(self) -> None:
+        """A hook nobody points git at is a file, not a gate.
+
+        `core.hooksPath` is repo-local state, so it has to be installed by the
+        same command that deploys everything else - otherwise the boundary
+        exists in the tree and not in any checkout.
+        """
+        sync = read("scripts/sync.sh")
+        self.assertIn("core.hooksPath \"$want\"", sync)
+        self.assertIn("\ninstall_git_hooks\n", sync)
+        hook = ROOT / "main/claude/githooks/pre-commit"
+        self.assertTrue(os.access(hook, os.X_OK), "pre-commit is not executable")
+
+    def test_running_the_suite_does_not_configure_the_developers_checkout(self) -> None:
+        """A temporary HOME does not isolate repo-local git config.
+
+        The suite runs a real `sync.sh --apply` as a fixture, and `REPO` is the
+        actual checkout no matter what HOME says - so without a guard, running
+        the tests silently sets `core.hooksPath` on the developer's repo. That
+        is how it was found: the first `--apply` after writing the installer
+        reported "already set". The sentinel marks exactly the nested case.
+        """
+        with tempfile.TemporaryDirectory() as temp_home:
+            dry = subprocess.run(
+                [str(ROOT / "scripts/sync.sh")], capture_output=True, text=True,
+                env={**os.environ, "HOME": temp_home,
+                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"},
+            )
+        self.assertEqual(dry.returncode, 0, dry.stderr + dry.stdout)
+        self.assertIn("nested run, leaving core.hooksPath alone", dry.stdout)
+        self.assertNotIn("core.hooksPath ->", dry.stdout)
+
+    def test_the_docs_never_present_one_half_of_the_gate_as_the_whole(self) -> None:
+        """Neither boundary is the guarantee on its own, so neither is written alone.
+
+        The Bash gate reads command text and cannot see a commit the text does
+        not mention; the git hook sees every commit but only in a checkout that
+        points at it. Describing either one by itself reads as a guarantee it
+        does not have - which is what the prose did until 2026-07-29 - so the
+        pairing is asserted instead of intended.
         """
         for path in ("README.md", "docs/hook-system.md"):
             claims = [line for line in read(path).splitlines()
                       if "commit-test-gate" in line]
             self.assertTrue(claims, path)
             for line in claims:
-                self.assertIn("argv", line,
-                              f"{path}: describes the commit gate without naming "
-                              "the boundary its text matching cannot reach:\n"
+                self.assertIn("pre-commit", line,
+                              f"{path}: describes the Bash commit gate without the "
+                              "git-side gate that covers what text cannot reach:\n"
                               f"{line}")
 
     def test_commit_gate_runs_the_suite_on_a_modern_interpreter(self) -> None:
