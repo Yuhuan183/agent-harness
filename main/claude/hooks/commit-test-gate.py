@@ -11,11 +11,12 @@ or the harness bundle's canonical `main/claude/tests/`. The target set is the
 payload `cwd` plus every `git -C <path>` and `cd <path>` operand in the command,
 so repo-switching forms cannot dodge the gate. Other repos and non-commit
 commands pass through untouched. The command is also matched with shell quote
-characters stripped, so quote-concatenated spellings (`git com''mit`) cannot
-dodge it either; the settings prefilter therefore hands over on `git` as well
-as on `commit`. Residual gap: spelling *both* words with embedded quotes
-(`g'i't com''mit`) still escapes, which the escape hatch below already allows
-declaratively. Escape hatch for intentional red commits
+characters stripped and line continuations folded, so quote-concatenated and
+continuation-split spellings (`git com''mit`, `g'i't com''mit`, `git com\`+NL+`mit`)
+cannot dodge it either. The settings prefilter applies the same normalization to
+the raw payload before deciding whether to hand over (2026-07-29): normalizing in
+only one of the two places is what left `g'i't com''mit` unreachable while this
+module was already able to catch it. Escape hatch for intentional red commits
 (e.g. committing a failing reproduction): prefix the command with
 `AGENT_SKIP_TEST_GATE=1 `.
 
@@ -121,10 +122,12 @@ def main() -> int:
     command = (payload.get("tool_input") or {}).get("command", "")
     if not isinstance(command, str):
         return 0
-    # Fold backslash-newline continuations: `git \<newline>commit` is one
-    # command, but the raw newline would otherwise split `git` from `commit`
-    # and slip the gate. COMMIT_RE still stops at real `;|&` separators.
-    command = re.sub(r"\\\n", " ", command)
+    # Fold backslash-newline continuations the way the shell does - by deleting
+    # the pair, not by replacing it with a space. `git \<newline>commit` is one
+    # command either way, but a substituted space also turns the intra-word
+    # split `com\<newline>mit` into `com mit`, which runs a real commit and
+    # matches nothing. COMMIT_RE still stops at real `;|&` separators.
+    command = re.sub(r"\\\n", "", command)
     if not (COMMIT_RE.search(command)
             or COMMIT_RE.search(QUOTE_RE.sub("", command))):
         return 0

@@ -25,7 +25,13 @@ single-provider and this protocol does not apply there.
    telemetry-backed smoke test is recorded in the routing file.
 4. **Ledger integration** — a provider name in `experience-log`, a distinct
    `request_source`, route/profile/dispatch/telemetry identifiers, comparable
-   task classes, and inclusion in `experience-revise`'s config list.
+   task classes, and inclusion in `experience-revise`'s config list. The route
+   must be readable from the provider's own record (Codex: applied thread
+   settings; Claude: the model on each assistant turn) and staged by the
+   pending hook, never passed in by the dispatcher: a self-reported route is
+   logged but is ineligible to move any route
+   (`core.DECISION_ROUTE_SOURCES`), so a provider without this path can be
+   dispatched to but can never contribute routing evidence.
 5. **Quota probe** — a `codex-usage`-equivalent reading local, provider-recorded
    usage; short-window alarms feed the CP-first switch rule. No probe → the
    provider cannot participate in usage-based switching and heavy dispatch to

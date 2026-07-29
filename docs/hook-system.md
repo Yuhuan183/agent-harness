@@ -24,7 +24,7 @@ Hook 的「失敗模式」指的是它自己出錯時會怎樣，這是設計時
 
 | Hook | 事件 | 只在什麼條件攔截 | 逃生口 |
 |---|---|---|---|
-| [commit-test-gate](../main/claude/hooks/commit-test-gate.py) | PreToolUse[Bash] | 指令含 `git commit` 且目標 repo 的測試套件為紅（或逾時） | `AGENT_SKIP_TEST_GATE=1` 前綴（用於刻意提交紅狀態） |
+| [commit-test-gate](../main/claude/hooks/commit-test-gate.py) | PreToolUse[Bash] | 指令含 `git commit`（settings 前置過濾與 hook 對同一份正規化字串比對：去掉引號、反斜線與 `n`，所以 `g'i't com''mit` 與續行拆字都算命中）且目標 repo 的測試套件為紅（或逾時） | `AGENT_SKIP_TEST_GATE=1` 前綴（用於刻意提交紅狀態） |
 | [leaf-redispatch](../main/claude/hooks/leaf-redispatch.py) | PreToolUse[Agent] | caller `agent_type` 非空, 亦即 leaf 嘗試再派工 | 回到 main session 派工 |
 | [runtime-guard](../main/claude/hooks/runtime-guard.py) `--gate` | PreToolUse[Agent] | 派工受限 reviewer（verifier/plan-verifier/security-reviewer）但 CLI 版本過舊或未知，無法保證唯讀邊界 | 升級 CLI 重開 session，或改在 main session 做 |
 | [verifier-quota](../main/claude/hooks/verifier-quota.py) | PreToolUse[Agent] | 同一 top-level task（以 prompt 為界）派第二個 outcome verifier | `AGENT_ALLOW_SECOND_VERIFIER=1`（確實是新任務時） |

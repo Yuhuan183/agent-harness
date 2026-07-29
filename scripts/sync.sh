@@ -36,6 +36,12 @@ cleanup_python_shim() {
   rmdir "$PYTHON_SHIM_DIR"
 }
 
+sync_cleanup() {
+  cleanup_python_shim
+  [[ -n "${DEPLOY_STATE_NEW:-}" ]] && rm -f "$DEPLOY_STATE_NEW"
+  return 0
+}
+
 prepare_python_path() {
   local python_executable
   python_executable="$("$PYTHON_RUN" -c 'import sys; print(sys.executable)')" || return 1
@@ -157,7 +163,7 @@ preflight() {
   log "preflight: passed"
 }
 
-trap cleanup_python_shim EXIT
+trap sync_cleanup EXIT
 preflight
 
 # Overwrite targets via rsync. --links copies symlinks inside shared entries and
@@ -175,6 +181,63 @@ SYNCED_DST=()
 MERGED_SRC=()
 MERGED_DST=()
 MERGED_TOOL=()
+
+# Per-file deployment inventory. Several manifest targets are shared
+# namespaces rather than this repo's territory: ~/.claude/hooks, ~/.claude/
+# agents, ~/.claude/scripts and ~/.codex/prompts are where third-party
+# installers put their own files too. A directory-wide `rsync --delete`
+# removed those as "leftovers already deleted from the repo" — the same
+# ownership error that let a vendor hook be dropped from settings.json.
+# Deleting is therefore driven by what this repo deployed last time, recorded
+# here, rather than by what happens to be in the directory now.
+DEPLOY_STATE="$HOME/.agents/.deployed-files.tsv"
+DEPLOY_STATE_NEW="$(mktemp "${TMPDIR:-/tmp}/agent-harness-deployed.XXXXXX")"
+PRUNED=()
+
+cleanup_deploy_state() { rm -f "$DEPLOY_STATE_NEW"; }
+
+# Every HOME-relative path a manifest source contributes. Mirrors
+# RSYNC_FILTERS: bytecode and .DS_Store are never deployed, so they are never
+# owned either. A symlinked source deploys as one symlink, so it is one entry —
+# walking into it would claim the shared tree it points at.
+repo_owned_entries() { # $1 = source path  $2 = HOME-relative target
+  if [[ -L "$1" ]]; then
+    printf '%s\n' "$2"
+    return
+  fi
+  (cd "$1" && find . \( -name '__pycache__' -o -name '*.pyc' -o -name '.DS_Store' \) \
+      -prune -o \( -type f -o -type l \) -print) \
+    | sed -e "s|^\./|$2/|" | LC_ALL=C sort
+}
+
+# Files this repo deployed under a target root on the previous run.
+previously_deployed() { # $1 = HOME-relative target root
+  [[ -f "$DEPLOY_STATE" ]] || return 0
+  awk -F'\t' -v root="$1" '$1 == root { print $2 }' "$DEPLOY_STATE"
+}
+
+# Remove exactly what this repo deployed before and no longer ships. A file it
+# never deployed is someone else's and is left alone, even inside a directory
+# every other file of which is ours.
+prune_retired_files() { # $1 = HOME-relative target root  $2 = current entry list
+  local root="$1" current="$2" base="$3" rel dir
+  while IFS= read -r rel; do
+    [[ -n "$rel" ]] || continue
+    grep -Fxq "$rel" "$current" && continue
+    [[ -e "$base/$rel" || -L "$base/$rel" ]] || continue
+    PRUNED+=("$base/$rel")
+    run rm -f "$base/$rel"
+    # Take the directories emptied along with it, never a foreign one: rmdir
+    # refuses a directory that still holds anything.
+    if [[ $APPLY -eq 1 ]]; then
+      dir="$(dirname "$rel")"
+      while [[ "$dir" != "." && "$dir" != "/" ]]; do
+        rmdir "$base/$dir" 2>/dev/null || break
+        dir="$(dirname "$dir")"
+      done
+    fi
+  done < <(previously_deployed "$root")
+}
 
 sync_skill_root() { # $1 = repo-relative skill root  $2 = HOME-relative skill root
   local src="$REPO/$1" dst_rel="$2" dst="$HOME/$2" name child_src child_dst child_rel source_marker
@@ -224,8 +287,17 @@ sync_path() { # $1 = repo-relative source  $2 = HOME-relative target  $3 = optio
   SYNCED_SRC+=("$src"); SYNCED_DST+=("$dst")
   run mkdir -p "$(dirname "$dst")"
   if [[ -d "$src" ]]; then
-    # --force: allows a symlink to replace an existing real directory; --delete clears leftovers already removed from the repo.
-    run rsync -a --links --force --delete --delete-excluded \
+    # --force allows a symlink to replace an existing real directory. There is
+    # deliberately no --delete: the deployed directory may be a shared
+    # namespace, so leftovers are retired from the per-file inventory below
+    # instead of by "everything here that is not in the source".
+    local entries
+    entries="$(mktemp "${TMPDIR:-/tmp}/agent-harness-entries.XXXXXX")"
+    repo_owned_entries "$src" "$dst_rel" > "$entries"
+    prune_retired_files "$dst_rel" "$entries" "$HOME"
+    awk -v root="$dst_rel" '{ print root "\t" $0 }' "$entries" >> "$DEPLOY_STATE_NEW"
+    rm -f "$entries"
+    run rsync -a --links --force \
       "${RSYNC_FILTERS[@]}" "$src" "$(dirname "$dst")/"
   else
     # File mappings may rename the deployment target (contract -> AGENTS/CLAUDE.md).
@@ -300,6 +372,22 @@ for row in "${DEFERRED_SETTINGS_ROWS[@]}"; do
   sync_path "$src_rel" "$dst_rel" "$mode"
 done
 
+# Record what this run deployed, so the next one can retire exactly the files
+# this repo dropped. Absent inventory means unknown, never foreign: the first
+# run after this mechanism landed prunes nothing, which is the safe direction.
+if [[ $APPLY -eq 1 ]]; then
+  mkdir -p "$(dirname "$DEPLOY_STATE")"
+  LC_ALL=C sort -o "$DEPLOY_STATE_NEW" "$DEPLOY_STATE_NEW"
+  mv "$DEPLOY_STATE_NEW" "$DEPLOY_STATE"
+  DEPLOY_STATE_NEW=""
+elif [[ ! -f "$DEPLOY_STATE" ]]; then
+  log "note: no deployment inventory at ~/.agents/.deployed-files.tsv yet; the first --apply records one and later runs retire files this repo drops."
+fi
+for path in "${PRUNED[@]:-}"; do
+  [[ -z "$path" ]] && continue
+  log "retired (repo no longer ships it): ${path#$HOME/}"
+done
+
 # Machine state remains deliberately outside the manifest.
 log "note: Claude Code MCP state lives in ~/.claude.json and is not auto-overwritten; add Headroom with 'headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787'."
 log "note: ~/.codex/config.toml is merged section-scoped ([agents] only, see DEPLOY.md); GPT model/effort, MCP, plugins, desktop, and project trust are preserved, never authored here."
@@ -324,7 +412,11 @@ if [[ $APPLY -eq 1 ]]; then
     || { log "ERROR: ~/.agents/skills/.agent-harness-source does not identify this checkout"; FAIL=1; }
   for i in "${!SYNCED_SRC[@]}"; do
     if [[ -d "${SYNCED_SRC[$i]}" ]]; then
-      diffout="$(rsync -an --links --force --delete --delete-excluded \
+      # Present and identical, not "the only thing there": a shared namespace
+      # legitimately holds another installer's files, and --delete here would
+      # report them as drift the way --delete on apply used to remove them.
+      # Files this repo retired are checked separately, below.
+      diffout="$(rsync -an --links --force \
         "${RSYNC_FILTERS[@]}" --itemize-changes "${SYNCED_SRC[$i]}" "$(dirname "${SYNCED_DST[$i]}")/")"
     else
       if cmp -s "${SYNCED_SRC[$i]}" "${SYNCED_DST[$i]}"; then
@@ -343,6 +435,14 @@ if [[ $APPLY -eq 1 ]]; then
     if ! "$PYTHON_RUN" "$REPO/scripts/${MERGED_TOOL[$i]}" \
         "${MERGED_SRC[$i]}" "${MERGED_DST[$i]}" --verify >/dev/null; then
       log "ERROR: merged target still missing repo settings: ${MERGED_DST[$i]}"
+      FAIL=1
+    fi
+  done
+  # Retirement is the half the parity rsync no longer covers.
+  for path in "${PRUNED[@]:-}"; do
+    [[ -z "$path" ]] && continue
+    if [[ -e "$path" || -L "$path" ]]; then
+      log "ERROR: retired file still deployed: $path"
       FAIL=1
     fi
   done

@@ -735,6 +735,15 @@ class MechanismTests(unittest.TestCase):
             "command": "/bin/sh '/opt/vendor/agent-hooks/vendor-hook.sh'",
             "timeout": 10,
         }
+        # Third-party installers use the documented hooks directory, so a
+        # vendor hook is indistinguishable from ours by path. Ownership by
+        # `$HOME/.claude/hooks/` prefix therefore adopted this one and deleted
+        # its whole event on the next deploy (reproduced 2026-07-29).
+        resident = {
+            "type": "command",
+            "command": 'python3 "$HOME/.claude/hooks/vendor.py"',
+            "timeout": 10,
+        }
         with tempfile.TemporaryDirectory() as temp_home:
             settings_path = Path(temp_home) / ".claude/settings.json"
             settings_path.parent.mkdir(parents=True)
@@ -747,6 +756,10 @@ class MechanismTests(unittest.TestCase):
             # A vendor group in an event the repo owns, and one it does not.
             settings["hooks"]["PreToolUse"].append({"matcher": "*", "hooks": [foreign]})
             settings["hooks"]["UserPromptSubmit"] = [{"hooks": [foreign]}]
+            # The same, for a vendor hook that lives in the shared hooks dir:
+            # alone in its own event, and appended into a group the repo owns.
+            settings["hooks"]["Notification"] = [{"hooks": [resident]}]
+            settings["hooks"]["SubagentStop"][0]["hooks"].append(resident)
             # A repo-owned hook left at a stale command must be updated, not
             # duplicated — this is the case a naive merge gets wrong.
             settings["hooks"]["SessionStart"][0]["hooks"][0]["command"] = (
@@ -770,6 +783,12 @@ class MechanismTests(unittest.TestCase):
         # Foreign hooks survive, in both kinds of event.
         self.assertEqual(sum(foreign["command"] == c for c in commands), 2)
         self.assertIn("UserPromptSubmit", merged["hooks"])
+        # And so does one whose command sits in the shared hooks directory:
+        # this repo owns the hooks it ships, not the directory they live in.
+        self.assertIn("Notification", merged["hooks"])
+        self.assertEqual(sum(resident["command"] == c for c in commands), 2,
+                         "a vendor hook under ~/.claude/hooks was adopted and "
+                         "dropped as if this repo had shipped it")
         # The repo's own stale entry is updated exactly once, not duplicated.
         self.assertNotIn(
             'python3 "$HOME/.claude/hooks/runtime-guard.py" --stale-flag', commands
@@ -779,6 +798,63 @@ class MechanismTests(unittest.TestCase):
             for hook in group["hooks"]:
                 self.assertEqual(sum(hook["command"] == c for c in commands), 1,
                                  hook["command"])
+
+    def test_sync_retires_its_own_files_and_leaves_foreign_ones_alone(self) -> None:
+        """Deleting must be driven by what this repo deployed, not by directory.
+
+        `~/.claude/hooks`, `~/.claude/agents`, `~/.claude/scripts` and
+        `~/.codex/prompts` are the documented places for *every* installer's
+        files, not this repo's territory. The directory-wide `rsync --delete`
+        that used to clean them read a vendor's file as a leftover of ours and
+        removed it. The replacement is a per-file inventory, which has the
+        opposite failure mode — never retiring anything — so both directions
+        are asserted here in one real `--apply` fixture.
+        """
+        sync = ROOT / "scripts/sync.sh"
+        with tempfile.TemporaryDirectory() as temp_home:
+            home = Path(temp_home)
+            env = {**os.environ, "HOME": temp_home,
+                   "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"}
+            first = subprocess.run([str(sync), "--apply"], env=env,
+                                   capture_output=True, text=True)
+            self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+
+            inventory = home / ".agents/.deployed-files.tsv"
+            self.assertTrue(inventory.exists(), first.stdout)
+            recorded = inventory.read_text(encoding="utf-8").splitlines()
+            self.assertIn(".claude/hooks\t.claude/hooks/commit-test-gate.py", recorded)
+            # An inventory of the shared roots only, or of nothing, would let
+            # the prune pass vacuously.
+            self.assertGreater(len(recorded), 20, recorded)
+
+            # What a third-party installer leaves in those same directories.
+            foreign = [home / ".claude/hooks/vendor.py",
+                       home / ".claude/agents/vendor-agent.md",
+                       home / ".codex/prompts/vendor-prompt.md"]
+            for path in foreign:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("vendor\n", encoding="utf-8")
+            # And a file this repo really did deploy once and has since dropped.
+            retired = home / ".claude/hooks/retired-hook.py"
+            retired.write_text("retired\n", encoding="utf-8")
+            with inventory.open("a", encoding="utf-8") as handle:
+                handle.write(".claude/hooks\t.claude/hooks/retired-hook.py\n")
+
+            second = subprocess.run([str(sync), "--apply"], env=env,
+                                    capture_output=True, text=True)
+            self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
+
+            for path in foreign:
+                self.assertTrue(path.exists(),
+                                f"sync deleted a file it never deployed: {path}")
+            self.assertFalse(retired.exists(),
+                             "a file this repo deployed and dropped was not retired")
+            self.assertIn("retired-hook.py", second.stdout)
+            # The retirement must not have been recorded as still deployed.
+            self.assertNotIn(
+                ".claude/hooks\t.claude/hooks/retired-hook.py",
+                inventory.read_text(encoding="utf-8").splitlines(),
+            )
 
     def test_weekly_integrity_parses_the_real_deployment_manifest(self) -> None:
         # The hook re-implements manifest parsing, so a mode added to the
@@ -907,7 +983,7 @@ class MechanismTests(unittest.TestCase):
         self.assertEqual(merged["agents"]["max_threads"], declared["max_threads"])
 
     def test_repo_settings_hooks_are_all_owned_by_the_merge(self) -> None:
-        # If a hook group stops matching OWNED_HOOK_PATTERNS the merge can no
+        # If a hook group stops being recognised as ours the merge can no
         # longer update it on deploy and it fossilises at whatever the machine
         # last had. Preflight runs this too; asserting it here names the reason.
         result = subprocess.run(
@@ -1363,6 +1439,76 @@ class VerifierQuotaTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as home:
             self.assertEqual(self._dispatch(Path(home), prompt=None), 0)
             self.assertEqual(self._dispatch(Path(home), prompt=None), 0)
+
+    def test_a_carrier_that_stopped_arriving_becomes_a_standing_finding(self) -> None:
+        """Silent retirement is the failure mode of an unread budget guard.
+
+        The gate reads one optional payload field. If a CLI change stops
+        sending it, every dispatch is allowed with a note on a stderr nobody
+        re-reads, and the tests still pass because they supply the field
+        themselves. The count is what makes the loss observable; it clears on
+        the first dispatch that does carry the field, so it cannot become an
+        alarm nobody can turn off.
+        """
+        state = "/.claude/telemetry/.verifier-quota.json"
+
+        def misses(home: Path) -> object:
+            return (json.loads((Path(str(home) + state)).read_text(
+                encoding="utf-8")).get("_carrier") or {}).get("misses")
+
+        with tempfile.TemporaryDirectory() as home:
+            for expected in (1, 2, 3):
+                self.assertEqual(self._dispatch(Path(home), prompt=None), 0)
+                self.assertEqual(misses(Path(home)), expected)
+
+            hook = ROOT / "main/claude/hooks/weekly-integrity.py"
+            env = {**os.environ, "HOME": home,
+                   "AGENT_HARNESS_REPO": str(Path(home) / "repo")}
+            report = subprocess.run([sys.executable, str(hook)], env=env,
+                                    check=True, capture_output=True, text=True)
+            self.assertIn("verifier quota not enforceable", report.stdout)
+            self.assertIn("prompt_id", report.stdout)
+
+            # A dispatch that carries the field says the gate works again.
+            self.assertEqual(self._dispatch(Path(home)), 0)
+            self.assertIsNone(misses(Path(home)))
+
+    def test_two_verifiers_dispatched_at_once_still_spend_one_quota(self) -> None:
+        """The parallel case is the one the gate exists for.
+
+        This harness batches dispatches into a single assistant message, so the
+        two verifiers worth refusing arrive together rather than in sequence.
+        An unlocked read-check-write lets both read an unspent quota and both
+        proceed — the gate passes every sequential test and refuses nothing in
+        the situation it was written for.
+        """
+        import time
+        payload = json.dumps({"tool_name": "Agent", "session_id": "s1",
+                              "prompt_id": "p1",
+                              "tool_input": {"subagent_type": "verifier"}})
+        with tempfile.TemporaryDirectory() as home:
+            # Spawn every hook first, feed them second. The hook blocks on
+            # stdin, so closing all the pipes together releases eight already
+            # warm interpreters into the check-and-set at once. Spawning them
+            # and letting each run to completion measures nothing: interpreter
+            # start-up alone staggers them enough that an unlocked hook passes
+            # (checked 2026-07-29 — that version of this test could not tell
+            # the lock from its absence).
+            running = [
+                subprocess.Popen(
+                    [sys.executable, str(self.HOOK)], text=True,
+                    stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    env={**os.environ, "HOME": home})
+                for _ in range(8)
+            ]
+            for process in running:
+                process.stdin.write(payload)
+            time.sleep(0.5)
+            for process in running:
+                process.stdin.close()
+            codes = [process.wait(timeout=60) for process in running]
+        self.assertEqual(sorted(codes), [0] + [2] * 7, codes)
 
 
 class BridgeJobLivenessTests(unittest.TestCase):

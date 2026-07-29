@@ -2,6 +2,44 @@
 from support import *  # noqa: F401,F403
 
 
+def _decision_route_sources() -> tuple[str, ...]:
+    """The live eligibility gate, so a tag and its consequence stay tied.
+
+    Asserting the tier name alone would still pass if the tier stopped being
+    decision-eligible. `test_report_and_revise_share_one_eligibility_rule` pins
+    the tuple's contents; these read it.
+    """
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "routing_core_for_ledger_tests",
+        ROOT / "main/.agents/scripts/routing_core.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.DECISION_ROUTE_SOURCES
+
+
+DECISION_ROUTE_SOURCES = _decision_route_sources()
+
+
+def stage_attested_stop(pending, dispatch_id: str, *, agent_type: str,
+                        observed_model: str, **extra) -> None:
+    """Append the SubagentStop stub the pending hook stages for a Claude run.
+
+    Route provenance has no CLI flag by design — it may only arrive from the
+    provider's own telemetry — so anything that needs a decision-eligible
+    record has to come through the pending file, as a real dispatch does.
+    """
+    session, _, agent = dispatch_id.partition(":")
+    with open(pending, "a", encoding="utf-8") as handle:
+        handle.write(json.dumps({
+            "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "event": "SubagentStop", "agent_type": agent_type,
+            "agent_id": agent, "session_id": session,
+            "dispatch_id": dispatch_id, "request_source": "claude-code",
+            "observed_model": observed_model, **extra,
+        }) + "\n")
+
+
 class SharedSkillTests(unittest.TestCase):
     def _assert_symlinked_body(self, name: str) -> None:
         body = ROOT / "main/.agents/skills" / name
@@ -186,14 +224,19 @@ class SharedSkillTests(unittest.TestCase):
                     env=env, check=True, capture_output=True, text=True,
                 )
 
-            # The route is passed explicitly. Omitting it still logs a usable
-            # record, but the resolver fills it and tags it `resolver-assumed`,
-            # which is reported and not decision-eligible (2026-07-28) — so the
-            # cohort metrics below would all be None and this test would be
-            # asserting nothing. `test_native_claude_route_is_resolver_assumed`
-            # covers the convenience path.
+            # Cohort metrics are computed from decision-eligible records only,
+            # so each dispatch is staged with the model its transcript recorded
+            # — a route typed on the command line is a claim and would leave
+            # every metric below None, asserting nothing.
+            # `test_native_claude_route_is_resolver_assumed` covers the
+            # convenience path, where nothing is staged and nothing is claimed.
+            pending = Path(temp_dir) / "pending.jsonl"
+            env["AGENT_EXPERIENCE_PENDING"] = str(pending)
             for i in range(10):
-                log("--role", "executor", "--provider", "claude",
+                stage_attested_stop(pending, f"s:a{i}", agent_type="executor",
+                                    observed_model="claude-opus-5")
+                log("--from-pending", "--dispatch-id", f"s:a{i}",
+                    "--role", "executor", "--provider", "claude",
                     "--request-source", "claude-code", "--class", "impl",
                     "--profile", "balanced", "--model", "claude-opus-5",
                     "--effort", "medium",
@@ -203,7 +246,12 @@ class SharedSkillTests(unittest.TestCase):
                     "--secs", "300", "--review-secs", "30", "--rework-secs", "0",
                     "--api-cost-usd", "0.25",
                     "--now", f"2026-07-{19 + i // 8:02d}T{i % 8:02d}:00:00+00:00")
-            log("--role", "executor", "--provider", "codex",
+            stage_attested_stop(pending, "s:c0", agent_type="codex:codex-rescue",
+                                observed_model="gpt-5.6-sol",
+                                observed_effort="medium",
+                                request_source="codex")
+            log("--from-pending", "--dispatch-id", "s:c0",
+                "--role", "executor", "--provider", "codex",
                 "--request-source", "codex", "--class", "impl",
                 "--profile", "balanced", "--model", "gpt-5.6-sol",
                 "--effort", "medium",
@@ -278,6 +326,8 @@ class SharedSkillTests(unittest.TestCase):
             ledger = os.path.join(temp_dir, "experience.jsonl")
             env = {**os.environ, "AGENT_EXPERIENCE_LEDGER": ledger,
                    "AGENT_CLAUDE_RESOLVER": str(ROOT / "main/claude/scripts/model-routing")}
+            pending = Path(temp_dir) / "pending.jsonl"
+            env["AGENT_EXPERIENCE_PENDING"] = str(pending)
             common = [
                 # Legacy capitalized spelling: the alias must canonicalize it.
                 "--role", "Explore", "--provider", "claude",
@@ -286,8 +336,15 @@ class SharedSkillTests(unittest.TestCase):
                 "--outcome", "accepted",
             ]
             for task_class in ("recon", "review"):
+                # Cohort counts below are of decision-eligible records, so the
+                # route has to be attested by the transcript rather than
+                # claimed on the command line.
+                stage_attested_stop(pending, f"s:{task_class}",
+                                    agent_type="explore",
+                                    observed_model="claude-sonnet-5")
                 subprocess.run(
                     [sys.executable, str(base / "experience-log"), *common,
+                     "--from-pending", "--dispatch-id", f"s:{task_class}",
                      "--class", task_class, "--task", f"{task_class} sample"],
                     env=env, check=True, capture_output=True, text=True,
                 )
@@ -530,7 +587,8 @@ class SharedSkillTests(unittest.TestCase):
                         "effort": "medium",
                         # Attested route: this fixture is about cost scope, so
                         # it must clear the provenance gate to reach the hint.
-                        "route_source": "explicit",
+                        "route_source": ("rollout-verified" if provider == "codex"
+                                         else "transcript-verified"),
                     }
                     if provider == "claude":
                         row.update({"tokens_in": 100, "cache_write_tokens": 10,
@@ -587,7 +645,8 @@ class SharedSkillTests(unittest.TestCase):
                             "profile": profile, "model": model, "effort": effort,
                             # This fixture is about route pooling, not
                             # provenance; keep every row decision-eligible.
-                            "route_source": "explicit",
+                            "route_source": ("rollout-verified" if provider == "codex"
+                                             else "transcript-verified"),
                         })
             ledger.write_text(
                 "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8"
@@ -649,11 +708,12 @@ class SharedSkillTests(unittest.TestCase):
             self.assertEqual(row["n"], 0)
 
     def test_unattested_routes_are_reported_but_never_drive_decisions(self) -> None:
-        # User-directed 2026-07-28: `resolver-assumed` is inferred from an
-        # alias and stops being true once that alias is upgraded, and an
-        # untagged record has no provenance at all. Both stay visible in
-        # observed_n/ineligible_n — the gate is on driving a decision, not on
-        # being counted — while `explicit` and `rollout-verified` still count.
+        # Only what the provider itself recorded may move a route.
+        # `resolver-assumed` is inferred from an alias and stops being true the
+        # moment that alias is upgraded; `explicit` is the dispatcher's own
+        # claim with nothing checking it against what ran; an untagged record
+        # has no provenance at all. All stay visible in observed_n/ineligible_n
+        # — the gate is on driving a decision, not on being counted.
         report_script = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-report"
         base = {
             "ts": "2026-07-20T00:00:00+00:00", "schema": 3,
@@ -664,7 +724,8 @@ class SharedSkillTests(unittest.TestCase):
         }
         cases = {
             "rollout-verified": 1,
-            "explicit": 1,
+            "transcript-verified": 1,
+            "explicit": 0,
             "resolver-assumed": 0,
             None: 0,
         }
@@ -706,8 +767,11 @@ class SharedSkillTests(unittest.TestCase):
             "routing_core_eligibility", ROOT / "main/.agents/scripts/routing_core.py")
         routing_core = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(routing_core)
+        # Both entries are provider-attested; a dispatcher's own claim
+        # (`explicit`) is deliberately not one of them.
         self.assertEqual(
-            routing_core.DECISION_ROUTE_SOURCES, ("rollout-verified", "explicit"))
+            routing_core.DECISION_ROUTE_SOURCES,
+            ("rollout-verified", "transcript-verified"))
 
     def test_experience_report_ignores_invalid_legacy_telemetry(self) -> None:
         report_script = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-report"
@@ -719,7 +783,7 @@ class SharedSkillTests(unittest.TestCase):
                 "provider": "codex", "request_source": "codex",
                 "outcome": "accepted", "profile": "balanced",
                 "model": "gpt-5.6-sol", "effort": "medium",
-                "route_source": "explicit",
+                "route_source": "rollout-verified",
                 "quality": 4, "tokens_in": 100, "tokens_out": 20,
                 "cache_write_tokens": 10, "cache_read_tokens": 70,
                 "secs": 5.0, "review_secs": 1.0, "rework_secs": 0.0,
@@ -905,6 +969,151 @@ class BridgeRouteEvidenceTests(unittest.TestCase):
             record = json.loads(
                 (temp / "ledger.jsonl").read_text(encoding="utf-8").splitlines()[-1])
             self.assertEqual(record["route_source"], "explicit")
+            # And a claim nothing checked may not move a route (F-03).
+            self.assertNotIn(record["route_source"], DECISION_ROUTE_SOURCES)
+
+
+class ClaudeRouteEvidenceTests(unittest.TestCase):
+    """A Claude route must be attested by Claude, not by the dispatcher.
+
+    `explicit` used to be decision-eligible because Claude had no attestation
+    path at all, which made every gate on the Codex side pointless here: a
+    dispatcher that typed a route it did not get moved every later route toward
+    a model that never ran. Claude records the model on each assistant turn of
+    the subagent transcript, which is the same class of evidence as a Codex
+    rollout — these tests hold that path open.
+    """
+
+    HOOK = ROOT / "main/claude/hooks/experience-pending.py"
+    LOG = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-log"
+
+    def _stage(self, temp: Path, models: list[str | None]) -> dict:
+        """Run the hook over a synthetic Claude dispatch; return its stub."""
+        now = datetime.now(timezone.utc)
+        transcript = temp / "session.jsonl"
+        subagents = temp / "session" / "subagents"
+        subagents.mkdir(parents=True)
+        rows = []
+        for index, model in enumerate(models):
+            message = {"id": f"msg_{index}", "role": "assistant",
+                       "usage": {"input_tokens": 100, "output_tokens": 20}}
+            if model is not None:
+                message["model"] = model
+            rows.append({"type": "assistant", "message": message})
+        (subagents / "agent-a1.jsonl").write_text(
+            "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+        pending = temp / "pending.jsonl"
+        pending.write_text(json.dumps({
+            "ts": (now - timedelta(seconds=60)).isoformat(timespec="seconds"),
+            "event": "SubagentStart", "agent_type": "explore",
+            "agent_id": "a1", "session_id": "s1", "dispatch_id": "s1:a1",
+            "request_source": "claude-code",
+        }) + "\n", encoding="utf-8")
+        self.env = {**os.environ,
+                    "AGENT_EXPERIENCE_PENDING": str(pending),
+                    "AGENT_EXPERIENCE_LEDGER": str(temp / "ledger.jsonl"),
+                    "AGENT_CLAUDE_RESOLVER": str(
+                        ROOT / "main/claude/scripts/model-routing")}
+        subprocess.run(
+            [sys.executable, str(self.HOOK)], env=self.env, check=True,
+            capture_output=True, text=True,
+            input=json.dumps({"hook_event_name": "SubagentStop",
+                              "agent_type": "explore", "agent_id": "a1",
+                              "session_id": "s1",
+                              "transcript_path": str(transcript)}))
+        stubs = [json.loads(line) for line in
+                 pending.read_text(encoding="utf-8").splitlines()]
+        return stubs[-1]
+
+    def _log(self, *extra: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(self.LOG), "--from-pending",
+             "--outcome", "accepted", "--class", "recon", *extra],
+            env=self.env, capture_output=True, text=True)
+
+    def _record(self, temp: Path) -> dict:
+        return json.loads(
+            (temp / "ledger.jsonl").read_text(encoding="utf-8").splitlines()[-1])
+
+    def test_hook_stages_the_model_claude_actually_ran(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            stub = self._stage(Path(temp_dir), ["claude-sonnet-5"] * 3)
+            self.assertEqual(stub["observed_model"], "claude-sonnet-5")
+            # Same pass still reports usage; the model is read alongside it.
+            self.assertEqual(stub["tokens_in"], 300)
+
+    def test_transcript_attested_route_may_drive_decisions(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            self._stage(temp, ["claude-sonnet-5"])
+            result = self._log()
+            self.assertEqual(result.returncode, 0, result.stderr)
+            record = self._record(temp)
+            # Model from the transcript, the rest from the resolved pin.
+            self.assertEqual(record["model"], "claude-sonnet-5")
+            self.assertEqual(record["route_source"], "transcript-verified")
+            self.assertIn(record["route_source"], DECISION_ROUTE_SOURCES)
+
+    def test_a_claimed_model_the_transcript_contradicts_is_rejected(self) -> None:
+        # The dispatcher's claim is checked against evidence, exactly as on the
+        # bridge; disagreement is a routing violation, not a record.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self._stage(Path(temp_dir), ["claude-sonnet-5"])
+            result = self._log("--model", "claude-opus-5")
+            self.assertEqual(result.returncode, 2, result.stdout)
+            self.assertIn("contradicts the provider-recorded route",
+                          result.stderr)
+
+    def test_a_dated_snapshot_attests_the_generation_it_belongs_to(self) -> None:
+        """`claude-sonnet-5-20260601` is the pinned model, not a mismatch.
+
+        The CLI reports dated ids where the routing config declares undated
+        ones. Reading that as a contradiction would refuse every dispatch of
+        an affected tier; recording the dated id instead would split its
+        cohort away from the config's own name for the same model.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            self._stage(temp, ["claude-sonnet-5-20260601"])
+            result = self._log()
+            self.assertEqual(result.returncode, 0, result.stderr)
+            record = self._record(temp)
+            self.assertEqual(record["model"], "claude-sonnet-5")
+            self.assertEqual(record["route_source"], "transcript-verified")
+
+    def test_a_generation_move_is_refused_rather_than_logged(self) -> None:
+        # The alias moved under the pin: the resolver still says sonnet-5, the
+        # transcript says otherwise. `check-aliases` reports this weekly; the
+        # logger must not quietly file the dispatch under a model that did not
+        # run, which is what made the alias assertion worth testing at all.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self._stage(Path(temp_dir), ["claude-sonnet-6"])
+            result = self._log()
+            self.assertEqual(result.returncode, 2, result.stdout)
+            self.assertIn("contradicts the provider-recorded route",
+                          result.stderr)
+
+    def test_an_unattestable_transcript_claims_no_route(self) -> None:
+        """Two models in one transcript attest nothing; a local turn is not one.
+
+        Claude Code writes `<synthetic>` for turns it produced itself (API
+        errors, interrupts). Counting that as a second model would strip the
+        attestation off an ordinary dispatch.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            stub = self._stage(temp, ["claude-sonnet-5", "claude-opus-5"])
+            self.assertNotIn("observed_model", stub)
+            self.assertEqual(stub["telemetry_warning"],
+                             "ambiguous_transcript_model")
+            result = self._log()
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(self._record(temp)["route_source"],
+                             "resolver-assumed")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            stub = self._stage(Path(temp_dir),
+                               ["claude-sonnet-5", "<synthetic>", None])
+            self.assertEqual(stub["observed_model"], "claude-sonnet-5")
 
 
 class RequestSourceSchemaTests(unittest.TestCase):

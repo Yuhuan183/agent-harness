@@ -90,7 +90,7 @@ def validation_errors(config: dict) -> list[str]:
     route_application = config.get("route_application", {}).get("roles", {})
     quality_floor = config.get("quality_floor", {})
     role_tiers = quality_floor.get("roles", {})
-    allowed_by_tier = quality_floor.get("allowed", {})
+    approved_by_tier = quality_floor.get("approved_routes", {})
     errors += core.check_selection(config)
     errors += core.check_revision_policy(config)
     errors += core.check_prior_review(config)
@@ -113,7 +113,7 @@ def validation_errors(config: dict) -> list[str]:
             return f"references unknown effort: {effort!r}"
         return None
 
-    errors += core.check_allowed_routes(config, route_ok)
+    errors += core.check_approved_routes(config, route_ok)
     errors += core.check_availability(models, AVAILABILITY_SCHEMA)
     for model_name, model in models.items():
         efforts = model.get("efforts", {})
@@ -220,7 +220,7 @@ def validation_errors(config: dict) -> list[str]:
                 chosen = route_for_surface(config, profile_name, role, surface)
                 tier = role_tiers.get(role)
                 candidates = []
-                for route_key in allowed_by_tier.get(tier, []):
+                for route_key in approved_by_tier.get(tier, []):
                     candidate_model, candidate_effort = route_key.rsplit("/", 1)
                     model = models.get(candidate_model, {})
                     metrics = model.get("efforts", {}).get(candidate_effort)

@@ -42,15 +42,23 @@ USAGE_FIELDS = {
 }
 
 
-def sum_usage_tokens(transcript_path, agent_id):
-    """Sum token usage across assistant turns, deduped by message id.
+def subagent_telemetry(transcript_path, agent_id):
+    """Token usage and the model Claude recorded, from one transcript pass.
 
-    Streaming may append several snapshots of one message, so the latest
-    usage object for a message replaces earlier snapshots.
+    Usage is summed across assistant turns and deduped by message id, because
+    streaming may append several snapshots of one message and the latest usage
+    object replaces the earlier ones.
+
+    Each assistant turn also carries the model that produced it. That is
+    Claude's own account of the route it ran — the Claude-side counterpart of
+    a Codex rollout's `thread_settings_applied`, and the only route evidence on
+    this side that does not come from the dispatcher. Effort has no such
+    record: on Claude it is the frontmatter pin, not a provider-reported fact.
     """
     base = transcript_path[:-6] if transcript_path.endswith(".jsonl") else transcript_path
     path = os.path.join(base, "subagents", f"agent-{agent_id}.jsonl")
     per_message = {}
+    models = set()
     try:
         with open(path, encoding="utf-8") as f:
             for line in f:
@@ -59,6 +67,12 @@ def sum_usage_tokens(transcript_path, agent_id):
                     usage = msg.get("usage") or {}
                     if any(isinstance(usage.get(field), int) for field in USAGE_FIELDS):
                         per_message[msg.get("id") or len(per_message)] = usage
+                    model = msg.get("model")
+                    # `<synthetic>` marks a turn Claude Code produced locally
+                    # (API errors, interrupts). It names no model, so counting
+                    # it would turn a normal dispatch into a two-model one.
+                    if isinstance(model, str) and model and not model.startswith("<"):
+                        models.add(model)
                 except (json.JSONDecodeError, AttributeError):
                     continue
     except OSError:
@@ -68,6 +82,12 @@ def sum_usage_tokens(transcript_path, agent_id):
         values = [usage.get(source) for usage in per_message.values()]
         if any(isinstance(value, int) for value in values):
             totals[target] = sum(value for value in values if isinstance(value, int))
+    if len(models) == 1:
+        totals["observed_model"] = models.pop()
+    elif len(models) > 1:
+        # A dispatch that ran on more than one model has no single route to
+        # attest, the same way an ambiguous rollout window attests nothing.
+        totals["telemetry_warning"] = "ambiguous_transcript_model"
     return totals
 
 
@@ -217,7 +237,7 @@ try:
             if start is not None:
                 rec.update(codex_usage_tokens(start, now))
         elif ev.get("transcript_path"):
-            rec.update(sum_usage_tokens(ev["transcript_path"], rec["agent_id"]))
+            rec.update(subagent_telemetry(ev["transcript_path"], rec["agent_id"]))
     with pending_lock():
         with open(PENDING, "a", encoding="utf-8") as f:
             f.write(json.dumps(rec) + "\n")

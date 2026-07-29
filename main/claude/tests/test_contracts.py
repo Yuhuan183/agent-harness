@@ -390,7 +390,7 @@ class CodexBundleTests(unittest.TestCase):
         required_roles = {"main", *CODEX_ROLES}
         role_tiers = routing["quality_floor"]["roles"]
         application = routing["route_application"]["roles"]
-        allowed = routing["quality_floor"]["allowed"]
+        approved = routing["quality_floor"]["approved_routes"]
         self.assertEqual(set(role_tiers), required_roles)
         self.assertEqual(set(application), required_roles)
         self.assertEqual(application["main"], "session_start_recommendation")
@@ -407,7 +407,7 @@ class CodexBundleTests(unittest.TestCase):
                 self.assertIn(route["effort"], model["efforts"], f"{profile_name}/{role}")
                 self.assertIn(
                     f"{route['model']}/{route['effort']}",
-                    allowed[role_tiers[role]],
+                    approved[role_tiers[role]],
                     f"{profile_name}/{role} falls below its quality floor",
                 )
                 self.assertTrue(route["reason"], f"{profile_name}/{role}")
@@ -749,7 +749,11 @@ class DocumentationBudgetTests(unittest.TestCase):
             # ceilings.
             # +250 (2026-07-28): readiness-unit state and live-discovery
             # ownership now have a verification entry point outside prompts.
-            "docs/dispatch-lifecycle.md": 1900,
+            # +130 (2026-07-29): route attestation is now two paths, not one.
+            # The Claude side gained its own evidence chain, and the tier list
+            # gained the rule that decides which tiers move a route — the part
+            # a reader needs before trusting any of the numbers downstream.
+            "docs/dispatch-lifecycle.md": 2030,
             # The hook-system concept doc: fail-open/fail-closed semantics, the
             # per-event inventory, and why each gate is trustworthy. The
             # guardrail table in the README pointed at individual hooks but no

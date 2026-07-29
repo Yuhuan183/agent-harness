@@ -21,6 +21,7 @@ import argparse
 from contextlib import contextmanager
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -56,6 +57,17 @@ DEFAULT_CLASSES = {
 }
 CLAUDE_RESOLVER = os.environ.get(
     "AGENT_CLAUDE_RESOLVER", os.path.expanduser("~/.claude/scripts/model-routing"))
+# A transcript reports `claude-haiku-4-5-20251001` where the routing config
+# declares the undated `claude-haiku-4-5`. That is one model, so it attests the
+# route; a different generation does not, and neither does a point release,
+# which is why only a trailing 8-digit date is absorbed. Same rule as
+# `model-routing check-aliases` (is_same_generation), which is what turns a
+# genuine mismatch here into a standing weekly finding rather than a surprise.
+DATED_SNAPSHOT = re.compile(r"-\d{8}\Z")
+
+
+def same_generation(declared: str, observed: str) -> bool:
+    return observed == declared or DATED_SNAPSHOT.sub("", observed) == declared
 
 PENDING_PATH = os.environ.get(
     "AGENT_EXPERIENCE_PENDING",
@@ -255,41 +267,20 @@ def main() -> int:
         value = getattr(args, field)
         if value is not None and (not math.isfinite(value) or value < 0):
             parser.error(f"--{field.replace('_', '-')} must be finite and >= 0")
-    # Provider-recorded route beats the dispatcher's claim. A bridge dispatch
-    # is the one case where the caller types the route by hand, so an unchecked
-    # claim would enter the ledger tagged `explicit` — a word about how the
-    # value was supplied, not how well it is attested. Compare first, then tag.
-    if args.observed_model and args.observed_effort:
-        for flag, claimed, observed in (
-                ("model", args.model, args.observed_model),
-                ("effort", args.effort, args.observed_effort)):
-            if claimed is not None and claimed != observed:
-                parser.error(
-                    f"--{flag} {claimed!r} contradicts the provider-recorded "
-                    f"route {observed!r} for this dispatch (rollout "
-                    f"{args.rollout_id or 'evidence'}); a route the provider "
-                    "did not run is a routing violation — surface it, do not "
-                    "log it"
-                )
-        args.model = args.model or args.observed_model
-        args.effort = args.effort or args.observed_effort
-    args.route_source = ("explicit" if all(
-        value is not None for value in (args.profile, args.model, args.effort))
-        else None)
-    if args.observed_model and args.observed_effort and args.route_source:
-        # `profile` stays caller-supplied: it is a harness label with no
-        # provider-side counterpart. Model and effort are the physical facts,
-        # and both matched the rollout to get here.
-        args.route_source = "rollout-verified"
+    # Provider-recorded route beats the dispatcher's claim. Nothing stops a
+    # caller from typing a route it did not get, so an unchecked claim would
+    # enter the ledger tagged `explicit` — a word about how the value was
+    # supplied, not how well it is attested. Compare first, then tag.
+    resolver_filled = False
     if args.provider == "claude" and any(
             value is None for value in (args.profile, args.model, args.effort)):
         # Claude routes are deterministic frontmatter pins (check-pins keeps
-        # them aligned with the default profile), so fill the route in from the
-        # resolver to keep the record readable. Tagging it `resolver-assumed`
-        # is what keeps an alias upgrade from masquerading as verified route
-        # evidence: both consumers gate decision eligibility on route_source
-        # (core.DECISION_ROUTE_SOURCES), so these records are reported but
-        # never drive a route change.
+        # them aligned with the default profile), so fill the rest of the route
+        # in from the resolver to keep the record readable. This runs *before*
+        # the comparison below so the transcript is checked against the route
+        # the config says should have run — that comparison is the whole point
+        # of having transcript evidence — and so the ledger keeps the config's
+        # undated model id as its cohort key rather than a dated snapshot.
         # Fail-open: an unavailable resolver just leaves the record untagged.
         try:
             resolved = subprocess.run(
@@ -300,13 +291,50 @@ def main() -> int:
                 args.model = args.model or route["model"]
                 args.effort = args.effort or route["effort"]
                 args.profile = args.profile or route["profile"]
-                # Pins use model aliases; the resolver maps them to dated ids.
-                # Mark the record so alias upgrades cannot masquerade as
-                # verified route evidence (route_source: resolver-assumed).
-                args.route_source = args.route_source or "resolver-assumed"
+                resolver_filled = True
         except (OSError, subprocess.TimeoutExpired,
                 json.JSONDecodeError, KeyError):
             pass
+    if args.observed_model:
+        checks = [("model", args.model, args.observed_model, same_generation)]
+        if args.observed_effort:
+            checks.append(("effort", args.effort, args.observed_effort,
+                           lambda claimed, observed: claimed == observed))
+        for flag, claimed, observed, attests in checks:
+            if claimed is not None and not attests(claimed, observed):
+                parser.error(
+                    f"--{flag} {claimed!r} contradicts the provider-recorded "
+                    f"route {observed!r} for this dispatch (rollout "
+                    f"{args.rollout_id or 'evidence'}); a route the provider "
+                    "did not run is a routing violation — surface it, do not "
+                    "log it"
+                )
+        args.model = args.model or args.observed_model
+        args.effort = args.effort or args.observed_effort
+    # Route provenance, strongest evidence first. Only the tiers the provider
+    # itself attested may move a route (core.DECISION_ROUTE_SOURCES); the rest
+    # are still logged and still counted, but never drive a route change.
+    # `profile` never affects the tier: it is a harness label with no
+    # provider-side counterpart on either side.
+    if all(value is not None for value in (args.profile, args.model, args.effort)):
+        if args.observed_model and args.observed_effort:
+            # Codex writes both applied thread settings into its rollout, and
+            # both matched the claim to get here.
+            args.route_source = "rollout-verified"
+        elif args.observed_model:
+            # Claude names the model on every assistant turn but records no
+            # effort, so the attested half is the half an alias upgrade would
+            # silently change; effort is the pin check-pins already holds.
+            args.route_source = "transcript-verified"
+        elif resolver_filled:
+            # Pins name aliases and the resolver maps them to concrete ids, so
+            # this route is what the config says should have run, not what did.
+            args.route_source = "resolver-assumed"
+        else:
+            # Complete, and entirely the dispatcher's own account of it.
+            args.route_source = "explicit"
+    else:
+        args.route_source = None
     if args.task_class not in ("smoke", "other"):
         missing_route = [field for field in ("profile", "model", "effort")
                          if getattr(args, field) is None]
