@@ -260,35 +260,60 @@ class MachineStateHygieneTests(unittest.TestCase):
         substrings the gate happens to recognize.
         """
         hook = ROOT / "main/claude/hooks/commit-test-gate.py"
+        # The one spelling whose target the gate cannot name. It has to block
+        # for *that* reason: every other target here resolves, and asserting
+        # only the exit code would let "blocked because unknown" stand in for
+        # "blocked because the suite is red" everywhere.
+        unresolvable = 'cd "$(echo {repo})" && git commit -m x'
+        # (spelling, environment). `{repo}` stands for the scratch repo's path;
+        # a spelling that names its own target is handed to the gate from a cwd
+        # that is not a repository at all, so the target resolution has to be
+        # what catches it instead of cwd doing the work by accident.
         spellings = [
-            "git commit -m x",                          # plain
-            "git com''mit -m x",                        # quote concatenation
-            "g'i't com''mit -m x",
-            'g"i"t com""mit -m x',
-            "git com\\\nmit -m x",                      # continuation, intra-word
-            "EMPTY=; g${EMPTY}it com${EMPTY}mit -m x",  # parameter expansion
-            "C=commit; git $C -m x",
-            'E=""; git ${E}commit -m x',
-            "$(echo git) commit -m x",                  # command substitution
-            "`echo git` commit -m x",
-            "git com$(true)mit -m x",
-            "true && git commit -m x",                  # operators
-            "false; git commit -m x",
-            "eval \"gi\"\"t com\"\"mit -m x\"",         # eval
+            ("git commit -m x", {}),                          # plain
+            ("git com''mit -m x", {}),                        # quote concatenation
+            ("g'i't com''mit -m x", {}),
+            ('g"i"t com""mit -m x', {}),
+            ("git com\\\nmit -m x", {}),                      # continuation, intra-word
+            ("EMPTY=; g${EMPTY}it com${EMPTY}mit -m x", {}),  # parameter expansion
+            ("C=commit; git $C -m x", {}),
+            ('E=""; git ${E}commit -m x', {}),
+            ("$(echo git) commit -m x", {}),                  # command substitution
+            ("`echo git` commit -m x", {}),
+            ("git com$(true)mit -m x", {}),
+            ("true && git commit -m x", {}),                  # operators
+            ("false; git commit -m x", {}),
+            ('eval "gi""t com""mit -m x"', {}),               # eval
+            ("G=git; $G commit -m x", {}),                    # expanded executable
+            ("$PRE_GIT commit -m x", {"PRE_GIT": "git"}),     # from the environment
+            # The value is itself an expansion, so the gate cannot resolve it
+            # from either source: only the structural check is left.
+            ("G=$(echo git); $G commit -m x", {}),
+            ("R={repo}; git -C \"$R\" commit -m x", {}),      # expanded target
+            ("R={repo}; cd \"$R\" && git commit -m x", {}),
+            ('git -C "$PRE_REPO" commit -m x', {"PRE_REPO": "{repo}"}),
+            ('cd "$PRE_REPO" && git commit -m x', {"PRE_REPO": "{repo}"}),
+            # Unresolvable target: blocked for that reason, not silently allowed.
+            (unresolvable, {}),
         ]
         identity = {
             "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
             "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid",
         }
         with tempfile.TemporaryDirectory() as temp_dir:
-            for index, spelling in enumerate(spellings):
+            for index, (template, template_env) in enumerate(spellings):
                 repo = Path(temp_dir) / f"repo{index}"
                 repo.mkdir()
+                written = "".join([template, *template_env.values()])
+                names_target = "{repo}" in written
+                spelling = template.replace("{repo}", str(repo))
+                case_env = {name: value.replace("{repo}", str(repo))
+                            for name, value in template_env.items()}
                 subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
                 (repo / "f.txt").write_text("x", encoding="utf-8")
                 subprocess.run(["git", "-C", str(repo), "add", "f.txt"], check=True)
                 subprocess.run(["sh", "-c", spelling], cwd=repo,
-                               env={**os.environ, **identity},
+                               env={**os.environ, **identity, **case_env},
                                capture_output=True, text=True)
                 counted = subprocess.run(
                     ["git", "-C", str(repo), "rev-list", "--count", "HEAD"],
@@ -306,12 +331,17 @@ class MachineStateHygieneTests(unittest.TestCase):
                     encoding="utf-8",
                 )
                 payload = json.dumps({"tool_input": {"command": spelling},
-                                      "cwd": str(repo)})
+                                      "cwd": temp_dir if names_target else str(repo)})
                 blocked = subprocess.run(
                     [sys.executable, str(hook)], input=payload,
-                    capture_output=True, text=True, timeout=120)
+                    capture_output=True, text=True, timeout=120,
+                    env={**os.environ, **case_env})
                 self.assertEqual(blocked.returncode, 2,
                                  f"real commit slipped the gate: {spelling!r}")
+                reason = ("could not be resolved" if template == unresolvable
+                          else "is RED")
+                self.assertIn(reason, blocked.stderr,
+                              f"blocked for the wrong reason: {spelling!r}")
 
     def test_commit_gate_runs_the_suite_on_a_modern_interpreter(self) -> None:
         # 2026-07-27: the gate ran the suite on `sys.executable`, i.e. the agent

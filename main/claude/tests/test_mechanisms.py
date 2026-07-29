@@ -1480,6 +1480,13 @@ class VerifierQuotaTests(unittest.TestCase):
         case it does not cover. Until a stable task id reaches the payload,
         every place that describes the *mechanism* says prompt; the contracts
         keep saying task because that is the judgment rule the gate backs up.
+
+        Asserting the honest sentences exists is not enough on its own: three
+        of them were in place while `README.md` and `docs/architecture.md`
+        still said the mechanism blocks the second verifier of a task
+        (2026-07-29 review). So the second half sweeps instead of sampling —
+        wherever a passage pairs the interception with task scope, it has to
+        name the prompt boundary in the same breath.
         """
         scoped = {
             "main/claude/hooks/verifier-quota.py": "per user prompt",
@@ -1492,6 +1499,23 @@ class VerifierQuotaTests(unittest.TestCase):
         for contract in ("main/claude/CLAUDE.contract.md",
                          "main/codex/AGENTS.contract.md"):
             self.assertIn("per top-level task", read(contract), contract)
+
+        # The contracts are exempt by construction: they state the rule, whose
+        # unit really is the task. Everything below describes the machine.
+        described = ["README.md", "main/claude/hooks/verifier-quota.py"]
+        described += [f"docs/{doc.name}" for doc in sorted((ROOT / "docs").glob("*.md"))]
+        blocking = ("攔截", "攔得住", "擋", "blocked", "blocks")
+        for path in described:
+            for passage in re.split(r"\n\s*\n", read(path)):
+                if "verifier" not in passage or "task" not in passage:
+                    continue
+                if not any(word in passage for word in blocking):
+                    continue
+                self.assertIn(
+                    "prompt", passage,
+                    f"{path}: describes the verifier gate intercepting per task "
+                    "without naming the prompt boundary it actually keys on:\n"
+                    f"{passage}")
 
     def test_only_the_outcome_verifier_spends_the_quota(self) -> None:
         with tempfile.TemporaryDirectory() as home:

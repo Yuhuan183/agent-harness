@@ -128,8 +128,8 @@ def main() -> int:
             misses = misses + 1 if isinstance(misses, int) else 1
             spent[META_KEY] = {"misses": misses}
             save(spent)
-        print("[verifier-quota] no prompt_id in payload; per-task quota not "
-              f"enforced for this dispatch (consecutive: {misses})",
+        print("[verifier-quota] no prompt_id in payload; the per-prompt quota is "
+              f"not enforced for this dispatch (consecutive: {misses})",
               file=sys.stderr)
         return 0
 

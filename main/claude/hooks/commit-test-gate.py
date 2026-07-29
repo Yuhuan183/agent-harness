@@ -37,6 +37,28 @@ slot of a `git` invocation, the command is gated. `git log $(git rev-parse x)`
 keeps its visible subcommand and stays untouched, so the fail-closed case is
 narrow rather than "any command containing a dollar sign".
 
+Two more classes came out of the next review (2026-07-29), both reproduced: the
+*executable* can come from an expansion (`G=git; $G commit`), and so can the
+*repo being committed to* (`git -C "$R" commit`, `cd "$R" && git commit`). The
+copies above cannot see either, and the second one is worse than a missed
+match: COMMIT_RE fires, then the target resolves to nothing and the gate exits
+0 having checked no suite at all.
+
+Values come first: an assignment in the same command carries its value right
+there, and a name exported by an earlier command is in this hook's own
+environment, so both are substituted into a further copy. That turns the
+ordinary spelling of both classes back into a literal. What survives is
+decided structurally - an unknown executable in command position with `commit`
+among its words is gated, and a commit-shaped command whose target still holds
+an expansion is *blocked with a reason*, because a target the gate could not
+resolve is a check that did not run, not a check that passed.
+
+The residue is stated instead of hidden: `G=git; C=commit; $G $C` puts neither
+word anywhere and neither value in reach, and gating it means gating every
+`$A $B`. Only enforcement at the argv boundary - a `git` that reads its own
+arguments after the shell is done with them - closes that class, and that is a
+deployment decision rather than a parsing one.
+
 The settings prefilter cannot do any of this in a `case` glob, so it hands over
 whenever the payload carries an expansion at all and lets this module decide;
 normalizing in only one of the two places is what left `g'i't com''mit`
@@ -103,6 +125,66 @@ INTERPRETERS = ("python3.14", "python3.13", "python3.12", "python3.11", "python3
 SKIP_RE = re.compile(r"^\s*(?:env\s+)?AGENT_SKIP_TEST_GATE=1(?=\s)")
 DASH_C_RE = re.compile(r"\bgit\s+(?:[^|;&\n]*?\s)?-C[= ]\s*(\"[^\"]+\"|'[^']+'|\S+)")
 CD_RE = re.compile(r"\bcd\s+(\"[^\"]+\"|'[^']+'|\S+)")
+# Shell separators. Assignments and command position are per-segment notions:
+# `R=/repo; git -C $R commit` is two commands, and only the first token of the
+# second one is the executable.
+SEGMENT_RE = re.compile(r"[;&|\n]+")
+# A leading `NAME=value` in a segment. Anchored and applied from the segment
+# start outward, so `git commit -m "R=/etc"` cannot define R.
+ASSIGN_RE = re.compile(r"\s*([A-Za-z_][A-Za-z0-9_]*)=(\"[^\"]*\"|'[^']*'|\S*)")
+KNOWN_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)")
+# Whether a fragment still depends on the shell. Deliberately the characters
+# rather than EXPANSION_RE: a fragment cut out of the command by another regex
+# can hold half a span (`G=$(echo git)` splits at the space, leaving `$(echo`),
+# which no complete-span pattern matches while it is still very much an
+# expansion. Wrong-way-round here means calling a literal path unresolved,
+# which blocks with a reason; the other way round means allowing a commit.
+EXPANSION_CHARS = "$`"
+
+
+def holds_expansion(text: str) -> bool:
+    return any(char in text for char in EXPANSION_CHARS)
+
+
+def known_values(command: str) -> dict[str, str]:
+    """Names whose values this hook can actually see, in shell precedence order.
+
+    Two sources, both real: the hook's own environment (an exported name the
+    agent set earlier is right there in `os.environ`) and assignments made by
+    the command itself, which win because that is what the shell would do.
+    A value that is itself an expansion is skipped rather than half-resolved -
+    the structural checks below are the ones meant to decide those.
+    """
+    values = dict(os.environ)
+    for segment in SEGMENT_RE.split(command):
+        pos = 0
+        while True:
+            match = ASSIGN_RE.match(segment, pos)
+            if match is None:
+                break  # first non-assignment token ends the assignment prefix
+            value = match.group(2).strip("\"'")
+            if not holds_expansion(value):
+                values[match.group(1)] = value
+            pos = match.end()
+    return values
+
+
+def expand_known(command: str) -> str:
+    """Substitute the expansions whose values are known; leave the rest alone.
+
+    This is the copy that turns `G=git; $G commit` and `git -C "$R" commit`
+    back into the literal commands they will become, so ordinary detection and
+    ordinary target resolution work on them. Names with no value stay verbatim,
+    which keeps them visible to the structural checks instead of silently
+    collapsing to the empty string.
+    """
+    values = known_values(command)
+
+    def replace(match: re.Match[str]) -> str:
+        name = match.group(1) or match.group(2)
+        return values.get(name, match.group(0))
+
+    return KNOWN_RE.sub(replace, command)
 
 
 def runtime_subcommand(command: str) -> bool:
@@ -128,11 +210,44 @@ def runtime_subcommand(command: str) -> bool:
     return False
 
 
-def candidate_dirs(command: str, cwd: str) -> list[str]:
+def runtime_executable(command: str) -> bool:
+    """True if a segment runs an expansion-produced program on `commit`.
+
+    `G=git; $G commit` with G unreachable leaves no `git` anywhere, so every
+    text copy is blind to it - but the shape is still readable: an executable
+    that does not exist until run time, invoked with `commit` among its
+    arguments. Gate that and nothing else. `echo "git commit" && cd "$HOME"`
+    keeps a literal executable in both segments and stays free.
+    """
+    marked = EXPANSION_RE.sub(EXPANDED, expand_known(QUOTE_RE.sub("", command)))
+    for segment in SEGMENT_RE.split(marked):
+        tokens = segment.split()
+        while tokens and ASSIGN_RE.fullmatch(tokens[0]):
+            tokens.pop(0)  # leading assignments are not the command
+        if tokens and EXPANDED in tokens[0] and "commit" in tokens[1:]:
+            return True
+    return False
+
+
+def resolve_targets(command: str, cwd: str) -> tuple[list[str], list[str]]:
+    """Split the repos a command can touch into resolved and unresolved.
+
+    Resolution runs on the expanded copy, so `git -C "$R" commit` and
+    `cd "$R" && git commit` name a real directory whenever R's value is in
+    reach. Anything still carrying an expansion is returned as unresolved
+    rather than passed to `git rev-parse`, where it would fail and quietly
+    leave the gate with nothing to check - the caller blocks on those instead.
+    """
+    expanded = expand_known(command)
     dirs = [cwd]
-    for match in DASH_C_RE.findall(command) + CD_RE.findall(command):
-        dirs.append(match.strip("\"'"))
-    return dirs
+    unresolved: list[str] = []
+    for match in DASH_C_RE.findall(expanded) + CD_RE.findall(expanded):
+        target = match.strip("\"'")
+        if holds_expansion(target):
+            unresolved.append(target)
+        elif target not in dirs:
+            dirs.append(target)
+    return dirs, unresolved
 
 
 def test_suites(root: Path) -> list[Path]:
@@ -195,7 +310,9 @@ def main() -> int:
     if not (COMMIT_RE.search(command)
             or COMMIT_RE.search(unquoted)
             or COMMIT_RE.search(EXPANSION_RE.sub("", unquoted))
-            or runtime_subcommand(command)):
+            or COMMIT_RE.search(expand_known(unquoted))
+            or runtime_subcommand(command)
+            or runtime_executable(command)):
         return 0
     # The escape hatch is matched on the raw command only: it has to be a real
     # leading shell assignment, and normalizing here would make it easier to
@@ -204,8 +321,21 @@ def main() -> int:
         return 0
 
     cwd = payload.get("cwd") or "."
+    candidates, unresolved = resolve_targets(command, str(cwd))
+    if unresolved:
+        # The command commits somewhere this hook cannot name. Running the
+        # suites it *can* see would report a green that covers a different
+        # repository, so this blocks with the reason instead.
+        sys.stderr.write(
+            "commit-test-gate: commit target "
+            f"{', '.join(unresolved)} could not be resolved - commit blocked.\n"
+            "This is not a red suite: the path only exists once the shell expands it, "
+            "so no suite could be selected to run.\n"
+            "Re-run with the literal path (or prefix with AGENT_SKIP_TEST_GATE=1).\n"
+        )
+        return 2
     gated_suites: list[tuple[Path, Path]] = []
-    for candidate in candidate_dirs(command, str(cwd)):
+    for candidate in candidates:
         top = subprocess.run(
             ["git", "-C", candidate, "rev-parse", "--show-toplevel"],
             capture_output=True, text=True,
