@@ -155,7 +155,7 @@ machine-local experience ledger，方便人類回顧與 telemetry 對照。
 | Gate-line QC／trap evals | 機械稽核 leaf 報告的 INTENT/TWINS/AUTH owed lines；行為 trap fixtures 作回歸資產 | [gate_lines.py](main/.agents/scripts/gate_lines.py)、[evals/traps/](evals/traps/) |
 | RTK／Headroom | 控制工具輸出與大型唯讀 context；不可冒充模型配額 | [RTK](main/claude/RTK.md)、[Headroom runtime](main/.agents/docs/headroom-runtime.md) |
 
-診斷型 hook（delegation audit、experience pending、weekly integrity）一律 fail-open，避免本機工具故障阻塞正常工作。刻意 fail-closed 的是四個有界 gate：commit test gate（紅套件或逾時擋 commit）、leaf-redispatch（leaf 嘗試再派工）、runtime guard 的 PreToolUse gate（版本過舊或未知時擋受限 reviewer 派工）與 verifier 額度（同 task 第二個 outcome verifier）。它們各自只在狹窄條件下攔截；真正的 correctness gate 仍由 focused tests、contract tests、主 session QC 與必要時的獨立 verifier 負責。hook 系統的完整語意見 [hook 系統](docs/hook-system.md)。
+診斷型 hook（delegation audit、experience pending、weekly integrity）一律 fail-open，避免本機工具故障阻塞正常工作。刻意 fail-closed 的是四個有界 gate：commit test gate（紅套件或逾時擋 commit）、leaf-redispatch（leaf 嘗試再派工）、runtime guard 的 PreToolUse gate（版本過舊或未知時擋受限 reviewer 派工）與 verifier 額度（同一個 prompt 內的第二個 outcome verifier）。它們各自只在狹窄條件下攔截；真正的 correctness gate 仍由 focused tests、contract tests、主 session QC 與必要時的獨立 verifier 負責。hook 系統的完整語意見 [hook 系統](docs/hook-system.md)。
 
 ## Repository 佈局
 
