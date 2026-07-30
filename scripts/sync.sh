@@ -129,6 +129,18 @@ validate_manifest() {
     src="$REPO/$src_rel"
     [[ -e "$src" || -L "$src" ]] \
       || { log "ERROR: deployment source missing: $src_rel"; return 1; }
+    # A directory is rsync'd into the target's *parent*, so the deployed
+    # directory takes the source's basename and the target's is never read. A
+    # renaming row would therefore deploy to the wrong path, pass the parity
+    # check (which repeats the same wrong destination), and record ownership of
+    # a target nothing was written to - so a later removal would retire
+    # nothing. File rows rename legitimately (CLAUDE.contract.md -> CLAUDE.md);
+    # directory rows cannot, so say that here rather than let it deploy
+    # (2026-07-30 review; no row does this today).
+    if [[ -z "$mode" && -d "$src" ]]; then
+      [[ "${src_rel##*/}" == "${dst_rel##*/}" ]] \
+        || { log "ERROR: a directory deployment cannot rename its target: $src_rel -> $dst_rel"; return 1; }
+    fi
     if [[ "$mode" == "merge" ]]; then
       validate_project_skill_inventory "$src"
     fi
@@ -179,6 +191,22 @@ install_git_hooks() {
   fi
 }
 
+# `validate` fails the command on an error and prints WARNING lines for a
+# quality floor whose approved routes have no measured score, or whose tier
+# minima do not separate. Those are deliberately non-fatal - making them fail
+# would let an aging benchmark stop a deployment, and the predictable response
+# is to weaken the floor until it stops complaining. Discarding stdout made
+# them invisible instead, which is the other way to ignore them (2026-07-30
+# review). Surfaced here, still non-fatal.
+report_routing_warnings() { # $1 = label  $2 = resolver
+  local output line
+  output="$("$2" validate)"
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    log "$1 routing: $line"
+  done < <(printf '%s\n' "$output" | grep '^WARNING: ' || true)
+}
+
 preflight() {
   log "== preflight =="
   # Use the same portable Python 3.11+ selector as deployed routing entrypoints.
@@ -192,9 +220,9 @@ preflight() {
   "$PYTHON_RUN" -m json.tool "$REPO/main/claude/examples/headroom-mcp.legacy.json" >/dev/null
   bash -n "$REPO/scripts/sync.sh" "$REPO/main/claude/sh/statusline.sh"
   validate_manifest
-  "$REPO/main/claude/scripts/model-routing" validate >/dev/null
+  report_routing_warnings Claude "$REPO/main/claude/scripts/model-routing"
   "$REPO/main/claude/scripts/model-routing" check-pins >/dev/null
-  "$REPO/main/codex/scripts/model-routing" validate >/dev/null
+  report_routing_warnings Codex "$REPO/main/codex/scripts/model-routing"
   git -C "$REPO" diff --check
   # Tests exercise sync.sh itself. The sentinel prevents recursive suites while
   # preserving every non-recursive preflight check in nested dry-runs.

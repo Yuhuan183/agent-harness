@@ -1231,6 +1231,72 @@ class NativeCodexStagingTests(unittest.TestCase):
             self.assertNotEqual(twice.returncode, 0)
             self.assertIn("nothing staged", twice.stderr)
 
+    def test_cancelling_a_dispatch_that_ran_is_refused(self) -> None:
+        """`--cancel` may only retire a launch whose leaf never ran.
+
+        Deleting a launch *and* its staged completion removes the only carrier
+        weekly reconciliation can see, so a dispatch that ran and was never
+        logged becomes undetectable again — and the hard and failed ones are
+        the likeliest to be abandoned that way, which is the success bias this
+        script exists to prevent (2026-07-30 review).
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            env = self._env(temp)
+            dispatch_id = self._stage(
+                env, "--start", "--role", "executor").stdout.strip()
+            self.assertEqual(
+                self._stage(env, "--stop", "--dispatch-id", dispatch_id).returncode,
+                0)
+            cancelled = self._stage(env, "--cancel", "--dispatch-id", dispatch_id)
+            self.assertNotEqual(cancelled.returncode, 0, cancelled.stdout)
+            self.assertIn("its leaf ran", cancelled.stderr)
+            # Refusing is only half of it: both rows have to survive, or the
+            # carrier is gone whatever the exit status said.
+            self.assertEqual(
+                [row["event"] for row in self._rows(temp)],
+                ["SubagentStart", "SubagentStop"])
+            # The named alternative has to actually work, or the refusal just
+            # teaches the dispatcher to stop staging.
+            logged = subprocess.run(
+                [sys.executable, str(self.LOG), "--from-pending",
+                 "--dispatch-id", dispatch_id, "--outcome", "failed",
+                 "--class", "impl", *self.ROUTE],
+                env=env, capture_output=True, text=True)
+            self.assertEqual(logged.returncode, 0, logged.stderr)
+            self.assertEqual(self._rows(temp), [])
+
+    def test_a_logged_dispatch_id_cannot_be_staged_again(self) -> None:
+        """Uniqueness is against the ledger, not only the pending file.
+
+        Logging clears the stub, so the pending file stops recognising an id
+        the moment it is reconciled. `weekly-integrity` skips every id the
+        ledger already names, so a reused id is permanently immune to the
+        un-reconciled alarm — the same silent-omission class as cancelling a
+        dispatch that ran (2026-07-30 review).
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            env = self._env(temp)
+            dispatch_id = self._stage(
+                env, "--start", "--role", "executor",
+                "--dispatch-id", "codex:reused-after-log").stdout.strip()
+            self._stage(env, "--stop", "--dispatch-id", dispatch_id)
+            logged = subprocess.run(
+                [sys.executable, str(self.LOG), "--from-pending",
+                 "--dispatch-id", dispatch_id, "--outcome", "accepted",
+                 "--class", "impl", *self.ROUTE],
+                env=env, capture_output=True, text=True)
+            self.assertEqual(logged.returncode, 0, logged.stderr)
+            # The stub is gone, which is exactly why the pending file alone
+            # cannot answer the question.
+            self.assertEqual(self._rows(temp), [])
+            again = self._stage(env, "--start", "--role", "executor",
+                                "--dispatch-id", dispatch_id)
+            self.assertNotEqual(again.returncode, 0, again.stdout)
+            self.assertIn("already in the ledger", again.stderr)
+            self.assertEqual(self._rows(temp), [])
+
     def test_a_completion_needs_its_launch(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)

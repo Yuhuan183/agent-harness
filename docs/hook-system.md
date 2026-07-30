@@ -57,8 +57,8 @@ commit 的兩道閘是互補而非取代：Bash gate 涵蓋「agent 在**任何*
 hook 的價值不在「有掛」，而在「真的擋得住」。抓不到蓄意錯誤的 hook 等於不存在。所以每個
 gate 都用合成 stdin 做 pipe-test，把正常、該攔截、防繞過三種輸入都跑過，並釘進測試：
 
-- no-write roles 的 frontmatter、settings 與 hook inventory 都由 `test_roles.py` 確認沒有
-  是 blocked case，每個放寬形式也是 allowed case，見 `test_roles.py`。
+- no-write roles 的 frontmatter、settings 與 hook inventory 由 `test_roles.py` 確認沒有任何
+  Bash 表面，連退場的 `readonly-bash.py` 也斷言不存在。
 - `verifier-quota`、`bridge-jobs`、gate-line 錨定都有對應的機械測試，見 `test_mechanisms.py`。
 
 Hook 建置規範（真實目錄先證明可跑 → 合成 pipe-test → `jq` 驗設定 → 失敗訊息回到模型 →
@@ -71,6 +71,6 @@ Hook 建置規範（真實目錄先證明可跑 → 合成 pipe-test → `jq` �
   裡「artifact 所有權仍屬判斷」的由來。
 - Hook 是本機單機防線。重要規則不能只靠單機 hook，enforcement 分層是
   `Claude hook → pre-commit → CI → monitoring`，攔截點依序變晚（[playbook 第 9 節](harness-engineering.md#9-enforcement-層級與-bootstrap)）。
-- reviewer 的唯讀邊界是三層合力：frontmatter **allowlist**（只放行列出的工具，因此任何會變更狀態的
-  MCP 工具都不在其中）、`runtime-guard`（版本不足
-  就擋派工）。用 allowlist 而非 denylist 的理由就在這裡：denylist 對沒列到的 MCP 工具會預設放行。
+- reviewer 的唯讀邊界是兩層合力：frontmatter **allowlist**（只放行列出的工具，因此任何會變更狀態的
+  MCP 工具都不在其中）、`runtime-guard`（版本不足就擋派工）。用 allowlist 而非 denylist
+  的理由就在這裡：denylist 對沒列到的 MCP 工具會預設放行。

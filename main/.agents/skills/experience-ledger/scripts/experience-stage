@@ -20,6 +20,20 @@ A launch that never ran (cancelled before the leaf started) is retired with
 `--cancel`; anything that did run is logged, `failed` included. Staged rows
 live in the same pending file as the hook's (override:
 AGENT_EXPERIENCE_PENDING) and are consumed by the same `experience-log` paths.
+
+Both of those rules are enforced here rather than left to the dispatcher
+(2026-07-30 review), because the pending file is the only thing weekly
+reconciliation can look at:
+
+* `--cancel` refuses a dispatch that already has a staged completion. Deleting
+  a launch *and* its completion is exactly how a dispatch that ran leaves no
+  carrier behind, and the hard and failed ones are the likeliest to be
+  abandoned that way — the success bias this script exists to prevent.
+* A dispatch id is unique against the ledger as well as the pending file.
+  Clearing the stub on log frees the id in the pending file, but
+  `weekly-integrity` skips any id the ledger already names, so a reused id is
+  permanently immune to the un-reconciled alarm — a second silent-omission
+  channel of the same class.
 """
 from __future__ import annotations
 
@@ -45,6 +59,10 @@ REQUEST_SOURCE = "codex"
 PENDING_PATH = os.environ.get(
     "AGENT_EXPERIENCE_PENDING",
     os.path.expanduser("~/.agents/telemetry/experience-pending.jsonl"),
+)
+LEDGER_PATH = os.environ.get(
+    "AGENT_EXPERIENCE_LEDGER",
+    os.path.expanduser("~/.agents/telemetry/experience.jsonl"),
 )
 
 try:
@@ -86,6 +104,31 @@ def append_pending(row: dict) -> None:
         stream.write(json.dumps(row) + "\n")
 
 
+def ledger_dispatch_ids() -> set[str]:
+    """Dispatch ids the ledger already answers for.
+
+    A malformed line is skipped rather than fatal: this is a uniqueness check
+    over machine-local telemetry, and refusing to stage a launch because an
+    unrelated row is corrupt would push the dispatcher into staging nothing.
+    """
+    ids: set[str] = set()
+    try:
+        with open(LEDGER_PATH, encoding="utf-8") as stream:
+            for raw in stream:
+                if not raw.strip():
+                    continue
+                try:
+                    record = json.loads(raw)
+                except json.JSONDecodeError:
+                    continue
+                dispatch_id = isinstance(record, dict) and record.get("dispatch_id")
+                if isinstance(dispatch_id, str) and dispatch_id:
+                    ids.add(dispatch_id)
+    except OSError:
+        return ids
+    return ids
+
+
 def split_dispatch_id(dispatch_id: str, session: str | None) -> tuple[str, str]:
     """Recover the `<session>:<agent>` halves the pending file pairs stubs by."""
     head, separator, tail = dispatch_id.rpartition(":")
@@ -104,6 +147,17 @@ def stage_start(args, parser) -> int:
                 f"{dispatch_id} is already staged; finish it with --stop and "
                 "experience-log, or retire it with --cancel. Reusing a dispatch "
                 "id would file two dispatches under one outcome"
+            )
+        # Logging clears the stub, so the pending file alone stops recognising
+        # an id the moment it is reconciled. The ledger keeps it forever, and
+        # `weekly-integrity` skips every id the ledger names — a reused id
+        # would therefore never be reported as un-reconciled again.
+        if dispatch_id in ledger_dispatch_ids():
+            parser.error(
+                f"{dispatch_id} is already in the ledger; pick a new id. "
+                "Reusing a logged id files a second dispatch under the first "
+                "one's outcome, and reconciliation skips every id the ledger "
+                "already names, so the second one could never be reported"
             )
         append_pending({
             "ts": args.now or datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -161,11 +215,33 @@ def stage_stop(args, parser) -> int:
 
 
 def stage_cancel(args, parser) -> int:
+    """Retire a launch whose leaf never ran — and only such a launch.
+
+    `--cancel` is the one operation that removes a carrier without producing a
+    record, so it is the one operation that can make a dispatch invisible. A
+    staged completion is proof the leaf ran, and something that ran is logged,
+    `failed` included; a ledger record means the id is spoken for either way.
+    Refusing both leaves exactly the contract's case: launched, never ran.
+    """
     with pending_lock():
         rows = read_pending()
-        keep = [row for row in rows if row.get("dispatch_id") != args.dispatch_id]
-        if len(keep) == len(rows):
+        matching = [row for row in rows if row.get("dispatch_id") == args.dispatch_id]
+        if not matching:
             parser.error(f"nothing staged for {args.dispatch_id}")
+        if any(row.get("event") == "SubagentStop" for row in matching):
+            parser.error(
+                f"{args.dispatch_id} has a staged completion, so its leaf ran; "
+                "--cancel only retires a launch that never ran. Log the outcome "
+                "instead (experience-log --from-pending --dispatch-id "
+                f"{args.dispatch_id} --outcome failed ... is the right call for "
+                "a dispatch that ran and produced nothing usable)"
+            )
+        if args.dispatch_id in ledger_dispatch_ids():
+            parser.error(
+                f"{args.dispatch_id} is already in the ledger; its outcome is "
+                "recorded and there is nothing to retire"
+            )
+        keep = [row for row in rows if row.get("dispatch_id") != args.dispatch_id]
         write_pending(keep)
     print(f"cancelled: {args.dispatch_id}")
     return 0
