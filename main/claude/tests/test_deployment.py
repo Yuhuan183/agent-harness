@@ -751,6 +751,36 @@ class MachineStateHygieneTests(unittest.TestCase):
         self.assertNotIn("確認沒有\n  是 blocked case", body,
                          "spliced sentence from the readonly-bash removal")
 
+    def test_every_doc_counts_the_same_fail_closed_gates(self) -> None:
+        """One inventory, one number, however many docs repeat it.
+
+        README and hook-system.md were corrected to five when the git-side
+        commit gate landed; docs/architecture.md kept saying four and listed
+        `commit-test` as one item, so a reader auditing the guardrails from the
+        architecture overview would check one fewer than exists (2026-07-30
+        review). Derive the number from the shipped hooks instead of pinning a
+        constant, so a sixth gate or a retired one moves every doc together.
+        """
+        gates = {"commit-test-gate.py", "leaf-redispatch.py",
+                 "runtime-guard.py", "verifier-quota.py"}
+        shipped = {path.name for path in (ROOT / "main/claude/hooks").glob("*.py")}
+        self.assertTrue(gates <= shipped, sorted(gates - shipped))
+        # The commit gate is two enforcement points, not one: the Bash hook and
+        # the tracked git hook the installer points core.hooksPath at.
+        self.assertTrue((ROOT / "main/claude/githooks/pre-commit").exists())
+        expected = {4: "四", 5: "五", 6: "六"}[len(gates) + 1]
+
+        numerals = "一兩二三四五六七八"
+        stated = [(path, match) for path in tracked_markdown()
+                  if not path.endswith(".contract.md")
+                  for match in re.findall(
+                      rf"([{numerals}])個有界 gate", read_repo(path))]
+        self.assertGreaterEqual(len(stated), 2, "the count is documented somewhere")
+        for path, count in stated:
+            self.assertEqual(count, expected,
+                             f"{path}: says {count}個有界 gate, shipped set is "
+                             f"{expected}個 ({sorted(gates)} + githooks/pre-commit)")
+
     def test_no_doc_sells_a_client_side_gate_as_unconditional(self) -> None:
         """The git hook only runs if the program committing lets it run.
 

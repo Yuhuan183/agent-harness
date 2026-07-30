@@ -131,8 +131,8 @@ Claude 與 Codex 各有一份自足角色契約；leaf 不讀 main orchestration
 Main 必須把派工與 QC 結果獨立成固定紀錄，不混在一般對話中：
 
 ```text
-[LEAF_DISPATCH] dispatch_id=review-01 | task=semantic seam review | role=explore | class=review | request_source=claude-code | route=balanced/claude/claude-sonnet-5/low | reason=context-protection
-[LEAF_RESULT] dispatch_id=review-01 | task=semantic seam review | outcome=accepted | qc=full | ledger=logged
+[LEAF_DISPATCH] dispatch_id=review-01|task=semantic seam review|role=explore|class=review|request_source=claude-code|route=balanced/claude/claude-sonnet-5/low|reason=context-protection
+[LEAF_RESULT] dispatch_id=review-01|task=semantic seam review|outcome=accepted|qc=full|ledger=logged
 ```
 
 `request_source` 可區分 `claude-code`、`codex`、`claude-code-plugin-codex`、`codex-claude-cli`。相同 `dispatch_id` 與中性 task label 會寫入

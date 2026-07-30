@@ -200,13 +200,13 @@
           "words": 129
         },
         {
-          "bytes": 7453,
-          "file_bytes": 7890,
-          "file_sha256": "e9670f82daeb92da9e92eae6d0f1e6dc8208e21b0e3799a741a3a9034f73a943",
+          "bytes": 7433,
+          "file_bytes": 7870,
+          "file_sha256": "e5abd1c9e88fa4b332b209f02f1dcba9693ea5605a1b029f6454dd7fba014193",
           "kind": "skill-body",
           "path": "main/codex/skills/leaf-dispatch/SKILL.md",
-          "sha256": "0fcf11f4818dc5ad79253ecfd4ec3ed88c5d3720fdddacf9e38224c713121b92",
-          "words": 991
+          "sha256": "9b96dc8215b3811fc2d28b72943e70d3c527e91d33af68c509747261ffd035f7",
+          "words": 971
         },
         {
           "bytes": 6625,
@@ -254,8 +254,8 @@
         },
         {
           "bytes": 400,
-          "file_bytes": 7890,
-          "file_sha256": "e9670f82daeb92da9e92eae6d0f1e6dc8208e21b0e3799a741a3a9034f73a943",
+          "file_bytes": 7870,
+          "file_sha256": "e5abd1c9e88fa4b332b209f02f1dcba9693ea5605a1b029f6454dd7fba014193",
           "kind": "skill-metadata",
           "path": "main/codex/skills/leaf-dispatch/SKILL.md",
           "sha256": "f86cb4de7795601067ed5f2f2d808d773e7167f5cf742724a6fa227d005a13a5",
@@ -361,9 +361,9 @@
     },
     "codex": {
       "dispatch": {
-        "bytes": 25826,
-        "payload_sha256": "e74f75211fdfa04b1a773c92c0b743d66a4af261ad0302db5fc655f81d2470f3",
-        "words": 4415
+        "bytes": 25806,
+        "payload_sha256": "421b95fd0c187c42183508b3e1dd4132d64d629cc093f45feb77e92e655d7d09",
+        "words": 4395
       },
       "resident": {
         "bytes": 6315,

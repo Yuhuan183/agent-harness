@@ -32,11 +32,26 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-STATE = Path(os.environ.get(
-    "CODEX_COMPANION_STATE",
-    os.path.expanduser("~/.claude/plugins/data/codex-openai-codex/state"),
-))
+# A plugin's data directory is named `<plugin>-<marketplace>`, and the
+# marketplace half is the user's install choice, not something this repo picks.
+# Hard-coding one spelling made this script read an empty
+# `codex-openai-codex/state` while the companion wrote to `codex-inline/state`,
+# so every run answered "no state" and the duplicate guard the dispatch
+# contract mandates never actually ran (observed 2026-07-30). Discover instead:
+# scan every codex plugin's state root, because over-reporting is the safe
+# direction for a duplicate guard and the wrong answer here is silence.
+PLUGIN_DATA = Path(os.path.expanduser("~/.claude/plugins/data"))
 LIVE = ("running", "queued", "starting")
+
+
+def state_roots() -> list[Path]:
+    """Companion state directories to scan, override first."""
+    override = os.environ.get("CODEX_COMPANION_STATE")
+    if override:
+        root = Path(os.path.expanduser(override))
+        return [root] if root.is_dir() else []
+    return sorted(path for path in PLUGIN_DATA.glob("codex-*/state")
+                  if path.is_dir())
 
 
 def pid_alive(pid: object) -> bool | None:
@@ -60,7 +75,8 @@ def pid_alive(pid: object) -> bool | None:
     return True
 
 
-def scan(workspace: str | None, session: str | None) -> tuple[list[dict], list[dict]]:
+def scan(roots: list[Path], workspace: str | None,
+         session: str | None) -> tuple[list[dict], list[dict]]:
     """Return (live, stale) jobs, newest first.
 
     State directories are keyed by a workspace hash this script deliberately
@@ -70,7 +86,7 @@ def scan(workspace: str | None, session: str | None) -> tuple[list[dict], list[d
     over-reporting is the safe direction.
     """
     live, stale = [], []
-    for path in sorted(STATE.glob("*/jobs/*.json")):
+    for path in sorted(p for root in roots for p in root.glob("*/jobs/*.json")):
         try:
             job = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
@@ -92,9 +108,15 @@ def scan(workspace: str | None, session: str | None) -> tuple[list[dict], list[d
 def duplicate_groups(jobs: list[dict]) -> list[list[dict]]:
     """Live jobs that are twins: same session, same workspace, same prompt.
 
-    The companion stores a truncated prompt head as `summary`, which is enough
-    of a fingerprint — a relaunch reuses the prompt verbatim, so twins collide
-    on it while genuinely parallel dispatches do not.
+    The companion stores the prompt's first 96 characters as `summary`, and
+    that is the only prompt fingerprint a job record carries (`title` is the
+    constant "Codex Task"; `threadId`/`turnId` are unique per job and would
+    never collide). It discriminates only while those 96 characters carry the
+    task: `bridge-brief` leads with `dispatch: <task> — <role>@codex ...`, so
+    they do. A hand-assembled brief that opens with the role contract instead
+    makes every same-role dispatch look identical - one more reason the skill
+    says to prefer `bridge-brief` over hand-assembling (measured 2026-07-30
+    against real job records).
     """
     groups = defaultdict(list)
     for job in jobs:
@@ -122,13 +144,15 @@ def main() -> int:
     parser.add_argument("--json", action="store_true", dest="as_json")
     args = parser.parse_args()
 
-    if not STATE.is_dir():
-        print(f"bridge-jobs: no companion state at {STATE}; live-job state is "
+    roots = state_roots()
+    if not roots:
+        where = os.environ.get("CODEX_COMPANION_STATE") or f"{PLUGIN_DATA}/codex-*/state"
+        print(f"bridge-jobs: no companion state at {where}; live-job state is "
               "unknown, which is not the same as no jobs running",
               file=sys.stderr)
         return 2
 
-    jobs, stale = scan(args.workspace, args.session)
+    jobs, stale = scan(roots, args.workspace, args.session)
     groups = duplicate_groups(jobs)
 
     if args.as_json:
