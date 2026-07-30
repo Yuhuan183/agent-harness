@@ -110,10 +110,13 @@ def ledger_dispatch_ids() -> set[str]:
     A malformed line is skipped rather than fatal: this is a uniqueness check
     over machine-local telemetry, and refusing to stage a launch because an
     unrelated row is corrupt would push the dispatcher into staging nothing.
+    `errors="replace"` extends that to a corrupt byte: decoding runs before
+    json.loads, so a half-written multi-byte character used to raise
+    UnicodeDecodeError and block staging outright (2026-07-30 re-review).
     """
     ids: set[str] = set()
     try:
-        with open(LEDGER_PATH, encoding="utf-8") as stream:
+        with open(LEDGER_PATH, encoding="utf-8", errors="replace") as stream:
             for raw in stream:
                 if not raw.strip():
                     continue
