@@ -74,6 +74,10 @@ PENDING_PATH = os.environ.get(
     "AGENT_EXPERIENCE_PENDING",
     os.path.expanduser("~/.agents/telemetry/experience-pending.jsonl"),
 )
+LEDGER_PATH = os.environ.get(
+    "AGENT_EXPERIENCE_LEDGER",
+    os.path.expanduser("~/.agents/telemetry/experience.jsonl"),
+)
 
 try:
     import fcntl
@@ -82,10 +86,9 @@ except ImportError:  # pragma: no cover - non-POSIX fallback keeps logging usabl
 
 
 @contextmanager
-def pending_lock():
-    """Serialize hook appends with pending-file read/modify/write cycles."""
-    os.makedirs(os.path.dirname(PENDING_PATH), exist_ok=True)
-    with open(PENDING_PATH + ".lock", "a", encoding="utf-8") as lock:
+def _flock(path: str):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path + ".lock", "a", encoding="utf-8") as lock:
         if fcntl is not None:
             fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         try:
@@ -93,6 +96,48 @@ def pending_lock():
         finally:
             if fcntl is not None:
                 fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+
+
+def pending_lock():
+    """Serialize hook appends with pending-file read/modify/write cycles."""
+    return _flock(PENDING_PATH)
+
+
+def ledger_lock():
+    """Serialize the duplicate check with the append it guards.
+
+    Checking outside the lock would let two loggers racing on the same
+    dispatch id both read a ledger without it and both append.
+    """
+    return _flock(LEDGER_PATH)
+
+
+def ledger_dispatch_ids() -> set[str]:
+    """Dispatch ids the ledger already answers for.
+
+    Second implementation of the same scan `experience-stage` runs; the two are
+    kept in step by a behavioural parity test rather than a shared module,
+    because these scripts share no import path. A malformed line is skipped
+    rather than fatal: refusing to log an outcome because an unrelated row is
+    corrupt would lose the outcome entirely, which is the failure this ledger
+    exists to prevent.
+    """
+    ids: set[str] = set()
+    try:
+        with open(LEDGER_PATH, encoding="utf-8") as stream:
+            for raw in stream:
+                if not raw.strip():
+                    continue
+                try:
+                    record = json.loads(raw)
+                except json.JSONDecodeError:
+                    continue
+                dispatch_id = isinstance(record, dict) and record.get("dispatch_id")
+                if isinstance(dispatch_id, str) and dispatch_id:
+                    ids.add(dispatch_id)
+    except OSError:
+        return ids
+    return ids
 
 
 def consume_pending(dispatch_id: str | None = None, remove: bool = True,
@@ -377,26 +422,53 @@ def main() -> int:
         if value is not None:
             record[key] = value
 
-    path = os.environ.get(
-        "AGENT_EXPERIENCE_LEDGER",
-        os.path.expanduser("~/.agents/telemetry/experience.jsonl"),
-    )
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(record, ensure_ascii=False) + "\n")
-    # A stub is staged per dispatch id, not per logging style. Logging with
-    # explicit flags is equally valid and used to leave the stub behind, so the
-    # pending file grew by one row per explicitly-logged dispatch forever.
-    # Reconcile whenever the record names a dispatch; `expected_stop` still
-    # pins --from-pending to the exact row it read.
-    if args.dispatch_id or args.from_pending:
+    def reconcile_stub() -> None:
+        # A stub is staged per dispatch id, not per logging style. Logging with
+        # explicit flags is equally valid and used to leave the stub behind, so
+        # the pending file grew by one row per explicitly-logged dispatch
+        # forever. Reconcile whenever the record names a dispatch;
+        # `expected_stop` still pins --from-pending to the exact row it read.
+        if not (args.dispatch_id or args.from_pending):
+            return
         try:
             consume_pending(args.dispatch_id, remove=True, expected_stop=stub)
         except (OSError, ValueError) as error:
             print(
-                f"WARN: record was logged but pending cleanup failed: {error}",
+                f"WARN: pending cleanup failed: {error}",
                 file=sys.stderr,
             )
+
+    os.makedirs(os.path.dirname(LEDGER_PATH), exist_ok=True)
+    # One dispatch, one record. Nothing enforced it: the append was
+    # unconditional, so a retry, a second concurrent logger, or a rerun after
+    # the stub cleanup failed all filed the same dispatch twice - with a
+    # contradictory outcome if the second call said so. Both rows then counted
+    # as separate samples in `experience-report` and `experience-revise`, which
+    # is a routing decision made on a sample size that never happened
+    # (2026-07-30 review). The check shares the append's lock; outside it, two
+    # loggers could both read a ledger without the id and both append.
+    duplicate = False
+    with ledger_lock():
+        if args.dispatch_id and args.dispatch_id in ledger_dispatch_ids():
+            duplicate = True
+        else:
+            with open(LEDGER_PATH, "a", encoding="utf-8") as f:
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    # Outside the ledger lock: `consume_pending` takes the pending lock, and a
+    # process holding one while acquiring the other is how two of them deadlock.
+    # Run on the duplicate path too - the stub's only meaning is "this dispatch
+    # is unanswered" and the ledger already answers it. That is also what makes
+    # the cleanup-failure retry recoverable, since `experience-stage --cancel`
+    # deliberately refuses an id the ledger names.
+    reconcile_stub()
+    if duplicate:
+        parser.error(
+            f"{args.dispatch_id} is already in the ledger; one dispatch gets "
+            "one record. Its staged stub (if any) has been cleared, so nothing "
+            "is left un-reconciled. If the recorded outcome is wrong, correct "
+            "the ledger directly - a second row is a second sample, not a "
+            "correction"
+        )
     print(f"logged: {args.role}/{args.provider} -> {args.outcome}")
     return 0
 

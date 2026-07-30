@@ -760,11 +760,27 @@ class MachineStateHygieneTests(unittest.TestCase):
         architecture overview would check one fewer than exists (2026-07-30
         review). Derive the number from the shipped hooks instead of pinning a
         constant, so a sixth gate or a retired one moves every doc together.
+
+        Derived from the hook sources, not from a list: a hard-coded set only
+        catches a *retired* gate, and this docstring used to claim coverage of
+        an added one that a literal set cannot have (2026-07-30 re-review).
+        `Exit 0 = allow; exit 2 = block` is the hooks' own convention
+        (commit-test-gate.py:77), so `return 2` is the marker. A future
+        non-gate hook returning 2 incidentally would fail this test rather than
+        slip past it, which is the safe direction for a count docs depend on.
         """
-        gates = {"commit-test-gate.py", "leaf-redispatch.py",
-                 "runtime-guard.py", "verifier-quota.py"}
-        shipped = {path.name for path in (ROOT / "main/claude/hooks").glob("*.py")}
-        self.assertTrue(gates <= shipped, sorted(gates - shipped))
+        gates = {
+            path.name
+            for path in (ROOT / "main/claude/hooks").glob("*.py")
+            if re.search(r"^[ \t]*return 2$",
+                         path.read_text(encoding="utf-8"), re.MULTILINE)
+        }
+        self.assertEqual(
+            gates,
+            {"commit-test-gate.py", "leaf-redispatch.py",
+             "runtime-guard.py", "verifier-quota.py"},
+            "the fail-closed hook set changed; every doc naming the count and "
+            "the gate list has to move with it")
         # The commit gate is two enforcement points, not one: the Bash hook and
         # the tracked git hook the installer points core.hooksPath at.
         self.assertTrue((ROOT / "main/claude/githooks/pre-commit").exists())
@@ -780,6 +796,49 @@ class MachineStateHygieneTests(unittest.TestCase):
             self.assertEqual(count, expected,
                              f"{path}: says {count}個有界 gate, shipped set is "
                              f"{expected}個 ({sorted(gates)} + githooks/pre-commit)")
+
+    def test_every_copy_of_the_leaf_record_has_the_same_fields(self) -> None:
+        """A fixed record format kept in three files is three formats.
+
+        `baton-dispatch` owns the shape, `leaf-dispatch` repeats it for Codex,
+        and README shows a filled example. Nothing compared them, so they drifted
+        on the separator - two used ` | ` and one used `|` - and the 2026-07-30
+        fix normalised the copies without leaving anything to stop it recurring.
+        Values differ legitimately (placeholders vs a worked example, and each
+        provider's own `request_source`); the field sequence and the separator
+        are the contract, so those are what is compared.
+
+        Scans every tracked markdown file rather than three pinned paths: a
+        fourth copy is the failure mode, and pinning paths would not see it.
+        """
+        found: dict[str, set[tuple[str, ...]]] = {}
+        for path in tracked_markdown():
+            for line in read_repo(path).splitlines():
+                for kind in ("[LEAF_DISPATCH]", "[LEAF_RESULT]"):
+                    if not line.startswith(kind):
+                        continue
+                    # Placeholder values enumerate alternatives with the same
+                    # character the record uses as its separator
+                    # (`<accepted|corrected|...>`), so blank them before split.
+                    body = re.sub(r"<[^>]*>", "<>", line[len(kind):].strip())
+                    keys = tuple(segment.split("=", 1)[0]
+                                 for segment in body.split("|"))
+                    found.setdefault(kind, set()).add(keys)
+                    self.assertNotIn(
+                        " ", "".join(keys),
+                        f"{path}: `{kind}` field names carry spaces, so this "
+                        "copy uses a different separator from the others")
+        for kind in ("[LEAF_DISPATCH]", "[LEAF_RESULT]"):
+            shapes = found.get(kind, set())
+            self.assertTrue(shapes, f"{kind} is documented somewhere")
+            self.assertEqual(
+                len(shapes), 1,
+                f"{kind} copies disagree on their fields: "
+                + " vs ".join(sorted(str(shape) for shape in shapes)))
+        # Non-vacuous: the shape asserted above is the real one, not an empty
+        # tuple produced by a scan that matched nothing useful.
+        self.assertIn("dispatch_id", next(iter(found["[LEAF_DISPATCH]"])))
+        self.assertIn("outcome", next(iter(found["[LEAF_RESULT]"])))
 
     def test_no_doc_sells_a_client_side_gate_as_unconditional(self) -> None:
         """The git hook only runs if the program committing lets it run.
