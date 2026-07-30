@@ -594,6 +594,96 @@ class MachineStateHygieneTests(unittest.TestCase):
                             "a sync that stopped early reported success")
         self.assertIn("stopped before finishing", stopped.stdout)
 
+    def test_a_directory_row_cannot_rename_its_deployment_target(self) -> None:
+        """rsync reads the source's basename; the manifest's target is ignored.
+
+        A directory source is copied into the *parent* of its target, so a row
+        like `main/claude/agents  .claude/role-agents` deploys `~/.claude/
+        agents` and never touches the declared path. Nothing downstream
+        notices: the parity check repeats the same wrong destination and passes,
+        and the deployment inventory records ownership of files that were never
+        written, so a later removal retires nothing (2026-07-30 review). File
+        rows rename legitimately, which is why the rule is scoped to
+        directories.
+
+        Run against a symlink farm over the real checkout with one row edited,
+        so this exercises the shipped `validate_manifest` rather than a copy of
+        its logic. No row in the tracked manifest renames a directory today,
+        asserted first so the fixture cannot pass vacuously.
+        """
+        rows = [line.split("\t") for line in
+                read("scripts/deployment-manifest.tsv").splitlines()
+                if line and not line.startswith("#")]
+        for row in rows:
+            if len(row) == 2 and (ROOT / row[0]).is_dir():
+                self.assertEqual(row[0].rsplit("/", 1)[-1], row[1].rsplit("/", 1)[-1],
+                                 f"tracked manifest already renames: {row}")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            fake = Path(tmp) / "repo"
+            (fake / "scripts").mkdir(parents=True)
+            for entry in ROOT.iterdir():
+                if entry.name != "scripts":
+                    (fake / entry.name).symlink_to(entry)
+            for entry in (ROOT / "scripts").iterdir():
+                if entry.name != "deployment-manifest.tsv":
+                    (fake / "scripts" / entry.name).symlink_to(entry)
+            doctored = read("scripts/deployment-manifest.tsv").replace(
+                "main/claude/agents\t.claude/agents",
+                "main/claude/agents\t.claude/role-agents", 1)
+            self.assertIn(".claude/role-agents", doctored, "anchor row moved")
+            (fake / "scripts" / "deployment-manifest.tsv").write_text(
+                doctored, encoding="utf-8")
+
+            refused = subprocess.run(
+                ["bash", str(fake / "scripts" / "sync.sh")],
+                capture_output=True, text=True, timeout=600,
+                env={**os.environ, "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"})
+        self.assertNotEqual(refused.returncode, 0, refused.stdout)
+        self.assertIn("cannot rename its target", refused.stdout)
+        # It has to stop in preflight, before anything is copied.
+        self.assertNotIn("preflight: passed", refused.stdout)
+
+    def test_preflight_shows_the_routing_warnings_it_used_to_swallow(self) -> None:
+        """A non-fatal warning still has to reach somebody.
+
+        `validate` splits its output deliberately: errors fail the command,
+        while a quality floor whose approved routes have no measured score - or
+        whose tier minima do not separate - is a WARNING on stdout, because
+        making it fatal would let an aging benchmark stop a deployment and the
+        predictable response is to weaken the floor until it stops complaining.
+        Preflight then ran it as `validate >/dev/null`, which is the other way
+        to ignore it: the finding existed and no run anyone performs printed it
+        (2026-07-30 review).
+
+        Deploy time is the right surface, not the weekly hook: the state
+        changes only when a routing file changes, and this is the gate every
+        such change passes. The sibling assertion is
+        `test_weekly_integrity_says_nothing_about_a_correctly_deployed_system`,
+        which is why the warnings must *not* also become a weekly finding.
+        """
+        # The current Claude config has unmeasured approved routes, so a real
+        # dry-run is a live fixture. Assert that first, or a silently clean
+        # config would make this test pass by having nothing to show.
+        validate = subprocess.run(
+            [str(ROOT / "main/claude/scripts/model-routing"), "validate"],
+            capture_output=True, text=True, timeout=60)
+        self.assertEqual(validate.returncode, 0, validate.stderr)
+        expected = [line for line in validate.stdout.splitlines()
+                    if line.startswith("WARNING: ")]
+        self.assertTrue(
+            expected,
+            "no floor-coverage warning to surface; this test needs a fixture "
+            "config rather than the live one")
+
+        dry_run = subprocess.run(
+            ["bash", str(ROOT / "scripts/sync.sh")],
+            capture_output=True, text=True, timeout=600,
+            env={**os.environ, "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"})
+        self.assertEqual(dry_run.returncode, 0, dry_run.stdout + dry_run.stderr)
+        for warning in expected:
+            self.assertIn(f"Claude routing: {warning}", dry_run.stdout)
+
     def test_the_docs_never_present_one_half_of_the_gate_as_the_whole(self) -> None:
         """Neither boundary is the guarantee on its own, so neither is written alone.
 
@@ -620,6 +710,46 @@ class MachineStateHygieneTests(unittest.TestCase):
             self.assertIn("pre-commit", read_repo(path),
                           f"{path}: describes the Bash commit gate without the "
                           "git-side gate that covers what text cannot reach")
+
+    def test_the_reviewer_boundary_counts_the_layers_it_lists(self) -> None:
+        """A cardinality word and an enumeration are two claims, not one.
+
+        Commit b0b1fdd removed `readonly-bash` from the reviewer read-only
+        boundary and left the sentence saying 三層 above a list of two, so the
+        doc sent the next reader looking for a layer that no longer exists
+        (2026-07-30 review). The same commit left half of an old sentence
+        spliced onto a new one in the pipe-test bullet.
+
+        Asserting the number against the list - rather than against a constant
+        - keeps this true through a genuine third layer as well as through
+        another removal. Parentheticals are stripped first so that rewording an
+        explanation cannot break the test; only the enumeration structure and
+        the number are load-bearing.
+        """
+        numerals = {"一": 1, "兩": 2, "二": 2, "三": 3, "四": 4, "五": 5}
+        body = read_repo("docs/hook-system.md")
+        match = re.search(r"唯讀邊界是(.)層合力：(.*?)。", body, re.DOTALL)
+        self.assertIsNotNone(match, "the reviewer boundary sentence moved")
+        stated = numerals.get(match.group(1))
+        self.assertIsNotNone(stated, f"unparsed count: {match.group(1)!r}")
+
+        listed = re.sub(r"（[^）]*）", "", match.group(2))
+        items = [item.strip() for item in listed.split("、") if item.strip()]
+        self.assertEqual(
+            stated, len(items),
+            f"the sentence says {stated} layers and lists {len(items)}: {items}")
+
+        # A named layer has to still exist. `readonly-bash` may appear later in
+        # the paragraph as history - that is why only this clause is read.
+        for item in items:
+            for name in re.findall(r"`([a-z0-9-]+)`", item):
+                self.assertTrue(
+                    (ROOT / f"main/claude/hooks/{name}.py").exists(),
+                    f"the boundary lists `{name}` but no such hook ships")
+
+        # The pipe-test bullet's other half of the same edit.
+        self.assertNotIn("確認沒有\n  是 blocked case", body,
+                         "spliced sentence from the readonly-bash removal")
 
     def test_no_doc_sells_a_client_side_gate_as_unconditional(self) -> None:
         """The git hook only runs if the program committing lets it run.

@@ -101,6 +101,16 @@ def load_deployment_manifest(repo):
             if any(part in ("", ".", "..") for part in source.split("/")) \
                     or any(part in ("", ".", "..") for part in target.split("/")):
                 raise ValueError(f"unsafe deployment path line {line_number}")
+            # Same rule as sync.sh's validate_manifest: a directory is rsync'd
+            # into the target's parent, so a renaming directory row deploys to
+            # the source's basename and the drift check below would compare the
+            # wrong pair. Kept in step deliberately - this is a second
+            # implementation of one schema, which is what the manifest test
+            # below exists to catch.
+            if not mode and os.path.isdir(os.path.join(repo, source)) \
+                    and source.rsplit("/", 1)[-1] != target.rsplit("/", 1)[-1]:
+                raise ValueError(
+                    f"directory deployment renames its target on line {line_number}")
             if source in sources or target in targets:
                 raise ValueError(f"duplicate deployment manifest line {line_number}")
             sources.add(source)
@@ -372,6 +382,16 @@ try:
         findings.append(f"model-routing alias check failed: {exc}")
 
     codex_routing = os.path.expanduser("~/.codex/scripts/model-routing")
+    # Return code only. `validate` also prints WARNING lines for a quality
+    # floor whose approved routes have no measured score, or whose tier minima
+    # do not separate — deliberately not relayed here. That state changes only
+    # when someone edits a routing file, and `scripts/sync.sh` preflight is the
+    # gate every such edit passes through, so the warnings are surfaced at the
+    # moment they can be acted on. A weekly repeat would be a standing alarm
+    # for a condition nobody is being asked to fix this week, which is the
+    # failure mode described in the reconciliation note below (2026-07-30
+    # review: the warnings really were invisible, but the missing surface was
+    # the deploy path, not this one).
     try:
         if not os.access(codex_routing, os.X_OK):
             checks_completed = False
@@ -462,13 +482,20 @@ try:
     # nothing else catches a forgotten log. A loggable SubagentStop stub still
     # sitting in the pending file a day later *may* be an un-reconciled dispatch.
     #
-    # It is only un-reconciled if the ledger has no record for it. The stub is
-    # consumed by `experience-log --from-pending`, but logging with explicit
-    # flags is equally valid and leaves the stub behind, so the pending file
-    # alone cannot answer the question — an earlier version asked it that way
-    # and reported every past dispatch forever, including ones whose outcome was
-    # sitting in the ledger under the same dispatch id. A permanent alarm is
-    # worse than none: it trains the reader to skip the real one.
+    # It is only un-reconciled if the ledger has no record for it. An earlier
+    # version asked the pending file alone and reported every past dispatch
+    # forever, including ones whose outcome was sitting in the ledger under the
+    # same dispatch id; a permanent alarm is worse than none, because it trains
+    # the reader to skip the real one.
+    #
+    # `experience-log` now clears the stub on any run that names a dispatch id,
+    # so most reconciled stubs are simply gone by the time this runs (the
+    # comment here used to say explicit flags left them behind — true until
+    # 2026-07-30, corrected on review). The ledger read stays because clearing
+    # is best-effort: `consume_pending` failures are swallowed, and a log run
+    # that names no dispatch at all leaves the stub while filing a record this
+    # loop cannot match to it. The residue is a false positive, never a missed
+    # one, which is the safe direction for an informational alarm.
     #
     # Best-effort; never blocks the throttle.
     try:
