@@ -1116,6 +1116,178 @@ class ClaudeRouteEvidenceTests(unittest.TestCase):
             self.assertEqual(stub["observed_model"], "claude-sonnet-5")
 
 
+class NativeCodexStagingTests(unittest.TestCase):
+    """Native Codex has no dispatch hook, so the dispatcher stages the carrier.
+
+    Without one, a native Codex dispatch had no launched/collected carrier at
+    all: an outcome that never reached the ledger left nothing behind for
+    `weekly-integrity` to find. The omissions are not random — a hard or failed
+    dispatch is the likeliest one to be abandoned — so the missing records bias
+    the cohorts that steer later routing.
+    """
+
+    STAGE = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-stage"
+    LOG = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-log"
+    ROUTE = ("--profile", "balanced", "--model", "gpt-5.6", "--effort", "high")
+
+    def _env(self, temp: Path) -> dict:
+        return {**os.environ,
+                "AGENT_EXPERIENCE_PENDING": str(temp / "pending.jsonl"),
+                "AGENT_EXPERIENCE_LEDGER": str(temp / "ledger.jsonl")}
+
+    def _stage(self, env: dict, *args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run([sys.executable, str(self.STAGE), *args],
+                              env=env, capture_output=True, text=True)
+
+    def _rows(self, temp: Path) -> list[dict]:
+        path = temp / "pending.jsonl"
+        if not path.exists():
+            return []
+        return [json.loads(line) for line in
+                path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+    def test_launch_and_completion_reach_the_ledger_as_one_dispatch(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            env = self._env(temp)
+            started = self._stage(env, "--start", "--role", "executor",
+                                  "--session", "codex-s1")
+            self.assertEqual(started.returncode, 0, started.stderr)
+            dispatch_id = started.stdout.strip()
+            self.assertTrue(dispatch_id.startswith("codex-s1:"), dispatch_id)
+            launch = self._rows(temp)[-1]
+            self.assertEqual(launch["event"], "SubagentStart")
+            self.assertEqual(launch["agent_type"], "executor")
+            self.assertEqual(launch["request_source"], "codex")
+
+            stopped = self._stage(env, "--stop", "--dispatch-id", dispatch_id)
+            self.assertEqual(stopped.returncode, 0, stopped.stderr)
+            completion = self._rows(temp)[-1]
+            self.assertEqual(completion["event"], "SubagentStop")
+            self.assertGreaterEqual(completion["secs"], 0)
+
+            logged = subprocess.run(
+                [sys.executable, str(self.LOG), "--from-pending",
+                 "--dispatch-id", dispatch_id, "--outcome", "accepted",
+                 "--class", "impl", *self.ROUTE],
+                env=env, capture_output=True, text=True)
+            self.assertEqual(logged.returncode, 0, logged.stderr)
+            record = json.loads(
+                (temp / "ledger.jsonl").read_text(encoding="utf-8").splitlines()[-1])
+            # Role, provider and request source all come from the staged launch;
+            # only the route (which Codex does not attest here) is typed in.
+            self.assertEqual(record["role"], "executor")
+            self.assertEqual(record["provider"], "codex")
+            self.assertEqual(record["request_source"], "codex")
+            self.assertEqual(record["dispatch_id"], dispatch_id)
+            self.assertEqual(record["route_source"], "explicit")
+            # Reconciled: nothing left for the weekly check to report.
+            self.assertEqual(self._rows(temp), [])
+
+    def test_a_failed_dispatch_is_logged_like_any_other(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            env = self._env(temp)
+            dispatch_id = self._stage(
+                env, "--start", "--role", "verifier").stdout.strip()
+            self._stage(env, "--stop", "--dispatch-id", dispatch_id)
+            logged = subprocess.run(
+                [sys.executable, str(self.LOG), "--from-pending",
+                 "--dispatch-id", dispatch_id, "--outcome", "failed",
+                 "--class", "verify", *self.ROUTE],
+                env=env, capture_output=True, text=True)
+            self.assertEqual(logged.returncode, 0, logged.stderr)
+            record = json.loads(
+                (temp / "ledger.jsonl").read_text(encoding="utf-8").splitlines()[-1])
+            self.assertEqual(record["outcome"], "failed")
+            self.assertEqual(self._rows(temp), [])
+
+    def test_reusing_a_dispatch_id_is_refused(self) -> None:
+        """Two dispatches under one id would file one outcome for both."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            env = self._env(temp)
+            first = self._stage(env, "--start", "--role", "explore",
+                                "--dispatch-id", "codex:reused")
+            self.assertEqual(first.returncode, 0, first.stderr)
+            again = self._stage(env, "--start", "--role", "explore",
+                                "--dispatch-id", "codex:reused")
+            self.assertNotEqual(again.returncode, 0)
+            self.assertIn("already staged", again.stderr)
+            self.assertEqual(len(self._rows(temp)), 1)
+
+    def test_a_cancelled_launch_leaves_nothing_to_reconcile(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            env = self._env(temp)
+            dispatch_id = self._stage(
+                env, "--start", "--role", "executor").stdout.strip()
+            cancelled = self._stage(env, "--cancel", "--dispatch-id", dispatch_id)
+            self.assertEqual(cancelled.returncode, 0, cancelled.stderr)
+            self.assertEqual(self._rows(temp), [])
+            # A cancel that matches nothing is a typo, not a no-op: silently
+            # succeeding would let a real launch stay staged and unreported.
+            twice = self._stage(env, "--cancel", "--dispatch-id", dispatch_id)
+            self.assertNotEqual(twice.returncode, 0)
+            self.assertIn("nothing staged", twice.stderr)
+
+    def test_a_completion_needs_its_launch(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            env = self._env(temp)
+            orphan = self._stage(env, "--stop", "--dispatch-id", "codex:ghost")
+            self.assertNotEqual(orphan.returncode, 0)
+            self.assertIn("no staged launch", orphan.stderr)
+            dispatch_id = self._stage(
+                env, "--start", "--role", "executor").stdout.strip()
+            self._stage(env, "--stop", "--dispatch-id", dispatch_id)
+            repeated = self._stage(env, "--stop", "--dispatch-id", dispatch_id)
+            self.assertNotEqual(repeated.returncode, 0)
+            self.assertIn("already has a staged completion", repeated.stderr)
+
+    def test_concurrent_completions_still_require_a_dispatch_id(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            env = self._env(temp)
+            ids = []
+            for role in ("explore", "executor"):
+                dispatch_id = self._stage(
+                    env, "--start", "--role", role).stdout.strip()
+                self._stage(env, "--stop", "--dispatch-id", dispatch_id)
+                ids.append(dispatch_id)
+            ambiguous = subprocess.run(
+                [sys.executable, str(self.LOG), "--from-pending",
+                 "--outcome", "accepted", "--class", "impl", *self.ROUTE],
+                env=env, capture_output=True, text=True)
+            self.assertNotEqual(ambiguous.returncode, 0)
+            self.assertIn("multiple completed dispatches", ambiguous.stderr)
+            for dispatch_id in ids:
+                self.assertIn(dispatch_id, ambiguous.stderr)
+            # Naming one pairs the outcome with that dispatch and leaves the
+            # other staged, so the second is still reconcilable afterwards.
+            picked = subprocess.run(
+                [sys.executable, str(self.LOG), "--from-pending",
+                 "--dispatch-id", ids[0], "--outcome", "accepted",
+                 "--class", "recon", *self.ROUTE],
+                env=env, capture_output=True, text=True)
+            self.assertEqual(picked.returncode, 0, picked.stderr)
+            remaining = {row["dispatch_id"] for row in self._rows(temp)}
+            self.assertEqual(remaining, {ids[1]})
+
+    def test_stager_and_logger_agree_on_loggable_roles(self) -> None:
+        """A staged role the logger would not accept stages an unloggable stub."""
+        stage_source = read(".agents/skills/experience-ledger/scripts/experience-stage")
+        log_source = read(".agents/skills/experience-ledger/scripts/experience-log")
+
+        def roles(source: str) -> set[str]:
+            block = source.split("ROLES = (", 1)[1].split(")", 1)[0]
+            return set(re.findall(r'"([a-z-]+)"', block))
+
+        self.assertEqual(roles(stage_source), roles(log_source))
+        self.assertEqual(roles(stage_source), set(ROLES))
+        self.assertTrue(os.access(self.STAGE, os.X_OK))
+
+
 class RequestSourceSchemaTests(unittest.TestCase):
     def test_codex_launched_claude_cli_is_representable(self) -> None:
         for script in ("experience-log", "experience-report", "experience-revise"):

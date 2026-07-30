@@ -39,12 +39,13 @@ TIERS = ("spot", "full")  # QC tier by task shape
 CLASSES = (
     "recon", "review", "plan", "impl", "verify", "security", "smoke", "other",
 )
-REQUEST_SOURCES = (
-    "claude-code",
-    "codex",
-    "claude-code-plugin-codex",
-    "codex-claude-cli",
-)
+REQUEST_SOURCE_PROVIDER = {
+    "claude-code": "claude",
+    "codex": "codex",
+    "claude-code-plugin-codex": "codex",
+    "codex-claude-cli": "claude",
+}
+REQUEST_SOURCES = tuple(REQUEST_SOURCE_PROVIDER)
 SPOT_QC_ROLES = ("explore", "mech-executor")
 DEFAULT_CLASSES = {
     "explore": "recon",
@@ -205,7 +206,15 @@ def main() -> int:
         if args.role is None and agent_type in ROLES:
             args.role = agent_type
         if args.provider is None:
-            args.provider = "codex" if (agent_type and "codex" in agent_type) else "claude"
+            # A staged source names the provider outright. Reading it from the
+            # role instead only worked while the role spelling carried the
+            # provider (`codex:codex-rescue`); a native Codex stub stages the
+            # bare role, and inferring "claude" from it would file every native
+            # Codex dispatch under the wrong provider.
+            args.provider = REQUEST_SOURCE_PROVIDER.get(
+                stub.get("request_source"),
+                "codex" if (agent_type and "codex" in agent_type) else "claude",
+            )
         if args.secs is None and isinstance(stub.get("secs"), (int, float)):
             args.secs = stub["secs"]
         for field in ("tokens_in", "tokens_out", "cache_write_tokens",
@@ -231,12 +240,7 @@ def main() -> int:
         parser.error("--role and --provider are required (or resolvable via --from-pending)")
     if args.request_source is None:
         parser.error("--request-source is required when no staged source is available")
-    expected_provider = {
-        "claude-code": "claude",
-        "codex": "codex",
-        "claude-code-plugin-codex": "codex",
-        "codex-claude-cli": "claude",
-    }[args.request_source]
+    expected_provider = REQUEST_SOURCE_PROVIDER[args.request_source]
     if args.provider != expected_provider:
         parser.error(
             f"--request-source {args.request_source} requires provider {expected_provider}"
