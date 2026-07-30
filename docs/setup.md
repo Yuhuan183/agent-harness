@@ -96,10 +96,10 @@ headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787
 狀態，不能據此判斷 Codex App。
 
 Antigravity CLI 的直接入口是 `agy`。`agy-auto` 已可用；`hagy`／`hagy-auto` 只有在
-安裝版本真的提供 `headroom wrap agy` 時才會啟動，否則 exit 127。Headroom v0.32.1
-沒有這個 adapter，上游整合仍在
-[PR #1044](https://github.com/headroomlabs-ai/headroom/pull/1044)，因此不可用無效的
-base URL 環境變數或靜默 fallback 冒充成功 routing。
+安裝版本真的提供 `headroom wrap agy` 時才會啟動，否則 exit 127。具日期的版本與
+adapter 相容性查核集中在
+[`headroom-runtime.md`](../main/.agents/docs/headroom-runtime.md)；不可用無效的 base URL
+環境變數或靜默 fallback 冒充成功 routing。
 
 Claude／Codex 的 `--no-context-tool` 由本專案管理 RTK 指引，避免 wrapper 重寫契約。
 Antigravity 上游 adapter 尚未提供同名選項，不傳未知參數。
@@ -129,7 +129,10 @@ Antigravity 上游 adapter 尚未提供同名選項，不傳未知參數。
 
 若使用者明確需要 always-on provider routing，可另外使用
 `headroom install apply --preset persistent-service`。這是 machine-local 選用狀態，
-不是 `sync.sh`、快速指令、Codex CLI 或 Codex App 的預設。
+不是 `sync.sh`、快速指令、Codex CLI 或 Codex App 的預設。`persistent-service` 支援
+`headroom install start`、`stop` 與 `restart`；舊有 `persistent-task` profile 不支援
+這些 lifecycle 指令。preset 轉換、升級後 restart／re-apply 判斷與健康檢查見
+[`headroom-runtime.md`](../main/.agents/docs/headroom-runtime.md)。
 
 `scripts/sync.sh` 的 dry-run 與 apply 都會先跑 JSON／shell／兩側 routing／Claude pins／contract tests；任何失敗都在寫入前停止。
 所有可攜 source→HOME 映射只定義於 `scripts/deployment-manifest.tsv`；`sync.sh` 與 weekly integrity

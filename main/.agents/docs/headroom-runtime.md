@@ -1,6 +1,10 @@
 # Headroom Runtime Guide
 
-> 2026-07-28 查核：PyPI package 為 `headroom-ai 0.32.1`，GitHub latest release tag 為 `v0.32.0`，PR [#1044](https://github.com/headroomlabs-ai/headroom/pull/1044) 仍 open。package、release tag、未合併 PR 與本機 live service state 是四種不同證據，不得合併宣稱為單一「目前版本」。
+> 2026-07-30 查核：本機 `uv tool` 與 GitHub latest release tag 分別為
+> `headroom-ai 0.33.0`、`v0.33.0`；PR
+> [#1044](https://github.com/headroomlabs-ai/headroom/pull/1044) 仍 open。安裝套件、
+> release tag、未合併 PR 與本機 live service state 是四種不同證據，不得合併宣稱為
+> 單一「目前版本」。
 
 > 只記錄跨機器的架構、操作邊界與版本轉換。venv、PID、port 與 profile 名稱屬 machine-local state，不進 git。
 
@@ -34,7 +38,7 @@ App／Desktop 走相同路徑。Codex App 不在目前已驗證的 wrap surface�
 |---|---|---|
 | Proxy | Claude／Codex／Antigravity 都以明確的 `headroom wrap <agent>` session 為標準 | 只壓縮實際經 proxy 的流量 |
 | Headroom MCP | `headroom mcp install` | 手動壓縮與 marker retrieval，不等於全流量代理 |
-| Coding compressor | Headroom stable release | v0.32.1 以 tokensave 為主、Serena 為 fallback |
+| Coding compressor | Headroom stable release | 以具日期的 release notes 與安裝版本 capability 為準，不在無日期段落固定 backend |
 | RTK 指引 | harness 的 Claude／Codex contract | Headroom wrap 不得重複注入 |
 | Headroom plugin | 維持停用（`headroom@headroom-marketplace`） | 避免與 CLI／MCP 的 lifecycle 重複 |
 
@@ -47,16 +51,26 @@ Claude App 使用 OAuth 直連，不經 proxy，只能透過 MCP 做手動文字
 - **Codex**：需要 Headroom 時使用 `hcodex`；Auto Mode 使用 `hcodex-auto`。底層是 `headroom wrap codex --no-context-tool`，不依賴預先存在的永久 provider。
 - **Antigravity CLI**：原生 Auto Mode 使用 `agy-auto`（`agy --mode accept-edits`）。Headroom 入口保留為 `hagy`／`hagy-auto`，但會先確認安裝版本真的提供 `headroom wrap agy`；沒有就 exit 127，不能降級成未壓縮的 `agy`。
 - **權限**：一般自動執行分別使用 Claude `--permission-mode auto`、Codex `-a on-request -s workspace-write`、Antigravity `--mode accept-edits`。`--dangerously-skip-permissions` 與 `--dangerously-bypass-approvals-and-sandbox` 不是 Auto Mode，也不是 Headroom 的必要參數；只有外層已有隔離環境時才能針對單次任務明確選用。可重用的 shell functions 見 `docs/setup.md`。
-- **選用常駐 runtime**：`headroom install apply --preset persistent-service` 只供使用者明確選擇 always-on provider routing 的情境，不是本 repo 預設，也不是快速指令的前置依賴。profile、target、port 與 provider 設定均屬 machine-local state；使用者自行以 `headroom install {status,start,stop,restart,remove}` 維護。
+- **選用常駐 runtime**：`headroom install apply --preset persistent-service` 只供使用者明確選擇 always-on provider routing 的情境，不是本 repo 預設，也不是快速指令的前置依賴。profile、target、port 與 provider 設定均屬 machine-local state。
+- **Preset lifecycle**：
+
+  | Preset | Lifecycle | 升級與轉換 |
+  |---|---|---|
+  | `persistent-service` | 支援 `headroom install {status,start,stop,restart,remove}` | 套件升級後用 `restart` 讓常駐行程載入新版；若 supervisor、manifest 或啟動參數有變，重新執行 `headroom install apply` |
+  | `persistent-task` | 排程只負責定期 ensure；不支援 `start`、`stop`、`restart` | 不得以 `restart` 當升級路徑；改以原本需要的 runtime、scope、provider、port、backend、mode 與 telemetry 選項重新 `apply --preset persistent-service`，或重新 `apply --preset persistent-task` |
+
+  從 `persistent-task` 轉換時，先確認原 profile 的預期設定，再以相同選項重新
+  `headroom install apply`，只把 `--preset` 改為 `persistent-service`。不要只複製別台
+  機器的 profile、port 或 provider 值。
 - **套件管理**：CLI 由 `uv tool` 與 uv 管理的 Python 提供，`~/.local/bin/headroom` 是 MCP 設定應使用的絕對路徑。
-- **升級**：先執行 `headroom update --check`，再用 `headroom update` 或 `uv tool upgrade headroom-ai`。升級後重開 wrapped session；若使用者另有 persistent profile 才 restart，最後用 `headroom doctor` 確認 CLI 與 proxy 版本一致。
+- **升級**：先執行 `headroom update --check`，再用 `headroom update` 或 `uv tool upgrade headroom-ai`。升級後重開 wrapped session；`persistent-service` profile 執行 `headroom install restart --profile <profile>`，再以 `headroom install status --profile <profile>` 確認 `running` 與 `Healthy: yes`。`headroom doctor` 另用來確認 CLI、proxy 與 routing；它不能取代 deployment health。`persistent-task` 依上表重新 `apply` 或先轉為 `persistent-service`。
 - **`headroom learn`**：預設只允許寫入 machine-local、gitignored 的學習檔。不得未經 review 直接以 `--target CLAUDE.md`、`AGENTS.md` 或其他 tracked contract 覆寫專案規則。
 - **App 手動壓縮**：只壓大型 read-only JSON、log、table 或 search output；程式碼、錯誤、圖片與可編輯內容交給原始工具。
 
 ## 版本轉換
 
-PyPI v0.32.1 仍以 tokensave 為預設，現況正確。這個版本沒有
-`headroom wrap agy`；上游 [PR #1044](https://github.com/headroomlabs-ai/headroom/pull/1044)
+GitHub v0.33.0 與本機安裝的 0.33.0 都沒有 `headroom wrap agy`；上游
+[PR #1044](https://github.com/headroomlabs-ai/headroom/pull/1044)
 以限定 Google Cloud Code host 的 process-scoped TLS MITM 實作，但仍未合併。不要用無效
 base URL 環境變數、修改 `/etc/hosts`、信任 system-wide CA，或未 review 的 branch 假裝完成
 整合。下一個 stable release 若加入 `agy`，須重新驗證 capability probe、MCP config path、
