@@ -44,7 +44,9 @@
 - 預算以 `word_count`（CJK-aware，每個 CJK 字元計一詞）計，行數不可作為預算單位
   （長行可規避）。現行數值的唯一真相源是
   [test_contracts.py](../main/claude/tests/test_contracts.py) 的 `DocumentationBudgetTests`；
-  本文不複製數字。
+  本文不複製數字。**每一支出貨的 skill 都必須有預算**（新增 skill 未登錄即測試失敗），
+  上限取當時實測值加約 2%——它是棘輪，不是研究導出的門檻（研究導不出，見
+  [context-and-vendors](research/context-and-vendors.md)）。
 - 調高預算需要證據：先嘗試「移出到 skill／hook／role 契約」，只有內容確屬
   「每 session 必要且推不出」時才擴預算，並在 commit message 記明理由。
 - 變更預算單位時，必須以新單位重測所有受管檔案後再定數值。

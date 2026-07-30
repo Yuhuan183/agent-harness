@@ -118,6 +118,23 @@ def read_repo(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
+def deployed_skill_files() -> set[str]:
+    """Every skill this repo ships, in the deployed spelling `read()` accepts.
+
+    Enumerated from the repo's own skill roots rather than from `$HOME`:
+    `~/.claude/skills` is a shared namespace, so listing the deployed directory
+    would charge this repo for a third-party install. Symlinked shared skills
+    appear once per provider because both are separately deployed surfaces.
+    """
+    found = set()
+    for provider in ("claude", "codex"):
+        root = ROOT / "main" / provider / "skills"
+        for entry in sorted(root.iterdir()):
+            if (entry / "SKILL.md").is_file():
+                found.add(f".{provider}/skills/{entry.name}/SKILL.md")
+    return found
+
+
 def tracked_markdown() -> list[str]:
     """Every markdown file in the repo, repo-relative.
 
