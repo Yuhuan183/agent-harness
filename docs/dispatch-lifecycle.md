@@ -14,12 +14,31 @@
 | 狀態 | 承載物 | 怎麼看 |
 |---|---|---|
 | resolved | resolver 的 JSON 輸出 | `model-routing resolve --role <role>`（Codex bridge 加 `--surface claude-bridge`） |
-| launched | `dispatch_id`（`<session>:<agent>`）；bridge 另有 companion job id | pending stub 的 `SubagentStart` 列 |
+| launched | `dispatch_id`（`<session>:<agent>`）；bridge 另有 companion job id | pending stub 的 `SubagentStart` 列（native Codex 由 `experience-stage --start` 自己寫） |
 | running | **provider 側的 job 狀態**，不是 launcher 的存活 | `bridge-jobs --workspace "$PWD"`；native 由 harness 自己追蹤 |
 | collected | leaf 的最終回覆 + main 的 QC | `[LEAF_RESULT]` 記錄 |
 | logged | ledger 一列 schema-3 記錄 | `experience.jsonl`；`experience-report` 讀它 |
 
 漏掉任一個承載物，該狀態就只能靠自述。這正是 2026-07-26 兩個 finding 的共同形狀。
+
+### Native Codex 的承載物由派工者自己寫
+
+Claude 兩側的 stub 由 SubagentStart／Stop hook 落；native Codex 沒有這種 hook，它的
+launched 與 collected 一度沒有承載物：漏記的 outcome 沒進 ledger，也沒有東西知道它
+存在過。漏記不是隨機的——難做或失敗的派工最容易被放掉，cohort 會偏向成功樣本。
+
+```bash
+~/.agents/skills/experience-ledger/scripts/experience-stage --start --role executor
+~/.agents/skills/experience-ledger/scripts/experience-stage --stop --dispatch-id <id>
+```
+
+`--start` 印出的 dispatch id 就是兩個固定記錄與 ledger 共用的那一個；重複 stage 同一個
+id 會被拒絕。沒跑起來的用 `--cancel` 退掉，跑過的一律記帳（含 `failed`）。
+`weekly-integrity` 現在同時讀 staged launch：超過一天而 ledger 沒有對應 id 的 launch
+會持續告警，直到補記或 `--cancel`。
+
+這是受管 wrapper，不是 hook：忘記 `--start` 就照樣沒有承載物。它擋的是「派了、跑完、
+忘了記帳」，不是「整條工具鏈都繞過去」；後者要等 Codex runtime 提供 dispatch 事件。
 
 ## Plan readiness 與 discovery ownership
 

@@ -488,6 +488,70 @@ class MechanismTests(unittest.TestCase):
         un_reconciled = result.stdout.split("un-reconciled dispatches")[-1]
         self.assertNotIn("?", un_reconciled)
 
+    def test_a_staged_native_codex_launch_is_reconciled_too(self) -> None:
+        """Native Codex has no completion hook, so the launch is the carrier.
+
+        Everything else in this check keys on a staged SubagentStop, which only
+        a hook writes. A native Codex dispatch that finished and was never
+        logged therefore left nothing to find at all — and the ones most likely
+        to be dropped are the hard and failed ones, which is precisely the bias
+        the ledger must not develop. The dispatcher-staged launch closes that,
+        so it has to be read here whether or not a completion follows.
+        """
+        hook = ROOT / "main/claude/hooks/weekly-integrity.py"
+        old = "2020-01-01T00:00:00+00:00"
+        fresh = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        staged = {"event": "SubagentStart", "agent_type": "executor",
+                  "request_source": "codex", "ts": old}
+
+        def run(rows, ledger_rows=()):
+            with tempfile.TemporaryDirectory() as temp_home:
+                home = Path(temp_home)
+                (home / ".agents/telemetry").mkdir(parents=True)
+                (home / ".agents/telemetry/experience-pending.jsonl").write_text(
+                    "".join(json.dumps(row) + "\n" for row in rows),
+                    encoding="utf-8")
+                (home / ".agents/telemetry/experience.jsonl").write_text(
+                    "".join(json.dumps(row) + "\n" for row in ledger_rows),
+                    encoding="utf-8")
+                return subprocess.run(
+                    [sys.executable, str(hook)],
+                    env={**os.environ, "HOME": temp_home,
+                         "AGENT_HARNESS_REPO": str(home / "repo")},
+                    check=True, capture_output=True, text=True).stdout
+
+        # Launched, never logged, no completion staged either: the launch alone
+        # has to raise it, which is the case that used to be invisible.
+        forgotten = run([{**staged, "dispatch_id": "codex:forgotten"}])
+        self.assertIn("un-reconciled dispatches", forgotten)
+        # The finding names the way out for a launch that never ran.
+        self.assertIn("experience-stage --cancel", forgotten)
+
+        # Both rows staged: one dispatch, reported once.
+        completed = run([
+            {**staged, "dispatch_id": "codex:forgotten"},
+            {**staged, "event": "SubagentStop", "dispatch_id": "codex:forgotten"},
+        ])
+        self.assertEqual(completed.count("codex:forgotten"), 1)
+
+        # Same dispatch, now in the ledger: the finding must clear.
+        logged = run(
+            [{**staged, "dispatch_id": "codex:forgotten"}],
+            [{"role": "executor", "outcome": "failed",
+              "dispatch_id": "codex:forgotten"}],
+        )
+        self.assertNotIn("codex:forgotten", logged)
+
+        # A Claude launch is not a carrier for this check: its own SubagentStop
+        # hook reports it, and flagging in-flight dispatches would put the check
+        # in permanent alarm. A staged launch younger than a day is in flight too.
+        quiet = run([
+            {"event": "SubagentStart", "agent_type": "executor", "ts": old,
+             "request_source": "claude-code", "dispatch_id": "sess:in-flight"},
+            {**staged, "ts": fresh, "dispatch_id": "codex:just-launched"},
+        ])
+        self.assertNotIn("un-reconciled dispatches", quiet)
+
     def test_sync_and_weekly_integrity_share_one_deployment_manifest(self) -> None:
         hook = read(".claude/hooks/weekly-integrity.py")
         sync = read("scripts/sync.sh")

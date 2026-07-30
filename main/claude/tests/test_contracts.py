@@ -2,6 +2,15 @@
 from support import *  # noqa: F401,F403
 
 
+# Each provider's always-loaded contract. One source for the two tests that
+# budget it: the per-document ceiling and the resident-layer total (contract
+# plus skill metadata), which must not be able to drift apart.
+RESIDENT_CONTRACT_BUDGETS = {
+    "claude": (".claude/CLAUDE.contract.md", 520),
+    "codex": (".codex/AGENTS.contract.md", 540),
+}
+
+
 class ClaudeContractTests(unittest.TestCase):
     def test_claude_md_is_slim_and_outcome_first(self) -> None:
         policy = read(".claude/CLAUDE.contract.md")
@@ -277,6 +286,25 @@ class CodexBundleTests(unittest.TestCase):
         ):
             self.assertIn(phrase, agents)
         self.assertNotIn("Discovery → Plan → Approval", agents)
+
+    def test_dispatch_skill_metadata_triggers_only_after_the_decision(self) -> None:
+        """Both providers pay the body only once a dispatch is going ahead.
+
+        Skill metadata is resident on every turn; the body is not. That trade
+        only pays if the description does not fire on "should I delegate?" —
+        the question the resident contract answers by itself, usually with
+        "no". The Codex description used to say both things at once (`Load
+        before every leaf dispatch decision`, with 「要不要派」 as a trigger)
+        while its own body and contract said the decision comes first, so
+        asking whether to delegate loaded a ~1000-word file to decide not to.
+        """
+        for path in (".claude/skills/baton-dispatch/SKILL.md",
+                     ".codex/skills/leaf-dispatch/SKILL.md"):
+            meta = frontmatter(path)
+            self.assertIn("Load once a dispatch is going ahead", meta, path)
+            for pre_decision in ("before every leaf dispatch decision",
+                                 "任何 leaf 派工前", "要不要派", "Mandatory"):
+                self.assertNotIn(pre_decision, meta, path)
 
     def test_codex_dispatch_detail_lives_in_leaf_dispatch_skill(self) -> None:
         skill = " ".join(read(".codex/skills/leaf-dispatch/SKILL.md").split())
@@ -708,6 +736,52 @@ class DocumentationBudgetTests(unittest.TestCase):
                 self.assertGreater(total["words"], 0)
                 self.assertRegex(total["payload_sha256"], r"^[0-9a-f]{64}$")
 
+    def test_resident_skill_metadata_stays_within_budget(self) -> None:
+        """Cap the resident layer at its real load unit, not at the snapshot.
+
+        Every skill's name and description is loaded into every session, so a
+        long description is a permanent per-session cost — the same cost the
+        contract budgets above exist to control. The census measured it, but
+        nothing capped it: a description could grow without limit and the suite
+        stayed green as soon as someone regenerated the snapshot. So this reads
+        the sources, not `prompt-surface-census.json`, and the resident total
+        below is the contract budget plus this one.
+        """
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "prompt_surface_census", ROOT / "scripts/prompt-surface-census.py")
+        census_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(census_module)
+        census = census_module.build_census()
+
+        # Per-provider sum of skill metadata, in the same CJK-aware words the
+        # document budgets use. Raising either is a deliberate decision with a
+        # reason, exactly like raising a document budget.
+        # Claude carries one more skill than Codex (baton-dispatch and
+        # provider-routing against the single leaf-dispatch).
+        metadata_budgets = {"claude": 620, "codex": 540}
+        # The widest legitimate description today is speak-human-tw at 176: it
+        # states its triggers twice, in zh-TW and English, because it is the
+        # one skill invoked by users in either language.
+        per_skill_budget = 180
+        for provider, budget in metadata_budgets.items():
+            records = [record
+                       for record in census["providers"][provider]["resident"]
+                       if record.get("kind") == "skill-metadata"]
+            self.assertTrue(records, provider)
+            for record in records:
+                self.assertLessEqual(
+                    record["words"], per_skill_budget,
+                    f"{record['path']}: resident skill metadata")
+            self.assertLessEqual(
+                sum(record["words"] for record in records), budget, provider)
+
+        for provider, (contract, contract_budget) in RESIDENT_CONTRACT_BUDGETS.items():
+            self.assertLessEqual(
+                census["totals"][provider]["resident"]["words"],
+                contract_budget + metadata_budgets[provider],
+                f"{provider} resident layer ({contract} plus skill metadata)")
+
     def test_docs_stay_distilled(self) -> None:
         # Word budgets, not line budgets — a line count is gameable by long
         # lines; words track resident attention cost. Raising a budget is a
@@ -715,7 +789,7 @@ class DocumentationBudgetTests(unittest.TestCase):
         # Units are word_count() words: one per CJK character, one per other
         # non-space run — zh-TW prose pays the same attention tax as English.
         budgets = {
-            ".claude/CLAUDE.contract.md": 520,
+            ".claude/CLAUDE.contract.md": RESIDENT_CONTRACT_BUDGETS["claude"][1],
             # Root README owns the complete architecture overview and diagrams;
             # operational/research detail remains linked in docs/.
             # +30 (2026-07-25): alias generation check added to the mechanisms
@@ -768,7 +842,13 @@ class DocumentationBudgetTests(unittest.TestCase):
             # +10 (2026-07-29): what a real per-task quota would need (a stable
             # task id in the payload) and why there isn't one. A disclosed gap
             # that does not say what would close it reads as an oversight.
-            "docs/dispatch-lifecycle.md": 2040,
+            # +260 (2026-07-30): the state table promised a carrier for every
+            # state, but native Codex had none for launched or collected — a
+            # forgotten outcome there was undetectable, and the omissions skew
+            # toward the hard dispatches. The section names the carrier, the
+            # commands, and what a dispatcher-written wrapper still cannot
+            # close; the last part is why it is prose and not one table cell.
+            "docs/dispatch-lifecycle.md": 2300,
             # The hook-system concept doc: fail-open/fail-closed semantics, the
             # per-event inventory, and why each gate is trustworthy. The
             # guardrail table in the README pointed at individual hooks but no
@@ -824,7 +904,7 @@ class DocumentationBudgetTests(unittest.TestCase):
             # where the invocation mechanics already lived. The ceiling drops
             # with the content — leaving it at 590 would just invite a refill,
             # and this file sat 2 words under it.
-            ".codex/AGENTS.contract.md": 540,
+            ".codex/AGENTS.contract.md": RESIDENT_CONTRACT_BUDGETS["codex"][1],
             ".codex/ANALYSIS.md": 500,
             ".codex/DEPLOY.md": 550,
             # +90 (2026-07-23): record template and QC fraud checklist moved
@@ -846,7 +926,11 @@ class DocumentationBudgetTests(unittest.TestCase):
             # once per dispatch instead of once per task.
             # +160 (2026-07-28): Claude-twin readiness, security sequencing,
             # and discovery ownership; still paid only when dispatch proceeds.
-            ".codex/skills/leaf-dispatch/SKILL.md": 1010,
+            # +65 (2026-07-30): the ledger section now has to say how a native
+            # Codex dispatch stages its own launch and completion. Claude gets
+            # that from a hook and pays nothing for it here; on Codex it is the
+            # dispatcher's step, so the instruction has to reach the dispatcher.
+            ".codex/skills/leaf-dispatch/SKILL.md": 1075,
         }
         for path, limit in budgets.items():
             self.assertLessEqual(word_count(read(path)), limit, path)

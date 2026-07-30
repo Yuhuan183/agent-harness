@@ -1,9 +1,9 @@
 ---
 name: leaf-dispatch
 description: |
-  Codex leaf dispatch — cost test, batching, briefs/stops, fixed records, QC, ledger, and verifier triggers. Load before every leaf dispatch decision.
-  觸發：任何 leaf 派工前、「怎麼拆」「要不要派」「批次」「brief 怎麼寫」「驗收怎麼定」。
-  不觸發：subagent（leaf）自身的工作——leaf 永不 orchestrate。
+  Codex leaf dispatch — cost test, batching, briefs/stops, fixed records, QC, ledger, and verifier triggers. Load once a dispatch is going ahead.
+  觸發：已經決定要派工、「怎麼拆」「批次」「brief 怎麼寫」「驗收怎麼定」。
+  不觸發：還在判斷是否派工（留給 resident contract）、subagent（leaf）自身的工作——leaf 永不 orchestrate。
 ---
 
 # Leaf Dispatch
@@ -84,9 +84,14 @@ into prose:
 ```
 
 Use actual resolved route values and the same neutral task label in the
-ledger. After quality-checking each native Codex leaf, log the outcome with
-`experience-ledger`, request source `codex`, resolved profile/model/effort,
-and the dispatched non-smoke task class.
+ledger. Native Codex has no dispatch hook, so stage the carrier by hand:
+`experience-stage --start --role <role>` at launch prints the dispatch id both
+records use, and `--stop` records the completion. After quality-checking each
+native Codex leaf, log the outcome with `experience-ledger`, request source
+`codex`, resolved profile/model/effort, and the dispatched non-smoke task
+class. Retire a launch whose leaf never ran with `--cancel`; anything that ran
+is logged, `failed` included. An unanswered launch is what the weekly
+reconciliation reports — without it a forgotten outcome is invisible.
 
 ## QC
 

@@ -36,9 +36,17 @@ and session automatically; a native Claude dispatch then only needs its outcome:
   dispatch's own Codex rollout and tag `route_source: rollout-verified`; pass
   only `--profile` (a harness label the provider does not record). A
   `--model/--effort` that contradicts the provider's record is rejected as a
-  routing violation rather than logged. Stub-less native Codex records need
-  `--request-source codex` plus role, provider, and the full route.
-- Log **every** dispatch — Claude roles and Codex bridge alike. Outcome is the
+  routing violation rather than logged. Native Codex records carry the full
+  route explicitly; role, provider, and request source come from the staged
+  launch below.
+- **Native Codex stages its own carrier.** There is no dispatch hook there, so
+  `scripts/experience-stage --start --role <role>` at launch prints the
+  dispatch id for both fixed records, and `--stop` records the completion;
+  `--cancel` retires a launch whose leaf never ran. Without a staged launch a
+  forgotten outcome leaves no trace, and `weekly-integrity` reports staged
+  dispatches the ledger never answered.
+- Log **every** dispatch — Claude roles, Codex bridge, and native Codex alike.
+  Outcome is the
   main session's quality verdict: `accepted` (clean) / `corrected` (fixed
   before integration) / `rebriefed` (re-dispatched) / `failed` (dropped or
   fell back).

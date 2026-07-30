@@ -1,0 +1,205 @@
+#!/usr/bin/env python3
+"""Stage the launch and completion of a native Codex dispatch.
+
+Claude Code stages these stubs from its SubagentStart/SubagentStop hooks
+(`experience-pending.py`). Native Codex has no such hook, so a dispatch there
+had no carrier at all: nothing recorded that it was launched, and
+`weekly-integrity` — which finds forgotten outcomes by looking for a staged
+completion the ledger never answered — had nothing to look for. A native Codex
+outcome that never reached the ledger was therefore invisible, and the missing
+records are not random: a hard or failed dispatch is the one a session is most
+likely to abandon, which biases every cohort the ledger feeds back into routing.
+
+This is that carrier, written by the dispatcher instead of a hook:
+
+    experience-stage --start --role executor            # prints the dispatch id
+    experience-stage --stop --dispatch-id <id>          # records wall-clock secs
+    experience-log --from-pending --dispatch-id <id> --outcome accepted ...
+
+A launch that never ran (cancelled before the leaf started) is retired with
+`--cancel`; anything that did run is logged, `failed` included. Staged rows
+live in the same pending file as the hook's (override:
+AGENT_EXPERIENCE_PENDING) and are consumed by the same `experience-log` paths.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+import uuid
+from contextlib import contextmanager
+from datetime import datetime, timezone
+
+# Same loggable roles as experience-log; a stub whose role it would not accept
+# is a stub nothing can reconcile.
+ROLES = (
+    "explore", "mech-executor", "executor",
+    "plan-verifier", "verifier", "security-reviewer", "security-executor",
+)
+# Native Codex only. The bridge and native Claude both have hooks, and a
+# hand-written stub racing a hook-written one is a reconciliation problem, not
+# a carrier.
+REQUEST_SOURCE = "codex"
+
+PENDING_PATH = os.environ.get(
+    "AGENT_EXPERIENCE_PENDING",
+    os.path.expanduser("~/.agents/telemetry/experience-pending.jsonl"),
+)
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - non-POSIX fallback keeps staging usable
+    fcntl = None
+
+
+@contextmanager
+def pending_lock():
+    """Serialize with the hook's appends and experience-log's rewrites."""
+    os.makedirs(os.path.dirname(PENDING_PATH), exist_ok=True)
+    with open(PENDING_PATH + ".lock", "a", encoding="utf-8") as lock:
+        if fcntl is not None:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            if fcntl is not None:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+
+
+def read_pending() -> list[dict]:
+    try:
+        with open(PENDING_PATH, encoding="utf-8") as stream:
+            return [json.loads(line) for line in stream if line.strip()]
+    except FileNotFoundError:
+        return []
+
+
+def write_pending(rows: list[dict]) -> None:
+    with open(PENDING_PATH, "w", encoding="utf-8") as stream:
+        for row in rows:
+            stream.write(json.dumps(row) + "\n")
+
+
+def append_pending(row: dict) -> None:
+    with open(PENDING_PATH, "a", encoding="utf-8") as stream:
+        stream.write(json.dumps(row) + "\n")
+
+
+def split_dispatch_id(dispatch_id: str, session: str | None) -> tuple[str, str]:
+    """Recover the `<session>:<agent>` halves the pending file pairs stubs by."""
+    head, separator, tail = dispatch_id.rpartition(":")
+    if separator and head and tail:
+        return head, tail
+    return (session or REQUEST_SOURCE), dispatch_id
+
+
+def stage_start(args, parser) -> int:
+    session = args.session or os.environ.get("CODEX_SESSION_ID") or REQUEST_SOURCE
+    dispatch_id = args.dispatch_id or f"{session}:{uuid.uuid4().hex[:8]}"
+    session_id, agent_id = split_dispatch_id(dispatch_id, session)
+    with pending_lock():
+        if any(row.get("dispatch_id") == dispatch_id for row in read_pending()):
+            parser.error(
+                f"{dispatch_id} is already staged; finish it with --stop and "
+                "experience-log, or retire it with --cancel. Reusing a dispatch "
+                "id would file two dispatches under one outcome"
+            )
+        append_pending({
+            "ts": args.now or datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "event": "SubagentStart",
+            "agent_type": args.role,
+            "agent_id": agent_id,
+            "session_id": session_id,
+            "dispatch_id": dispatch_id,
+            "request_source": REQUEST_SOURCE,
+        })
+    print(dispatch_id)
+    return 0
+
+
+def stage_stop(args, parser) -> int:
+    now = datetime.now(timezone.utc)
+    with pending_lock():
+        rows = read_pending()
+        start = next(
+            (row for row in reversed(rows)
+             if row.get("event") == "SubagentStart"
+             and row.get("dispatch_id") == args.dispatch_id),
+            None,
+        )
+        if start is None:
+            parser.error(
+                f"no staged launch for {args.dispatch_id}; stage it with "
+                "--start at launch time (a completion with no launch has no "
+                "wall-clock to report and no launch to reconcile)"
+            )
+        if any(row.get("event") == "SubagentStop"
+               and row.get("dispatch_id") == args.dispatch_id for row in rows):
+            parser.error(
+                f"{args.dispatch_id} already has a staged completion; log its "
+                "outcome with experience-log --from-pending --dispatch-id "
+                f"{args.dispatch_id}"
+            )
+        stop = {
+            "ts": args.now or now.isoformat(timespec="seconds"),
+            "event": "SubagentStop",
+            "agent_type": start.get("agent_type"),
+            "agent_id": start.get("agent_id"),
+            "session_id": start.get("session_id"),
+            "dispatch_id": args.dispatch_id,
+            "request_source": REQUEST_SOURCE,
+        }
+        try:
+            started = datetime.fromisoformat(start["ts"])
+            stop["secs"] = round((now - started).total_seconds(), 1)
+        except (KeyError, ValueError, TypeError):
+            pass
+        append_pending(stop)
+    print(f"staged completion: {args.dispatch_id}")
+    return 0
+
+
+def stage_cancel(args, parser) -> int:
+    with pending_lock():
+        rows = read_pending()
+        keep = [row for row in rows if row.get("dispatch_id") != args.dispatch_id]
+        if len(keep) == len(rows):
+            parser.error(f"nothing staged for {args.dispatch_id}")
+        write_pending(keep)
+    print(f"cancelled: {args.dispatch_id}")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--start", action="store_true",
+                      help="stage a launch and print its dispatch id")
+    mode.add_argument("--stop", action="store_true",
+                      help="stage the completion of a staged launch")
+    mode.add_argument("--cancel", action="store_true",
+                      help="retire a launch whose leaf never ran; anything that "
+                           "ran is logged instead, `failed` included")
+    parser.add_argument("--role", choices=ROLES, default=None)
+    parser.add_argument("--dispatch-id", default=None,
+                        help="stable id shared by [LEAF_DISPATCH], [LEAF_RESULT], "
+                             "and the ledger record")
+    parser.add_argument("--session", default=None,
+                        help="session label for a generated dispatch id")
+    parser.add_argument("--now", default=None, help="ISO timestamp override (tests)")
+    args = parser.parse_args()
+
+    if args.start and args.role is None:
+        parser.error("--start requires --role")
+    if (args.stop or args.cancel) and not args.dispatch_id:
+        parser.error("--stop and --cancel require --dispatch-id")
+    if args.start:
+        return stage_start(args, parser)
+    if args.stop:
+        return stage_stop(args, parser)
+    return stage_cancel(args, parser)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

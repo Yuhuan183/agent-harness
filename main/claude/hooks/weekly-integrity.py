@@ -500,7 +500,7 @@ try:
             os.path.expanduser("~/.agents/telemetry/experience-pending.jsonl"),
         )
         cutoff = datetime.now(timezone.utc).timestamp() - 86400
-        stale = []
+        stale = {}
         with open(pending_path, encoding="utf-8") as stream:
             for raw in stream:
                 if not raw.strip():
@@ -510,7 +510,15 @@ try:
                 except json.JSONDecodeError:
                     continue
                 agent_type = row.get("agent_type") or ""
-                if row.get("event") != "SubagentStop":
+                if row.get("event") == "SubagentStart":
+                    # Native Codex has no completion hook, so its dispatches
+                    # stage their own launch (`experience-stage`) and a
+                    # forgotten outcome shows up as a launch nothing answered.
+                    # Only that carrier qualifies: a hook-written start belongs
+                    # to a dispatch whose own SubagentStop will report it.
+                    if row.get("request_source") != "codex":
+                        continue
+                elif row.get("event") != "SubagentStop":
                     continue
                 if agent_type not in loggable_roles and "codex" not in agent_type:
                     continue
@@ -525,13 +533,17 @@ try:
                     ts = datetime.fromisoformat(row["ts"]).timestamp()
                 except (KeyError, ValueError, TypeError):
                     continue
+                # A staged native Codex dispatch has two rows; report the
+                # dispatch once, dated from whichever row is older.
                 if ts < cutoff:
-                    stale.append(dispatch_id)
+                    stale[dispatch_id] = min(stale.get(dispatch_id, ts), ts)
         if stale:
             findings.append(
-                "un-reconciled dispatches (completed but never logged to the "
-                "experience ledger; log with experience-log --from-pending "
-                "--dispatch-id <id> --outcome <o>):\n" + "\n".join(stale)
+                "un-reconciled dispatches (launched or completed but never "
+                "logged to the experience ledger; log with experience-log "
+                "--from-pending --dispatch-id <id> --outcome <o>, or retire a "
+                "native Codex launch that never ran with experience-stage "
+                "--cancel):\n" + "\n".join(stale)
             )
     except OSError:
         pass

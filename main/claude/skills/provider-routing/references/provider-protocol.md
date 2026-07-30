@@ -31,7 +31,11 @@ single-provider and this protocol does not apply there.
    pending hook, never passed in by the dispatcher: a self-reported route is
    logged but is ineligible to move any route
    (`core.DECISION_ROUTE_SOURCES`), so a provider without this path can be
-   dispatched to but can never contribute routing evidence.
+   dispatched to but can never contribute routing evidence. Each dispatch also
+   needs a staged launch under a stable dispatch id — from a hook, or from the
+   dispatcher (`experience-stage`) where the runtime has none — because a
+   forgotten outcome is only findable against a carrier, and forgotten
+   outcomes are not randomly distributed.
 5. **Quota probe** — a `codex-usage`-equivalent reading local, provider-recorded
    usage; short-window alarms feed the CP-first switch rule. No probe → the
    provider cannot participate in usage-based switching and heavy dispatch to
