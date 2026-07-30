@@ -541,6 +541,59 @@ class MachineStateHygieneTests(unittest.TestCase):
         self.assertIn("nested run, leaving core.hooksPath alone", dry.stdout)
         self.assertNotIn("core.hooksPath ->", dry.stdout)
 
+    def test_sync_survives_being_invoked_through_sh(self) -> None:
+        """`sh scripts/sync.sh` used to abort halfway, reporting success first.
+
+        macOS `/bin/sh` is bash in POSIX mode, where the process substitution
+        the deployment inventory is read with is a syntax error - and bash
+        parses as it executes, so the run got through preflight and installed
+        `core.hooksPath` before dying on a function it had not read yet. The
+        operator saw "preflight: passed" and a syntax error and no deployment.
+        `bash -n` cannot see this: the file is valid bash, and it is the
+        interpreter that is wrong.
+
+        Asserted end to end rather than by grepping for the guard, because
+        POSIX-mode bash still sets BASH_VERSION - the first guard written here
+        looked right, matched the shell by name, and never fired.
+        """
+        with tempfile.TemporaryDirectory() as temp_home:
+            dry = subprocess.run(
+                ["/bin/sh", str(ROOT / "scripts/sync.sh")],
+                capture_output=True, text=True, timeout=300,
+                env={**os.environ, "HOME": temp_home,
+                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"},
+            )
+        self.assertEqual(dry.returncode, 0, dry.stderr + dry.stdout)
+        self.assertNotIn("syntax error", dry.stderr + dry.stdout)
+        self.assertIn("dry-run complete", dry.stdout,
+                      "sync stopped before the end of its own run")
+
+    def test_a_sync_that_stops_early_cannot_report_success(self) -> None:
+        """An interrupted sync used to exit 0, which is worse than the interrupt.
+
+        The `sh` run above aborted mid-file, deployed nothing, and handed its
+        caller a 0: the EXIT trap ended with `return 0`, and on an abort that
+        never ran a failing command bash exits with whatever the trap leaves.
+        Preserving `$?` in the trap does not help - measured on bash 3.2, `$?`
+        is 0 on that path - so reaching the last line is the only success
+        signal, and `SYNC_COMPLETED` is what carries it.
+
+        Probed by stopping a copy immediately after the trap is installed:
+        `exit 0` there is the same shape of failure and, unlike a syntax error,
+        survives preflight's own `bash -n` to reach the trap at all.
+        """
+        anchor = "trap sync_cleanup EXIT\n"
+        src = read("scripts/sync.sh")
+        self.assertEqual(src.count(anchor), 1, "trap site moved; probe is stale")
+        with tempfile.TemporaryDirectory() as tmp:
+            probe = Path(tmp) / "sync-probe.sh"
+            probe.write_text(src.replace(anchor, anchor + "exit 0\n", 1))
+            stopped = subprocess.run(["bash", str(probe)],
+                                     capture_output=True, text=True, timeout=60)
+        self.assertNotEqual(stopped.returncode, 0,
+                            "a sync that stopped early reported success")
+        self.assertIn("stopped before finishing", stopped.stdout)
+
     def test_the_docs_never_present_one_half_of_the_gate_as_the_whole(self) -> None:
         """Neither boundary is the guarantee on its own, so neither is written alone.
 

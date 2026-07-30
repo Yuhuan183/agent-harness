@@ -6,6 +6,20 @@
 #   scripts/sync.sh --apply  # actually run it
 #   scripts/sync.sh --apply --accept-contract-takeover   # explicitly allow overwriting a pre-existing foreign AGENTS.md/CLAUDE.md
 # Portable source -> HOME target mappings are defined only in scripts/deployment-manifest.tsv.
+#
+# `sh scripts/sync.sh` is bash 3.2 in POSIX mode on macOS, which disables the
+# process substitution the deployment inventory is read with. bash parses as it
+# executes, so that failure lands mid-run - after the git hook is installed and
+# preflight has reported success - instead of up front. Hand the script to real
+# bash before the parser ever reaches the construct.
+#
+# POSIX-mode bash still sets BASH_VERSION, so the name of the shell does not
+# answer the question; the construct itself is tested, inside an eval so this
+# file still parses where it is unsupported. SHELLOPTS is dropped because an
+# inherited `posix` would send the re-exec straight back here.
+if [ -z "${BASH_VERSION:-}" ] || ! (eval ': < <(:)') 2>/dev/null; then
+  exec env -u SHELLOPTS bash "$0" "$@"
+fi
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -37,9 +51,19 @@ cleanup_python_shim() {
 }
 
 sync_cleanup() {
+  local status=$?
   cleanup_python_shim
   [[ -n "${DEPLOY_STATE_NEW:-}" ]] && rm -f "$DEPLOY_STATE_NEW"
-  return 0
+  # An abort that never ran a failing command - a parse error in a function the
+  # reader had not reached yet is the one that actually happened - leaves $? at
+  # 0, and bash exits with whatever this trap leaves behind. Preserving $? is
+  # therefore not enough: reaching the last line is the only success signal, so
+  # anything short of that is reported as failure rather than as a clean sync.
+  if [[ $status -eq 0 && $SYNC_COMPLETED -eq 0 ]]; then
+    log "ERROR: sync stopped before finishing; nothing below the failure ran."
+    return 1
+  fi
+  return "$status"
 }
 
 prepare_python_path() {
@@ -181,6 +205,7 @@ preflight() {
   log "preflight: passed"
 }
 
+SYNC_COMPLETED=0
 trap sync_cleanup EXIT
 preflight
 install_git_hooks
@@ -479,3 +504,7 @@ if [[ $GIT_HOOK_STATUS -ne 0 ]]; then
   log "ERROR: files are deployed, but the git-side commit gate is not installed (see above)."
   exit $GIT_HOOK_STATUS
 fi
+
+# Read by sync_cleanup. Every other exit from here on is already non-zero, so
+# this line is what separates a finished run from an interrupted one.
+SYNC_COMPLETED=1
