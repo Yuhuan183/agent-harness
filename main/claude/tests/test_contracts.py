@@ -782,6 +782,43 @@ class DocumentationBudgetTests(unittest.TestCase):
                 contract_budget + metadata_budgets[provider],
                 f"{provider} resident layer ({contract} plus skill metadata)")
 
+    def test_the_widest_description_keeps_every_trigger_it_pays_for(self) -> None:
+        """A description is resident cost *and* the only routing surface.
+
+        speak-human-tw is the largest always-resident description in the repo,
+        which makes it the standing trim candidate — and trimming it is the one
+        edit whose damage no test here can see, because whether a skill loads is
+        decided by a model reading this text, not by anything mechanical.
+
+        Written before any trim, deliberately (2026-07-30). A trim was measured
+        and then dropped: the honest saving was 19 words, ~2% of the resident
+        tier, against a recall risk this environment cannot measure — no trap
+        under `evals/traps/` exercises skill selection. So the lock lands first
+        and the description is left alone until it is actually near its ceiling.
+
+        Word budgets push one way and recall pushes the other. Both are
+        asserted, so whenever a trim does happen it has to come out of genuine
+        duplication rather than out of the tokens that make the skill load.
+        """
+        frontmatter_text = frontmatter(".agents/skills/speak-human-tw/SKILL.md")
+        # Every phrasing a user is expected to invoke it by, in both languages.
+        for trigger in ("去 AI 味", "說人話", "這段好 AI", "改自然一點",
+                        "校對再發", "審查", "改寫",
+                        "de-AI this text", "make it sound human",
+                        "polish this zh-TW copy before publishing"):
+            self.assertIn(trigger, frontmatter_text, f"lost trigger: {trigger}")
+        # The document kinds are the recall surface for "look at this <thing>"
+        # phrasings; dropping one silently stops the skill matching that ask.
+        for kind in ("電子報", "社群貼文", "銷售頁", "文案", "客服信",
+                     "簡報", "公告"):
+            self.assertIn(kind, frontmatter_text, f"lost document kind: {kind}")
+        # Exclusions are what stop it loading on work it would damage.
+        for exclusion in ("逐字翻譯", "品牌", "事實查核", "設定檔",
+                          "literal translation", "brand-voice mimicry",
+                          "fact-checking", "code/log/config"):
+            self.assertIn(exclusion, frontmatter_text,
+                          f"lost exclusion: {exclusion}")
+
     def test_docs_stay_distilled(self) -> None:
         # Word budgets, not line budgets — a line count is gameable by long
         # lines; words track resident attention cost. Raising a budget is a
