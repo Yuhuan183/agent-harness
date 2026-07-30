@@ -1714,6 +1714,44 @@ class BridgeJobLivenessTests(unittest.TestCase):
             for job_id in ("task-a", "task-b"):
                 self.assertIn(f"/codex:cancel {job_id}", result.stdout)
 
+    def test_state_is_found_without_being_told_where_it_is(self) -> None:
+        """The default path has to work, because that is the one operators use.
+
+        Every other test here sets `CODEX_COMPANION_STATE`, so all of them
+        passed while the shipped default pointed at an empty
+        `codex-openai-codex/state` and the companion wrote to
+        `codex-inline/state`. Result: exit 2 on every real run, and the
+        duplicate reconciliation the dispatch contract requires before a
+        relaunch never actually answered (observed 2026-07-30).
+
+        A plugin data directory is `<plugin>-<marketplace>` and the marketplace
+        half is the user's install choice, so the fixture uses a name this repo
+        has never heard of. Nothing may be passed in but HOME.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            home = Path(temp_dir)
+            state = home / ".claude/plugins/data/codex-somewhere-else/state"
+            jobs = state / "workspace-hash" / "jobs"
+            jobs.mkdir(parents=True)
+            for job_id in ("task-a", "task-b"):
+                (jobs / f"{job_id}.json").write_text(
+                    json.dumps(self._job(job_id)), encoding="utf-8")
+            env = {**os.environ, "HOME": str(home)}
+            env.pop("CODEX_COMPANION_STATE", None)
+
+            result = self._run(env, "--duplicates")
+            self.assertEqual(result.returncode, 1,
+                             result.stdout + result.stderr)
+            self.assertIn("duplicate dispatch", result.stdout)
+
+        # An absent root still reports "unknown", never "nothing running".
+        with tempfile.TemporaryDirectory() as empty:
+            env = {**os.environ, "HOME": empty}
+            env.pop("CODEX_COMPANION_STATE", None)
+            blind = self._run(env, "--duplicates")
+            self.assertEqual(blind.returncode, 2, blind.stdout)
+            self.assertIn("not the same as no jobs running", blind.stderr)
+
     def test_genuinely_parallel_dispatches_are_not_twins(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             env = self._state(Path(temp_dir), [

@@ -79,8 +79,8 @@ Report every launch and post-QC outcome as separate fixed records, never mixed
 into prose:
 
 ```text
-[LEAF_DISPATCH] dispatch_id=<id> | task=<label> | role=<role> | class=<class> | request_source=codex | route=<profile>/codex/<model>/<effort> | reason=<payoff>
-[LEAF_RESULT] dispatch_id=<id> | task=<label> | outcome=<accepted|corrected|rebriefed|failed> | qc=<spot|full> | ledger=<logged|skipped(reason)>
+[LEAF_DISPATCH] dispatch_id=<id>|task=<label>|role=<role>|class=<class>|request_source=codex|route=<profile>/codex/<model>/<effort>|reason=<payoff>
+[LEAF_RESULT] dispatch_id=<id>|task=<label>|outcome=<accepted|corrected|rebriefed|failed>|qc=<spot|full>|ledger=<logged|skipped(reason)>
 ```
 
 Use actual resolved route values and the same neutral task label in the

@@ -5,8 +5,9 @@
 
 ## 1. 核心立場
 
-Harness engineering 仍然需要，但形態已變：**常駐指令檔縮到只剩模型推不出來的東西**
-（目標 40–80 行），其餘走漸進揭露（skills/docs）與確定性機制（hooks/CI）。
+Harness engineering 仍然需要，但形態已變：**常駐指令檔縮到只剩模型推不出來的東西**，
+其餘走漸進揭露（skills/docs）與確定性機制（hooks/CI）。預算以字數計，行數會被長行規避
+（[contract-slimming](contract-slimming.md)）。
 肥大指令檔的代價是遵循度，不是錢——每條新規則都稀釋所有其他規則。
 判準只有一句：「刪掉這一行會不會犯錯？不會就刪。」
 
@@ -133,11 +134,7 @@ write/read、重試、人工修正、等待時間與失敗風險都要入帳。�
 主 session 在派工前後各輸出一筆獨立紀錄，避免與一般說明混雜：`LEAF_DISPATCH` 固定帶 task、
 role、class、source、完整 route 與 dispatch payoff；`LEAF_RESULT` 固定帶 outcome、QC tier 與
 ledger 是否成功寫入。task label 必須和 ledger 相同，讓人類回顧與 machine-local 遙測可對照。
-
-```text
-[LEAF_DISPATCH] dispatch_id=review-01|task=semantic seam review | role=explore | class=review | request_source=claude-code | route=balanced/claude/claude-sonnet-5/low | reason=context-protection
-[LEAF_RESULT] dispatch_id=review-01 | task=semantic seam review | outcome=accepted | qc=full | ledger=logged
-```
+逐字模板只在兩份派工 skill 裡，本文不複製。
 
 ## 8. Skill 與第三方內容
 
