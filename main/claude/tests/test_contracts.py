@@ -931,7 +931,39 @@ class DocumentationBudgetTests(unittest.TestCase):
             # that from a hook and pays nothing for it here; on Codex it is the
             # dispatcher's step, so the instruction has to reach the dispatcher.
             ".codex/skills/leaf-dispatch/SKILL.md": 1075,
+            # The four below were unbudgeted until 2026-07-30: the ceiling
+            # existed on the three files someone had remembered, not on the
+            # tier, so the largest dispatch-time surface in the repo
+            # (speak-human-tw) had no limit at all. Each is set at its measured
+            # size plus ~2%, which is what the three above already are (100%,
+            # 99%, 98% used). The number is not a researched threshold — the
+            # repo's own sources say none is derivable
+            # (docs/research/context-and-vendors.md) — it is a ratchet: growth
+            # has to displace something or be argued for in the commit message.
+            #
+            # experience-ledger and speak-human-tw are one source each, shared
+            # by both providers through a symlink; both deployed surfaces are
+            # listed because both are what a session actually loads.
+            ".claude/skills/experience-ledger/SKILL.md": 980,
+            ".codex/skills/experience-ledger/SKILL.md": 980,
+            # Largest dispatch-time body in the repo, and the one that states
+            # its triggers twice (zh-TW and English) because either language
+            # can invoke it. Trimming it is deliberately a separate task.
+            ".claude/skills/speak-human-tw/SKILL.md": 2090,
+            ".codex/skills/speak-human-tw/SKILL.md": 2090,
+            # Claude's copies are thin pointers; Codex carries the procedure,
+            # so the two sides of these two skills are genuinely different
+            # files and get their own ceilings rather than a shared one.
+            ".claude/skills/headroom-protocol/SKILL.md": 135,
+            ".codex/skills/headroom-protocol/SKILL.md": 235,
+            ".claude/skills/task-observer/SKILL.md": 145,
+            ".codex/skills/task-observer/SKILL.md": 770,
         }
+        self.assertEqual(
+            {path for path in budgets if "/skills/" in path},
+            deployed_skill_files(),
+            "every deployed skill is budgeted or the ceiling is back to being "
+            "whatever someone remembered to list")
         for path, limit in budgets.items():
             self.assertLessEqual(word_count(read(path)), limit, path)
 
