@@ -1,4 +1,6 @@
 """Experience ledger: logging, pending pairing, reporting, revision."""
+import fcntl
+
 from support import *  # noqa: F401,F403
 
 
@@ -1468,28 +1470,119 @@ class LedgerUniquenessTests(unittest.TestCase):
                 env=env, capture_output=True, text=True)
             self.assertNotEqual(cancelled.returncode, 0)
 
-    def test_two_concurrent_loggers_cannot_both_file_one_dispatch(self) -> None:
-        """Checking outside the append's lock would let both read a clean ledger.
+    def test_the_lifecycle_lock_is_actually_held(self) -> None:
+        """Two loggers started together prove the check, not the lock.
 
-        Started together and left to race; whichever ordering wins, exactly one
-        row and exactly one success is the only correct result.
+        Python startup dominates, so they serialise on their own and the pair
+        would pass with no lock at all. The lock is only refutable by holding
+        it: this takes the pending lock - the one both writers share, since
+        `experience-stage` does its ledger read inside it - from outside and
+        asserts the logger blocks and writes nothing until it is released.
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)
             env = self._env(temp)
+            pending = temp / "pending.jsonl"
+            pending.write_text("", encoding="utf-8")
             command = [sys.executable, str(self.LOG), "--dispatch-id",
-                       "codex:race", "--outcome", "accepted",
+                       "codex:locked", "--outcome", "accepted",
                        *self.IDENT, *self.ROUTE]
-            running = [subprocess.Popen(command, env=env, text=True,
-                                        stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE)
-                       for _ in range(2)]
-            codes = [process.wait(timeout=60) for process in running]
-            for process in running:
-                process.stdout.close()
-                process.stderr.close()
-            self.assertEqual(sorted(codes), [0, 2], codes)
+            with open(str(pending) + ".lock", "a", encoding="utf-8") as lock:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+                running = subprocess.Popen(command, env=env, text=True,
+                                           stdout=subprocess.PIPE,
+                                           stderr=subprocess.PIPE)
+                try:
+                    running.wait(timeout=3)
+                    running.stdout.close()
+                    running.stderr.close()
+                    self.fail("the logger committed while the lifecycle lock "
+                              f"was held (rc={running.returncode})")
+                except subprocess.TimeoutExpired:
+                    self.assertEqual(self._ledger(temp), [])
+                fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+            self.assertEqual(running.wait(timeout=60), 0)
+            running.stdout.close()
+            running.stderr.close()
             self.assertEqual(len(self._ledger(temp)), 1)
+
+    def test_an_outcome_cannot_be_logged_while_the_leaf_is_still_running(self) -> None:
+        """A staged launch with no completion has no outcome to record.
+
+        The logger only ever read the ledger, never the pending file, so
+        `--start` followed by an explicit log needed no race at all to seal a
+        live dispatch: the outcome was written, and from then on the real one
+        could not be logged (id in the ledger), the launch could not be
+        cancelled (it had run), and reconciliation skips every id the ledger
+        names - so nothing reported it (2026-07-30 re-review).
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            env = self._env(temp)
+            self.assertEqual(
+                subprocess.run([sys.executable, str(self.STAGE), "--start",
+                                "--role", "executor", "--dispatch-id",
+                                "codex:live"],
+                               env=env, capture_output=True,
+                               text=True).returncode, 0)
+            premature = self._log(env, "--dispatch-id", "codex:live",
+                                  "--outcome", "accepted", *self.IDENT,
+                                  *self.ROUTE)
+            self.assertNotEqual(premature.returncode, 0, premature.stdout)
+            self.assertIn("still in flight", premature.stderr)
+            self.assertEqual(self._ledger(temp), [], "an outcome was recorded")
+            # The carrier must survive: it is the only thing that will report
+            # this dispatch if its outcome is forgotten, and the premature log
+            # is the mistake, not the launch.
+            rows = [json.loads(line) for line in
+                    (temp / "pending.jsonl").read_text(
+                        encoding="utf-8").splitlines() if line.strip()]
+            self.assertEqual([row["event"] for row in rows], ["SubagentStart"])
+            # The route the refusal names has to work, or the refusal just
+            # teaches the dispatcher to stop staging launches.
+            self.assertEqual(
+                subprocess.run([sys.executable, str(self.STAGE), "--stop",
+                                "--dispatch-id", "codex:live"],
+                               env=env, capture_output=True,
+                               text=True).returncode, 0)
+            real = self._log(env, "--from-pending", "--dispatch-id",
+                             "codex:live", "--outcome", "failed",
+                             "--class", "impl", "--task", "probe", *self.ROUTE)
+            self.assertEqual(real.returncode, 0, real.stderr)
+            self.assertEqual([row["outcome"] for row in self._ledger(temp)],
+                             ["failed"])
+
+    def test_a_corrupt_byte_in_the_ledger_cannot_stop_logging(self) -> None:
+        """Decoding runs before json.loads, so a bad byte is not a bad row.
+
+        Reading the ledger before appending began on 2026-07-30. Until this,
+        one half-written multi-byte character anywhere in the file raised
+        UnicodeDecodeError in every subsequent run of both scripts — the ledger
+        became append-dead until repaired by hand, which is a worse failure
+        than the duplicate the read was added to prevent.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            env = self._env(temp)
+            (temp / "ledger.jsonl").write_bytes(
+                json.dumps({"dispatch_id": "codex:known",
+                            "outcome": "accepted"}).encode("utf-8")
+                + b"\n\xff\xfe truncated\n")
+            fresh = self._log(env, "--dispatch-id", "codex:new", "--outcome",
+                              "accepted", *self.IDENT, *self.ROUTE)
+            self.assertEqual(fresh.returncode, 0, fresh.stderr)
+            staged = subprocess.run(
+                [sys.executable, str(self.STAGE), "--start", "--role",
+                 "executor", "--dispatch-id", "codex:other"],
+                env=env, capture_output=True, text=True)
+            self.assertEqual(staged.returncode, 0, staged.stderr)
+            # Replacing undecodable bytes must not blind the guard to the ids
+            # on the rows that are intact.
+            duplicate = self._log(env, "--dispatch-id", "codex:known",
+                                  "--outcome", "accepted", *self.IDENT,
+                                  *self.ROUTE)
+            self.assertNotEqual(duplicate.returncode, 0, duplicate.stdout)
+            self.assertIn("already in the ledger", duplicate.stderr)
 
     def test_both_scripts_read_the_same_ids_out_of_one_ledger(self) -> None:
         """`experience-log` and `experience-stage` scan the ledger separately.

@@ -120,11 +120,16 @@ def ledger_dispatch_ids() -> set[str]:
     because these scripts share no import path. A malformed line is skipped
     rather than fatal: refusing to log an outcome because an unrelated row is
     corrupt would lose the outcome entirely, which is the failure this ledger
-    exists to prevent.
+    exists to prevent. `errors="replace"` is what makes that true for a corrupt
+    *byte* as well as corrupt JSON - decoding happens before json.loads, so a
+    half-written multi-byte character raised UnicodeDecodeError and killed
+    every subsequent log call until someone repaired the file by hand
+    (2026-07-30 re-review; the ledger only started being read here on
+    2026-07-30, so this was a fresh single point of failure).
     """
     ids: set[str] = set()
     try:
-        with open(LEDGER_PATH, encoding="utf-8") as stream:
+        with open(LEDGER_PATH, encoding="utf-8", errors="replace") as stream:
             for raw in stream:
                 if not raw.strip():
                     continue
@@ -140,52 +145,87 @@ def ledger_dispatch_ids() -> set[str]:
     return ids
 
 
+def read_pending_rows() -> list[dict]:
+    """Pending rows, or none. Caller holds the pending lock."""
+    try:
+        with open(PENDING_PATH, encoding="utf-8") as f:
+            return [json.loads(l) for l in f if l.strip()]
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+def in_flight(dispatch_id: str, rows: list[dict]) -> bool:
+    """A launch this dispatch id has not answered for yet.
+
+    A start with no stop is a leaf that is still running, so its outcome is not
+    knowable and logging one is premature by definition. Nothing checked this:
+    the logger only ever read the ledger, never the pending file, so
+    `--start` followed straight by an explicit log wrote an outcome for a live
+    dispatch and then locked the id - the real outcome could no longer be
+    logged (id in the ledger), the launch could no longer be cancelled (it had
+    run), and reconciliation skips every id the ledger names, so nothing
+    reported it (2026-07-30 re-review).
+    """
+    started = any(row.get("event") == "SubagentStart"
+                  and row.get("dispatch_id") == dispatch_id for row in rows)
+    stopped = any(row.get("event") == "SubagentStop"
+                  and row.get("dispatch_id") == dispatch_id for row in rows)
+    return started and not stopped
+
+
 def consume_pending(dispatch_id: str | None = None, remove: bool = True,
                     expected_stop: dict | None = None) -> dict | None:
     """Select one completion; remove it only after validation succeeds."""
     with pending_lock():
-        try:
-            with open(PENDING_PATH, encoding="utf-8") as f:
-                lines = [json.loads(l) for l in f if l.strip()]
-        except (FileNotFoundError, json.JSONDecodeError):
-            return None
-        candidates = [
-            i for i, row in enumerate(lines)
-            if row.get("event") == "SubagentStop"
-            and (row.get("agent_type") in ROLES
-                 or "codex" in (row.get("agent_type") or ""))
-            and (dispatch_id is None or row.get("dispatch_id") == dispatch_id)
-            and (expected_stop is None or row == expected_stop)
-        ]
-        if dispatch_id is None and len(candidates) > 1:
-            available = ", ".join(lines[i].get("dispatch_id", "?") for i in candidates)
-            raise ValueError(
-                "multiple completed dispatches are pending; pass --dispatch-id "
-                f"with one of: {available}"
-            )
-        stop_index = candidates[-1] if candidates else None
-        if stop_index is None:
-            return None
-        stop = lines[stop_index]
-        start_index = next(
-            (i for i in range(stop_index - 1, -1, -1)
-             if lines[i].get("event") == "SubagentStart"
-             and lines[i].get("agent_id") == stop.get("agent_id")
-             and lines[i].get("session_id") == stop.get("session_id")),
-            None,
+        return consume_pending_locked(dispatch_id, remove, expected_stop)
+
+
+def consume_pending_locked(dispatch_id: str | None = None, remove: bool = True,
+                           expected_stop: dict | None = None) -> dict | None:
+    """`consume_pending` for a caller that already holds the pending lock.
+
+    The lock is not reentrant - flock on a second descriptor of the same file
+    blocks the process against itself - so the whole-lifecycle critical section
+    in `main` calls this instead.
+    """
+    lines = read_pending_rows()
+    candidates = [
+        i for i, row in enumerate(lines)
+        if row.get("event") == "SubagentStop"
+        and (row.get("agent_type") in ROLES
+             or "codex" in (row.get("agent_type") or ""))
+        and (dispatch_id is None or row.get("dispatch_id") == dispatch_id)
+        and (expected_stop is None or row == expected_stop)
+    ]
+    if dispatch_id is None and len(candidates) > 1:
+        available = ", ".join(lines[i].get("dispatch_id", "?") for i in candidates)
+        raise ValueError(
+            "multiple completed dispatches are pending; pass --dispatch-id "
+            f"with one of: {available}"
         )
-        consumed = {stop_index}
-        if start_index is not None:
-            consumed.add(start_index)
-        # Drop legacy system-spawn records with no role while rewriting; they are
-        # not loggable harness dispatches and otherwise accumulate forever.
-        keep = [r for i, r in enumerate(lines)
-                if i not in consumed and r.get("agent_type")]
-        if remove:
-            with open(PENDING_PATH, "w", encoding="utf-8") as f:
-                for r in keep:
-                    f.write(json.dumps(r) + "\n")
-        return stop
+    stop_index = candidates[-1] if candidates else None
+    if stop_index is None:
+        return None
+    stop = lines[stop_index]
+    start_index = next(
+        (i for i in range(stop_index - 1, -1, -1)
+         if lines[i].get("event") == "SubagentStart"
+         and lines[i].get("agent_id") == stop.get("agent_id")
+         and lines[i].get("session_id") == stop.get("session_id")),
+        None,
+    )
+    consumed = {stop_index}
+    if start_index is not None:
+        consumed.add(start_index)
+    # Drop legacy system-spawn records with no role while rewriting; they are
+    # not loggable harness dispatches and otherwise accumulate forever.
+    keep = [r for i, r in enumerate(lines)
+            if i not in consumed and r.get("agent_type")]
+    if remove:
+        with open(PENDING_PATH, "w", encoding="utf-8") as f:
+            for r in keep:
+                f.write(json.dumps(r) + "\n")
+    return stop
 
 
 def main() -> int:
@@ -431,7 +471,8 @@ def main() -> int:
         if not (args.dispatch_id or args.from_pending):
             return
         try:
-            consume_pending(args.dispatch_id, remove=True, expected_stop=stub)
+            consume_pending_locked(args.dispatch_id, remove=True,
+                                   expected_stop=stub)
         except (OSError, ValueError) as error:
             print(
                 f"WARN: pending cleanup failed: {error}",
@@ -439,28 +480,61 @@ def main() -> int:
             )
 
     os.makedirs(os.path.dirname(LEDGER_PATH), exist_ok=True)
-    # One dispatch, one record. Nothing enforced it: the append was
-    # unconditional, so a retry, a second concurrent logger, or a rerun after
-    # the stub cleanup failed all filed the same dispatch twice - with a
-    # contradictory outcome if the second call said so. Both rows then counted
-    # as separate samples in `experience-report` and `experience-revise`, which
-    # is a routing decision made on a sample size that never happened
-    # (2026-07-30 review). The check shares the append's lock; outside it, two
-    # loggers could both read a ledger without the id and both append.
+    # The whole dispatch lifecycle is decided under one lock, in one order.
+    #
+    # `experience-stage` does its own ledger read inside the *pending* lock, so
+    # the pending lock - not the ledger lock - is what the two writers can
+    # actually share. Holding it here is what stops `--start` from clearing a
+    # ledger this run is about to append to, and stops this run from judging a
+    # pending file `--start` is about to add to. The ledger lock stays nested
+    # inside it, always in this order, so a future ledger-only writer is still
+    # excluded without either side being able to hold one and wait on the other.
+    #
+    # Two things are decided in here:
+    #
+    # 1. One dispatch, one record. The append was unconditional, so a retry, a
+    #    second logger, or a rerun after stub cleanup failed all filed the same
+    #    dispatch twice - contradicting itself if the second call said so - and
+    #    both rows counted as separate samples in `experience-report` and
+    #    `experience-revise` (2026-07-30 review).
+    # 2. A dispatch that has not finished has no outcome to record. The logger
+    #    never read the pending file at all, so `--start` followed by an
+    #    explicit log wrote an outcome for a live leaf and sealed the id
+    #    against its real one (2026-07-30 re-review).
     duplicate = False
-    with ledger_lock():
-        if args.dispatch_id and args.dispatch_id in ledger_dispatch_ids():
-            duplicate = True
+    live = False
+    with pending_lock():
+        if args.dispatch_id and in_flight(args.dispatch_id, read_pending_rows()):
+            live = True
         else:
-            with open(LEDGER_PATH, "a", encoding="utf-8") as f:
-                f.write(json.dumps(record, ensure_ascii=False) + "\n")
-    # Outside the ledger lock: `consume_pending` takes the pending lock, and a
-    # process holding one while acquiring the other is how two of them deadlock.
-    # Run on the duplicate path too - the stub's only meaning is "this dispatch
-    # is unanswered" and the ledger already answers it. That is also what makes
-    # the cleanup-failure retry recoverable, since `experience-stage --cancel`
-    # deliberately refuses an id the ledger names.
-    reconcile_stub()
+            with ledger_lock():
+                if args.dispatch_id and args.dispatch_id in ledger_dispatch_ids():
+                    duplicate = True
+                else:
+                    with open(LEDGER_PATH, "a", encoding="utf-8") as f:
+                        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+            # Run on the duplicate path too - the stub's only meaning is "this
+            # dispatch is unanswered" and the ledger already answers it. That is
+            # what makes the cleanup-failure retry recoverable, since
+            # `experience-stage --cancel` refuses an id the ledger names.
+            # Deliberately NOT run on the in-flight path: that carrier is the
+            # only thing that will report the dispatch if its outcome is
+            # forgotten, and this run is the mistake, not the carrier.
+            reconcile_stub()
+    if live:
+        # Deliberately not naming `experience-stage --stop` as the one answer:
+        # it is the native-Codex carrier and stamps request_source=codex, so
+        # recommending it for a claude-code dispatch would relabel the record.
+        parser.error(
+            f"{args.dispatch_id} is still in flight: it has a staged launch and "
+            "no completion, so its outcome is not knowable yet. Record the "
+            "completion first - the SubagentStop hook does that for hook-staged "
+            "dispatches, and native Codex stages it by hand with "
+            f"`experience-stage --stop --dispatch-id {args.dispatch_id}` - then "
+            "log after the quality check. If the leaf never ran, retire the "
+            "launch with --cancel instead. Logging now would seal the id "
+            "against the real outcome"
+        )
     if duplicate:
         parser.error(
             f"{args.dispatch_id} is already in the ledger; one dispatch gets "

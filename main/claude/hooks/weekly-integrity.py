@@ -510,7 +510,10 @@ try:
         )
         reconciled = set()
         try:
-            with open(ledger_path, encoding="utf-8") as stream:
+            # errors="replace": decoding precedes json.loads, so a half-written
+            # multi-byte character would otherwise abort the whole check rather
+            # than cost one row (2026-07-30 re-review).
+            with open(ledger_path, encoding="utf-8", errors="replace") as stream:
                 for raw in stream:
                     if not raw.strip():
                         continue

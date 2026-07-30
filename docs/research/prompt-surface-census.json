@@ -13,13 +13,13 @@
           "words": 1037
         },
         {
-          "bytes": 6387,
-          "file_bytes": 6863,
-          "file_sha256": "f873f88f2949a6bab4d57fbf19d4e268ebeb10b8f84767d6a1cb33a026c28b42",
+          "bytes": 6553,
+          "file_bytes": 7029,
+          "file_sha256": "b0bdb5dcad34289aa9e2dfc78f6a20959a30dc4f1ea3b7880a43f771f1aa894d",
           "kind": "skill-body",
           "path": "main/claude/skills/experience-ledger/SKILL.md",
-          "sha256": "c5d2299d8fb396e39937dfb68829d668282a2df327bb0072d78aa788ff4d9938",
-          "words": 857
+          "sha256": "86418c49ff889e54c69ef4549776e8b7f7c02f44b13ba742b85dd7fd75c199a9",
+          "words": 888
         },
         {
           "bytes": 247,
@@ -76,8 +76,8 @@
         },
         {
           "bytes": 439,
-          "file_bytes": 6863,
-          "file_sha256": "f873f88f2949a6bab4d57fbf19d4e268ebeb10b8f84767d6a1cb33a026c28b42",
+          "file_bytes": 7029,
+          "file_sha256": "b0bdb5dcad34289aa9e2dfc78f6a20959a30dc4f1ea3b7880a43f771f1aa894d",
           "kind": "skill-metadata",
           "path": "main/claude/skills/experience-ledger/SKILL.md",
           "sha256": "0dd12f3a6c64ddc30242294b36e5114a46ea13824655a4ed1bb427a24f8ab366",
@@ -182,13 +182,13 @@
     "codex": {
       "dispatch": [
         {
-          "bytes": 6387,
-          "file_bytes": 6863,
-          "file_sha256": "f873f88f2949a6bab4d57fbf19d4e268ebeb10b8f84767d6a1cb33a026c28b42",
+          "bytes": 6553,
+          "file_bytes": 7029,
+          "file_sha256": "b0bdb5dcad34289aa9e2dfc78f6a20959a30dc4f1ea3b7880a43f771f1aa894d",
           "kind": "skill-body",
           "path": "main/codex/skills/experience-ledger/SKILL.md",
-          "sha256": "c5d2299d8fb396e39937dfb68829d668282a2df327bb0072d78aa788ff4d9938",
-          "words": 857
+          "sha256": "86418c49ff889e54c69ef4549776e8b7f7c02f44b13ba742b85dd7fd75c199a9",
+          "words": 888
         },
         {
           "bytes": 882,
@@ -236,8 +236,8 @@
         },
         {
           "bytes": 439,
-          "file_bytes": 6863,
-          "file_sha256": "f873f88f2949a6bab4d57fbf19d4e268ebeb10b8f84767d6a1cb33a026c28b42",
+          "file_bytes": 7029,
+          "file_sha256": "b0bdb5dcad34289aa9e2dfc78f6a20959a30dc4f1ea3b7880a43f771f1aa894d",
           "kind": "skill-metadata",
           "path": "main/codex/skills/experience-ledger/SKILL.md",
           "sha256": "0dd12f3a6c64ddc30242294b36e5114a46ea13824655a4ed1bb427a24f8ab366",
@@ -344,9 +344,9 @@
   "totals": {
     "claude": {
       "dispatch": {
-        "bytes": 30004,
-        "payload_sha256": "ad074c5c1b1f984a6f13fb6bfa687c03d81caa0b69b374e5f00f5f8bddb079f0",
-        "words": 5031
+        "bytes": 30170,
+        "payload_sha256": "76aa6103f24fbd22fe77486309a72958f7b53f54d3a830664f3d92b29ddc8c79",
+        "words": 5062
       },
       "resident": {
         "bytes": 5827,
@@ -361,9 +361,9 @@
     },
     "codex": {
       "dispatch": {
-        "bytes": 26201,
-        "payload_sha256": "fa182e0eaf7f65e591ae67be0cc0e2ed1475b7d38b1df141c421d9dd4ab30969",
-        "words": 4468
+        "bytes": 26367,
+        "payload_sha256": "3ecc3cfdec9324dad29c0db058be7baf42d45ead03f7f59ef00f92d809d3cbfa",
+        "words": 4499
       },
       "resident": {
         "bytes": 6315,

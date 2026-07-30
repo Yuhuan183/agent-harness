@@ -26,11 +26,14 @@ and session automatically; a native Claude dispatch then only needs its outcome:
   `--from-pending` refuses to guess — pass the hook-generated `--dispatch-id`.
   Any run that names a `--dispatch-id` clears that dispatch's staged stub, so a
   fully explicit record reconciles the pending file the same way.
-- **One record per dispatch is enforced, not just intended.** A second log for
-  an id already in the ledger is refused; the metrics count rows, so a duplicate
-  is an extra sample of something that happened once. The refusal still clears
-  any staged stub, which is how a retry after a failed cleanup ends. To correct
-  a wrong outcome, edit the ledger — a second row is a sample, not a fix.
+- **One record per dispatch, after it finishes — both enforced, not intended.**
+  A second log for an id already in the ledger is refused (the metrics count
+  rows, so a duplicate is an extra sample of one event); that refusal still
+  clears any staged stub, which is how a retry after a failed cleanup ends. A
+  log for an id whose launch has no recorded completion is also refused — its
+  outcome is not knowable yet, and writing one seals the id against the real
+  one. To correct a wrong outcome, edit the ledger: a second row is a sample,
+  not a fix.
 - **Route flags by request source.** Omit `--profile/--model/--effort` on
   native Claude records: the model comes from the dispatch's own transcript and
   the rest from the resolver, tagged `route_source: transcript-verified`. Only
