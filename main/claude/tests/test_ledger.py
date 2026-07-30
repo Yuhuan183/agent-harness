@@ -1354,6 +1354,175 @@ class NativeCodexStagingTests(unittest.TestCase):
         self.assertTrue(os.access(self.STAGE, os.X_OK))
 
 
+class LedgerUniquenessTests(unittest.TestCase):
+    """One dispatch, one record - the cardinality every metric is computed on.
+
+    `experience-report` and `experience-revise` count ledger rows, not
+    dispatches. A dispatch filed twice is therefore two samples of an event
+    that happened once, and if the two rows disagree on `outcome` it is two
+    samples that contradict each other. The append used to be unconditional,
+    so a retry, a concurrent logger, or a rerun after pending cleanup failed
+    all produced exactly that (2026-07-30 review).
+    """
+
+    STAGE = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-stage"
+    LOG = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-log"
+    ROUTE = ("--profile", "balanced", "--model", "gpt-5.6", "--effort", "high")
+    IDENT = ("--role", "executor", "--provider", "codex",
+             "--request-source", "codex", "--class", "impl", "--task", "probe")
+
+    def _env(self, temp: Path) -> dict:
+        return {**os.environ,
+                "AGENT_EXPERIENCE_PENDING": str(temp / "pending.jsonl"),
+                "AGENT_EXPERIENCE_LEDGER": str(temp / "ledger.jsonl")}
+
+    def _log(self, env: dict, *args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run([sys.executable, str(self.LOG), *args],
+                              env=env, capture_output=True, text=True)
+
+    def _ledger(self, temp: Path) -> list[dict]:
+        path = temp / "ledger.jsonl"
+        if not path.exists():
+            return []
+        return [json.loads(line) for line in
+                path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+    def test_a_second_outcome_for_one_dispatch_is_refused(self) -> None:
+        """The contradictory case, because it is the one that misleads.
+
+        Two rows for one dispatch inflate `observed_n`; two rows that disagree
+        on the outcome also make the acceptance rate a number no sequence of
+        real dispatches could produce.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            env = self._env(temp)
+            first = self._log(env, "--dispatch-id", "codex:once",
+                              "--outcome", "accepted", *self.IDENT, *self.ROUTE)
+            self.assertEqual(first.returncode, 0, first.stderr)
+            second = self._log(env, "--dispatch-id", "codex:once",
+                               "--outcome", "failed", *self.IDENT, *self.ROUTE)
+            self.assertNotEqual(second.returncode, 0, second.stdout)
+            self.assertIn("already in the ledger", second.stderr)
+            rows = self._ledger(temp)
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["outcome"], "accepted")
+
+    def test_a_record_without_a_dispatch_id_is_never_treated_as_a_duplicate(self) -> None:
+        """Legacy and hand-written rows carry no id and must stay loggable.
+
+        Deduplicating on a missing key would collapse every such row into one
+        and silently drop real samples - the opposite failure of the same
+        cardinality bug.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            env = self._env(temp)
+            for _ in range(2):
+                run = self._log(env, "--outcome", "accepted",
+                                *self.IDENT, *self.ROUTE)
+                self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertEqual(len(self._ledger(temp)), 2)
+
+    def test_a_refused_duplicate_still_clears_the_stale_stub(self) -> None:
+        """The retry path has to end somewhere.
+
+        Pending cleanup is best-effort and prints a WARN while exiting 0, which
+        invites a rerun. The rerun is now refused, and `experience-stage
+        --cancel` deliberately refuses an id the ledger names - so unless the
+        refusal itself reconciles the stub, that stub has no exit at all and
+        sits in the pending file as a permanent un-reconciled dispatch.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            env = self._env(temp)
+            pending = temp / "pending.jsonl"
+            for stage_args in (("--start", "--role", "executor",
+                                "--dispatch-id", "codex:stale"),
+                               ("--stop", "--dispatch-id", "codex:stale")):
+                staged = subprocess.run(
+                    [sys.executable, str(self.STAGE), *stage_args],
+                    env=env, capture_output=True, text=True)
+                self.assertEqual(staged.returncode, 0, staged.stderr)
+            # The exact bytes the staging path writes, kept so the stub can be
+            # restored: a hand-built one would not match what cleanup consumes.
+            staged_bytes = pending.read_text(encoding="utf-8")
+            self.assertEqual(
+                self._log(env, "--dispatch-id", "codex:stale", "--outcome",
+                          "accepted", *self.IDENT, *self.ROUTE).returncode, 0)
+            self.assertEqual(pending.read_text(encoding="utf-8").strip(), "")
+            # Now the cleanup-failure state: record filed, stub still there.
+            pending.write_text(staged_bytes, encoding="utf-8")
+            refused = self._log(env, "--dispatch-id", "codex:stale",
+                                "--outcome", "accepted", *self.IDENT, *self.ROUTE)
+            self.assertNotEqual(refused.returncode, 0, refused.stdout)
+            self.assertEqual(len(self._ledger(temp)), 1, "refusal still appended")
+            self.assertEqual(
+                pending.read_text(encoding="utf-8").strip(), "",
+                "the stub survived a refusal, so nothing can ever retire it")
+            # And the alternative the refusal names must not be the cancel path,
+            # which is closed by design.
+            cancelled = subprocess.run(
+                [sys.executable, str(self.STAGE), "--cancel",
+                 "--dispatch-id", "codex:stale"],
+                env=env, capture_output=True, text=True)
+            self.assertNotEqual(cancelled.returncode, 0)
+
+    def test_two_concurrent_loggers_cannot_both_file_one_dispatch(self) -> None:
+        """Checking outside the append's lock would let both read a clean ledger.
+
+        Started together and left to race; whichever ordering wins, exactly one
+        row and exactly one success is the only correct result.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            env = self._env(temp)
+            command = [sys.executable, str(self.LOG), "--dispatch-id",
+                       "codex:race", "--outcome", "accepted",
+                       *self.IDENT, *self.ROUTE]
+            running = [subprocess.Popen(command, env=env, text=True,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE)
+                       for _ in range(2)]
+            codes = [process.wait(timeout=60) for process in running]
+            for process in running:
+                process.stdout.close()
+                process.stderr.close()
+            self.assertEqual(sorted(codes), [0, 2], codes)
+            self.assertEqual(len(self._ledger(temp)), 1)
+
+    def test_both_scripts_read_the_same_ids_out_of_one_ledger(self) -> None:
+        """`experience-log` and `experience-stage` scan the ledger separately.
+
+        They share no import path, so the scan is written twice; a divergence
+        would leave one door open while the other is shut. Asserted on
+        behaviour against one ledger rather than on the text of either copy.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            env = self._env(temp)
+            (temp / "ledger.jsonl").write_text(
+                "\n".join([
+                    json.dumps({"dispatch_id": "codex:known", "outcome": "accepted"}),
+                    "",                       # blank line
+                    "{ not json",             # malformed row: skipped, not fatal
+                    json.dumps({"outcome": "accepted"}),   # no id at all
+                ]) + "\n", encoding="utf-8")
+            staged = subprocess.run(
+                [sys.executable, str(self.STAGE), "--start", "--role",
+                 "executor", "--dispatch-id", "codex:known"],
+                env=env, capture_output=True, text=True)
+            logged = self._log(env, "--dispatch-id", "codex:known",
+                               "--outcome", "accepted", *self.IDENT, *self.ROUTE)
+            for name, run in (("stage", staged), ("log", logged)):
+                self.assertNotEqual(run.returncode, 0, f"{name}: {run.stdout}")
+                self.assertIn("already in the ledger", run.stderr, name)
+            # A corrupt neighbouring row must not have been what refused them.
+            fresh = self._log(env, "--dispatch-id", "codex:unknown",
+                              "--outcome", "accepted", *self.IDENT, *self.ROUTE)
+            self.assertEqual(fresh.returncode, 0, fresh.stderr)
+
+
 class RequestSourceSchemaTests(unittest.TestCase):
     def test_codex_launched_claude_cli_is_representable(self) -> None:
         for script in ("experience-log", "experience-report", "experience-revise"):
