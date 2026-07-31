@@ -49,6 +49,9 @@
   [context-and-vendors](research/context-and-vendors.md)）。
 - 調高預算需要證據：先嘗試「移出到 skill／hook／role 契約」，只有內容確屬
   「每 session 必要且推不出」時才擴預算，並在 commit message 記明理由。
+- 棘輪只有升沒有降：目前沒有任何證據路徑可以調低預算。各層餘裕實測、還有哪些槓桿
+  可用、以及取得「修剪許可」所需的量測為何被延後，見
+  [resident-context-options.md](research/resident-context-options.md)。
 - 變更預算單位時，必須以新單位重測所有受管檔案後再定數值。
 
 ## 驗收

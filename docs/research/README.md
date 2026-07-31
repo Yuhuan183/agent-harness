@@ -54,6 +54,7 @@
 | 文件 | 用途 |
 |---|---|
 | [context-and-vendors.md](context-and-vendors.md) | 常駐 context 與官方供應商指引 |
+| [resident-context-options.md](resident-context-options.md) | 常駐成本現況、可用槓桿與延後的 runtime-selection eval |
 | [peer-harnesses.md](peer-harnesses.md) | Deep Agents、Pilotfish 原始碼與版本拆解 |
 | [model-evidence.md](model-evidence.md) | route、effort、成本口徑與外部先驗 |
 | [trap-experiments.md](trap-experiments.md) | 可重播的失敗情境與反證 |
