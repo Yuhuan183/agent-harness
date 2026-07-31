@@ -57,8 +57,11 @@
 變更前後各跑一次，比較鐵律有無遺漏、routing 是否仍正確觸發、常駐 token 差異。
 格式紀律類規則另以 `evals/traps/` 的對應 trap 做 A/B（無失敗 trap 的規則是刪除候選）。
 **動 skill description 前先跑 [s10-skill-recall](../evals/traps/s10-skill-recall/) 兩臂**：
-description 同時是常駐成本與唯一的 routing 面，字數與召回率互相拉扯，而召回率只有
-model-in-the-loop 量得到——測試只能釘住觸發詞在不在，量不出改了措辭之後還召不召得回來。
+description 同時是常駐成本與唯一的 routing 面，字數與鑑別度互相拉扯，而鑑別度只有
+model-in-the-loop 量得到——測試只能釘住觸發詞在不在，量不出改了措辭之後還分不分得開。
+它量的是**鑑別度，不是實際載入行為**（批次分類，非 fresh session 觀測），所以證據不對稱：
+**某一臂失敗是強證據**（連這種容易的條件都過不了），**某一臂通過是弱證據**（必要非充分）。
+通過不等於可以砍；只有失敗能直接否決一次修剪。
 
 `main/.agents/scripts/python3-run scripts/prompt-surface-census.py --check docs/research/prompt-surface-census.json`
 另行鎖定 Claude/Codex 的 resident, dispatch-time skill

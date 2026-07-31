@@ -5,14 +5,22 @@ Never show this file, `grade.py`, or `variants/` to an agent under test.
 ## Why this trap exists
 
 Every other trap here measures what an agent does *after* a skill is loaded.
-Nothing measured whether it loads. That gap had a concrete consequence: a skill
-description is simultaneously permanent resident cost and the only surface that
-routes work to the skill, so the word budget pushes it shorter while recall
-pushes it longer — and on 2026-07-30 a `speak-human-tw` trim was measured (19
-words, ~2% of the resident tier) with no way to test what it cost. It was
-dropped for that reason, and `test_contracts.py` now pins the tokens instead.
-This trap is the missing measurement: it turns "does the description still
-route correctly" into a number, for any description, before the trim ships.
+Nothing measured the description itself. That gap had a concrete consequence: a
+skill description is simultaneously permanent resident cost and the only
+surface that routes work to the skill, so the word budget pushes it shorter
+while recall pushes it longer — and on 2026-07-30 a `speak-human-tw` trim was
+measured (19 words, ~2% of the resident tier) with no way to test what it cost.
+It was dropped for that reason, and `test_contracts.py` now pins the tokens.
+
+**What this trap does and does not measure.** It measures *discriminability*:
+whether a description separates the asks it should take from the ones it should
+not, when an agent reads it deliberately in a batch classification task. It
+does not observe skill loading, and the brief's conditions are easier than a
+live session's in every direction — descriptions in the foreground, the
+question already asked, the answer format supplied. So a failing arm is strong
+evidence (fails the easy condition, cannot pass the hard one) and a passing arm
+is weak (necessary, not sufficient). The first version of this file called it a
+recall measurement outright; that was an overclaim, corrected 2026-07-31.
 
 ## Structure of the item set
 

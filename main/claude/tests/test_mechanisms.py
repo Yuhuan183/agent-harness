@@ -1,4 +1,6 @@
 """Deterministic mechanisms: hooks, sync preflight, statusline, guards."""
+import shutil
+
 from support import *  # noqa: F401,F403
 
 
@@ -1463,6 +1465,101 @@ class TrapGraderIntegrityTests(unittest.TestCase):
                     f"{variant_path.name}: {name} is half-removed — dropped "
                     f"{dropped!r} but kept {kept!r}, so the surface still "
                     "states the rule and the arm tests nothing")
+
+    def test_the_selection_trap_does_not_claim_to_measure_loading(self) -> None:
+        """The eval's stated scope has to match what its grader can see.
+
+        The first version of this trap said it measured "whether the routing
+        surface loads the right skill at all". It cannot: the brief is a batch
+        classification task with every description in the foreground and the
+        answer format supplied, and `grade.py` reads `SELECT:` lines, not
+        invocation events. `contract-slimming.md` then cited it as the gate for
+        description edits, which turned the overclaim into a decision rule
+        (2026-07-31 review).
+
+        Narrowing the claim was the fix, so the claim is what needs the gate —
+        including the asymmetry that makes the weaker measurement still usable:
+        a failing arm refutes a trim, a passing arm does not license one. If a
+        rewrite changes this wording, change it here deliberately; do not
+        delete the assertion to make a rename pass.
+        """
+        required = {
+            "evals/traps/s10-skill-recall/README.md": (
+                "does not observe skill loading",
+                "failing arm is strong",
+                "passing arm is weak",
+            ),
+            "evals/traps/s10-skill-recall/GROUND-TRUTH.md": (
+                "does not observe skill loading",
+                "failing arm is strong",
+                "passing arm is weak",
+            ),
+            "docs/contract-slimming.md": (
+                "鑑別度，不是實際載入行為",
+                "失敗是強證據",
+                "通過是弱證據",
+            ),
+        }
+        for path, phrases in required.items():
+            body = (ROOT / path).read_text(encoding="utf-8")
+            # These are wrapped Markdown, so a phrase may straddle a newline.
+            # Collapsed whitespace covers the English; removed whitespace covers
+            # the zh-TW, where a wrap inserts no space between characters.
+            haystacks = (re.sub(r"\s+", " ", body), re.sub(r"\s+", "", body))
+            for phrase in phrases:
+                self.assertTrue(
+                    any(phrase in hay for hay in haystacks),
+                    f"{path} no longer states {phrase!r}: the trap measures "
+                    "description discriminability under batch classification, "
+                    "not skill loading, and every reader of a result needs "
+                    "that scope plus the strong/weak asymmetry")
+
+    def test_the_selection_grader_exit_zero_means_what_it_claims(self) -> None:
+        """Four ways a perfect-looking run reached exit 0 with findings absent.
+
+        The grader's exit code is the whole result of an arm, and its README
+        reads it as "eighteen decisions matched and nothing was written". Two
+        gaps made that false (2026-07-31 review): the answer loop only walked
+        ANSWERS, so a nineteenth `SELECT:` line was collected and never
+        checked; and the read-only sweep exempted files by basename, so
+        `nested/report.md` and `sub/descriptions.md` were free writes at any
+        depth. Each case is asserted on the exit code, not the wording.
+        """
+        trap = ROOT / self.TRAP
+        grader = trap / "grade.py"
+        answers = {}
+        for line in (trap / "GROUND-TRUTH.md").read_text(encoding="utf-8").split("\n"):
+            match = re.match(r"\|\s*(U\d\d)\s*\|\s*([\w-]+)\s*\|", line)
+            if match:
+                answers[match.group(1)] = match.group(2)
+        self.assertEqual(len(answers), 18, "answer table not parsed")
+        perfect = "\n".join(f"SELECT: {u} -> {a}" for u, a in answers.items())
+
+        def grade(report: str, extra: str | None = None) -> int:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                workdir = Path(temp_dir) / "wd"
+                shutil.copytree(trap / "pristine", workdir)
+                if extra:
+                    (workdir / extra).parent.mkdir(parents=True, exist_ok=True)
+                    (workdir / extra).write_text("x", encoding="utf-8")
+                report_path = Path(temp_dir) / "report.md"
+                report_path.write_text(report + "\n", encoding="utf-8")
+                return subprocess.run(
+                    [sys.executable, str(grader), "--workdir", str(workdir),
+                     "--report", str(report_path)],
+                    capture_output=True, text=True, timeout=60).returncode
+
+        self.assertEqual(grade(perfect), 0, "the control no longer passes")
+        for name, report, extra in (
+            ("a nineteenth decision", perfect + "\nSELECT: U19 -> none", None),
+            ("a missing decision", perfect.split("\n", 1)[1], None),
+            ("report.md in a subdirectory", perfect, "nested/report.md"),
+            ("descriptions.md in a subdirectory", perfect, "sub/descriptions.md"),
+            ("any other created file", perfect, "notes.txt"),
+        ):
+            with self.subTest(name):
+                self.assertEqual(grade(report, extra), 1,
+                                 f"{name} still reaches exit 0")
 
     def test_graders_require_a_report(self) -> None:
         for grader in self.GRADERS:
