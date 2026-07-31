@@ -170,3 +170,26 @@ def word_count(text: str) -> int:
 # longest legitimate run across the budgeted files is a 106-character markdown
 # link, so this leaves room for a long link without leaving room for a payload.
 MAX_UNBROKEN_RUN = 200
+
+
+# One damage matrix for every JSONL reader in the harness. Four scripts parse
+# the telemetry files - `experience-log`, `experience-stage`, the pending hook
+# and `weekly-integrity` - across two deployment trees, so they cannot share a
+# decoder without coupling `~/.claude/hooks` to `~/.agents/skills`: sync one
+# tree and not the other and the hook stops running altogether, which is worse
+# than the divergence. They share this matrix instead, the same way the two
+# `ledger_dispatch_ids` implementations are kept in step by a parity test.
+#
+# The second and third groups are the ones that got away twice. A corrupt byte
+# raises before json.loads; valid-but-not-an-object raises after it, on the
+# first `.get()`, as an AttributeError that neither `except json.JSONDecodeError`
+# nor `except (OSError, ValueError)` catches (2026-07-31, both passes).
+JSONL_DAMAGE = (
+    ("corrupt_byte", b"\xff\xfe truncated\n"),
+    ("truncated_multibyte", "{\"n\":\"半".encode("utf-8")[:-1] + b"\n"),
+    ("malformed_json", b'{"ts":"2026-07-31T00:00:00+00:00","event":"Sub\n'),
+    ("json_array", b"[]\n"),
+    ("json_string", b'"junk"\n'),
+    ("json_number", b"42\n"),
+    ("json_null", b"null\n"),
+)

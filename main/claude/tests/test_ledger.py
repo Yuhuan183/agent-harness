@@ -1668,10 +1668,7 @@ class LedgerUniquenessTests(unittest.TestCase):
     # raised, `weekly-integrity` aborted its entire run, and the hook wrote no
     # stub at all. Only the ledger side was hardened on 2026-07-30, and the
     # pending file is the one a hook appends to on every subagent stop.
-    DAMAGED = (
-        ("corrupt_byte", b"\xff\xfe truncated\n"),
-        ("malformed_json", b'{"ts":"2026-07-31T00:00:00+00:00","event":"Sub\n'),
-    )
+    DAMAGED = JSONL_DAMAGE
 
     def _pending_with_damage(self, temp: Path, damage: bytes, event: str) -> None:
         row = {

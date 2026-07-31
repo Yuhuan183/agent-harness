@@ -199,9 +199,16 @@ def latest_matching_start(agent_id, session_id, stop_time):
                 if not raw.strip():
                     continue
                 try:
-                    records.append(json.loads(raw))
+                    row = json.loads(raw)
                 except json.JSONDecodeError:
                     continue
+                # `[]`, `"junk"`, `42` and `null` are all valid JSON and all
+                # blow up on the first `.get()`. Skipping only malformed JSON
+                # left that whole class live: an AttributeError here still fell
+                # through to the outer `except Exception`, still exited 0, and
+                # still wrote no stub (2026-07-31 re-review, second pass).
+                if isinstance(row, dict):
+                    records.append(row)
     except OSError:
         return None
     for prev in reversed(records):
