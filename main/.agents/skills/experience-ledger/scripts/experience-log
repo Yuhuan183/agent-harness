@@ -285,7 +285,26 @@ def main() -> int:
         except ValueError as error:
             parser.error(str(error))
         if stub is None:
-            parser.error("--from-pending: no staged SubagentStop stub found")
+            # "Still running" and "wrong id" both arrived here with one
+            # message, and they need opposite responses: wait, versus check
+            # what you typed. Measured 2026-07-31 — a real batch hit the first
+            # case one second before the SubagentStop hook landed, and the
+            # message sent the reader hunting for a logging defect that was
+            # not there. The in-flight guard below already says this properly;
+            # `--from-pending` just never reached it.
+            if args.dispatch_id and in_flight(args.dispatch_id, read_pending_rows()):
+                parser.error(
+                    f"{args.dispatch_id} is still in flight: its launch is "
+                    "staged and its completion is not. The leaf is most likely "
+                    "still running — wait for the SubagentStop hook and log "
+                    "after the quality check, or retire the launch with "
+                    "`experience-stage --cancel` if it never ran"
+                )
+            parser.error(
+                "--from-pending: no staged SubagentStop stub found"
+                + (f" for {args.dispatch_id}" if args.dispatch_id else "")
+                + "; check the dispatch id"
+            )
         agent_type = stub.get("agent_type")
         agent_type = LEGACY_ROLE_ALIASES.get(agent_type, agent_type)
         if args.role is None and agent_type in ROLES:

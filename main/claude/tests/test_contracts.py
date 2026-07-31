@@ -792,9 +792,15 @@ class DocumentationBudgetTests(unittest.TestCase):
 
         Written before any trim, deliberately (2026-07-30). A trim was measured
         and then dropped: the honest saving was 19 words, ~2% of the resident
-        tier, against a recall risk this environment cannot measure — no trap
-        under `evals/traps/` exercises skill selection. So the lock lands first
-        and the description is left alone until it is actually near its ceiling.
+        tier, against a recall risk nothing could measure at the time. So the
+        lock landed first and the description was left alone until it is
+        actually near its ceiling.
+
+        `evals/traps/s10-skill-recall` was built afterwards to close that gap
+        and carries the dropped trim as its arm-B surface. It is still a
+        model-in-the-loop eval, not a check this suite can run: these
+        assertions are the cheap layer, the trap is the expensive one, and
+        neither replaces the other.
 
         Word budgets push one way and recall pushes the other. Both are
         asserted, so whenever a trim does happen it has to come out of genuine

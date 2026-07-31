@@ -1312,7 +1312,128 @@ class TrapGraderIntegrityTests(unittest.TestCase):
         "evals/traps/s7-false-completion/grade.py",
         "evals/traps/s8-spec-conflict/grade.py",
         "evals/traps/s9-tz-bucketing/grade.py",
+        "evals/traps/s10-skill-recall/grade.py",
     )
+
+    def test_every_trap_grader_is_registered(self) -> None:
+        """A grader nobody lists is a grader nobody notices has rotted.
+
+        The list above was three hard-coded paths, so s10 could have shipped
+        without the report-required regression covering it (2026-07-30).
+        """
+        self.assertEqual(
+            {str(Path(grader)) for grader in self.GRADERS},
+            {str(path.relative_to(ROOT))
+             for path in (ROOT / "evals/traps").glob("*/grade.py")})
+
+    def test_the_selection_trap_surface_matches_the_live_descriptions(self) -> None:
+        """A trap graded against a stale routing surface measures nothing.
+
+        s10 asks which skill a description loads, so its fixture is the real
+        frontmatters — generated, and checked here the same way the prompt
+        census is, because a copy silently stops being the thing under test.
+        """
+        build = ROOT / "evals/traps/s10-skill-recall/build.py"
+        result = subprocess.run([sys.executable, str(build), "--check"],
+                                capture_output=True, text=True, timeout=60)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    TRAP = "evals/traps/s10-skill-recall"
+    # What each arm removes, and what it must therefore still carry. One lever
+    # per arm except `d`, which is the combination — B and C each came back
+    # clean, and reading that as "cut both" is exactly the inference neither
+    # arm supports, because the two clauses cover for each other.
+    VARIANT_CONTRACTS = {
+        "b-trimmed.md": {
+            "removes": ("客服信", "公告", "銷售頁", "電子報"),
+            "keeps": ("程式碼／log／設定檔", "code/log/config", "改自然一點"),
+        },
+        "c-no-exclusions.md": {
+            "removes": ("程式碼／log／設定檔", "code/log/config", "事實查核"),
+            "keeps": ("客服信", "公告", "改自然一點", "de-AI this text"),
+        },
+        "d-both.md": {
+            "removes": ("客服信", "公告", "程式碼／log／設定檔", "code/log/config"),
+            "keeps": ("改自然一點", "de-AI this text"),
+        },
+    }
+
+    def _speak_human_section(self, body: str) -> str:
+        """Just the speak-human-tw block.
+
+        Scoping matters: four other descriptions also carry a `不觸發：` line,
+        so a whole-file search for that token says nothing about the skill under
+        test — it was the first thing to make this test lie.
+        """
+        _, _, after = body.partition("## speak-human-tw")
+        section, _, _ = after.partition("\n## ")
+        self.assertTrue(section.strip(), "speak-human-tw section not found")
+        return section
+
+    def test_each_selection_trap_variant_removes_what_it_claims_to(self) -> None:
+        """An arm that silently equals the control reports no difference, correctly.
+
+        The variants are hand-written against a generated bundle, so a
+        regenerated surface can absorb a trim and leave an arm identical to
+        pristine. Each arm also has to keep the lever it is *not* testing, or
+        two variables move at once and neither result means anything.
+        """
+        trap = ROOT / self.TRAP
+        pristine = self._speak_human_section(
+            (trap / "pristine/descriptions.md").read_text(encoding="utf-8"))
+        self.assertEqual(
+            set(self.VARIANT_CONTRACTS),
+            {path.name for path in (trap / "variants").glob("*.md")},
+            "a variant exists with no declared contract, or vice versa")
+        for name, contract in self.VARIANT_CONTRACTS.items():
+            body = (trap / "variants" / name).read_text(encoding="utf-8")
+            self.assertNotEqual(body, (trap / "pristine/descriptions.md").read_text(
+                encoding="utf-8"), name)
+            section = self._speak_human_section(body)
+            for token in contract["removes"]:
+                self.assertIn(token, pristine, f"pristine lost {token}")
+                self.assertNotIn(token, section, f"{name}: still carries {token}")
+            for token in contract["keeps"]:
+                self.assertIn(token, section, f"{name}: lost {token}, which it "
+                                              "was supposed to hold fixed")
+
+    def test_a_variant_removes_a_clause_in_every_language_that_states_it(self) -> None:
+        """A bilingual description states some rules twice; a trim must too.
+
+        Measured the hard way (2026-07-30): the first `b-trimmed.md` dropped the
+        zh-TW `不觸發：…程式碼／log／設定檔` and left the English `Not for: …
+        code/log/config` untouched, so arm B's three precision items tested
+        nothing — all three runs cited the surviving English clause by name. A
+        half-removed bilingual pair does not weaken the surface, it just makes
+        the arm quietly agree with the control.
+
+        `speak-human-tw` is the only description stating its rules in two
+        languages, which is why the pair map is short and explicit rather than
+        inferred, and why it is checked inside that section only.
+        """
+        trap = ROOT / self.TRAP
+        pairs = {
+            "code-and-config": ("程式碼／log／設定檔", "code/log/config"),
+            "literal-translation": ("逐字翻譯", "literal translation"),
+            "brand-voice": ("模仿特定品牌", "brand-voice mimicry"),
+            "fact-checking": ("事實查核", "fact-checking"),
+        }
+        pristine = self._speak_human_section(
+            (trap / "pristine/descriptions.md").read_text(encoding="utf-8"))
+        for name, (zh, en) in pairs.items():
+            self.assertIn(zh, pristine, f"pristine lost the zh half of {name}")
+            self.assertIn(en, pristine, f"pristine lost the en half of {name}")
+        for variant_path in sorted((trap / "variants").glob("*.md")):
+            section = self._speak_human_section(
+                variant_path.read_text(encoding="utf-8"))
+            for name, (zh, en) in pairs.items():
+                if (zh in section) == (en in section):
+                    continue
+                kept, dropped = (zh, en) if zh in section else (en, zh)
+                self.fail(
+                    f"{variant_path.name}: {name} is half-removed — dropped "
+                    f"{dropped!r} but kept {kept!r}, so the surface still "
+                    "states the rule and the arm tests nothing")
 
     def test_graders_require_a_report(self) -> None:
         for grader in self.GRADERS:

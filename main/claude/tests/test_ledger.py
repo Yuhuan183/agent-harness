@@ -1552,6 +1552,54 @@ class LedgerUniquenessTests(unittest.TestCase):
             self.assertEqual([row["outcome"] for row in self._ledger(temp)],
                              ["failed"])
 
+    def test_a_running_dispatch_and_a_mistyped_id_read_differently(self) -> None:
+        """Two states, opposite responses, one message until 2026-07-31.
+
+        `--from-pending` failed with "no staged SubagentStop stub found" both
+        when the leaf was still running and when the id did not exist. Hit for
+        real during a fifteen-dispatch batch: one log call landed a second
+        before that leaf's SubagentStop hook, and the message sent the reader
+        looking for a logging defect instead of waiting. The in-flight guard
+        already phrased this correctly on the explicit-flag path; the
+        `--from-pending` path returned before reaching it.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            env = self._env(temp)
+            self.assertEqual(
+                subprocess.run(
+                    [sys.executable, str(self.STAGE), "--start", "--role",
+                     "executor", "--dispatch-id", "codex:running"],
+                    env=env, capture_output=True, text=True).returncode, 0)
+
+            running = self._log(env, "--from-pending", "--dispatch-id",
+                                "codex:running", "--outcome", "accepted",
+                                "--class", "impl", "--task", "probe",
+                                *self.ROUTE)
+            typo = self._log(env, "--from-pending", "--dispatch-id",
+                             "codex:nosuchid", "--outcome", "accepted",
+                             "--class", "impl", "--task", "probe", *self.ROUTE)
+            for run in (running, typo):
+                self.assertNotEqual(run.returncode, 0, run.stdout)
+            self.assertIn("still in flight", running.stderr)
+            self.assertNotIn("still in flight", typo.stderr)
+            self.assertIn("check the dispatch id", typo.stderr)
+            self.assertIn("codex:nosuchid", typo.stderr,
+                          "the id that matched nothing has to be named")
+            self.assertEqual(self._ledger(temp), [], "a refusal wrote a record")
+
+            # And the state the message tells the reader to wait for must work.
+            self.assertEqual(
+                subprocess.run(
+                    [sys.executable, str(self.STAGE), "--stop",
+                     "--dispatch-id", "codex:running"],
+                    env=env, capture_output=True, text=True).returncode, 0)
+            done = self._log(env, "--from-pending", "--dispatch-id",
+                             "codex:running", "--outcome", "accepted",
+                             "--class", "impl", "--task", "probe", *self.ROUTE)
+            self.assertEqual(done.returncode, 0, done.stderr)
+            self.assertEqual(len(self._ledger(temp)), 1)
+
     def test_a_corrupt_byte_in_the_ledger_cannot_stop_logging(self) -> None:
         """Decoding runs before json.loads, so a bad byte is not a bad row.
 
