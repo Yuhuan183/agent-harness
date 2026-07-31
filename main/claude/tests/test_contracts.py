@@ -317,6 +317,37 @@ class CodexContractRestatementTests(unittest.TestCase):
         "inspect and report",
     )
 
+    def test_the_vendor_census_covers_every_justified_clause(self) -> None:
+        """The measurement behind these decisions has to be re-runnable.
+
+        The numbers above are a snapshot of one machine's rollouts. Left as
+        prose they rot silently, and the audit that produced them was already
+        re-derived once by hand and got it wrong. `scripts/codex-prompt-census.py`
+        regenerates them on demand; this fails if a clause is justified here
+        that the census does not measure, or vice versa, so the tool and the
+        reasoning cannot drift apart.
+
+        The census has no `--check` mode on purpose: its input is machine-local
+        and expected to move, so a pinned snapshot would fail for everyone who
+        is not the author. It is evidence for a human decision, not a gate.
+        """
+        import importlib.util
+
+        script = ROOT / "scripts/codex-prompt-census.py"
+        self.assertTrue(script.is_file(), script)
+        spec = importlib.util.spec_from_file_location("codex_prompt_census", script)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        measured = {clause for _, clause, _ in module.CONTRACT_CLAUSES}
+        justified = set(self.SUBAGENT_UNCOVERED) | {"require explicit authority"}
+        self.assertEqual(
+            justified, measured,
+            "every clause kept or dropped on vendor-coverage grounds must be a "
+            "column in the census, so the claim can be rechecked by running it")
+        # And the census must still be reading the vendor's words, not ours:
+        # a rollout for work in this repo quotes the contract everywhere else.
+        self.assertTrue(module.OUR_MARKERS, "circularity check was removed")
+
     def test_clauses_the_subagent_prompt_does_not_carry_stay_in_the_contract(self) -> None:
         policy = read(".codex/AGENTS.contract.md")
         for clause in self.SUBAGENT_UNCOVERED:
