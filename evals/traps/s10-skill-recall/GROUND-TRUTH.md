@@ -129,5 +129,14 @@ were re-cut one-lever-each afterwards, and
 half-removed pair. The lesson generalises past this trap: measuring a trim
 means removing the clause everywhere it is stated.
 
+**If someone builds the runtime-selection version.** Solve the liveness
+criterion first, before any other part: seven of these eighteen answers are
+`none`, which is an assertion that nothing happened, and a session that
+crashed, stalled or asked a clarifying question produces no `Skill` event
+either — so the worse a surface gets, the cleaner its sheet looks. A run's
+"loaded nothing" only counts once the run proves it did substantive work.
+Scope, cost and the reasons this is deferred rather than pending:
+[resident-context-options.md](../../../docs/research/resident-context-options.md).
+
 **Ledger hygiene.** Log every trap dispatch with `--class smoke` so it stays
 out of route-preference decision counts.
