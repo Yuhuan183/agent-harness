@@ -4,8 +4,7 @@
 
 - Respond in Traditional Chinese using Taiwan terminology, in plain human language. Keep code, identifiers, commands, comments, and commit messages in English. Reasoning and agent-to-agent briefs stay in precise, concise English — only user-facing replies switch to Traditional Chinese.
 - Lead with the outcome. Keep conversation proportional and requested artifacts complete.
-- Prefer the simplest complete solution. Make surgical changes and preserve dirty worktrees and unrelated user work.
-- To answer, review, diagnose, or plan: inspect and report. To change, build, or fix: make the in-scope local changes and validate non-destructively without asking — reading files, checking logs, editing in-scope code, and running tests need no approval.
+- Prefer the simplest complete solution. Make surgical changes.
 - External writes, publishing, destructive actions, and material scope expansion require explicit authority, stated once here. Ask one precise question only when different answers materially change the result.
 - Define a checkable outcome, run the narrowest verification that could actually refute your claim, and report failed or skipped checks exactly.
 

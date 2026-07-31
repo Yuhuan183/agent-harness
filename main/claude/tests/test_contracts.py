@@ -33,9 +33,17 @@ class ClaudeContractTests(unittest.TestCase):
         guidance reports that repeating approval language makes a model ask
         permission for safe, expected actions. Each phrase below is carried by
         the harness prompt in equivalent or stronger form, so this contract must
-        not carry it again. Note this applies to the Claude Code CLI only: the
-        Codex contract and the app prompts face thinner host prompts and keep
-        their own authority boundary.
+        not carry it again.
+
+        This used to add "the Codex contract faces a thinner host prompt and
+        keeps its own authority boundary". That was never measured, and it is
+        false: Codex records its own base instructions into every rollout
+        (`session_meta.base_instructions`), and the 2026-07-31 audit of one —
+        17,730 characters, cli 0.146.0 — found a full "Autonomy and
+        persistence" section plus a twelve-bullet "Destructive Actions" section
+        that state the authority boundary *more* completely than the contract
+        did. See `CodexContractRestatementTests` for what that audit removed and
+        what it deliberately kept.
         """
         policy = read(".claude/CLAUDE.contract.md")
         for restated in (
@@ -265,6 +273,51 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertNotIn("[LEAF_DISPATCH]", provider)
         self.assertIn("Own Codex dispatch", leaf_flat)
         self.assertIn("do not select main model", leaf_flat)
+
+
+class CodexContractRestatementTests(unittest.TestCase):
+    """What the 2026-07-31 vendor-restatement audit settled for the Codex side.
+
+    Evidence was provider-recorded, not inferred: Codex writes its own base
+    instructions into `session_meta.base_instructions` of every rollout under
+    `~/.codex/sessions`, so the host prompt can be read verbatim rather than
+    guessed at. That is why this audit is repeatable on Codex and not on Claude
+    Code, which records its system prompt nowhere — the Claude side of L4 is
+    still open for want of the same evidence.
+    """
+
+    def test_the_autonomy_paragraph_stays_deleted(self) -> None:
+        """Codex's own "Autonomy and persistence" section says all of this.
+
+        It enumerates answer/diagnose/change-or-build the same way, and adds
+        "You do not need to ask for clarification from the user if your action
+        is scoped within the user's task" — so the contract's ~50-word copy
+        bought nothing. Removing it costs no behaviour: if the vendor ever
+        drops the section, the failure is Codex asking permission too often,
+        which is the safe direction to fail in.
+        """
+        policy = read(".codex/AGENTS.contract.md")
+        for restated in (
+            "need no approval",
+            "validate non-destructively without asking",
+            "preserve dirty worktrees",
+        ):
+            self.assertNotIn(restated, policy, restated)
+
+    def test_the_authority_sentence_is_kept_on_purpose(self) -> None:
+        """The one restatement the audit did not take, and why.
+
+        Codex's "# Destructive Actions" section covers this more strongly than
+        the contract line does, so by the letter of the no-restatement rule it
+        should go too. It stays because the two failure directions are not
+        symmetric: losing the autonomy paragraph to vendor drift makes Codex
+        over-cautious, losing this one makes it act destructively without
+        authority. A clause is not worth deleting for ~35 words when the tail
+        risk is that shape. Recorded as a deliberate exception so the next
+        audit does not have to rediscover the reasoning.
+        """
+        policy = read(".codex/AGENTS.contract.md")
+        self.assertIn("require explicit authority", policy)
 
 
 class CodexBundleTests(unittest.TestCase):

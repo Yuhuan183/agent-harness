@@ -229,10 +229,10 @@
       ],
       "resident": [
         {
-          "bytes": 3696,
+          "bytes": 3386,
           "path": "main/codex/AGENTS.contract.md",
-          "sha256": "21d9731937d6d68190399df49490a1138a5e822f2608b5917358fc34b7b6902c",
-          "words": 527
+          "sha256": "9a37896b4db17d5f7e54aa80c709284ed24b62edb1e8ae6acba49f212d5cd263",
+          "words": 480
         },
         {
           "bytes": 439,
@@ -366,9 +366,9 @@
         "words": 4517
       },
       "resident": {
-        "bytes": 6315,
-        "payload_sha256": "1df76d8a06f6942299b8aedec2826971233a97a82b1e67f572d9740a7791c7c0",
-        "words": 1042
+        "bytes": 6005,
+        "payload_sha256": "03fa245b70560db773e3a6dd43a42e35fd534c290a443bdd73a006b6a2d8eb4d",
+        "words": 995
       },
       "roles": {
         "bytes": 10674,

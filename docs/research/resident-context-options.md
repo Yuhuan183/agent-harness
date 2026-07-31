@@ -35,7 +35,9 @@ context 變長時的可靠性下滑；原則 2 講的是規則彼此稀釋注意
 | | 契約 | skill metadata | 常駐合計 | 餘裕 |
 |---|---|---|---|---|
 | Claude | 397 / 520 | 595 / 620 | 992 / 1140 | 148 |
-| Codex | 527 / 540 | 515 / 540 | 1042 / 1080 | **38** |
+| Codex | 480 / 540 | 515 / 540 | 995 / 1080 | 85 |
+
+（Codex 契約 2026-07-31 由 527 降為 480，見下方 L4。餘裕從 38 回到 85。）
 
 skill metadata 逐項（兩側共用的描述逐字相同）：
 
@@ -59,9 +61,9 @@ Codex 側餘裕 38 words（約半支 skill 的描述）是這份盤點的直接�
 | # | 結果 | 什麼情況下是對的 | 證據狀態 |
 |---|---|---|---|
 | L1 | 修剪 description | 該子句刪掉不會讓模型犯錯 | **未證實**——s10 arm B/C 通過是弱證據 |
-| L2 | 稽核兩份契約的落差 | 那 130 words 有一部分刪掉不影響 Codex | **未查** |
+| L2 | 稽核兩份契約的落差 | 那 130 words 有一部分刪掉不影響 Codex | **部分解答**——47 words 是 L4 材料，剩 83 |
 | L3 | 分層移出（→ skill／hook／role） | 內容不是每 session 必要 | 規範既有第一手段，已大量套用 |
-| L4 | 刪除供應商已保證的行為 | 重述 = 純注意力稅 | **未跑**，CLI 大版本後應重做 |
+| L4 | 刪除供應商已保證的行為 | 重述 = 純注意力稅 | **Codex 側已跑**（2026-07-31）；Claude 側缺證據 |
 | L5 | 抑制新增 | 新規則推得出來 | 已有機制（新 skill 未登錄即測試失敗）|
 | **L6** | **調高預算** | **每一句都通過原則 1** | 規範明文允許（需理由寫進 commit）|
 
@@ -95,20 +97,51 @@ error log／Python 程式碼全導向 `speak-human-tw`。
 可查的是：那 130 words 裡哪些**刪掉會讓 Codex 犯錯**。這需要一次人工逐條對照，
 不需要任何新設施——但**做完之後結論可能是 L6**，不要預設是 L2 執行。
 
-### L4 · 供應商重述稽核
+### L4 · 供應商重述稽核（Codex 側已執行 2026-07-31）
 
-規範原則 2b(b) 已定：「重述 system prompt 已保證的行為是純注意力稅，一律刪」，並要求
-CLI 大版本更新後重跑。這是**唯一一條報酬與字數無關**的槓桿——刪掉重述同時減少稀釋
-**與**矛盾，兩者都直接作用在效果上。沒有機制，只有紀律，目前未動用。
+**證據來源**：Codex 把自己的 base instructions 寫進每個 rollout 的
+`session_meta.base_instructions`（`~/.codex/sessions/**/rollout-*.jsonl`），所以 host prompt
+可以**逐字讀取**而不是推測。本次讀的是 17,730 字元、cli 0.146.0 的一份。
+
+**發現一（最重要，與字數無關）**：`test_contracts.py` 原本有一句
+「Codex 契約面對較薄的 host prompt，因此保留自己的 authority boundary」——**這句從未被量測，
+而且是錯的**。Codex 的 host prompt 有完整的〈Autonomy and persistence〉段落，以及十二條
+的〈Destructive Actions〉段落，在授權邊界這件事上**比契約寫得更完整**。一個被測試斷言、
+卻建立在未驗證前提上的例外，比多出來的字數嚴重。
+
+**已刪**（−47 words）：
+
+| 內容 | 供應商已保證的對應 |
+|---|---|
+| 「answer/diagnose/change 分流；讀檔、看 log、改 in-scope、跑測試免核准」 | 〈Autonomy and persistence〉逐條列同樣的分流，並加上「action scoped within the user's task 不必問」 |
+| 「preserve dirty worktrees and unrelated user work」 | 〈File editing constraints〉：「Existing or new changes belong to the user… you preserve them, ignore unrelated edits」，且多了無法處理時的 escalate |
+
+**刻意保留**：外部寫入／破壞性動作的授權句。照規則它也該刪，但兩個失效方向不對稱——
+弄丟 autonomy 段落只會讓 Codex 過度謹慎，弄丟這句會讓它未經授權做破壞性動作。
+為 ~35 words 承擔那種形狀的尾部風險不划算。已寫成
+`CodexContractRestatementTests` 的具名例外，下次稽核不必重新推導。
+
+**未刪**：語言規定、orchestration 整段、「narrowest verification that could refute」、
+`DECISION:`／`[UNCERTAIN:]` 標記、RTK——Codex host prompt 完全沒有 subagent／派工概念，
+也沒有語言規定，這些都是加值而非重述。
+
+### L4 · Claude 側：無法執行
+
+**Claude Code 不記錄自己的 system prompt**（transcript 的 record types 裡沒有任何一種
+承載它）。唯一來源是執行中 session 的 context，而那份**混合了供應商固定文字與本機注入**，
+無法可靠分離，且 n=1。
+
+所以 L4 在兩個 provider 上的可稽核性不對等：**Codex 可重複執行，Claude 不行。**
+要補上，需要一個等價於 rollout `base_instructions` 的擷取管道。在那之前，Claude 契約的
+既有 5 條禁述清單（`test_claude_md_does_not_restate_the_harness_system_prompt`）維持不變，
+但要知道它的證據基礎比 Codex 側弱。
 
 ## 目前的建議
 
-**沒有任何一條槓桿有「刪掉會讓模型犯錯」的反證，所以沒有一條該現在動。**
+**除了已執行的 L4，沒有任何一條槓桿有「刪掉會讓模型犯錯」的反證，所以沒有一條該現在動。**
 
-唯一該做的是 L4（矛盾／重述稽核），因為它的報酬不是省字，是同時消除稀釋與矛盾——
-而矛盾是規範 2b 認定「更貴」的那一類失敗。它也不需要等任何量測。
-
-L2 值得查，但要用原則 1 的問題去查，不是用字數去查。
+L2 的 130-word 落差已部分解答：其中 47 是 Codex 重述自己的 host prompt，刪除後兩側常駐
+總計為 992 vs 995。剩下的 83 words 仍未查，但要用原則 1 的問題去查，不是用字數去查。
 
 ## 延後項：runtime-selection eval
 
