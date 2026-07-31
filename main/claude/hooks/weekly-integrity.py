@@ -531,7 +531,13 @@ try:
         )
         cutoff = datetime.now(timezone.utc).timestamp() - 86400
         stale = {}
-        with open(pending_path, encoding="utf-8") as stream:
+        # Same `errors="replace"` as the ledger read above, and for the same
+        # reason twice over: the pending file is the one a hook appends to on
+        # every subagent stop, and a UnicodeDecodeError is a ValueError, not an
+        # OSError - so it escaped the handler below, aborted the whole check,
+        # and discarded every finding collected before this point
+        # (2026-07-31 re-review).
+        with open(pending_path, encoding="utf-8", errors="replace") as stream:
             for raw in stream:
                 if not raw.strip():
                     continue
@@ -575,7 +581,7 @@ try:
                 "native Codex launch that never ran with experience-stage "
                 "--cancel):\n" + "\n".join(stale)
             )
-    except OSError:
+    except (OSError, ValueError):
         pass
 
     # A gate that stopped being able to read its carrier stops gating, and the

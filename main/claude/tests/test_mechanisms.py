@@ -552,6 +552,35 @@ class MechanismTests(unittest.TestCase):
         ])
         self.assertNotIn("un-reconciled dispatches", quiet)
 
+    def test_a_damaged_pending_row_cannot_abort_the_whole_check(self) -> None:
+        """One bad byte took the entire integrity report down with it.
+
+        The ledger read was given `errors="replace"` on 2026-07-30; the pending
+        read beside it was not, and a UnicodeDecodeError is a ValueError, not an
+        OSError — so it escaped the local handler, hit the outer catch-all, and
+        the hook printed `check failed unexpectedly` instead of every finding it
+        had already collected. The pending file is the one a hook appends to on
+        every subagent stop, so it is the likelier of the two to be damaged.
+        """
+        hook = ROOT / "main/claude/hooks/weekly-integrity.py"
+        stub = {"event": "SubagentStop", "agent_type": "mech-executor",
+                "ts": "2020-01-01T00:00:00+00:00",
+                "dispatch_id": "sess:never-logged"}
+        for name, damage in (("corrupt_byte", b"\xff\xfe truncated\n"),
+                             ("malformed_json", b'{"event":"Sub\n')):
+            with self.subTest(name), tempfile.TemporaryDirectory() as temp_home:
+                home = Path(temp_home)
+                (home / ".agents/telemetry").mkdir(parents=True)
+                (home / ".agents/telemetry/experience-pending.jsonl").write_bytes(
+                    json.dumps(stub).encode("utf-8") + b"\n" + damage)
+                result = subprocess.run(
+                    [sys.executable, str(hook)],
+                    env={**os.environ, "HOME": temp_home,
+                         "AGENT_HARNESS_REPO": str(home / "repo")},
+                    check=True, capture_output=True, text=True)
+                self.assertNotIn("check failed unexpectedly", result.stdout)
+                self.assertIn("sess:never-logged", result.stdout)
+
     def test_sync_and_weekly_integrity_share_one_deployment_manifest(self) -> None:
         hook = read(".claude/hooks/weekly-integrity.py")
         sync = read("scripts/sync.sh")

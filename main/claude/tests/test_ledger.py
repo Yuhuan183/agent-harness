@@ -1663,6 +1663,123 @@ class LedgerUniquenessTests(unittest.TestCase):
                               "--outcome", "accepted", *self.IDENT, *self.ROUTE)
             self.assertEqual(fresh.returncode, 0, fresh.stderr)
 
+    # The pending file has four readers and had four different answers to one
+    # damaged row: the logger read the whole file as empty, `experience-stage`
+    # raised, `weekly-integrity` aborted its entire run, and the hook wrote no
+    # stub at all. Only the ledger side was hardened on 2026-07-30, and the
+    # pending file is the one a hook appends to on every subagent stop.
+    DAMAGED = (
+        ("corrupt_byte", b"\xff\xfe truncated\n"),
+        ("malformed_json", b'{"ts":"2026-07-31T00:00:00+00:00","event":"Sub\n'),
+    )
+
+    def _pending_with_damage(self, temp: Path, damage: bytes, event: str) -> None:
+        row = {
+            "ts": "2026-07-31T00:00:00+00:00", "event": event,
+            "agent_type": "explore", "agent_id": "a1", "session_id": "s1",
+            "dispatch_id": "s1:a1", "request_source": "claude-code",
+        }
+        (temp / "pending.jsonl").write_bytes(
+            json.dumps(row).encode("utf-8") + b"\n" + damage)
+
+    def test_a_damaged_pending_row_cannot_blind_the_in_flight_guard(self) -> None:
+        """The dangerous direction: unreadable must not be read as "not in flight".
+
+        `read_pending_rows` returned `[]` for the whole file on one malformed
+        line, and `in_flight` reads no rows as no launch — so a single bad row
+        waved through the exact write the guard was added to refuse: an outcome
+        for a leaf still running, which then seals the id against the real one.
+        """
+        for name, damage in self.DAMAGED:
+            with self.subTest(name), tempfile.TemporaryDirectory() as temp_dir:
+                temp = Path(temp_dir)
+                env = self._env(temp)
+                self._pending_with_damage(temp, damage, "SubagentStart")
+                run = self._log(env, "--dispatch-id", "s1:a1", "--outcome",
+                                "accepted", *self.IDENT, *self.ROUTE)
+                self.assertNotEqual(run.returncode, 0, run.stdout)
+                self.assertIn("still in flight", run.stderr)
+                self.assertEqual(self._ledger(temp), [], "outcome was recorded")
+
+    def test_a_damaged_pending_row_cannot_stop_staging(self) -> None:
+        """`experience-stage` died on an uncaught traceback instead.
+
+        A native Codex dispatch that cannot stage a launch has no carrier at
+        all, which is the invisible-dispatch success bias the script exists to
+        prevent — reintroduced by one bad byte in a file it only reads.
+        """
+        for name, damage in self.DAMAGED:
+            with self.subTest(name), tempfile.TemporaryDirectory() as temp_dir:
+                temp = Path(temp_dir)
+                env = self._env(temp)
+                self._pending_with_damage(temp, damage, "SubagentStart")
+                staged = subprocess.run(
+                    [sys.executable, str(self.STAGE), "--start", "--role",
+                     "executor", "--dispatch-id", "codex:new"],
+                    env=env, capture_output=True, text=True)
+                self.assertEqual(staged.returncode, 0, staged.stderr)
+                self.assertIn("codex:new", (temp / "pending.jsonl")
+                              .read_text(encoding="utf-8", errors="replace"))
+
+    def test_dropping_an_unreadable_pending_row_is_announced(self) -> None:
+        """The rewrite is the only automatic repair, so it must not be silent.
+
+        Skipping a damaged row on read means the next rewrite drops it. That is
+        the right outcome — it carries no readable dispatch id and can never be
+        reconciled — but a cleanup that discards bytes without a word is how a
+        repair becomes an unnoticed loss.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            env = self._env(temp)
+            for stage_args in (("--start", "--role", "executor",
+                                "--dispatch-id", "codex:pair"),
+                               ("--stop", "--dispatch-id", "codex:pair")):
+                self.assertEqual(subprocess.run(
+                    [sys.executable, str(self.STAGE), *stage_args],
+                    env=env, capture_output=True, text=True).returncode, 0)
+            pending = temp / "pending.jsonl"
+            pending.write_bytes(pending.read_bytes() + b"\xff\xfe truncated\n")
+            run = self._log(env, "--from-pending", "--dispatch-id", "codex:pair",
+                            "--outcome", "accepted", "--class", "impl",
+                            "--task", "probe", *self.ROUTE)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertIn("unreadable pending row", run.stderr)
+            self.assertEqual(pending.read_text(encoding="utf-8").strip(), "")
+
+    def test_the_hook_still_stages_a_stop_past_a_damaged_row(self) -> None:
+        """The silent one, and therefore the worst of the four.
+
+        The hook is fail-open by design, so the UnicodeDecodeError raised while
+        it looked up the matching launch never surfaced: it fell through to the
+        outer `except Exception`, exited 0, and wrote no completion stub at all.
+        Every dispatch after that point lost its carrier with no message
+        anywhere — and `weekly-integrity`, which would name the loss, aborted on
+        the same byte.
+        """
+        hook = ROOT / "main/claude/hooks/experience-pending.py"
+        start = {
+            "ts": "2026-07-31T00:00:00+00:00", "event": "SubagentStart",
+            "agent_type": "explore", "agent_id": "a1", "session_id": "s1",
+            "dispatch_id": "s1:a1", "request_source": "claude-code",
+        }
+        for name, damage in self.DAMAGED:
+            with self.subTest(name), tempfile.TemporaryDirectory() as temp_dir:
+                pending = Path(temp_dir) / "pending.jsonl"
+                pending.write_bytes(
+                    json.dumps(start).encode("utf-8") + b"\n" + damage)
+                run = subprocess.run(
+                    [sys.executable, str(hook)],
+                    input=json.dumps({"hook_event_name": "SubagentStop",
+                                      "agent_type": "explore", "agent_id": "a1",
+                                      "session_id": "s1"}),
+                    env={**os.environ, "AGENT_EXPERIENCE_PENDING": str(pending)},
+                    capture_output=True, text=True)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                body = pending.read_text(encoding="utf-8", errors="replace")
+                self.assertIn("SubagentStop", body,
+                              "the completion carrier was dropped in silence")
+
 
 class RequestSourceSchemaTests(unittest.TestCase):
     def test_codex_launched_claude_cli_is_representable(self) -> None:

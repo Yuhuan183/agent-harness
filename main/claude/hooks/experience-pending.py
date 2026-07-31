@@ -185,11 +185,24 @@ def latest_matching_start(agent_id, session_id, stop_time):
     """Return the newest start for this exact dispatch before the stop.
 
     Agent ids are not assumed to be globally unique across sessions.
+
+    A damaged row costs one row, not the scan. The hook is fail-open, so an
+    uncaught UnicodeDecodeError here did not crash anything visibly - it fell
+    through to the outer `except Exception` and returned exit 0 having written
+    no stub at all, so every later dispatch lost its completion carrier in
+    silence (2026-07-31 re-review).
     """
+    records = []
     try:
-        with open(PENDING, encoding="utf-8") as f:
-            records = [json.loads(line) for line in f if line.strip()]
-    except (FileNotFoundError, json.JSONDecodeError):
+        with open(PENDING, encoding="utf-8", errors="replace") as f:
+            for raw in f:
+                if not raw.strip():
+                    continue
+                try:
+                    records.append(json.loads(raw))
+                except json.JSONDecodeError:
+                    continue
+    except OSError:
         return None
     for prev in reversed(records):
         if (prev.get("event") != "SubagentStart"
