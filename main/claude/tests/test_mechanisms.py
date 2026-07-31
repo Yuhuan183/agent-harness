@@ -568,20 +568,29 @@ class MechanismTests(unittest.TestCase):
         stub = {"event": "SubagentStop", "agent_type": "mech-executor",
                 "ts": "2020-01-01T00:00:00+00:00",
                 "dispatch_id": "sess:never-logged"}
-        for name, damage in (("corrupt_byte", b"\xff\xfe truncated\n"),
-                             ("malformed_json", b'{"event":"Sub\n')):
-            with self.subTest(name), tempfile.TemporaryDirectory() as temp_home:
-                home = Path(temp_home)
-                (home / ".agents/telemetry").mkdir(parents=True)
-                (home / ".agents/telemetry/experience-pending.jsonl").write_bytes(
-                    json.dumps(stub).encode("utf-8") + b"\n" + damage)
-                result = subprocess.run(
-                    [sys.executable, str(hook)],
-                    env={**os.environ, "HOME": temp_home,
-                         "AGENT_HARNESS_REPO": str(home / "repo")},
-                    check=True, capture_output=True, text=True)
-                self.assertNotIn("check failed unexpectedly", result.stdout)
-                self.assertIn("sess:never-logged", result.stdout)
+        # Both files it reads, because they are two separate parsers with the
+        # same assumption: the ledger scan reconciles ids, the pending scan
+        # finds the stale stubs, and either one aborting takes the whole check
+        # down with every finding collected before it.
+        for name, damage in JSONL_DAMAGE:
+            for target in ("experience-pending.jsonl", "experience.jsonl"):
+                with self.subTest(f"{name}/{target}"), \
+                        tempfile.TemporaryDirectory() as temp_home:
+                    home = Path(temp_home)
+                    telemetry = home / ".agents/telemetry"
+                    telemetry.mkdir(parents=True)
+                    (telemetry / "experience-pending.jsonl").write_bytes(
+                        json.dumps(stub).encode("utf-8") + b"\n"
+                        + (damage if target.startswith("experience-p") else b""))
+                    (telemetry / "experience.jsonl").write_bytes(
+                        damage if target == "experience.jsonl" else b"")
+                    result = subprocess.run(
+                        [sys.executable, str(hook)],
+                        env={**os.environ, "HOME": temp_home,
+                             "AGENT_HARNESS_REPO": str(home / "repo")},
+                        check=True, capture_output=True, text=True)
+                    self.assertNotIn("check failed unexpectedly", result.stdout)
+                    self.assertIn("sess:never-logged", result.stdout)
 
     def test_sync_and_weekly_integrity_share_one_deployment_manifest(self) -> None:
         hook = read(".claude/hooks/weekly-integrity.py")

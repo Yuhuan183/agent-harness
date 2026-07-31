@@ -521,6 +521,13 @@ try:
                         logged = json.loads(raw)
                     except json.JSONDecodeError:
                         continue
+                    # Valid JSON is not necessarily an object. `[]`, `"junk"`,
+                    # `42` and `null` all parse and all raise on `.get()` -
+                    # an AttributeError, which the `except OSError` below does
+                    # not catch either, so one such row aborted the entire
+                    # check (2026-07-31 re-review, second pass).
+                    if not isinstance(logged, dict):
+                        continue
                     if logged.get("dispatch_id"):
                         reconciled.add(logged["dispatch_id"])
         except OSError:
@@ -544,6 +551,8 @@ try:
                 try:
                     row = json.loads(raw)
                 except json.JSONDecodeError:
+                    continue
+                if not isinstance(row, dict):  # see the ledger read above
                     continue
                 agent_type = row.get("agent_type") or ""
                 if row.get("event") == "SubagentStart":
