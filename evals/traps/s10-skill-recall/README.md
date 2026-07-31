@@ -1,14 +1,32 @@
 # s10-skill-recall trap (selection-trap)
 
-Fourth behavioral trap, and the first that measures something happening
-*before* a skill runs: whether the routing surface loads the right skill at all.
-`s7`/`s8`/`s9` all begin with the agent already inside the work.
+Fourth behavioral trap, and the first aimed at something happening *before* a
+skill runs. `s7`/`s8`/`s9` all begin with the agent already inside the work.
 
-The gap was concrete. A skill description is permanent resident cost **and** the
-only surface that routes work to that skill, so the word budget pushes it
-shorter while recall pushes it longer. On 2026-07-30 a `speak-human-tw` trim was
-measured — 19 words, ~2% of the resident tier — and dropped, because nothing
-here could say what it cost. This trap is that measurement.
+**What it measures, exactly: whether a description discriminates the asks it
+should and should not take, when an agent reads it deliberately.** It does not
+observe skill loading. The brief is a batch classification task — all six
+descriptions and all eighteen utterances in front of the agent at once, the
+answer format given — and `grade.py` reads `SELECT:` lines, not invocation
+events. Real auto-selection is a harder condition: one opening message, the
+description competing with a whole system prompt, nobody having asked "which
+skill applies". Reading a passing arm as "routing still works" is the mistake
+this paragraph exists to prevent (2026-07-31 review, which named the overclaim
+in the first version of this file).
+
+That makes the evidence asymmetric, and the asymmetry is what the arms are for:
+
+- **A failing arm is strong.** A description that cannot discriminate under the
+  easy condition certainly cannot under the hard one. Arm D's result stands.
+- **A passing arm is weak.** Discriminability is necessary, not sufficient. B
+  and C passing does not license either trim.
+
+The gap it addresses is still concrete. A skill description is permanent
+resident cost **and** the only surface that routes work to that skill, so the
+word budget pushes it shorter while recall pushes it longer. On 2026-07-30 a
+`speak-human-tw` trim was measured — 19 words, ~2% of the resident tier — and
+dropped, because nothing here could say what it cost. This trap is a lower
+bound on that cost, which is more than nothing and less than a routing test.
 
 ## Layout
 
@@ -33,13 +51,14 @@ trap graded against last month's routing surface measures nothing.
    dispatches — Codex `apply_patch` is confined to it).
 3. Dispatch `briefs/arm-a-leaf-brief.md` verbatim; capture the final report.
 4. `python3 grade.py --workdir <copy> --report <report file>` — exit 0 only when
-   all eighteen decisions match, nothing was written, and the surface is
-   recognised. `--json` for a machine-readable summary.
+   the decisions are exactly U01–U18 and all match, nothing was written
+   anywhere under the workdir, and the surface is recognised. `--json` for a
+   machine-readable summary.
 
 Arms B/C/D are the same brief over a workdir whose `descriptions.md` was
 replaced by that arm's variant. Three samples per arm minimum; one sample cannot
-separate a routing defect from run-to-run variance. Lever table and rationale:
-`GROUND-TRUTH.md`.
+separate a discrimination defect from run-to-run variance. Lever table and
+rationale: `GROUND-TRUTH.md`.
 
 ## What the codes mean
 
@@ -50,13 +69,17 @@ Precision-critical asks (U09, U10, U11) each carry a verbatim trigger phrase
 attached to work the 不觸發 clause rules out — they are what an exclusion trim
 costs. A `-critical` finding is the trap working, not a fixture to tune.
 
-Self-test after any fixture edit (all eight verified 2026-07-30): a perfect
-sheet exits 0; a sheet with the three precision items flipped raises exactly
-`R2-overtriggered-critical` ×3; a one-line report
-raises `R4-missing` ×17; an empty report is refused by the argument parser; a
-variant surface is named rather than flagged; a hand-edited surface raises
+Self-test after any fixture edit (eight verified 2026-07-30, four more
+2026-07-31): a perfect sheet exits 0; a sheet with the three precision items
+flipped raises exactly `R2-overtriggered-critical` ×3; a one-line report raises
+`R4-missing` ×17; an empty report is refused by the argument parser; a variant
+surface is named rather than flagged; a hand-edited surface raises
 `S2-surface`; an appended `utterances.md` raises `S1-edited`; an invented skill
-name raises `R5-malformed`.
+name raises `R5-malformed`. Added after a review found each reaching exit 0: a
+nineteenth `SELECT:` line raises `R5-malformed`, and a created
+`nested/report.md`, `sub/descriptions.md` or any other file raises `S1-added` —
+the two exempt names are matched as exact paths, not basenames at any depth.
+`test_the_selection_grader_exit_zero_means_what_it_claims` runs these four.
 
 **Ledger hygiene.** Log every trap dispatch with `--class smoke` (excluded from
 route-preference decision counts).
@@ -80,14 +103,21 @@ precision failure appears immediately. **The 2026-07-30 decision to leave the
 description alone is upheld, for a reason nobody had stated: its length is
 partly redundancy that only shows up when you take both copies away.**
 
-Neither B nor C alone is disproven as a trim. Anyone taking one should take
-exactly one, and re-run D-shaped arms before taking the second.
+Neither B nor C alone is disproven as a trim — and by the asymmetry at the top
+of this file, neither is *proven* either: a clean arm here means the clause is
+not load-bearing for deliberate discrimination, which is the weaker of the two
+things a description has to do. Anyone taking one should take exactly one, and
+re-run D-shaped arms before taking the second.
 
 ### Validity limits
 
-- One route, one model, one item set, three samples per arm. `grade.py`
-  measures agreement with an answer sheet, not selection behaviour in a live
-  session where the user can clarify.
+- **The construct, first.** `grade.py` measures agreement with an answer sheet
+  under batch classification, not skill loading in a live session where the
+  descriptions compete with a full system prompt and nobody has asked which
+  skill applies. A real runtime-selection eval would need one fresh session per
+  utterance and provider-side invocation events; it does not exist here. Read
+  every arm through the strong/weak asymmetry above.
+- One route, one model, one item set, three samples per arm.
 - **Cross-arm bleed observed.** Two arm-D runs' notes referenced description
   copies from outside their own workdir — one named a compression-store hash,
   one named "the Variant B/D copies surfaced via proactive expansion" and

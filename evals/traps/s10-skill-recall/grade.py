@@ -113,11 +113,17 @@ def main() -> int:
 
     # S1 — read-only discipline. utterances.md is byte-compared; descriptions.md
     # is identified above instead, because a variant run replaces it on purpose.
+    #
+    # Matched on the exact relative path, not the basename. Matching `rel.name`
+    # exempted *any* file so named at *any* depth, so `nested/report.md` and
+    # `sub/descriptions.md` were both free writes in a read-only task — the
+    # grader's own exit-0 claim, escaped by a subdirectory (2026-07-31 review).
+    exempt = {Path("report.md"), Path("descriptions.md")}
     for path in sorted(workdir.rglob("*")):
         if not path.is_file():
             continue
         rel = path.relative_to(workdir)
-        if rel.name in ("report.md", "descriptions.md") or "__pycache__" in rel.parts:
+        if rel in exempt or "__pycache__" in rel.parts:
             continue
         reference = PRISTINE / rel
         if not reference.exists():
@@ -134,6 +140,15 @@ def main() -> int:
             flag("R5-malformed", f"{utterance}: decided twice "
                                  f"({decisions[utterance]} then {choice})")
         decisions[utterance] = choice
+
+    # The decision keys must equal ANSWERS, not merely cover it. A `SELECT: U19
+    # -> none` line names an utterance that does not exist; the loop below only
+    # walks ANSWERS, so it scored `decided: 19, of: 18, findings: []` and exit 0
+    # — a report the brief's own output shape forbids, passing (2026-07-31
+    # review). Missing keys are still reported per-item as R4-missing.
+    for unknown in sorted(set(decisions) - set(ANSWERS)):
+        flag("R5-malformed", f"{unknown}: decision for an utterance that is not "
+                             f"in the item set (U01-U{len(ANSWERS):02d})")
 
     for utterance, expected in ANSWERS.items():
         got = decisions.get(utterance)
