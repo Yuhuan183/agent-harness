@@ -85,12 +85,39 @@ def pending_lock():
                 fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
 
 
-def read_pending() -> list[dict]:
+def scan_pending() -> tuple[list[dict], int]:
+    """Readable pending rows plus a count of the unreadable ones.
+
+    This used to be an all-or-nothing list comprehension catching only
+    FileNotFoundError, so one half-written row - JSON or a truncated multi-byte
+    character, which the hook can leave behind if it is killed mid-append - made
+    every `--start` die on an uncaught traceback. A native Codex dispatch could
+    then stage no carrier at all, which is precisely the invisible-dispatch
+    success bias this script exists to prevent (2026-07-31 re-review).
+    """
+    rows: list[dict] = []
+    bad = 0
     try:
-        with open(PENDING_PATH, encoding="utf-8") as stream:
-            return [json.loads(line) for line in stream if line.strip()]
-    except FileNotFoundError:
-        return []
+        with open(PENDING_PATH, encoding="utf-8", errors="replace") as stream:
+            for raw in stream:
+                if not raw.strip():
+                    continue
+                try:
+                    row = json.loads(raw)
+                except json.JSONDecodeError:
+                    bad += 1
+                    continue
+                if isinstance(row, dict):
+                    rows.append(row)
+                else:
+                    bad += 1
+    except OSError:
+        return [], 0
+    return rows, bad
+
+
+def read_pending() -> list[dict]:
+    return scan_pending()[0]
 
 
 def write_pending(rows: list[dict]) -> None:
@@ -227,7 +254,7 @@ def stage_cancel(args, parser) -> int:
     Refusing both leaves exactly the contract's case: launched, never ran.
     """
     with pending_lock():
-        rows = read_pending()
+        rows, unreadable = scan_pending()
         matching = [row for row in rows if row.get("dispatch_id") == args.dispatch_id]
         if not matching:
             parser.error(f"nothing staged for {args.dispatch_id}")
@@ -245,6 +272,13 @@ def stage_cancel(args, parser) -> int:
                 "recorded and there is nothing to retire"
             )
         keep = [row for row in rows if row.get("dispatch_id") != args.dispatch_id]
+        # Same repair, same disclosure as experience-log's rewrite: a row nobody
+        # can parse carries no dispatch id, so it can never be reconciled and
+        # only degrades later reads - but a rewrite that eats bytes in silence
+        # is how a repair turns into a loss.
+        if unreadable:
+            print(f"WARN: dropped {unreadable} unreadable pending row(s) "
+                  f"from {PENDING_PATH}", file=sys.stderr)
         write_pending(keep)
     print(f"cancelled: {args.dispatch_id}")
     return 0
