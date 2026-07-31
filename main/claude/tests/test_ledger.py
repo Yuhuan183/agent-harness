@@ -1747,6 +1747,42 @@ class LedgerUniquenessTests(unittest.TestCase):
             self.assertIn("unreadable pending row", run.stderr)
             self.assertEqual(pending.read_text(encoding="utf-8").strip(), "")
 
+    def test_the_ordering_guard_covers_exactly_the_staged_dispatches(self) -> None:
+        """Three carrier states, three different correct answers.
+
+        `SKILL.md` claimed the ordering rule was enforced outright. It is not,
+        and cannot be: the guard reads the pending file, so an id that was never
+        staged has nothing to contradict, and requiring a carrier would refuse
+        every legacy and hand-written record. The contract now says so; this
+        pins the boundary it names, in both directions - a never-staged id must
+        still log, and a staged-but-open one must still be refused.
+        """
+        cases = (
+            ("never staged", (), 0, ""),
+            ("launch open", (("--start", "--role", "executor"),), 2,
+             "still in flight"),
+            ("launch closed", (("--start", "--role", "executor"), ("--stop",)),
+             0, ""),
+        )
+        for name, stages, expected_rc, expected_error in cases:
+            with self.subTest(name), tempfile.TemporaryDirectory() as temp_dir:
+                temp = Path(temp_dir)
+                env = self._env(temp)
+                for stage_args in stages:
+                    self.assertEqual(subprocess.run(
+                        [sys.executable, str(self.STAGE), *stage_args,
+                         "--dispatch-id", "codex:case"],
+                        env=env, capture_output=True, text=True).returncode, 0)
+                run = self._log(env, "--dispatch-id", "codex:case", "--outcome",
+                                "accepted", *self.IDENT, *self.ROUTE)
+                self.assertEqual(run.returncode, expected_rc,
+                                 run.stderr or run.stdout)
+                if expected_error:
+                    self.assertIn(expected_error, run.stderr)
+                    self.assertEqual(self._ledger(temp), [])
+                else:
+                    self.assertEqual(len(self._ledger(temp)), 1)
+
     def test_the_hook_still_stages_a_stop_past_a_damaged_row(self) -> None:
         """The silent one, and therefore the worst of the four.
 
