@@ -111,10 +111,14 @@ prompt**，而我讀到的那份是唯一同時含〈File editing constraints〉
 
 分裂軸是 **session 類型**，不是 CLI 版本。cli ≥ 0.145.0：
 
-| kind | n | autonomy | no-ask-scoped | dirty-worktree |
-|---|---|---|---|---|
-| top-level | 3 | 3/3 | 3/3 | 3/3 |
-| **subagent** | **47** | **0/47** | **0/47** | **0/47** |
+| kind | n | dirty-worktree | no-ask-scoped | autonomy | authority |
+|---|---|---|---|---|---|
+| top-level | 59 | 59/59 | 59/59 | 59/59 | 51/59 |
+| **subagent** | **90** | **43/90** | **43/90** | **43/90** | **57/90** |
+
+（第一版此表寫 subagent 0/47——那只涵蓋 `sessions/` 一個 store，漏掉 `archived_sessions/`
+的 129 份，佔母體 59%。母體數字下**沒有任何一條款對 subagent 達到全覆蓋**，所以四條全留
+的決定不變，理由反而更強。）
 
 而契約**確實送進 subagent**：rollout 裡它是 `role: user`、開頭 `# AGENTS.md instructions`
 的 `<INSTRUCTIONS>` 區塊，並鏡射在 `world_state.agents_md`。所以 subagent prompt 沒有的

@@ -289,11 +289,20 @@ class CodexContractRestatementTests(unittest.TestCase):
     is the only variant carrying both the "File editing constraints" and
     "Destructive Actions" sections, so it maximised apparent vendor coverage.
 
-    The axis is session kind, not CLI version. On cli >= 0.145.0:
+    The axis is session kind, not CLI version. On cli >= 0.145.0, over all 220
+    discovered rollouts (`scripts/codex-prompt-census.py --min-cli 0.145`):
 
-        kind        n     autonomy   no-ask-scoped   dirty-worktree
-        top-level   3        3/3          3/3             3/3
-        subagent   47        0/47         0/47            0/47
+        kind        n    dirty-worktree  no-ask-scoped  autonomy  authority
+        top-level  59            59/59          59/59     59/59      51/59
+        subagent   90            43/90          43/90     43/90      57/90
+
+    An earlier pass quoted 0/47 for the subagent row. That was one rollout
+    store: the census globbed `sessions/` and never saw `archived_sessions/`,
+    which holds more than half the population and is the same population -
+    archiving is a user action, both stores carry the contract, and the two
+    separate on the same days under the same CLI. The corrected numbers do not
+    change the decision and strengthen the rule behind it: no clause reaches
+    full coverage for subagents, so every one of them has to stay.
 
     Codex delivers this contract to subagents as instructions - the rollout
     carries it as a `role: user` message headed `# AGENTS.md instructions` and
@@ -354,8 +363,96 @@ class CodexContractRestatementTests(unittest.TestCase):
             self.assertIn(
                 clause, policy,
                 f"{clause!r} was removed as a vendor restatement, but the "
-                "Codex subagent prompt does not restate it (0/47 on cli "
-                ">= 0.145.0) and subagents receive this contract")
+                "Codex subagent prompt does not always restate it (43/90 on "
+                "cli >= 0.145.0) and subagents receive this contract")
+
+    def test_the_canonical_rule_admits_the_exception_this_class_relies_on(self) -> None:
+        """A named exception has to exist in the rule, not only in its gate.
+
+        `contract-slimming.md` said vendor restatements are deleted 一律 — with
+        no exception — while the test below requires one kept. The next audit
+        following the canonical document would delete the sentence and hit a
+        red test with no written reason, which is the contradiction that
+        principle 2b calls the more expensive failure shape.
+        """
+        rule = (ROOT / "docs/contract-slimming.md").read_text(encoding="utf-8")
+        self.assertIn("預設刪除", rule)
+        self.assertIn("不可回復的安全條款", rule,
+                      "the exception this class relies on is not in the rule")
+        self.assertIn("具名", rule, "the exception must require naming")
+
+    def test_the_census_reports_what_it_could_not_read(self) -> None:
+        """The denominator is the load-bearing part of this evidence.
+
+        Twice now the census has silently shrunk its own sample - once by
+        globbing one rollout store, once by dropping rollouts it could not
+        parse - and a smaller sample makes vendor coverage look *more*
+        complete, which is the direction that licenses a deletion that should
+        not happen. Exercises the parser against format drift, a missing
+        record, and an empty store, because an import-only test would pass
+        while every one of these was broken.
+        """
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "codex_prompt_census", ROOT / "scripts/codex-prompt-census.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        def run(rollouts: dict[str, list[dict]]) -> dict:
+            with tempfile.TemporaryDirectory() as temp:
+                home = Path(temp)
+                for name, rows in rollouts.items():
+                    target = home / name
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text(
+                        "".join(json.dumps(r) + "\n" for r in rows),
+                        encoding="utf-8")
+                module.CODEX_HOME = home
+                return module.census()
+
+        def meta(base, source="cli", cli="0.146.0"):
+            return {"type": "session_meta",
+                    "payload": {"base_instructions": base, "cli_version": cli,
+                                "source": source, "timestamp": "2026-07-31T00:00:00Z"}}
+
+        prompt = "## Autonomy and persistence\nyou preserve them, ignore unrelated edits\n"
+
+        # Nested and flat stores are one population; the flat one is what the
+        # first version never globbed.
+        both = run({"sessions/2026/07/31/rollout-a.jsonl": [meta({"text": prompt})],
+                    "archived_sessions/rollout-b.jsonl":
+                        [meta({"text": prompt}, source="{'subagent': {}}")]})
+        self.assertEqual((both["discovered"], both["parsed"]), (2, 2))
+        self.assertEqual(both["stores"],
+                         {"sessions": 1, "archived_sessions": 1})
+        self.assertEqual(sorted(both["coverage"]), ["subagent", "top-level"])
+        self.assertTrue(both["supports_a_deletion_decision"])
+
+        # Format drift: a bare string is read, anything else is a named skip.
+        drift = run({"sessions/rollout-a.jsonl": [meta(prompt)],
+                     "sessions/rollout-b.jsonl": [meta({"body": prompt})],
+                     "sessions/rollout-c.jsonl": [{"type": "event_msg"}]})
+        self.assertEqual(drift["discovered"], 3)
+        self.assertEqual(drift["parsed"], 1, "a bare string must still parse")
+        self.assertEqual(drift["skipped"],
+                         {"unsupported_base_instructions": 1,
+                          "no_session_meta": 1})
+        self.assertFalse(drift["supports_a_deletion_decision"])
+        self.assertTrue(drift["unresolved"])
+
+        # An empty store answers nothing, and must not answer "fully covered".
+        empty = run({})
+        self.assertEqual((empty["discovered"], empty["parsed"]), (0, 0))
+        self.assertFalse(empty["supports_a_deletion_decision"])
+
+        # Circular evidence: our own contract inside the host prompt would mean
+        # the census is grading us against ourselves.
+        circular = run({"sessions/rollout-a.jsonl":
+                        [meta({"text": prompt + "\n# Global Working Contract\n"})]})
+        self.assertEqual(circular["our_markers_leaked_into_host_prompt"],
+                         ["Global Working Contract"])
+        self.assertFalse(circular["supports_a_deletion_decision"])
 
     def test_the_authority_sentence_is_kept_on_purpose(self) -> None:
         """The one clause whose deletion the audit considered and declined.
