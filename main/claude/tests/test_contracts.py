@@ -35,15 +35,18 @@ class ClaudeContractTests(unittest.TestCase):
         the harness prompt in equivalent or stronger form, so this contract must
         not carry it again.
 
-        This used to add "the Codex contract faces a thinner host prompt and
-        keeps its own authority boundary". That was never measured, and it is
-        false: Codex records its own base instructions into every rollout
-        (`session_meta.base_instructions`), and the 2026-07-31 audit of one —
-        17,730 characters, cli 0.146.0 — found a full "Autonomy and
-        persistence" section plus a twelve-bullet "Destructive Actions" section
-        that state the authority boundary *more* completely than the contract
-        did. See `CodexContractRestatementTests` for what that audit removed and
-        what it deliberately kept.
+        Note this applies to the Claude Code CLI only: the Codex contract and
+        the app prompts face thinner host prompts and keep their own authority
+        boundary. A 2026-07-31 audit briefly called that claim false, on the
+        strength of one Codex rollout; measuring all 91 put it back, because
+        the Codex *subagent* prompt — 47 of the 50 sessions on cli >= 0.145.0 —
+        carries none of the autonomy or worktree language the top-level one
+        does. See `CodexContractRestatementTests`.
+
+        The Claude side of that audit has no equivalent evidence: Claude Code
+        records its system prompt nowhere, so whether a Claude subagent
+        receives the phrases banned below is currently unfalsifiable. Treat
+        this list as the weaker-evidenced of the two.
         """
         policy = read(".claude/CLAUDE.contract.md")
         for restated in (
@@ -276,45 +279,62 @@ class ClaudeContractTests(unittest.TestCase):
 
 
 class CodexContractRestatementTests(unittest.TestCase):
-    """What the 2026-07-31 vendor-restatement audit settled for the Codex side.
+    """Why the Codex contract keeps clauses the Claude contract may not.
 
-    Evidence was provider-recorded, not inferred: Codex writes its own base
-    instructions into `session_meta.base_instructions` of every rollout under
-    `~/.codex/sessions`, so the host prompt can be read verbatim rather than
-    guessed at. That is why this audit is repeatable on Codex and not on Claude
-    Code, which records its system prompt nowhere — the Claude side of L4 is
-    still open for want of the same evidence.
+    The 2026-07-31 vendor-restatement audit deleted three of these, then a
+    re-review put them back. Both passes read the same provider-recorded
+    evidence — Codex writes its host prompt into `session_meta.base_instructions`
+    of every rollout — but the first pass read *one* rollout. There are eight
+    distinct prompts across 91 local rollouts, and the one it happened to read
+    is the only variant carrying both the "File editing constraints" and
+    "Destructive Actions" sections, so it maximised apparent vendor coverage.
+
+    The axis is session kind, not CLI version. On cli >= 0.145.0:
+
+        kind        n     autonomy   no-ask-scoped   dirty-worktree
+        top-level   3        3/3          3/3             3/3
+        subagent   47        0/47         0/47            0/47
+
+    Codex delivers this contract to subagents as instructions - the rollout
+    carries it as a `role: user` message headed `# AGENTS.md instructions` and
+    mirrors it in `world_state.agents_md` - so a clause the subagent prompt
+    omits has no other source. Deleting these removed the only statement of
+    "the user's uncommitted work is theirs; preserve it" from every current
+    subagent session, which is the half of the fleet that writes files.
+
+    The rule this yields: judge a restatement against the *thinnest* host
+    prompt any consumer of the contract runs under, never against a sampled
+    one. The Claude side of the audit cannot be run at all - Claude Code
+    records its system prompt nowhere, so the same sampling error there is
+    currently unfalsifiable.
     """
 
-    def test_the_autonomy_paragraph_stays_deleted(self) -> None:
-        """Codex's own "Autonomy and persistence" section says all of this.
+    #: Present in the top-level Codex prompt, absent from every current
+    #: subagent prompt, and the contract is loaded by both.
+    SUBAGENT_UNCOVERED = (
+        "preserve dirty worktrees and unrelated user work",
+        "need no approval",
+        "inspect and report",
+    )
 
-        It enumerates answer/diagnose/change-or-build the same way, and adds
-        "You do not need to ask for clarification from the user if your action
-        is scoped within the user's task" — so the contract's ~50-word copy
-        bought nothing. Removing it costs no behaviour: if the vendor ever
-        drops the section, the failure is Codex asking permission too often,
-        which is the safe direction to fail in.
-        """
+    def test_clauses_the_subagent_prompt_does_not_carry_stay_in_the_contract(self) -> None:
         policy = read(".codex/AGENTS.contract.md")
-        for restated in (
-            "need no approval",
-            "validate non-destructively without asking",
-            "preserve dirty worktrees",
-        ):
-            self.assertNotIn(restated, policy, restated)
+        for clause in self.SUBAGENT_UNCOVERED:
+            self.assertIn(
+                clause, policy,
+                f"{clause!r} was removed as a vendor restatement, but the "
+                "Codex subagent prompt does not restate it (0/47 on cli "
+                ">= 0.145.0) and subagents receive this contract")
 
     def test_the_authority_sentence_is_kept_on_purpose(self) -> None:
-        """The one restatement the audit did not take, and why.
+        """The one clause whose deletion the audit considered and declined.
 
-        Codex's "# Destructive Actions" section covers this more strongly than
-        the contract line does, so by the letter of the no-restatement rule it
-        should go too. It stays because the two failure directions are not
-        symmetric: losing the autonomy paragraph to vendor drift makes Codex
-        over-cautious, losing this one makes it act destructively without
-        authority. A clause is not worth deleting for ~35 words when the tail
-        risk is that shape. Recorded as a deliberate exception so the next
-        audit does not have to rediscover the reasoning.
+        Unlike the three above, "# Destructive Actions" *is* in the subagent
+        prompt (73/77), so this sentence really is a restatement. It stays
+        anyway, because the failure directions are not symmetric: if the vendor
+        drops that section, an over-cautious Codex is recoverable and one
+        acting destructively without authority is not. A safety clause is not
+        worth ~35 words of savings when the tail risk has that shape.
         """
         policy = read(".codex/AGENTS.contract.md")
         self.assertIn("require explicit authority", policy)
