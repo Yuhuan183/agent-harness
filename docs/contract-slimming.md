@@ -49,6 +49,10 @@
   [context-and-vendors](research/context-and-vendors.md)）。
 - 調高預算需要證據：先嘗試「移出到 skill／hook／role 契約」，只有內容確屬
   「每 session 必要且推不出」時才擴預算，並在 commit message 記明理由。
+- 以「供應商已保證」為由刪任何一條，必須對照**任何會載入該契約的 session 中最薄的
+  host prompt 變體**——同一個 CLI 版本下，Codex 給 subagent 與 top-level 的 prompt
+  不同。用 `scripts/codex-prompt-census.py` 量，不要抽一份就下結論（2026-07-31 實測，
+  一次抽樣導致誤刪並已部署）。Claude 側不記錄 system prompt，因此無法用此法稽核。
 - 下修預算的證據路徑就是下方〈驗收〉那兩條（真實任務回歸、trap A/B），與上修同源；
   它們未自動化，成本是每次 3–5 個真實任務。**成本高不等於不存在**——不要把「還沒跑」
   說成「沒辦法」。各層餘裕實測與槓桿盤點見

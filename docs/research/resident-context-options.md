@@ -124,6 +124,17 @@ prompt**，而我讀到的那份是唯一同時含〈File editing constraints〉
 **得到的規則**：減法必須對照**任何會載入該契約的 session 中最薄的 prompt 變體**，
 不是抽樣到的那一個。已寫進 `CodexContractRestatementTests` 的 docstring 與實際斷言。
 
+**上表可重跑**，不必重建分析：
+
+```bash
+scripts/codex-prompt-census.py --min-cli 0.145
+```
+
+它同時做循環性檢查（我們自己的契約字串若出現在 host prompt 裡就警告）。刻意沒有
+`--check` 模式——輸入是 machine-local 且本來就會變，釘住快照只會讓非作者的人一律失敗。
+它是給人看的證據，不是 gate。`test_the_vendor_census_covers_every_justified_clause`
+確保「以供應商涵蓋為由保留或刪除的每一條款」都是這支腳本的一個欄位。
+
 **唯一真正的重述**：外部寫入／破壞性動作的授權句——〈Destructive Actions〉在 subagent
 側確實有（73/77）。但仍保留，因為兩個失效方向不對稱：供應商若移除該段，過度謹慎可回復，
 未經授權做破壞性動作不可回復。為 ~35 words 承擔那種形狀的尾部風險不划算。
