@@ -194,7 +194,9 @@ try:
             drift = []
             home_dir = os.path.expanduser("~")
             inventory = load_deployment_inventory()
+            covered_roots = set()
             for source_rel, target_rel, mode in load_deployment_manifest(harness_repo):
+                covered_roots.add(target_rel)
                 src = os.path.join(harness_repo, source_rel)
                 if not os.path.lexists(src):
                     raise ValueError(f"deployment source missing: {source_rel}")
@@ -282,7 +284,10 @@ try:
                 # The other half of what --delete used to cover, without its
                 # ownership error: a file this repo deployed before and no
                 # longer ships is drift; one it never deployed is not ours.
-                if mode == "" and os.path.isdir(src):
+                # `merge` is included: a skill dropped from INSTALLED.txt leaves
+                # a deployed tree that the per-skill comparison above never
+                # visits, because that loop only walks the skills still listed.
+                if mode in ("", "merge") and os.path.isdir(src):
                     for rel in inventory.get(target_rel, ()):
                         source_path = os.path.join(
                             src, os.path.relpath(rel, target_rel))
@@ -292,6 +297,18 @@ try:
                             drift.append(
                                 f"~/{rel}: deployed file the repo no longer "
                                 "ships (run scripts/sync.sh --apply)")
+            # Roots the inventory still claims but no manifest row covers. Every
+            # check above is keyed on a row that exists, so deleting a row made
+            # its deployed tree invisible to this hook at the same moment it
+            # became invisible to sync (2026-08-01 review).
+            for root in sorted(inventory):
+                if root in covered_roots:
+                    continue
+                for rel in inventory[root]:
+                    if os.path.lexists(os.path.join(home_dir, rel)):
+                        drift.append(
+                            f"~/{rel}: deployed under a target the manifest no "
+                            "longer carries (run scripts/sync.sh --apply)")
             if drift:
                 findings.append(
                     "deployment drift (managed HOME targets differ from repo — "
