@@ -104,6 +104,37 @@ class MachineStateHygieneTests(unittest.TestCase):
         self.assertLess(deadline, outer,
                         "the global deadline must fit inside the hook timeout")
 
+    def test_commit_gate_outer_timeout_exceeds_its_suite_budget(self) -> None:
+        """The same ordering as F-06, on the gate that blocks commits.
+
+        A hung suite is supposed to end as `exit 2` with a reason. Both budgets
+        were 300 s, and the host's clock starts first and also covers
+        interpreter probing, so on the PreToolUse path the hook was always
+        killed before its own timeout could fire — the one branch written for a
+        hang could never run, and a killed hook is not a blocked commit
+        (2026-08-01 review). The git-side `pre-commit` hook shares the inner
+        constant and has no outer budget, so the fix belongs on this side.
+        """
+        settings = json.loads(read(".claude/settings.json"))
+        outer = next(
+            h["timeout"]
+            for g in settings["hooks"]["PreToolUse"] for h in g["hooks"]
+            if "commit-test-gate.py" in h["command"]
+        )
+        source = read(".claude/hooks/commit-test-gate.py")
+        suite = int(re.search(r"SUITE_TIMEOUT = (\d+)", source).group(1))
+        self.assertGreater(
+            outer, suite,
+            "the commit gate's registered timeout must outlast the suite it "
+            "runs, or its own timeout branch is unreachable")
+        # The suite is not the only thing inside the budget: `suite_interpreter`
+        # probes candidates at up to 30 s each before the first test runs.
+        probe = int(re.search(r"timeout=(\d+),\n\s*\)", source).group(1))
+        self.assertGreaterEqual(
+            outer - suite, probe,
+            "the margin must cover interpreter probing, not just the suite")
+        self.assertIn("timeout=SUITE_TIMEOUT", source)
+
     def test_headroom_routing_ownership_is_explicit(self) -> None:
         runtime = read(".agents/docs/headroom-runtime.md")
         codex = read(".codex/AGENTS.contract.md")
