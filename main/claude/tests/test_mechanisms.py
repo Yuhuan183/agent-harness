@@ -386,6 +386,49 @@ class MechanismTests(unittest.TestCase):
                 (Path(temp_home) / ".claude/telemetry/.integrity-last-run").exists()
             )
 
+    def test_weekly_integrity_surfaces_withdrawn_skills_and_withdrawn_rows(self) -> None:
+        """The drift check must not go blind the moment a row is withdrawn.
+
+        Every parity check here is keyed on a manifest row, so the two states a
+        withdrawal leaves behind were the two it could not report: a skill still
+        deployed under the shared root after leaving `INSTALLED.txt` (the
+        per-skill comparison only walks the skills still listed), and a whole
+        tree still deployed after its row was deleted (nothing iterates it at
+        all). Both are what sync now retires, and this hook is the layer that
+        notices when a machine has not run that sync yet.
+        """
+        with tempfile.TemporaryDirectory() as temp_home:
+            home = Path(temp_home)
+            applied = subprocess.run(
+                [str(ROOT / "scripts/sync.sh"), "--apply"],
+                capture_output=True, text=True,
+                env={**os.environ, "HOME": temp_home,
+                     "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"},
+            )
+            self.assertEqual(applied.returncode, 0, applied.stderr + applied.stdout)
+
+            ghost_skill = home / ".agents/skills/ghost-skill/SKILL.md"
+            ghost_skill.parent.mkdir(parents=True, exist_ok=True)
+            ghost_skill.write_text("ghost\n", encoding="utf-8")
+            ghost_root = home / ".claude/ghost-tool/legacy.py"
+            ghost_root.parent.mkdir(parents=True, exist_ok=True)
+            ghost_root.write_text("ghost\n", encoding="utf-8")
+            inventory = home / ".agents/.deployed-files.tsv"
+            with inventory.open("a", encoding="utf-8") as handle:
+                handle.write(".agents/skills\t.agents/skills/ghost-skill/SKILL.md\n")
+                handle.write(".claude/ghost-tool\t.claude/ghost-tool/legacy.py\n")
+
+            env = {**os.environ, "HOME": temp_home,
+                   "AGENT_HARNESS_REPO": str(ROOT)}
+            env.pop("AGENT_EXPERIENCE_LEDGER", None)
+            env.pop("AGENT_EXPERIENCE_PENDING", None)
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "main/claude/hooks/weekly-integrity.py")],
+                env=env, check=True, capture_output=True, text=True,
+            )
+            self.assertIn(".agents/skills/ghost-skill/SKILL.md", result.stdout)
+            self.assertIn(".claude/ghost-tool/legacy.py", result.stdout)
+
     def test_weekly_integrity_surfaces_model_alias_drift(self) -> None:
         # The alias->generation assertion is only worth making if something
         # runs it unprompted: a CLI generation move is silent, and every
@@ -959,6 +1002,83 @@ class MechanismTests(unittest.TestCase):
                 ".claude/hooks\t.claude/hooks/retired-hook.py",
                 inventory.read_text(encoding="utf-8").splitlines(),
             )
+
+    def test_sync_retires_withdrawn_skills_and_withdrawn_manifest_rows(self) -> None:
+        """Withdrawing something has to retire it, not orphan it permanently.
+
+        Both prune passes used to be driven by rows that still exist, so the two
+        shapes a withdrawal actually takes were the two it could not see:
+
+        * a skill dropped from `INSTALLED.txt` — the shared skill root recorded
+          no ownership at all, so there was nothing to prune it from and nothing
+          enumerated the deployed root either;
+        * a manifest row deleted outright — its prune was never called, and the
+          inventory was then rewritten without it, discarding the one record
+          that could have retired the tree on any later run.
+
+        Either way the deployed copy stayed live and every layer reported
+        success, which for a skill means it keeps loading into every session.
+        Asserted in one real `--apply` fixture: first that the ownership is
+        recorded at all, then that an inventory entry with no surviving row
+        behind it is retired while a file this repo never deployed is not.
+        """
+        sync = ROOT / "scripts/sync.sh"
+        with tempfile.TemporaryDirectory() as temp_home:
+            home = Path(temp_home)
+            env = {**os.environ, "HOME": temp_home,
+                   "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"}
+            first = subprocess.run([str(sync), "--apply"], env=env,
+                                   capture_output=True, text=True)
+            self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+
+            inventory = home / ".agents/.deployed-files.tsv"
+            recorded = inventory.read_text(encoding="utf-8").splitlines()
+            # The shared skill root is deployed per skill, so it must claim its
+            # files per skill; claiming nothing is what made a withdrawn skill
+            # unretirable.
+            self.assertIn(".agents/skills\t.agents/skills/INSTALLED.txt", recorded)
+            self.assertTrue(
+                any(line.startswith(".agents/skills\t.agents/skills/")
+                    and line.endswith("/SKILL.md") for line in recorded),
+                "the shared skill root recorded no per-skill ownership",
+            )
+            # File rows rename their target, so each one is its own root.
+            self.assertIn(".claude/CLAUDE.md\t.claude/CLAUDE.md", recorded)
+
+            # A skill this repo deployed under the shared root and has since
+            # dropped from INSTALLED.txt, and a whole target root whose manifest
+            # row is gone.
+            ghost_skill = home / ".agents/skills/ghost-skill/SKILL.md"
+            ghost_skill.parent.mkdir(parents=True, exist_ok=True)
+            ghost_skill.write_text("ghost\n", encoding="utf-8")
+            ghost_root = home / ".claude/ghost-tool/legacy.py"
+            ghost_root.parent.mkdir(parents=True, exist_ok=True)
+            ghost_root.write_text("ghost\n", encoding="utf-8")
+            with inventory.open("a", encoding="utf-8") as handle:
+                handle.write(".agents/skills\t.agents/skills/ghost-skill/SKILL.md\n")
+                handle.write(".claude/ghost-tool\t.claude/ghost-tool/legacy.py\n")
+            # Never recorded, so never ours, even inside a root we do own.
+            foreign = home / ".agents/skills/foreign-note.md"
+            foreign.write_text("vendor\n", encoding="utf-8")
+
+            second = subprocess.run([str(sync), "--apply"], env=env,
+                                    capture_output=True, text=True)
+            self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
+
+            self.assertFalse(
+                ghost_skill.exists(),
+                "a skill dropped from INSTALLED.txt was left deployed")
+            self.assertFalse(
+                ghost_root.exists(),
+                "a target root the manifest no longer carries was left deployed")
+            self.assertTrue(
+                foreign.exists(),
+                f"sync deleted a file it never deployed: {foreign}")
+            still = inventory.read_text(encoding="utf-8").splitlines()
+            self.assertNotIn(
+                ".agents/skills\t.agents/skills/ghost-skill/SKILL.md", still)
+            self.assertNotIn(
+                ".claude/ghost-tool\t.claude/ghost-tool/legacy.py", still)
 
     def test_weekly_integrity_parses_the_real_deployment_manifest(self) -> None:
         # The hook re-implements manifest parsing, so a mode added to the

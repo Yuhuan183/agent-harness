@@ -288,6 +288,30 @@ previously_deployed() { # $1 = HOME-relative target root
   awk -F'\t' -v root="$1" '$1 == root { print $2 }' "$DEPLOY_STATE"
 }
 
+# Target roots the previous run recorded, whether or not the manifest still
+# carries a row for them.
+previously_deployed_roots() {
+  [[ -f "$DEPLOY_STATE" ]] || return 0
+  awk -F'\t' 'NF { print $1 }' "$DEPLOY_STATE" | LC_ALL=C sort -u
+}
+
+record_owned_entries() { # $1 = HOME-relative target root  $2 = current entry list
+  awk -v root="$1" 'NF { print root "\t" $0 }' "$2" >> "$DEPLOY_STATE_NEW"
+}
+
+# Roots this run had a manifest row for. Anything the previous run recorded and
+# this one did not reach belongs to a row that has since been deleted, which is
+# the one retirement the per-row prune below cannot reach on its own.
+COVERED_ROOTS=("")
+mark_root_covered() { COVERED_ROOTS+=("$1"); }
+root_is_covered() { # $1 = HOME-relative target root
+  local seen
+  for seen in "${COVERED_ROOTS[@]}"; do
+    [[ "$seen" == "$1" ]] && return 0
+  done
+  return 1
+}
+
 # Remove exactly what this repo deployed before and no longer ships. A file it
 # never deployed is someone else's and is left alone, even inside a directory
 # every other file of which is ours.
@@ -312,8 +336,30 @@ prune_retired_files() { # $1 = HOME-relative target root  $2 = current entry lis
 }
 
 sync_skill_root() { # $1 = repo-relative skill root  $2 = HOME-relative skill root
-  local src="$REPO/$1" dst_rel="$2" dst="$HOME/$2" name child_src child_dst child_rel source_marker
+  local src="$REPO/$1" dst_rel="$2" dst="$HOME/$2" name child_src child_dst child_rel source_marker entries
   validate_project_skill_inventory "$src"
+
+  # The per-skill rsync below carries --delete, so it retires files *within* a
+  # skill this root still installs. It cannot retire a skill that left
+  # INSTALLED.txt entirely: nothing enumerates the deployed root, so an unlisted
+  # directory was simply never visited again. This root also contributed nothing
+  # to the inventory, so the shared retirement pass could not see it either, and
+  # a withdrawn skill stayed resident and invokable for good (2026-08-01 review).
+  # Record the same per-file ownership every other directory row records, and
+  # prune from it. Only paths that map back to a repo source are listed:
+  # .agent-harness-source is machine-local provenance this repo writes but does
+  # not ship, and claiming it here would make the drift check read it as a
+  # deployed file with no source.
+  entries="$(mktemp "${TMPDIR:-/tmp}/agent-harness-entries.XXXXXX")"
+  while IFS= read -r name || [[ -n "$name" ]]; do
+    repo_owned_entries "$src/$name" "$dst_rel/$name" >> "$entries"
+  done < "$src/INSTALLED.txt"
+  printf '%s\n' "$dst_rel/INSTALLED.txt" >> "$entries"
+  LC_ALL=C sort -o "$entries" "$entries"
+  prune_retired_files "$dst_rel" "$entries" "$HOME"
+  record_owned_entries "$dst_rel" "$entries"
+  rm -f "$entries"
+
   run mkdir -p "$dst"
   while IFS= read -r name || [[ -n "$name" ]]; do
     child_src="$src/$name"
@@ -340,6 +386,10 @@ sync_skill_root() { # $1 = repo-relative skill root  $2 = HOME-relative skill ro
 sync_path() { # $1 = repo-relative source  $2 = HOME-relative target  $3 = optional mode
   local src="$REPO/$1" dst_rel="$2" mode="${3:-}" dst="$HOME/$2"
   [[ -e "$src" || -L "$src" ]] || { log "ERROR: missing manifest source: $1"; return 1; }
+  # Marked for every mode, including the merged ones this repo never records
+  # ownership for: the retired-row sweep must only ever reach a root with no
+  # manifest row at all, never a merged machine file.
+  mark_root_covered "$dst_rel"
   if [[ "$mode" == "merge" ]]; then
     sync_skill_root "$1" "$2"
     return
@@ -367,12 +417,15 @@ sync_path() { # $1 = repo-relative source  $2 = HOME-relative target  $3 = optio
     entries="$(mktemp "${TMPDIR:-/tmp}/agent-harness-entries.XXXXXX")"
     repo_owned_entries "$src" "$dst_rel" > "$entries"
     prune_retired_files "$dst_rel" "$entries" "$HOME"
-    awk -v root="$dst_rel" '{ print root "\t" $0 }' "$entries" >> "$DEPLOY_STATE_NEW"
+    record_owned_entries "$dst_rel" "$entries"
     rm -f "$entries"
     run rsync -a --links --force \
       "${RSYNC_FILTERS[@]}" "$src" "$(dirname "$dst")/"
   else
     # File mappings may rename the deployment target (contract -> AGENTS/CLAUDE.md).
+    # Recorded as a one-entry root so that deleting the row retires the file the
+    # same way deleting a directory row retires its tree.
+    printf '%s\t%s\n' "$dst_rel" "$dst_rel" >> "$DEPLOY_STATE_NEW"
     run rsync -a --links --force "$src" "$dst"
   fi
 }
@@ -443,6 +496,27 @@ for row in "${DEFERRED_SETTINGS_ROWS[@]}"; do
   IFS=$'\t' read -r src_rel dst_rel mode <<< "$row"
   sync_path "$src_rel" "$dst_rel" "$mode"
 done
+
+# Rows the manifest no longer carries. Every prune above is driven by a row that
+# still exists, so deleting a row left its whole tree deployed - and because the
+# inventory is rewritten from this run only, it also discarded the ownership
+# record that was the one thing able to retire that tree later. Withdrawing a
+# skill therefore left it resident and invokable permanently, and neither sync
+# nor weekly-integrity could say so (2026-08-01 review). Sweep those roots while
+# the previous record is still readable. An empty entry list means "the repo
+# ships nothing here now", so prune_retired_files retires exactly what it
+# recorded and still leaves anything it never deployed alone.
+RETIRED_ROOT_ENTRIES="$(mktemp "${TMPDIR:-/tmp}/agent-harness-entries.XXXXXX")"
+: > "$RETIRED_ROOT_ENTRIES"
+while IFS= read -r retired_root; do
+  [[ -n "$retired_root" ]] || continue
+  if root_is_covered "$retired_root"; then
+    continue
+  fi
+  log "retiring target root the manifest no longer carries: ~/$retired_root"
+  prune_retired_files "$retired_root" "$RETIRED_ROOT_ENTRIES" "$HOME"
+done < <(previously_deployed_roots)
+rm -f "$RETIRED_ROOT_ENTRIES"
 
 # Record what this run deployed, so the next one can retire exactly the files
 # this repo dropped. Absent inventory means unknown, never foreign: the first
