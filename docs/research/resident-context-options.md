@@ -16,12 +16,12 @@
 | | 值 |
 |---|---|
 | main opus-5 每回合 prompt context | p50 **24.4%**、p95 **75.1%**（1M window）|
-| 整個常駐層 | 992 words ≈ 1.5–2K tokens（由 bytes 推估）|
-| 常駐層佔實際 prompt | **0.82%**（p50）／ **0.27%**（p95）|
+| 整個常駐層 | 1128 words ≈ 1.7–2.3K tokens（由 bytes 推估）|
+| 常駐層佔實際 prompt | **0.93%**（p50）／ **0.31%**（p95）|
 | 修掉 56 words 佔實際 prompt | **0.049%**（p50）／ **0.016%**（p95）|
 
 **所以：常駐字數不是目前 context 壓力的來源。** p95 的 75.1% 來自 transcript 累積、
-工具輸出與檔案讀取，跟這 992 words 幾乎無關。任何以「省 token」為理由的常駐修剪，
+工具輸出與檔案讀取，跟這 1128 words 幾乎無關。任何以「省 token」為理由的常駐修剪，
 報酬都在雜訊裡。
 
 這**不推翻**規範原則 2。IFScale 量的是指令**條數**增加時的遵循衰退，Context Rot 量的是
@@ -32,12 +32,19 @@ context 變長時的可靠性下滑；原則 2 講的是規則彼此稀釋注意
 
 來源 `scripts/prompt-surface-census.py`；上限來源 `test_contracts.py`。
 
-| | 契約 | skill metadata | 常駐合計 | 餘裕 |
-|---|---|---|---|---|
-| Claude | 397 / 520 | 595 / 620 | 992 / 1140 | 148 |
-| Codex | 527 / 540 | 515 / 540 | 1042 / 1080 | **38** |
+| | 契約 | skill metadata | role metadata | 常駐合計 | 餘裕 |
+|---|---|---|---|---|---|
+| Claude | 397 / 520 | 595 / 620 | 136 / 140 | 1128 / 1280 | 152 |
+| Codex | 527 / 540 | 515 / 540 | 61 / 63 | 1103 / 1143 | **40** |
 
 （Codex 契約 2026-07-31 曾降為 480，經 re-review 全部還原；L4 淨變動為零。）
+
+role metadata 是 2026-08-01 review 補進來的：每支 leaf role 的 name 與 description
+（Claude 在 agent frontmatter、Codex 在 `config.merge.toml` 的 `[agents.*]`）跟 skill
+description 一樣每個 session 都列出來，先前只量 role 本文，等於把常駐的那一半留在
+census 與預算之外。它同時是這道棘輪唯一的繞道：把句子從 skill description 搬進 role
+description，成本不變而測試全綠。合計因此從 992／1042 修正為 1128／1103——這是量測
+範圍的修正，不是誰變胖了。
 
 skill metadata 逐項（兩側共用的描述逐字相同）：
 
