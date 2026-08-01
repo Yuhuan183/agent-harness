@@ -118,6 +118,69 @@
           "path": "main/claude/skills/task-observer/SKILL.md",
           "sha256": "7b76207ba01ebef06cac34b03c9c4c9a664a0903296cf539f29d17c3a23904b6",
           "words": 102
+        },
+        {
+          "bytes": 137,
+          "file_bytes": 1083,
+          "file_sha256": "e680251ffa2896e88110f897e99291f941ba8cab652307db91253b7077f699d3",
+          "kind": "role-metadata",
+          "path": "main/claude/agents/explore.md",
+          "sha256": "6103e751f36212a27f905257a99a323ced14042109eda35dc59477d27e5f5cd4",
+          "words": 21
+        },
+        {
+          "bytes": 131,
+          "file_bytes": 1380,
+          "file_sha256": "9b2752b20480e04b8eaf249365b3c44e9251d648d5a395136b44fa0ac681524e",
+          "kind": "role-metadata",
+          "path": "main/claude/agents/plan-verifier.md",
+          "sha256": "4fd53198e0e8017084719c0caefdd1b99b51077c619d0701f0eae8033d588485",
+          "words": 17
+        },
+        {
+          "bytes": 171,
+          "file_bytes": 934,
+          "file_sha256": "60005eee282863fb2a72fbe3feb92f4b6618b6000267c7e938e84cd332626451",
+          "kind": "role-metadata",
+          "path": "main/claude/agents/security-reviewer.md",
+          "sha256": "21cae706623de4542f43988264571d33de6d5800a9b6f8f94be766d0a3ecd0a9",
+          "words": 21
+        },
+        {
+          "bytes": 158,
+          "file_bytes": 1728,
+          "file_sha256": "8dbb3639c9d07e0c144a3b35b576f4fd50d794c6e9e335a0b2b74a20322c22b2",
+          "kind": "role-metadata",
+          "path": "main/claude/agents/mech-executor.md",
+          "sha256": "b8e65c9a7d5903d566564549f5c9cc044b5e2037f27e49bdc134983c6650950d",
+          "words": 20
+        },
+        {
+          "bytes": 178,
+          "file_bytes": 2790,
+          "file_sha256": "9b84b5d171559edfd58882e8a95772e7944164ddf43c9fad9ac3b17f47e78329",
+          "kind": "role-metadata",
+          "path": "main/claude/agents/executor.md",
+          "sha256": "8259a015f76fb5b9b8523e66c141c453f4453a80d4c9808e84550aaf34e1177a",
+          "words": 21
+        },
+        {
+          "bytes": 146,
+          "file_bytes": 1980,
+          "file_sha256": "96b1e7c73bcccaf697c2aec7d5b04f577e3119d9300576ecbce501df00546140",
+          "kind": "role-metadata",
+          "path": "main/claude/agents/verifier.md",
+          "sha256": "9a2c5e284480c714e4c71665476ea086e656ebaa1b19bb4457eee0173bff80a5",
+          "words": 18
+        },
+        {
+          "bytes": 155,
+          "file_bytes": 2434,
+          "file_sha256": "4e70af9b0d01fbade4dcd8b1e0ae8c15f798944d81de074f68665a1f026ae5e4",
+          "kind": "role-metadata",
+          "path": "main/claude/agents/security-executor.md",
+          "sha256": "360e02068909fbdf4cc1e81b7d6fa4ca22cbbfd28dedbf0cada3876003d42b7f",
+          "words": 18
         }
       ],
       "roles": [
@@ -278,6 +341,69 @@
           "path": "main/codex/skills/task-observer/SKILL.md",
           "sha256": "7b76207ba01ebef06cac34b03c9c4c9a664a0903296cf539f29d17c3a23904b6",
           "words": 102
+        },
+        {
+          "bytes": 68,
+          "file_bytes": 1288,
+          "file_sha256": "ba0a9d9efd0b59e3cc3c33c95c6833afa53542e1b7a14f8abe04c314e417a54c",
+          "kind": "role-metadata",
+          "path": "main/codex/config.merge.toml#agents.explore",
+          "sha256": "8ae417af0af7a426a769639154b6657c3b55f0778b0f98a5ad6ce71e38407cd2",
+          "words": 8
+        },
+        {
+          "bytes": 64,
+          "file_bytes": 1288,
+          "file_sha256": "ba0a9d9efd0b59e3cc3c33c95c6833afa53542e1b7a14f8abe04c314e417a54c",
+          "kind": "role-metadata",
+          "path": "main/codex/config.merge.toml#agents.plan-verifier",
+          "sha256": "4b44137f4fea3fa7889e391bde988d20cd57970c36618f3caafd6db14e84cd86",
+          "words": 8
+        },
+        {
+          "bytes": 57,
+          "file_bytes": 1288,
+          "file_sha256": "ba0a9d9efd0b59e3cc3c33c95c6833afa53542e1b7a14f8abe04c314e417a54c",
+          "kind": "role-metadata",
+          "path": "main/codex/config.merge.toml#agents.security-reviewer",
+          "sha256": "06dd4506b2be320181015ac384945bd6f1a24e7c9b6efaf7f41e6b4bebcc8c27",
+          "words": 5
+        },
+        {
+          "bytes": 61,
+          "file_bytes": 1288,
+          "file_sha256": "ba0a9d9efd0b59e3cc3c33c95c6833afa53542e1b7a14f8abe04c314e417a54c",
+          "kind": "role-metadata",
+          "path": "main/codex/config.merge.toml#agents.mech-executor",
+          "sha256": "17180b5a173e9e94f3f2ca42621e9e97334913a4e349a2e3fd3547a8939c33b2",
+          "words": 7
+        },
+        {
+          "bytes": 64,
+          "file_bytes": 1288,
+          "file_sha256": "ba0a9d9efd0b59e3cc3c33c95c6833afa53542e1b7a14f8abe04c314e417a54c",
+          "kind": "role-metadata",
+          "path": "main/codex/config.merge.toml#agents.executor",
+          "sha256": "0eca73e19ecb156a9586bccbfb2ce267f066c05b18b9d1fb7b769a3e4d32d7b7",
+          "words": 7
+        },
+        {
+          "bytes": 186,
+          "file_bytes": 1288,
+          "file_sha256": "ba0a9d9efd0b59e3cc3c33c95c6833afa53542e1b7a14f8abe04c314e417a54c",
+          "kind": "role-metadata",
+          "path": "main/codex/config.merge.toml#agents.verifier",
+          "sha256": "f72fce57839ea5736d455d1fcef6f4530beab8a78d16f69becff6b5656dfd879",
+          "words": 19
+        },
+        {
+          "bytes": 66,
+          "file_bytes": 1288,
+          "file_sha256": "ba0a9d9efd0b59e3cc3c33c95c6833afa53542e1b7a14f8abe04c314e417a54c",
+          "kind": "role-metadata",
+          "path": "main/codex/config.merge.toml#agents.security-executor",
+          "sha256": "1a48aa31605c7cb09662ea0d88de10290a10bfbc4cf0c845d42452ec8f305aba",
+          "words": 7
         }
       ],
       "roles": [
@@ -349,9 +475,9 @@
         "words": 5080
       },
       "resident": {
-        "bytes": 5827,
-        "payload_sha256": "53019212aedfa7145aa1f1ff89d78c4228bae1e7a1be0cadd95b2d96d26a0d69",
-        "words": 992
+        "bytes": 6903,
+        "payload_sha256": "f7eeff03e7f870a1644b713216f80e509180011837e7a70d66ad5a8872160678",
+        "words": 1128
       },
       "roles": {
         "bytes": 10629,
@@ -366,9 +492,9 @@
         "words": 4517
       },
       "resident": {
-        "bytes": 6315,
-        "payload_sha256": "1df76d8a06f6942299b8aedec2826971233a97a82b1e67f572d9740a7791c7c0",
-        "words": 1042
+        "bytes": 6881,
+        "payload_sha256": "78f6624ecd7dbcce6343f165b90b4ce8efbb4909c6533a51621d2ff1852bfdd3",
+        "words": 1103
       },
       "roles": {
         "bytes": 10674,
@@ -379,7 +505,7 @@
   },
   "unit": {
     "bytes": "UTF-8 bytes of the effective prompt text",
-    "roles": "role body only; file_bytes/file_sha256 bind frontmatter or TOML",
+    "roles": "role body only; the always-loaded name and description are counted in resident as role-metadata",
     "skills": "name and description are resident; body is dispatch-time",
     "words": "one CJK character or one non-space non-CJK run"
   }

@@ -35,7 +35,7 @@
 | 語言、報告形狀等個人偏好 | 常駐保留（緊湊、一句一義） |
 | 派工剎車與 Workflow 授權底線 | 常駐保留一兩句；細節進 `baton-dispatch` |
 | Provider／model routing、fallback、verifier 觸發 | skill（`provider-routing`／`leaf-dispatch`），常駐只留觸發行 |
-| Role 能力、工具、停止邊界 | 各 role 契約 frontmatter＋本文；主契約不重複 |
+| Role 能力、工具、停止邊界 | 各 role 契約**本文**；主契約不重複。frontmatter 的 `description` 不是移出去向——它每個 session 都列出來，跟 skill description 同樣常駐，也同樣有預算 |
 | 可機械檢查的紀律（紅測試不 commit、pin 漂移、owed lines） | hooks／validators／graders，文件只留一行指向 |
 | 跨 session 要記得的個人事實與專案約束 | CLI 自動記憶層；常駐契約不再承擔「怕忘記」 |
 | 工具用法與邊界 | 該工具的描述；無法改描述時（本 repo 的 RTK／Headroom）常駐只留一行觸發句 |
@@ -49,7 +49,10 @@
   [test_contracts.py](../main/claude/tests/test_contracts.py) 的 `DocumentationBudgetTests`；
   本文不複製數字。**每一支出貨的 skill 都必須有預算**（新增 skill 未登錄即測試失敗），
   上限取當時實測值加約 2%——它是棘輪，不是研究導出的門檻（研究導不出，見
-  [context-and-vendors](research/context-and-vendors.md)）。
+  [context-and-vendors](research/context-and-vendors.md)）。**每支 leaf role 的
+  `description` 同樣有預算**，理由相同：它與 skill description 一樣每個 session 都
+  載入，若不設限，把句子從 skill description 搬進 role description 就能繞過整道棘輪
+  而成本不變（2026-08-01 review）。
 - 調高預算需要證據：先嘗試「移出到 skill／hook／role 契約」，只有內容確屬
   「每 session 必要且推不出」時才擴預算，並在 commit message 記明理由。
 - 以「供應商已保證」為由刪任何一條，必須對照**任何會載入該契約的 session 中最薄的

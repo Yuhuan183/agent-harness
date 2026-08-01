@@ -42,13 +42,14 @@ def text_record(
     effective_text: str | None = None,
     *,
     kind: str | None = None,
+    path: str | None = None,
 ) -> dict:
     file_data = read_bytes(relative)
     text = file_data.decode("utf-8")
     effective = text if effective_text is None else effective_text
     effective_data = effective.encode("utf-8")
     record = {
-        "path": relative,
+        "path": path or relative,
         "bytes": len(effective_data),
         "sha256": sha256(effective_data),
         "words": word_count(effective),
@@ -81,6 +82,46 @@ def codex_role(relative: str) -> dict:
     if not isinstance(body, str):
         raise ValueError(f"{relative}: missing developer_instructions")
     return text_record(relative, body)
+
+
+# A role's body is dispatch-time cost, paid only when that role runs. Its name
+# and description are not: both CLIs list every registered role in every
+# session as the agent-selection surface, exactly the way a skill's name and
+# description are listed. Counting only the body left the always-loaded half of
+# a role outside the census and outside every budget, so a clause moved from a
+# skill description into a role description cost the same and measured as
+# nothing (2026-08-01 review).
+CODEX_ROLE_REGISTRY = "main/codex/config.merge.toml"
+
+
+def claude_role_metadata(relative: str) -> dict:
+    frontmatter, _ = split_frontmatter(relative)
+    fields = skill_frontmatter_fields(frontmatter)
+    missing = {"name", "description"} - set(fields)
+    if missing:
+        raise ValueError(f"{relative}: frontmatter missing {sorted(missing)}")
+    metadata = f"{fields['name']} {fields['description']}"
+    return text_record(relative, metadata, kind="role-metadata")
+
+
+def codex_role_metadata() -> list[dict]:
+    """One record per registered role; Codex reads them from one shared file."""
+    payload = tomllib.loads(read_bytes(CODEX_ROLE_REGISTRY).decode("utf-8"))
+    agents = payload.get("agents") or {}
+    records = []
+    for role in ROLES:
+        entry = agents.get(role)
+        description = entry.get("description") if isinstance(entry, dict) else None
+        if not isinstance(description, str):
+            raise ValueError(
+                f"{CODEX_ROLE_REGISTRY}: missing description for [agents.{role}]")
+        records.append(text_record(
+            CODEX_ROLE_REGISTRY,
+            f"{role} {description}",
+            kind="role-metadata",
+            path=f"{CODEX_ROLE_REGISTRY}#agents.{role}",
+        ))
+    return records
 
 
 def skill_paths(directory: str) -> list[str]:
@@ -158,6 +199,8 @@ def build_census() -> dict:
             "resident": [
                 text_record("main/claude/CLAUDE.contract.md"),
                 *(metadata for metadata, _ in claude_skills),
+                *(claude_role_metadata(f"main/claude/agents/{role}.md")
+                  for role in ROLES),
             ],
             "dispatch": [
                 *(body for _, body in claude_skills),
@@ -170,6 +213,7 @@ def build_census() -> dict:
             "resident": [
                 text_record("main/codex/AGENTS.contract.md"),
                 *(metadata for metadata, _ in codex_skills),
+                *codex_role_metadata(),
             ],
             "dispatch": [
                 *(body for _, body in codex_skills),
@@ -193,7 +237,7 @@ def build_census() -> dict:
             "skills": "name and description are resident; body is dispatch-time",
             "bytes": "UTF-8 bytes of the effective prompt text",
             "words": "one CJK character or one non-space non-CJK run",
-            "roles": "role body only; file_bytes/file_sha256 bind frontmatter or TOML",
+            "roles": "role body only; the always-loaded name and description are counted in resident as role-metadata",
         },
         "providers": providers,
         "totals": totals,

@@ -931,6 +931,16 @@ class DocumentationBudgetTests(unittest.TestCase):
             self.assertEqual(
                 len(census["providers"][provider]["roles"]), len(ROLES)
             )
+            # The always-loaded half of every role. Measuring role bodies only
+            # left this surface out of the census entirely, so the budget below
+            # had nothing to cap (2026-08-01 review).
+            self.assertEqual(
+                len([record
+                     for record in census["providers"][provider]["resident"]
+                     if record.get("kind") == "role-metadata"]),
+                len(ROLES),
+                f"{provider} resident layer is missing role metadata",
+            )
             for layer in ("resident", "dispatch", "roles"):
                 total = census["totals"][provider][layer]
                 self.assertGreater(total["bytes"], 0)
@@ -947,6 +957,15 @@ class DocumentationBudgetTests(unittest.TestCase):
         stayed green as soon as someone regenerated the snapshot. So this reads
         the sources, not `prompt-surface-census.json`, and the resident total
         below is the contract budget plus this one.
+
+        Role metadata is capped on the same argument and for a sharper reason.
+        `contract-slimming.md` names role frontmatter as a *destination* for
+        content moved out of the resident contract, but a role's name and
+        description are listed in every session just like a skill's — so a
+        clause moved there was still resident while every budget here went
+        green. That is the one way this ratchet could be paid off rather than
+        met, which is why it is asserted next to the budget it protects
+        (2026-08-01 review).
         """
         import importlib.util
         spec = importlib.util.spec_from_file_location(
@@ -977,11 +996,33 @@ class DocumentationBudgetTests(unittest.TestCase):
             self.assertLessEqual(
                 sum(record["words"] for record in records), budget, provider)
 
+        # Seven roles on each side. Claude spells them in agent frontmatter,
+        # Codex in the `[agents.*]` registrations of config.merge.toml; both are
+        # listed once per session. Measured today: Claude 136, Codex 61.
+        role_metadata_budgets = {"claude": 140, "codex": 63}
+        # The widest role line today is 21 words. A proportional ratchet on a
+        # unit this small rounds to no slack at all, which would make an
+        # ordinary wording fix fail the suite; 24 is the smallest cap that still
+        # refuses a moved paragraph.
+        per_role_budget = 24
+        for provider, budget in role_metadata_budgets.items():
+            records = [record
+                       for record in census["providers"][provider]["resident"]
+                       if record.get("kind") == "role-metadata"]
+            self.assertEqual(len(records), len(ROLES), provider)
+            for record in records:
+                self.assertLessEqual(
+                    record["words"], per_role_budget,
+                    f"{record['path']}: resident role metadata")
+            self.assertLessEqual(
+                sum(record["words"] for record in records), budget, provider)
+
         for provider, (contract, contract_budget) in RESIDENT_CONTRACT_BUDGETS.items():
             self.assertLessEqual(
                 census["totals"][provider]["resident"]["words"],
-                contract_budget + metadata_budgets[provider],
-                f"{provider} resident layer ({contract} plus skill metadata)")
+                contract_budget + metadata_budgets[provider]
+                + role_metadata_budgets[provider],
+                f"{provider} resident layer ({contract} plus skill and role metadata)")
 
     def test_the_widest_description_keeps_every_trigger_it_pays_for(self) -> None:
         """A description is resident cost *and* the only routing surface.
