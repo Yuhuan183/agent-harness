@@ -130,6 +130,15 @@ GIT_VALUE_OPTIONS = ("-C", "-c", "--git-dir", "--work-tree", "--namespace")
 # gate must not depend on another layer being synced.
 MIN_PYTHON = (3, 11)
 INTERPRETERS = ("python3.14", "python3.13", "python3.12", "python3.11", "python3")
+# How long one suite may run before the gate calls it a hang and blocks. This
+# has to stay strictly under the `timeout` on the settings.json hook entry that
+# invokes this file, and by enough to cover interpreter probing first: the two
+# were both 300 s, so on the PreToolUse path the host's budget always expired
+# first and the branch below could never fire — a hung suite ended as a hook
+# timeout rather than as exit 2 (2026-08-01 review). The git-side `pre-commit`
+# hook shares this constant and has no outer budget, so the ordering is fixed on
+# the settings side and this value is left where it was.
+SUITE_TIMEOUT = 300
 # The escape hatch must be a real leading shell assignment. A bare substring
 # match let the token anywhere — e.g. inside a commit message — disarm the gate.
 SKIP_RE = re.compile(r"^\s*(?:env\s+)?AGENT_SKIP_TEST_GATE=1(?=\s)")
@@ -382,11 +391,12 @@ def run_suites(gated_suites: list[tuple[Path, Path]], label: str) -> int:
                 result = subprocess.run(
                     [interpreter, "-m", "unittest", "discover",
                      "-s", str(tests_dir), "-p", "test_*.py"],
-                    capture_output=True, text=True, timeout=300, env=env,
+                    capture_output=True, text=True, timeout=SUITE_TIMEOUT, env=env,
                 )
             except subprocess.TimeoutExpired:
                 sys.stderr.write(
-                    f"{label}: suite {tests_dir} exceeded 300s - commit blocked.\n"
+                    f"{label}: suite {tests_dir} exceeded {SUITE_TIMEOUT}s - "
+                    "commit blocked.\n"
                     "Investigate the hang (or prefix with AGENT_SKIP_TEST_GATE=1) and retry.\n"
                 )
                 return 2
