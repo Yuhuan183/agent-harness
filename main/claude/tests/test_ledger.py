@@ -1814,6 +1814,132 @@ class LedgerUniquenessTests(unittest.TestCase):
                               "the completion carrier was dropped in silence")
 
 
+class LedgerReaderDamageTests(unittest.TestCase):
+    """The two readers the shared damage matrix never reached.
+
+    The matrix was written for the four scripts that *write* telemetry, so
+    `experience-report` and `experience-revise` - the two that only read it -
+    were never driven through it. Six of the seven classes aborted both with an
+    uncaught traceback: the decode sits outside the inner handler in one and
+    covers the whole file in the other, and a valid-JSON-but-not-an-object row
+    raises TypeError, which the handler does not name (2026-08-02 review).
+
+    Why that mattered more than a crash: `weekly-integrity` runs
+    `experience-report` and reads a non-zero exit as an empty report with no
+    message, so the weekly path went quiet at the same moment the report died.
+    One damaged byte therefore stopped both the dispatch-experience hints and
+    the routing revision they feed, permanently and without a word, until
+    someone opened the file by hand.
+    """
+
+    REPORT = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-report"
+    REVISE = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-revise"
+    @property
+    def RECORD(self) -> dict:
+        """A valid record dated relative to now, never to a literal date.
+
+        A pinned `ts` ages out of `revision_policy.days` and the row silently
+        stops counting: with the 90-day window and a 2026-07-31 fixture, the
+        `records == 2` assertion below would have started failing on
+        2026-10-29 - and the commit gate runs this suite, so from that date
+        every commit in this repo would have been blocked by a test that had
+        nothing to do with the change (2026-08-03 review).
+        """
+        return {
+            "ts": (datetime.now(timezone.utc)
+                   - timedelta(days=1)).isoformat(timespec="seconds"),
+            "schema": 3, "role": "executor",
+            "task_class": "impl", "provider": "claude", "outcome": "accepted",
+            "profile": "balanced", "model": "claude-opus-5", "effort": "high",
+            "request_source": "claude-code",
+        }
+
+    def _ledger(self, temp: Path, damage: bytes) -> dict:
+        """A damaged row between two valid ones, so loss is measurable."""
+        row = json.dumps(self.RECORD).encode("utf-8") + b"\n"
+        path = temp / "ledger.jsonl"
+        path.write_bytes(row + damage + row)
+        return {**os.environ, "AGENT_EXPERIENCE_LEDGER": str(path)}
+
+    def test_a_wrongly_typed_field_costs_only_its_own_row(self) -> None:
+        """The row shape being right does not make its fields right.
+
+        `isinstance(record, dict)` was the whole 2026-08-02 guard, and it only
+        answers "is this an object". A field inside it can still be a list or a
+        dict, which is valid JSON and raises where nothing catches it. Five of
+        these aborted both readers after the previous fix, including `ts_naive`
+        - a record with no zone, which is not damage at all.
+        """
+        for name, override in JSONL_FIELD_DAMAGE:
+            with self.subTest(name), tempfile.TemporaryDirectory() as temp_dir:
+                bad = json.dumps({**self.RECORD, **override}).encode("utf-8")
+                env = self._ledger(Path(temp_dir), bad + b"\n")
+                report = subprocess.run(
+                    [sys.executable, str(self.REPORT), "--json"],
+                    env=env, capture_output=True, text=True)
+                self.assertEqual(report.returncode, 0,
+                                 f"{name}: {report.stderr}")
+                self.assertEqual(json.loads(report.stdout)["records"], 2, name)
+                revise = subprocess.run(
+                    [sys.executable, str(self.REVISE)],
+                    env=env, capture_output=True, text=True)
+                self.assertEqual(revise.returncode, 0,
+                                 f"{name}: {revise.stderr}")
+                self.assertNotIn("Traceback", revise.stderr, name)
+
+    def test_the_two_readers_agree_on_which_fields_are_keyed(self) -> None:
+        """Divergence here means one surface counts a row the other drops.
+
+        `experience-report` publishes the evidence and `experience-revise`
+        proposes route changes from it, so a record has to survive both or
+        neither - the same reason their eligibility rules are kept identical.
+        """
+        lists = []
+        for path in (self.REPORT, self.REVISE):
+            body = path.read_text(encoding="utf-8")
+            match = re.search(r"KEYED_FIELDS = \((.*?)\)", body, re.DOTALL)
+            self.assertIsNotNone(match, f"{path.name} has no KEYED_FIELDS")
+            lists.append(tuple(re.findall(r'"([^"]+)"', match.group(1))))
+        self.assertEqual(lists[0], lists[1],
+                         "the readers disagree on their keyed fields")
+        self.assertIn("task_class", lists[0], "the guard covers nothing useful")
+
+    def test_a_damaged_ledger_row_costs_only_itself(self) -> None:
+        for name, damage in JSONL_DAMAGE:
+            with self.subTest(name), tempfile.TemporaryDirectory() as temp_dir:
+                env = self._ledger(Path(temp_dir), damage)
+                report = subprocess.run(
+                    [sys.executable, str(self.REPORT), "--json"],
+                    env=env, capture_output=True, text=True)
+                self.assertEqual(report.returncode, 0, report.stderr)
+                # Not just "it exited 0": the neighbouring valid rows have to
+                # survive, or tolerating damage would just mean losing more.
+                self.assertEqual(json.loads(report.stdout)["records"], 2, name)
+
+                revise = subprocess.run(
+                    [sys.executable, str(self.REVISE)],
+                    env=env, capture_output=True, text=True)
+                self.assertEqual(revise.returncode, 0, revise.stderr)
+                self.assertNotIn("Traceback", revise.stderr, name)
+                self.assertIn("comparable cohorts", revise.stdout, name)
+
+    def test_both_readers_guard_the_two_classes_that_escape_the_handler(self) -> None:
+        """Named in source, because the handler tuple does not name them.
+
+        `except (json.JSONDecodeError, KeyError, ValueError)` reads as if it
+        covers a bad line. It does not cover a decode raised by the iteration
+        above it, nor a TypeError from subscripting a non-object, and both are
+        one edit away from coming back.
+        """
+        for path in (self.REPORT, self.REVISE):
+            body = path.read_text(encoding="utf-8")
+            # Membership tested as a bool so a failure names the guard rather
+            # than dumping the whole script into the report.
+            for guard in ('errors="replace"', "isinstance(record, dict)"):
+                self.assertTrue(guard in body,
+                                f"{path.name} lost its {guard} guard")
+
+
 class RequestSourceSchemaTests(unittest.TestCase):
     def test_codex_launched_claude_cli_is_representable(self) -> None:
         for script in ("experience-log", "experience-report", "experience-revise"):

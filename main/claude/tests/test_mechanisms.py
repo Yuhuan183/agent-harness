@@ -635,6 +635,38 @@ class MechanismTests(unittest.TestCase):
                     self.assertNotIn("check failed unexpectedly", result.stdout)
                     self.assertIn("sess:never-logged", result.stdout)
 
+    def test_a_crashed_experience_reader_is_reported_not_read_as_no_data(self) -> None:
+        """"The reader died" and "there is nothing to report" are opposite facts.
+
+        `report = json.loads(exp.stdout) if exp.returncode == 0 else {}` turned
+        the first into the second, and `{}` then took the no-hints branch and
+        said nothing. So a ledger row the reader could not handle retired the
+        dispatch hints *and* the routing revision behind them in complete
+        silence, while this hook went on stamping itself complete
+        (2026-08-03 review).
+        """
+        hook = ROOT / "main/claude/hooks/weekly-integrity.py"
+        with tempfile.TemporaryDirectory() as temp_home:
+            home = Path(temp_home)
+            scripts = home / ".agents/skills/experience-ledger/scripts"
+            scripts.mkdir(parents=True)
+            stub = scripts / "experience-report"
+            stub.write_text("#!/bin/sh\necho 'boom' >&2\nexit 1\n", encoding="utf-8")
+            stub.chmod(0o755)
+            (home / ".agents/telemetry").mkdir(parents=True)
+            (home / ".agents/telemetry/experience-pending.jsonl").write_bytes(b"")
+            result = subprocess.run(
+                [sys.executable, str(hook)],
+                env={**os.environ, "HOME": temp_home,
+                     "AGENT_HARNESS_REPO": str(home / "repo")},
+                check=True, capture_output=True, text=True)
+            self.assertIn("dispatch-experience reader failed", result.stdout)
+            self.assertIn("boom", result.stdout, "the reader's own error is lost")
+            # A check that could not run must not advance the throttle, or the
+            # finding disappears for a week.
+            self.assertFalse((home / ".claude/telemetry/.integrity-last-run").exists(),
+                             "a failed reader still stamped the run complete")
+
     def test_sync_and_weekly_integrity_share_one_deployment_manifest(self) -> None:
         hook = read(".claude/hooks/weekly-integrity.py")
         sync = read("scripts/sync.sh")
@@ -1974,6 +2006,43 @@ class VerifierQuotaTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as home:
             self.assertEqual(self._dispatch(Path(home), prompt=None), 0)
             self.assertEqual(self._dispatch(Path(home), prompt=None), 0)
+
+    def test_unwritable_state_fails_open_and_the_docs_say_so(self) -> None:
+        """The one gate that is fail-closed on condition and fail-open on itself.
+
+        Every other entry in the fail-closed table also refuses when its own
+        machinery breaks - an unrunnable suite, an unreadable version, an
+        unresolvable target all block. This one does not: `load()` reads an
+        unwritable state directory as an empty budget and `save()` swallows the
+        error, so two verifiers in one prompt both proceed. That is the
+        deliberate design (it is a budget guard, not a safety boundary), but
+        the docs classified it purely by `return 2` and therefore promised a
+        posture it does not have (2026-08-03 review).
+
+        Asserted behaviourally *and* against the prose, because the source-
+        derived gate count in `test_deployment.py` cannot see the difference.
+        """
+        with tempfile.TemporaryDirectory() as home:
+            state = Path(home) / ".claude" / "telemetry"
+            state.mkdir(parents=True)
+            state.chmod(0o500)
+            try:
+                self.assertEqual(self._dispatch(Path(home)), 0)
+                self.assertEqual(
+                    self._dispatch(Path(home)), 0,
+                    "state failure now blocks; the docs below must change with it")
+            finally:
+                state.chmod(0o700)
+            # Control: the same two dispatches against writable state.
+            self.assertEqual(self._dispatch(Path(home)), 0)
+            self.assertEqual(self._dispatch(Path(home)), 2)
+
+        doc = read_repo("docs/hook-system.md")
+        row = next(line for line in doc.splitlines()
+                   if line.startswith("| [verifier-quota]"))
+        self.assertIn("狀態健康", row,
+                      "the fail-closed table does not disclose that this gate "
+                      "fails open on its own state failure")
 
     def test_a_carrier_that_stopped_arriving_becomes_a_standing_finding(self) -> None:
         """Silent retirement is the failure mode of an unread budget guard.

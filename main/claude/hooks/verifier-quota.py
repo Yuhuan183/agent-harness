@@ -56,8 +56,12 @@ from contextlib import contextmanager
 
 STATE = os.path.expanduser("~/.claude/telemetry/.verifier-quota.json")
 OUTCOME_VERIFIERS = ("verifier",)
-# Bookkeeping that is not a spent quota. Kept out of the session prune below,
-# which drops every key belonging to some other session.
+# Bookkeeping that is not a spent quota. The session prune below drops it along
+# with every key outside this session, and that is the intent: a dispatch that
+# carried `prompt_id` ends any run of misses, so the count belongs to the gap
+# and not to the file. (This comment used to claim the opposite - that the key
+# survived the prune - which is the reading that would make someone "fix" the
+# prune into a permanent alarm; 2026-08-02 review.)
 META_KEY = "_carrier"
 
 try:

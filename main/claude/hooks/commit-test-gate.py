@@ -169,6 +169,26 @@ GLOB_CHARS = "*?["
 # executable, so the checks on command position see nothing - what runs is the
 # argument, and an argument this hook cannot read could be anything.
 SHELL_RUNNERS = ("eval", "sh", "bash", "zsh", "dash", "ksh", "xargs")
+# Git exports these to every hook it runs, and the suite this gate runs creates
+# scratch repositories and makes real commits in them. Inherited, `GIT_DIR` and
+# `GIT_INDEX_FILE` point those writes at the repository being committed to: the
+# git-side `pre-commit` half ran the whole suite against the developer's own
+# HEAD and index, which moved HEAD onto fixture commits and replaced the index
+# with a fixture tree (reproduced 2026-08-04; recovery is `git reset --mixed`,
+# the working tree is untouched).
+#
+# Scrubbed here rather than in either hook because `run_suites` is the one
+# place both gates share, so neither can drift into running the suite in a
+# repository-bound environment. The Bash-side gate never had the problem - it
+# runs before the shell does - which is exactly why nothing noticed.
+GIT_HOOK_ENV = (
+    "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_PREFIX", "GIT_COMMON_DIR",
+    "GIT_NAMESPACE", "GIT_CEILING_DIRECTORIES", "GIT_QUARANTINE_PATH",
+    "GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_AUTHOR_DATE",
+    "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL", "GIT_COMMITTER_DATE",
+    "GIT_EDITOR", "GIT_EXEC_PATH", "GIT_INTERNAL_GETTEXT_TEST_FALLBACKS",
+)
 
 
 def holds_expansion(text: str) -> bool:
@@ -376,7 +396,8 @@ def run_suites(gated_suites: list[tuple[Path, Path]], label: str) -> int:
         # would still land on the agent's old python, so the suite would stay
         # half-upgraded and still report false failures. Front PATH with a
         # `python3` shim pointing at the same interpreter.
-        env = dict(os.environ)
+        env = {name: value for name, value in os.environ.items()
+               if name not in GIT_HOOK_ENV}
         env["AGENT_HARNESS_PYTHON"] = interpreter
         shim = Path(shim_dir) / "python3"
         try:

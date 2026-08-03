@@ -52,7 +52,13 @@
   [context-and-vendors](research/context-and-vendors.md)）。**每支 leaf role 的
   `description` 同樣有預算**，理由相同：它與 skill description 一樣每個 session 都
   載入，若不設限，把句子從 skill description 搬進 role description 就能繞過整道棘輪
-  而成本不變（2026-08-01 review）。
+  而成本不變（2026-08-01 review）。**專案內的 dev-only skill（`.claude/skills/` 下的
+  symlink）也吃同一個 per-skill 上限**：它不出貨，所以不進 census，但在本 checkout 開的
+  每個 session 都常駐——棘輪只蓋出貨層時，唯一在外面的那支正好常駐在最常開的 repo
+  （2026-08-02 review）。
+- 位元組另有天花板。word 是注意力代價的近似，不是長度：一份 520 word、每詞 200 字元的
+  檔案能同時通過 word 預算與不斷行上限，卻是 104 KB。真實常駐契約約 2.7 KB，所以天花板
+  訂在寬鬆但有限的每詞位元組比，只擋掉數量級的偏離，不干涉正常改寫（2026-08-02 review）。
 - 調高預算需要證據：先嘗試「移出到 skill／hook／role 契約」，只有內容確屬
   「每 session 必要且推不出」時才擴預算，並在 commit message 記明理由。
 - 以「供應商已保證」為由刪任何一條，必須對照**任何會載入該契約的 session 中最薄的

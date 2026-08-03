@@ -104,6 +104,85 @@ class MachineStateHygieneTests(unittest.TestCase):
         self.assertLess(deadline, outer,
                         "the global deadline must fit inside the hook timeout")
 
+    def test_an_exhausted_deadline_stops_scheduling_instead_of_overrunning(self) -> None:
+        """The constants above were never the guarantee; this is.
+
+        `budget()` floored every slice at 1 s unconditionally, so once the
+        deadline was gone each remaining subprocess still got a second. One run
+        schedules 44 of them - 38 driven by manifest rows, 6 fixed - which puts
+        a drift-heavy run at up to ~94 s against a 60 s registration: the exact
+        overrun BUDGET was added to prevent, and the assertions above could not
+        see it because they only read constants and static regexes
+        (2026-08-02 review).
+
+        Driven by shrinking BUDGET on a probe copy rather than by waiting 50 s,
+        the same way the sync early-stop probe edits its own copy. A negative
+        budget means the deadline is gone before the first check, so what is
+        asserted is the scheduling decision, not a wall-clock race.
+        """
+        source = read(".claude/hooks/weekly-integrity.py")
+        anchor = "BUDGET = 50.0\n"
+        self.assertIn(anchor, source, "BUDGET moved; this probe is stale")
+        with tempfile.TemporaryDirectory() as temp_home:
+            home = Path(temp_home)
+            probe = home / "weekly-integrity-probe.py"
+            probe.write_text(source.replace(anchor, "BUDGET = -1.0\n", 1),
+                             encoding="utf-8")
+            stamp = home / ".claude/telemetry/.integrity-last-run"
+            result = subprocess.run(
+                [sys.executable, str(probe)],
+                env={**os.environ, "HOME": temp_home,
+                     # Absent on purpose: the drift check records one finding
+                     # and returns, so the run has something collected before
+                     # the deadline stops it.
+                     "AGENT_HARNESS_REPO": str(home / "no-such-checkout")},
+                check=True, capture_output=True, text=True)
+            self.assertIn("budget with checks still pending", result.stdout)
+            self.assertIn("retried next session", result.stdout)
+            # Everything collected before the stop still reaches the user; an
+            # overrun that swallowed the partial findings would read like a
+            # clean session.
+            self.assertIn("deployment drift check unavailable", result.stdout)
+            # No stamp means the next session retries, which is the only thing
+            # that makes an incomplete run self-correcting.
+            self.assertFalse(stamp.exists(), "a stopped run advanced the throttle")
+
+    def test_the_gate_runs_the_suite_detached_from_the_repository(self) -> None:
+        """The git-side half of the gate could not run its own suite.
+
+        Git exports GIT_DIR, GIT_INDEX_FILE and friends to every hook. This
+        suite creates scratch repositories and makes real commits in them, so
+        inherited, those writes went to the repository being committed to: a
+        `git commit` here moved HEAD onto fixture commits and replaced the
+        index with a fixture tree (reproduced 2026-08-04; `git reset --mixed`
+        recovers, the working tree is never touched).
+
+        The Bash-side gate never had it - it runs before the shell does - which
+        is why a suite that gates every commit had a half nothing had ever
+        exercised end to end. Both halves share `run_suites`, so the scrub goes
+        there; `support.py` scrubs again for hand-run suites.
+
+        Asserted on both sides because either alone leaves the hole open, and
+        on the variable names because that is the contract with git.
+        """
+        essential = {"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE",
+                     "GIT_OBJECT_DIRECTORY", "GIT_QUARANTINE_PATH"}
+        gate = read(".claude/hooks/commit-test-gate.py")
+        support_src = (ROOT / "main/claude/tests/support.py").read_text(
+            encoding="utf-8")
+        for label, body in (("commit-test-gate", gate), ("support", support_src)):
+            listed = set(re.findall(r'"(GIT_[A-Z_]+)"', body))
+            self.assertTrue(
+                essential <= listed,
+                f"{label} does not scrub {sorted(essential - listed)}")
+        # The gate must build the suite environment from the filtered set, not
+        # from os.environ directly.
+        self.assertNotIn("env = dict(os.environ)", gate,
+                         "the gate passes its whole environment to the suite")
+        self.assertIn("if name not in GIT_HOOK_ENV", gate)
+        # And support must actually remove them, not merely name them.
+        self.assertIn("os.environ.pop(_name, None)", support_src)
+
     def test_commit_gate_outer_timeout_exceeds_its_suite_budget(self) -> None:
         """The same ordering as F-06, on the gate that blocks commits.
 
@@ -134,6 +213,29 @@ class MachineStateHygieneTests(unittest.TestCase):
             outer - suite, probe,
             "the margin must cover interpreter probing, not just the suite")
         self.assertIn("timeout=SUITE_TIMEOUT", source)
+
+    def test_the_docs_count_the_commit_gate_copies_the_hook_compares(self) -> None:
+        """The same drift the layer and gate counts already guard, one file over.
+
+        `hook-system.md` said the gate compares three copies of the command; it
+        compares four, and the one it left out - substituting the values the
+        hook can actually read - is the *only* one that catches `G=git; $G
+        commit` and `$PRE_GIT commit`, both proved to be real commits by
+        `test_every_spelling_that_really_commits_is_blocked`. A reader auditing
+        the gate against the doc would find the fourth copy unaccounted for and
+        could delete it as redundant (2026-08-02 review).
+        """
+        source = read(".claude/hooks/commit-test-gate.py")
+        body = source.split("def main()", 1)[1]
+        copies = body.count("COMMIT_RE.search(")
+        self.assertGreater(copies, 0, "the detection copies moved out of main()")
+        numerals = {"一": 1, "兩": 2, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6}
+        doc = read_repo("docs/hook-system.md")
+        match = re.search(r"hook 比對(.)份副本", doc)
+        self.assertIsNotNone(match, "the copy-count sentence moved")
+        self.assertEqual(
+            numerals.get(match.group(1)), copies,
+            f"the doc says {match.group(1)} copies but main() compares {copies}")
 
     def test_headroom_routing_ownership_is_explicit(self) -> None:
         runtime = read(".agents/docs/headroom-runtime.md")
