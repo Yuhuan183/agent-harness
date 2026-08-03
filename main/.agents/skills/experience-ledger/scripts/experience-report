@@ -67,13 +67,72 @@ def parse_ts(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+# Fields that end up in a hash key, a set or tuple membership test, or a
+# timestamp parse. A list or dict in any of them is valid JSON that raises
+# *past* the readers' handlers - AttributeError from `parse_ts`, TypeError from
+# an unhashable cohort key - so the type is checked once, here, before any of
+# them is touched. Absent or null is fine: every consumer already defaults it.
+# `experience-revise` carries the same list and the shared damage matrix is
+# what keeps the two in step (see the suite's `JSONL_DAMAGE`).
+KEYED_FIELDS = ("role", "task_class", "provider", "request_source",
+                "profile", "model", "effort", "outcome", "route_source")
+
+
+def usable_record(record: dict) -> bool:
+    """True when every keyed field is a string (or absent) and `ts` is aware.
+
+    A naive timestamp is well-formed and still fatal: comparing it with an
+    aware `since` raises TypeError. It is rejected here rather than repaired,
+    because guessing a zone would silently re-date someone's record.
+    """
+    if not isinstance(record.get("ts"), str):
+        return False
+    try:
+        if parse_ts(record["ts"]).tzinfo is None:
+            return False
+    except ValueError:
+        return False
+    return all(isinstance(record.get(field), (str, type(None)))
+               for field in KEYED_FIELDS)
+
+
 def load(path: str, since: datetime) -> list[dict]:
+    """Read the append-only ledger, costing a damaged row and nothing else.
+
+    Two ways a single bad row used to take the whole report down, both outside
+    the inner handler's reach (2026-08-02 review):
+
+    `errors="replace"` - decoding happens in the `for line in handle`
+    iteration, one frame above the `try`, so a corrupt byte or a half-written
+    multi-byte character raised UnicodeDecodeError from the loop itself. The
+    hook writing this file appends on every subagent stop, so a torn tail is
+    the expected damage, not an exotic one.
+
+    `isinstance(record, dict)` - a line that is valid JSON but not an object
+    (`[]`, `"junk"`, `42`, `null`) parses fine and then raises TypeError on
+    `record["ts"]`, which is neither JSONDecodeError, KeyError, nor ValueError.
+
+    `usable_record()` - the row shape being right does not make its fields
+    right. `{"ts": []}` reaches `parse_ts` and raises AttributeError on
+    `.replace`; `{"task_class": []}` reaches a cohort key and raises TypeError
+    on an unhashable tuple member; a timezone-naive `ts` compares against an
+    aware `since` and raises TypeError. None of the three is caught below, and
+    the middle one is not even damage - it is what a hand-edited record looks
+    like (2026-08-03 review).
+
+    Six of the seven damage classes in the suite's shared matrix aborted the
+    command, and `weekly-integrity` reads a non-zero exit as "no data" without
+    saying so - so the report and the routing revision behind it went silently
+    dead until someone repaired the file by hand.
+    """
     records = []
     try:
-        with open(path, encoding="utf-8") as handle:
+        with open(path, encoding="utf-8", errors="replace") as handle:
             for line in handle:
                 try:
                     record = json.loads(line)
+                    if not isinstance(record, dict) or not usable_record(record):
+                        continue
                     if parse_ts(record["ts"]) >= since:
                         records.append(record)
                 except (json.JSONDecodeError, KeyError, ValueError):

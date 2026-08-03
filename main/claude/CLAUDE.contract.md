@@ -22,4 +22,4 @@ Applies only to the top-level session; named agents use their own self-contained
 ## All sessions
 
 - Load `headroom-protocol` only when Headroom MCP tools exist and an unusually large read-only blob repays manual compression.
-- A PreToolUse hook may rewrite a shell command to its `rtk` equivalent. When a command fails with an `rtk:` message, rerun it with an absolute path (`/usr/bin/find`); `~/.claude/RTK.md` has the rest.
+- A PreToolUse hook may rewrite a shell command to its `rtk` equivalent, and the substitute may reject a flag while still reporting `0 matches`. Never record a "no hits" conclusion from a rewritten command: re-run it with an absolute path (`/usr/bin/grep`) and compare. `~/.claude/RTK.md` has the rest.

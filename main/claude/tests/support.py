@@ -29,6 +29,31 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
+# Detach the suite from whatever repository its caller was working in, once,
+# before any fixture runs. Many tests here create a scratch repository and make
+# real commits in it; with `GIT_DIR` or `GIT_INDEX_FILE` inherited, those writes
+# land in the *caller's* repository instead. Git exports exactly these to every
+# hook it runs, so the git-side `pre-commit` gate - which runs this suite from
+# inside a commit - pointed every fixture at the developer's own HEAD and index
+# and moved HEAD onto fixture commits (reproduced 2026-08-04).
+#
+# The gate scrubs its own subprocess environment too. This is the half that
+# holds when the suite is run by hand from a shell that happens to have them
+# set, and it is here rather than in each fixture because "every `git` this
+# suite runs must be repository-neutral" is a property of the suite, not
+# something 40 call sites should each remember.
+GIT_HOOK_ENV = (
+    "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_PREFIX", "GIT_COMMON_DIR",
+    "GIT_NAMESPACE", "GIT_CEILING_DIRECTORIES", "GIT_QUARANTINE_PATH",
+    "GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_AUTHOR_DATE",
+    "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL", "GIT_COMMITTER_DATE",
+    "GIT_EDITOR", "GIT_EXEC_PATH",
+)
+for _name in GIT_HOOK_ENV:
+    os.environ.pop(_name, None)
+
+
 # Repo root: deployable harness sources live under main/; docs and evals stay
 # at the project root.
 ROOT = Path(__file__).resolve().parents[3]
@@ -171,14 +196,28 @@ def word_count(text: str) -> int:
 # link, so this leaves room for a long link without leaving room for a payload.
 MAX_UNBROKEN_RUN = 200
 
+# The run cap bounds one token; this bounds the whole file. Words approximate
+# attention, not length, and the two ceilings compose badly: 520 words of
+# 200-character runs passes both and is 104 KB, against ~2.8 KB for the real
+# resident contract (2026-08-02 review). The widest budgeted file today sits at
+# 8.6 bytes/word, so this is set to catch an order-of-magnitude deviation and
+# nothing else - it must never become a second, tighter word budget.
+MAX_BYTES_PER_WORD = 16
 
-# One damage matrix for every JSONL reader in the harness. Four scripts parse
-# the telemetry files - `experience-log`, `experience-stage`, the pending hook
-# and `weekly-integrity` - across two deployment trees, so they cannot share a
-# decoder without coupling `~/.claude/hooks` to `~/.agents/skills`: sync one
-# tree and not the other and the hook stops running altogether, which is worse
-# than the divergence. They share this matrix instead, the same way the two
-# `ledger_dispatch_ids` implementations are kept in step by a parity test.
+
+# One damage matrix for every JSONL reader in the harness. Six scripts parse
+# the telemetry files - `experience-log`, `experience-stage`, the pending hook,
+# `weekly-integrity`, `experience-report` and `experience-revise` - across two
+# deployment trees, so they cannot share a decoder without coupling
+# `~/.claude/hooks` to `~/.agents/skills`: sync one tree and not the other and
+# the hook stops running altogether, which is worse than the divergence. They
+# share this matrix instead, the same way the two `ledger_dispatch_ids`
+# implementations are kept in step by a parity test.
+#
+# The count is load-bearing, not decoration: this comment said "four" while the
+# last two only ever read the ledger, so they were never driven through the
+# matrix and six of the seven classes aborted them (2026-08-02 review). A new
+# reader that is not listed here is a reader nothing exercises.
 #
 # The second and third groups are the ones that got away twice. A corrupt byte
 # raises before json.loads; valid-but-not-an-object raises after it, on the
@@ -192,4 +231,28 @@ JSONL_DAMAGE = (
     ("json_string", b'"junk"\n'),
     ("json_number", b"42\n"),
     ("json_null", b"null\n"),
+)
+
+# The layer above JSONL_DAMAGE: the row is a well-formed object and its
+# *fields* are the wrong type. Every one of these is valid JSON that gets past
+# an `isinstance(record, dict)` guard and then raises where nothing catches it -
+# AttributeError inside `parse_ts`, TypeError from an unhashable cohort key, or
+# TypeError comparing a naive timestamp with an aware one. The 2026-08-02 pass
+# hardened the row shape and stopped there, so five of these still aborted both
+# ledger readers (2026-08-03 review).
+#
+# `ts_naive` is the one to keep in mind when trimming this list: it is not
+# damage at all, just a hand-written record without a zone.
+JSONL_FIELD_DAMAGE = (
+    ("ts_is_list", {"ts": []}),
+    ("ts_is_number", {"ts": 42}),
+    ("ts_is_null", {"ts": None}),
+    ("ts_naive", {"ts": "2026-07-31T00:00:00"}),
+    ("role_is_list", {"role": ["executor"]}),
+    ("task_class_is_list", {"task_class": []}),
+    ("provider_is_dict", {"provider": {}}),
+    ("request_source_is_list", {"request_source": []}),
+    ("profile_is_dict", {"profile": {}}),
+    ("outcome_is_list", {"outcome": []}),
+    ("route_source_is_list", {"route_source": []}),
 )

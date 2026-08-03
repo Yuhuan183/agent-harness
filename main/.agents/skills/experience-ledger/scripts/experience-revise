@@ -63,17 +63,52 @@ def parse_ts(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+# Kept identical to experience-report's list, for the same reason its
+# eligibility rules are: one surface reports the evidence and this one proposes
+# route changes from it, so a record either survives both readers or neither.
+# The shared damage matrix in the suite is what holds the two in step.
+KEYED_FIELDS = ("role", "task_class", "provider", "request_source",
+                "profile", "model", "effort", "outcome", "route_source")
+
+
+def usable_record(record: dict) -> bool:
+    """True when every keyed field is a string (or absent) and `ts` is aware.
+
+    A container in a keyed field is valid JSON that raises past the handler
+    below: AttributeError from `parse_ts`, TypeError from an unhashable cell
+    key. A timezone-naive `ts` is well-formed and still raises when compared
+    with an aware `since` (2026-08-03 review).
+    """
+    if not isinstance(record.get("ts"), str):
+        return False
+    try:
+        if parse_ts(record["ts"]).tzinfo is None:
+            return False
+    except ValueError:
+        return False
+    return all(isinstance(record.get(field), (str, type(None)))
+               for field in KEYED_FIELDS)
+
+
 def load_cells(path: str, since: datetime, now: datetime, half_life: float,
                excluded: set[str]) -> dict:
     """Weights per (provider, role, task_class, profile, model, effort)."""
     cells = defaultdict(lambda: {"n": 0, "w": 0.0, "accepted": 0.0})
+    # Same two holes as experience-report's `load`, one worse here: this reader
+    # decodes the whole file at once, so a single corrupt byte took every cell
+    # with it. `errors="replace"` keeps the damage to its own row, and the
+    # isinstance guard covers the valid-JSON-but-not-an-object rows that raise
+    # TypeError past the handler below (2026-08-02 review).
     try:
-        lines = Path(path).read_text(encoding="utf-8").splitlines()
+        lines = Path(path).read_text(
+            encoding="utf-8", errors="replace").splitlines()
     except FileNotFoundError:
         return cells
     for line in lines:
         try:
             record = json.loads(line)
+            if not isinstance(record, dict) or not usable_record(record):
+                continue
             timestamp = parse_ts(record["ts"])
         except (json.JSONDecodeError, KeyError, ValueError):
             continue

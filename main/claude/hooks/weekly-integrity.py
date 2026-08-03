@@ -25,12 +25,33 @@ STAMP = os.path.expanduser("~/.claude/telemetry/.integrity-last-run")
 # each subprocess takes the smaller of its own cap and the time left, so an
 # overrun surfaces as a normal timeout finding with output preserved.
 BUDGET = 50.0
+# The smallest slice worth handing out. Below this a check reports a timeout
+# instead of an answer, so there is nothing to buy by starting it.
+MIN_SLICE = 1.0
 _deadline = time.monotonic() + BUDGET
 
 
+class DeadlineExhausted(Exception):
+    """No time left inside BUDGET while checks are still pending."""
+
+
 def budget(cap):
-    """Seconds for the next subprocess: its own cap, or whatever time is left."""
-    return max(1.0, min(cap, _deadline - time.monotonic()))
+    """Seconds for the next subprocess: its own cap, or whatever time is left.
+
+    The floor here used to be unconditional (`max(1.0, ...)`), which made the
+    deadline advisory rather than a cap: one run schedules 44 budget-governed
+    subprocesses (38 driven by manifest rows, 6 fixed), and past the deadline
+    every one of them still got its 1 s, so a drift-heavy run could reach ~94 s
+    against a 60 s registration — the exact overrun the deadline was added to
+    prevent (2026-08-02 review). Past the deadline there is no slice left to
+    hand out, so scheduling stops here and the caller reports why.
+    """
+    left = _deadline - time.monotonic()
+    if left < MIN_SLICE:
+        raise DeadlineExhausted(
+            f"integrity run hit its {BUDGET:.0f}s budget with checks still pending"
+        )
+    return min(cap, left)
 
 
 def resolve_harness_repo():
@@ -143,12 +164,16 @@ def load_project_skill_names(root):
         raise ValueError("project skill inventory does not match source directories")
     return names
 
+# Held outside the run so that a run stopped part-way still reports what it
+# managed to find. Losing the partial findings would make an overrun look like
+# a clean session, which is the failure the budget exists to make visible.
+findings = []
+checks_completed = True
+
 try:
     if os.path.exists(STAMP) and time.time() - os.path.getmtime(STAMP) < PERIOD:
         sys.exit(0)
 
-    findings = []
-    checks_completed = True
     claude_dir = os.path.expanduser("~/.claude")
     # ~/.claude is normally populated by scripts/sync.sh rsync from the harness
     # repo, not a git checkout. Every manifest target is compared via an rsync
@@ -481,6 +506,22 @@ try:
             timeout=budget(10),
         )
         report = json.loads(exp.stdout) if exp.returncode == 0 else {}
+        if exp.returncode != 0:
+            # "The reader crashed" and "there is nothing to report" are opposite
+            # facts and used to produce identical silence: a non-zero exit
+            # became `{}`, which then took the no-hints branch and said nothing.
+            # A ledger row the reader cannot handle therefore retired the hints
+            # *and* the routing revision behind them without a word
+            # (2026-08-03 review). This is the loudest thing an informational
+            # check may do: report it and withhold the stamp, the same as any
+            # other subprocess failure here.
+            checks_completed = False
+            detail = (exp.stderr or exp.stdout).strip().splitlines()[-3:]
+            findings.append(
+                f"dispatch-experience reader failed (exit {exp.returncode}); "
+                "hints and routing revision are both unavailable until it is "
+                "fixed:\n" + "\n".join(detail)
+            )
         insufficient = set(report.get("hints_insufficient") or ())
         actionable = [f"hint: {cohort:<28} {hint}"
                       for cohort, hint in sorted((report.get("hints") or {}).items())
@@ -637,11 +678,27 @@ try:
                 stamp.write(str(int(time.time())))
         except OSError as exc:
             findings.append(f"integrity throttle update failed: {exc}")
-
-    if findings:
-        print("[weekly-integrity] issues found — relay these to the user:")
-        for f in findings:
-            print(f)
+except DeadlineExhausted as exc:
+    # Not a check failure: the checks that ran are still valid, and the ones
+    # that did not are simply unknown. Withholding the stamp is what makes the
+    # next session pick them up, so say that rather than let a partial run look
+    # complete.
+    checks_completed = False
+    # Every other finding here names a command; this one used to name only the
+    # symptom, so a run that kept stopping had no stated way out and would have
+    # become the standing alarm this file warns about three times over.
+    findings.append(
+        f"{exc}; the remaining checks did not run and are retried next session. "
+        "Clear the drift they were slow on (scripts/sync.sh --apply), or if the "
+        f"run is legitimately longer than {BUDGET:.0f}s, raise BUDGET and the "
+        "SessionStart timeout in settings.json together"
+    )
 except Exception as exc:
-    print(f"[weekly-integrity] check failed unexpectedly: {exc}")
+    checks_completed = False
+    findings.append(f"check failed unexpectedly: {exc}")
+
+if findings:
+    print("[weekly-integrity] issues found — relay these to the user:")
+    for f in findings:
+        print(f)
 sys.exit(0)

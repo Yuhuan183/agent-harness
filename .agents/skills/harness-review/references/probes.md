@@ -5,6 +5,17 @@ from the repository root. Prefix every shell command and chained segment with
 `rtk`; use raw output only when filtering hides evidence needed for a claim.
 Do not run every command mechanically.
 
+**A negative result from a rewritten command is not evidence until it is
+confirmed raw.** The `rtk` PreToolUse hook substitutes a different program for
+the one written here, and the substitute accepts a narrower flag set. When it
+rejects a flag it prints its own usage error and the wrapper still summarises
+the run as `0 matches for '<pattern>'` — which reads exactly like a clean
+sweep. Every command below was reduced to flags the substitute accepts
+(2026-08-02 review found five probes here returning `0 matches` without
+running), but that only closes the flags known today. Before recording any
+"no hits" finding, re-run it with an absolute path (`/usr/bin/grep`) and
+compare.
+
 ## Contents
 
 - Establish scope
@@ -37,7 +48,7 @@ head. Read changed files whole after inspecting the diff.
 rtk rg --files README.md docs main scripts .agents/skills/harness-review
 rtk find main -maxdepth 5 -type f
 rtk awk -F '\t' 'NF && $1 !~ /^#/ {print $1, $2, $3}' scripts/deployment-manifest.tsv
-rtk rg -n 'must|never|always|only|default|block|reject|enforce' README.md docs main --glob '*.md' --glob '*.toml'
+rtk rg -n 'must|never|always|only|default|block|reject|enforce' README.md docs main
 ```
 
 Classify each result as repository policy, deployable source, machine-local
@@ -46,7 +57,7 @@ state, or live state before drawing conclusions.
 ## Contract enforcement and routing
 
 ```sh
-rtk rg -n 'block|reject|refuse|prevent|enforce|guard|fail.closed|fail.open' README.md docs main --glob '*.md' --glob '*.py' --glob '*.sh' --glob '*.toml'
+rtk rg -n 'block|reject|refuse|prevent|enforce|guard|fail.closed|fail.open' README.md docs main
 rtk rg -n 'sys\.exit|parser\.error|raise|returncode|exit [1-9]' main scripts
 rtk rg -n 'request_source|origin_provider|fallback_hops|dispatch_id|rollout_id' main docs
 rtk rg -n 'provider|model|priority|fallback|quota|unavailable' main/claude main/codex
@@ -71,10 +82,10 @@ present in scope. Identify the owner and stop condition at every edge.
 ## Language and wording
 
 ```sh
-rtk rg -n '后|软件|信息|通过|优化|数据' README.md docs main --glob '*.md'
+rtk rg -n '后|软件|信息|通过|优化|数据' README.md docs main
 rtk rg -n '[，。；：]' main/claude/CLAUDE.contract.md main/codex/AGENTS.contract.md
-rtk rg -n '\b[A-Z]{2,}\b' README.md docs main --glob '*.md'
-rtk rg -n 'exactly one|at most one|one or more|stack|single|唯一|至多|至少' README.md docs main --glob '*.md'
+rtk rg -n '\b[A-Z]{2,}\b' README.md docs main
+rtk rg -n 'exactly one|at most one|one or more|stack|single|唯一|至多|至少' README.md docs main
 ```
 
 Classify the audience first. Runtime agent text, code, identifiers, commands,

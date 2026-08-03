@@ -7,7 +7,15 @@ from support import *  # noqa: F401,F403
 # plus skill metadata), which must not be able to drift apart.
 RESIDENT_CONTRACT_BUDGETS = {
     "claude": (".claude/CLAUDE.contract.md", 520),
-    "codex": (".codex/AGENTS.contract.md", 540),
+    # +10 (2026-08-03): the rtk clause gained the "a rewritten command may
+    # report 0 matches without running" rule, and fitting it into 540 cost the
+    # sentence its subject — "Authorization, approvals, and sandboxing ... may
+    # substitute another program", which inverts the one guarantee that clause
+    # exists to make. Ten words is what a grammatical subject costs here. The
+    # file landed at exactly 540/540 before this, which is the state that
+    # forced the bad compression; leaving a ceiling with zero headroom is how a
+    # budget starts buying wrong sentences instead of short ones.
+    "codex": (".codex/AGENTS.contract.md", 550),
 }
 
 
@@ -1017,12 +1025,70 @@ class DocumentationBudgetTests(unittest.TestCase):
             self.assertLessEqual(
                 sum(record["words"] for record in records), budget, provider)
 
+        # The word caps above bound attention; they do not bound length. A
+        # description made of long runs satisfies every one of them and is
+        # still tens of kilobytes resident - the same hole the whole-file
+        # ceiling closed for budgeted documents, still open on the metadata
+        # records because those are not files (2026-08-03 review). Applied per
+        # record, to both kinds, since the census already measures both.
+        for provider in RESIDENT_CONTRACT_BUDGETS:
+            for record in census["providers"][provider]["resident"]:
+                if record.get("kind") not in ("skill-metadata", "role-metadata"):
+                    continue
+                ratio = record["bytes"] / record["words"]
+                self.assertLessEqual(
+                    ratio, MAX_BYTES_PER_WORD,
+                    f"{record['path']}: {ratio:.1f} bytes per resident word; "
+                    "the words are not what this description actually costs")
+
         for provider, (contract, contract_budget) in RESIDENT_CONTRACT_BUDGETS.items():
             self.assertLessEqual(
                 census["totals"][provider]["resident"]["words"],
                 contract_budget + metadata_budgets[provider]
                 + role_metadata_budgets[provider],
                 f"{provider} resident layer ({contract} plus skill and role metadata)")
+
+    def test_project_scoped_skills_pay_the_same_resident_ceiling(self) -> None:
+        """The ratchet covered the deployed tier; one skill sat just outside it.
+
+        `.claude/skills/harness-review` is a tracked symlink to the repo-root
+        dev-only skill, so its name and description are resident in every
+        session opened in *this* checkout - the one the maintainer opens most.
+        The census enumerates `main/{claude,codex}/skills` and the budget above
+        binds itself to `deployed_skill_files()`, so nothing measured it and
+        nothing would have said a word as it grew (2026-08-02 review).
+
+        Deliberately not folded into the census: the census answers "what does
+        this repo ship", and this skill ships nowhere. It gets the same
+        per-skill ceiling instead, which is the part that was missing - a limit,
+        not a line item.
+        """
+        roots = sorted((ROOT / ".claude/skills").glob("*/SKILL.md"))
+        self.assertTrue(roots, "no project-scoped skill found to budget")
+        per_skill_budget = 180  # same ceiling as a deployed skill's metadata
+        for path in roots:
+            # Read literally: `read()` rewrites a `.claude/` prefix to the
+            # deployable `main/claude/` source, and this skill has none.
+            fields = path.read_text(encoding="utf-8").split("---", 2)[1]
+            words = word_count(fields)
+            self.assertLessEqual(
+                words, per_skill_budget,
+                f"{path.relative_to(ROOT)}: resident metadata is {words} words")
+            # Words alone let 180 words of 200-character runs through at
+            # ~34 KB. This skill is outside the census, so the ceilings the
+            # census records get have to be applied here directly
+            # (2026-08-03 review).
+            ratio = len(fields.encode("utf-8")) / words
+            self.assertLessEqual(
+                ratio, MAX_BYTES_PER_WORD,
+                f"{path.relative_to(ROOT)}: {ratio:.1f} bytes per resident word")
+            longest = max(re.findall(r"\S+", fields), key=len)
+            self.assertLessEqual(
+                len(longest), MAX_UNBROKEN_RUN,
+                f"{path.relative_to(ROOT)}: {len(longest)}-character unbroken run")
+            # Resident cost buys routing, so it has to still describe when the
+            # skill does *not* apply - the half a description usually loses first.
+            self.assertIn("Do not use", fields, str(path.relative_to(ROOT)))
 
     def test_the_widest_description_keeps_every_trigger_it_pays_for(self) -> None:
         """A description is resident cost *and* the only routing surface.
@@ -1152,7 +1218,16 @@ class DocumentationBudgetTests(unittest.TestCase):
             # instead, plus what the installer does when another tool already
             # owns core.hooksPath. Both were reproduced by review before the
             # prose claimed otherwise.
-            "docs/hook-system.md": 1730,
+            # +170 (2026-08-03): the two failure kinds were never distinguished.
+            # This doc defines fail-open as "放行 when the hook itself breaks"
+            # and fail-closed as "攔 when the condition holds", then sorted every
+            # gate by the second while readers took the first as implied.
+            # `verifier-quota` is the one that is only the second — an unwritable
+            # state directory lets two verifiers through, reproduced by probe —
+            # so the distinction, the row disclosure, and the corrected
+            # commit-gate copy count all had to land. A doc that classifies
+            # guardrails owes the axis it classifies on.
+            "docs/hook-system.md": 1900,
             # Top-down architecture spine: one diagram then a concise walk
             # through every layer, each pointing at its specialized doc. The
             # connective narrative the README (a repo landing page) and the
@@ -1263,6 +1338,19 @@ class DocumentationBudgetTests(unittest.TestCase):
                 len(longest), MAX_UNBROKEN_RUN,
                 f"{path}: {len(longest)}-character unbroken run evades the word "
                 f"budget; break it up or link to it: {longest[:80]}")
+
+        # Capping one run is not capping the file: many legal runs evade the
+        # word budget just as well as one illegal one. A 520-word file of
+        # 200-character runs satisfies both ceilings above at 104 KB, so the
+        # ratchet also has to bound what a word is allowed to cost.
+        for path, limit in budgets.items():
+            text = read(path)
+            words = word_count(text)
+            ratio = len(text.encode("utf-8")) / words
+            self.assertLessEqual(
+                ratio, MAX_BYTES_PER_WORD,
+                f"{path}: {ratio:.1f} bytes per word against a {limit}-word "
+                "budget; the words are not what this file actually costs")
 
     def test_root_readme_is_a_complete_navigation_surface(self) -> None:
         readme = read("README.md")
