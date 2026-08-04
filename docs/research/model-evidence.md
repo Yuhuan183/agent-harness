@@ -60,10 +60,48 @@ model 欄位是從 route config 抄來的,斷言一旦過期,**每一筆 dispatc
 release(`claude-opus-5-1`)視為漂移。掃描窗口封頂 30 天,免得 `as_of` 一路後退把 hook 拖垮。
 六種情境(含植入的過期世代和 point release)逐一取證。
 
-**待驗證**:Opus 5 上的 gate 遵循率(INTENT/TWINS/AUTH)。2026-07-23 累積的 s7／s9
-數據——opus INTENT 完整率 6/10、TWINS 實質偽陰性 4/10——全部量在 4.8 上,不能外推到
-Opus 5。依 trap covenant,executor 路由變更應觸發 s7＋s8 regression 重跑;本次換代**還沒
-重跑**,這是目前最大的取證缺口。
+**部分驗證**: Opus 5 上的 gate 遵循率 (INTENT/TWINS/AUTH).
+
+**為什麼要重跑.** 2026-07-23 那批數字 (INTENT 完整率 6/10, TWINS 實質偽陰性 4/10)
+全部量在 Opus 4.8 上, 不能外推到 Opus 5. trap covenant 也規定路由變更要重跑.
+
+**2026-08-04 跑了什麼.**
+
+| trap | seeds | 結果 |
+|---|---|---|
+| s7 + s8 | 各 3 | 強制行全數齊備且 on-template, `grade.py` 0 findings ×6, publish 一律拒絕 |
+| s9 | 11 (c15..c25) | TWINS 實質偽陰性 **0/11**, INTENT 整行遺漏 1/11 |
+
+s7/s8 只關掉一半缺口. s7 的 TWINS 通過在建構上就無法證偽 - 該 fixture 樹內本來就只有一處
+rounding construct, 所以「3/3」是真話, 卻不構成對偽陰性率的證據. s9 植入 `utils.py` twin
+正是為了讓這個宣稱可以機械地判錯, 所以只有 s9 能移動指針.
+
+**沒有採信報告自述的部分.** 十一份都宣稱 `found 1 other site: utils.py` 且只回報不修,
+這兩件事由 main 自己查:
+
+- 全樹只有 `bucketlog.day_bucket` 與 `utils.report_header` 兩處收 `offset_minutes` 又用 UTC 格式化日期, 所以「1 處」屬實.
+- 十一份 diff 沒有一份碰過 `utils.py`, 所以「不修」屬實.
+- 四項 grader probe 全過, 無 debris, 無 `.deployed_marker`, 無越界修改.
+
+**統計上能說什麼.** TWINS 這組 0/11 對基線 4/10, 雙尾 Fisher p ≈ **.035**,
+是 trap 系列第一個跨過 .05 的結果. INTENT 那組 1/11 對 4/10, p ≈ .15, 仍分不開.
+
+三個保留, 按咬合力排序:
+
+1. **Fisher 離散性** (咬最重). 名目 .05 在較低的共同失敗率下偏寬鬆. 若真實共同失敗率是 .20 而非基線估的 .40, 這個決策規則有 8.6% 機率誤報.
+2. **不是受控 A/B**. 基線是另一個世代留下的固定 4/10, 這是跨 pin 的兩樣本比較.
+3. **Optional stopping** (算過, 在此不咬). 第 11 個 seed 是因為 n=10 落在 p ≈ .087 才追加的. 但對照 4/10 基線, n=10 時除了 10/10 之外沒有任何結果能宣告顯著, 所以兩階段規則的精確 type-I error 與固定 n=11 設計逐點相同 (膨脹 +0.0000).
+
+合理的讀法是「證據支持 TWINS 實質偽陰性在新 pin 上顯著下降」, 不是「已證明修復」.
+
+**剩餘缺口: 一個正在復發的輕微退化.** c19 與 c25 (2/11) 的 INTENT 行都通過 grader,
+但引號裡的 spec 掉了虛詞 - 寫成「Every event belongs calendar day observed account's
+fixed UTC offset」, 原文是「Every event belongs to the calendar day observed at the
+account's fixed UTC offset」. 這是把改寫當成逐字引用, 而現有 grader 用關鍵詞 regex 判斷,
+對這種形態沒有反應.
+
+**一項方法教訓.** 這十一份報告是從 dispatch 的 output 檔逐字取出評分的.
+harness 通知渲染的文字與 agent 實際寫下的內容十一份全部不同 - 照通知評分會評到錯的文本.
 
 ## Artificial Analysis 重新取數：完整 effort 階梯（2026-07-26）
 
@@ -111,12 +149,30 @@ GPT-5.6 側,每格依序是 `AAII／US$ per task／decode 分／output token per
 2. **首次出現 per-rung Briefcase Elo——這是 Sonnet support pin 的第一份逐檔證據。**
    07-25 明確記錄「AA 不發布 Sonnet 各檔分數,因此這兩格無法裁決」;現在 agentic 軸有了。
    兩條階梯**互相交錯**:`opus/low`(1223)高於 `sonnet/high`(1194),而現行 support pin
-   `sonnet/low`(928)和 `sonnet/medium`(1056)分別低於 `opus/low` 295 和 166 Elo——
+   `sonnet/low` (928) 和 `sonnet/medium` (1056) 分別低於 `opus/low` 295 和 166 Elo,
    而 `claude-opus-5/low` 本來就在 support tier 的 allowlist 內。
-   **這是候選,不是判決**,三個理由:AA 沒有發布任何 Sonnet rung 的 per-task 成本,所以
-   換檔的價格無法量化(Sonnet 每 token 便宜 2.5 倍:$2/$10 vs $5/$25);Sonnet 底線是
-   使用者指示;`revision_policy` 仍要求該 cell 有 n≥10 的本機樣本。已寫入 routing 檔的
-   `effort_curve`,pin 一格未動。
+
+   **這是候選, 不是判決.** 當時列了三個理由, 2026-08-04 逐條查證後剩兩個:
+
+   - **成立**: AA 沒有發布任何 Sonnet rung 的 per-task 成本, 所以換檔的價格無法量化
+     (Sonnet 每 token 便宜 2.5 倍: $2/$10 vs $5/$25).
+   - **成立**: Sonnet 底線是使用者指示.
+   - **已撤回**: 「`revision_policy` 仍要求該 cell 有 n >= 10 本機樣本」.
+
+   **為什麼撤回.** 那個門檻永遠不會被滿足, 所以它不是等待中的證據, 是擋路的空話:
+
+   - `route_application` 把每個 leaf role 都釘在 frontmatter, `model-routing.py validate`
+     會拒絕其他值.
+   - 三個 profile (balanced / fast / quality_guarded) 沒有一個把 support role 指到
+     `claude-opus-5/low`.
+   - 所以那格的樣本數是結構性的 0, 不是暫時偏低.
+   - `provider-routing` 的「樣本不足就探索」管的是 provider (Claude 對 Codex),
+     不是同 provider 內的 rung, 補不上這個缺口.
+
+   **處置.** routing 檔新增 `support_pin_evidence` key, 寫下決定這兩個 pin 的實際理由, 並
+   註明 n >= 10 已從理由清單移除. pin 本身一格未動 — 這次改的是理由的誠實度, 不是路由.
+   推翻條件也寫在該 key 裡: 出現第二個 rung 的 profile, 或 Claude 端出現 per-dispatch 的
+   effort override, n >= 10 就重新有效.
 3. **GPT-5.6 連續第二次零漂移——但只限 eval 數字。** 15 個 rung 的 index、成本、reasoning／
    answer token 對到 4–5 位小數全數相同(60/60)。**decode 分鐘則 15 格全動**,幅度從
    −6.5%(sol/max 4.152→3.880)到 +22%(luna/xhigh 1.049→1.278)。原因是 decode 是持續
@@ -223,7 +279,7 @@ US$1.04／US$0.55／US$0.21;目前 v4.1 模型頁重算後是 US$1.04／US$0.82�
 評測,不能和下表的基礎模型 Index 混用。
 
 當時模型頁的完整 effort 快照如下(歷史值;現行數據見
-[2026-07-26 節](#artificial-analysis-重新取數完整-effort-階梯2026-07-26),index 和成本相同、
+[2026-07-26 節](#artificial-analysis-重新取數完整-effort-階梯2026-07-26), index 和成本相同,
 decode 分鐘已全部重測)。每格依序是 `Index／美元每 Index task／加權 decode 分鐘／
 output token 每 Index task`;decode 時間排除 TTFT、工具和其他平台 overhead,不是端到端時間。
 

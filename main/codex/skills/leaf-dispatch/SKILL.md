@@ -146,3 +146,8 @@ static checks are intermediate evidence during iteration. Verify earlier for
 security, cross-language or FFI, serialization or pre-aggregation,
 irreversible-operation, and integration-blocking boundaries; earlier timing
 does not authorize another verifier over the same surface.
+
+Cap a target at five verification passes. Every pass after the first names what
+changed since the previous one; an unchanged candidate is not re-verified,
+because the standing verdict already covers it. At the cap, stop and surface
+the open findings instead of dispatching again.

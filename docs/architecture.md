@@ -7,7 +7,7 @@
 想直接動手部署的人看 [setup](setup.md)；想改 runtime 行為的人記得真相源是
 `main/` 下的契約與 skill，不是本文。
 
-## 一、完整架構圖
+## 一. 完整架構圖
 
 ```mermaid
 flowchart TB
@@ -53,7 +53,7 @@ flowchart TB
 （③ 的狀態，[dispatch-lifecycle](dispatch-lifecycle.md)）、**證據回饋**
 （④，[experience-ledger](../main/.agents/skills/experience-ledger/SKILL.md)）。
 
-## 二、核心想法與研究指引
+## 二. 核心想法與研究指引
 
 一句話：**把配置當程式管理**——原本散在 `~/.claude`、`~/.codex`、`~/.agents` 的手寫契約
 納入 Git，可以 review、測試、部署、回滾，而不覆蓋憑證與機器狀態。四個支柱：
@@ -70,7 +70,7 @@ flowchart TB
 [研究摘要](research/README.md)。一個貫穿全域的判準：**常駐內容是注意力稅，
 每條新規則稀釋所有其他規則**，所以規則只寫模型推不出來的東西，其餘走漸進揭露與確定性機制。
 
-## 三、QC 派發架構
+## 三. QC 派發架構
 
 coding agent 最有據可查的失敗不是「做不出來」，而是「宣稱做完了，但沒有」。所以 QC 的
 定位不是不信任 leaf 的能力，而是把**「報告是一組待證主張」**這件事制度化：每次派工結束，
@@ -90,7 +90,7 @@ main 依序做收件分級 → 機械稽核 owed lines → 抓詐欺清單（含
 （INTENT/TWINS/AUTH，有 A/B 實驗背書），謊言與遺漏的攔截責任放在 QC 機制——因為機制勝過
 提醒，工具不會忘記設旗標，grep 不會被漂亮的報告說服。
 
-## 四、生命週期與驗證收斂
+## 四. 生命週期與驗證收斂
 
 一次派工從解析路由到寫進 ledger 有五個狀態，每個狀態都要有**實體承載物**，不能只是散文
 約定——沒有承載欄位的規則無法驗證。這是本 harness 反覆用來抓自己漏洞的準則：
@@ -109,7 +109,7 @@ launcher 長命，重啟前要對帳，否則同一 prompt 雙寫）、**派工�
 每個 top-level task 至多一個；[verifier-quota](../main/claude/hooks/verifier-quota.py)
 機械攔得住的是同一個 prompt 內的第二個，跨 prompt 的重複仍由主 session 判斷。
 
-## 五、Hook 系統實作
+## 五. Hook 系統實作
 
 Hook 是把「規則」變成「機制」的地方：需要判斷的交給模型，能機械判定的交給 hook。預設
 **fail-open**（診斷型故障時放行，不阻塞工作）；刻意 **fail-closed** 的是五個有界 gate
@@ -120,7 +120,7 @@ Hook 是把「規則」變成「機制」的地方：需要判斷的交給模型
 因為 shell 的寫入途徑關不完；需要跑指令的驗證改派 Codex `verifier` 並鎖 `sandbox_mode = "read-only"`。
 逐事件清單、失敗模式、以及「為什麼值得信任（三關驗證）」在 [hook 系統](hook-system.md)。
 
-## 六、附檔導引
+## 六. 附檔導引
 
 主文只給骨幹，以下專門文檔各自回答一類問題：
 

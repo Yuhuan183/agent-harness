@@ -139,16 +139,31 @@ filled `INTENT:` line」,帶新措辭重跑 bridge stop-trap 3 seeds(s8g4–6)�
 在 GPT-5.6 上的轉移證據至此有三個獨立的正向樣本組。
 
 **低檔位輪(2026-07-23,mech-executor,已驗證)**:s7＋s8 各 3 seeds × 兩端(sonnet/medium、
-sol/low),**12/12 實質防線全守**——s7 六筆全部修對、回歸測試斷言 spec 值、無弱化、scope
-乾淨、publish 全拒;s8 六筆全部零編輯停手、具名衝突、把裁決交回。fable-method 的核心
-發現「假完成率和檔位成反比」(bare Haiku 2/10)在本 harness 的最低派工檔位**沒有重現**——
-差異可歸因於:本 repo 的 brief 結構(明確 scope／stop 條款)、角色契約防線,以及
-sonnet/medium 和 sol/low 仍遠強於 Haiku 檔位。附帶觀察:mech 契約的 machine-checked 句
-點名了該角色沒有模板的 INTENT/TWINS,兩個 bridge seeds 因此即興發明了漂移行——候選清理:
-mech 版那句只提 `AUTH:`。covenant 總結(37 個有效樣本):實質陷阱 0 中招;INTENT 規則
-三種失敗形態都已修復並 A/B 驗證;TWINS／AUTH／fraud 清單無自然失敗——修剪裁決建議:
-保留 AUTH(不可逆風險不對稱,而且 arm B 證明 QC 端需要它作稽核錨點),TWINS 和 fraud
-清單維持觀察,trap 轉為 regression 資產、重大契約或模型變更時重跑。
+sol/low), **12/12 實質防線全守**.
+
+- s7 六筆全部修對, 回歸測試斷言 spec 值, 無弱化, scope 乾淨, publish 全拒.
+- s8 六筆全部零編輯停手, 具名衝突, 把裁決交回.
+
+fable-method 的核心發現「假完成率和檔位成反比」(bare Haiku 2/10) 在本 harness 的最低派工
+檔位**沒有重現**. 三個可能的差異來源: 本 repo 的 brief 結構 (明確 scope / stop 條款),
+角色契約防線, 以及 sonnet/medium 和 sol/low 仍遠強於 Haiku 檔位.
+
+**當時的附帶觀察, 以及它的更正 (2026-08-04)**. 原記錄是「mech 契約的 machine-checked 句
+點名了該角色沒有模板的 INTENT/TWINS, 兩個 bridge seeds 因此即興發明了漂移行」, 並開出
+候選清理「mech 版那句只提 `AUTH:`」. 逐 commit 查證後:
+
+- **觀察為真, 歸因不成立**. 兩端 mech 契約從第一版到現在都沒出現過 INTENT 或 TWINS,
+  它點名的一直只有 `AUTH:`. 漂移不可能來自這個原因.
+- **查得到的差異在別處**. Codex 端的 mech 契約直到 `cd0a679` (2026-07-22 19:15) 才有第一句
+  gate 條款; 在那之前它完全沒有強制行模板, 而 Claude 端已經有了.
+- **所以那條候選清理沒有東西可清** — 它描述的狀態早就是現況.
+
+covenant 總結 (37 個有效樣本): 實質陷阱 0 中招; INTENT 規則三種失敗形態都已修復並 A/B
+驗證; TWINS / AUTH / fraud 清單無自然失敗. 修剪裁決:
+
+- **保留 AUTH**. 不可逆風險不對稱, 而且 arm B 證明 QC 端需要它當稽核錨點.
+- **TWINS 和 fraud 清單維持觀察**.
+- **trap 轉為 regression 資產**, 重大契約或模型變更時重跑.
 
 **Owed-line 稽核機械化(2026-07-23,已驗證)**:`qc-gate-lines` 腳本以
 `main/.agents/scripts/qc-gate-lines` 為單一實作,Claude／Codex 的 scripts 路徑都以 symlink

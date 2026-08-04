@@ -17,7 +17,7 @@ Harness engineering 仍然需要，但形態已變：**常駐指令檔縮到只�
 常駐檔有兩種代價，稀釋之外還有**矛盾，而矛盾更貴**：新世代會花 reasoning 調和互斥規則，
 不像舊模型直接擇一。契約疊在供應商 system prompt 之上，**牴觸時是 bug，處置是刪那一行**；
 重述其已保證的行為則是純稅。官方數字與稽核結果見
-[研究摘要](research/context-and-vendors.md#供應商官方指引2026-07)。
+[研究摘要](research/context-and-vendors.md#供應商官方指引2026-07).
 
 ## 2. 文件與機制分工
 

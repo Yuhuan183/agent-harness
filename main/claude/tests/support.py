@@ -25,6 +25,7 @@ if sys.version_info < (3, 11):
 
 import tomllib  # noqa: E402  (guarded above; the guard must run first)
 import unittest  # noqa: E402
+from collections import namedtuple  # noqa: E402  (after the version guard)
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -88,6 +89,14 @@ NO_WRITE_ROLES = READ_ONLY_ROLES
 # largest at 378 (2026-07-26); raise this deliberately with a reason, the way
 # the contract budgets are raised, rather than by lengthening lines.
 ROLE_BODY_BUDGET = 400
+# Density companions, one set for all fourteen bodies rather than one per role,
+# because a role's rule count is a property of its job and not something a
+# single ceiling should equalise. Widest measurements on 2026-08-04: `executor`
+# at 21 rules, `mech-executor` at 123.4 bytes/rule and 0.291 filler,
+# `plan-verifier` (codex) at 0.196 filler. See the metric definitions below.
+ROLE_RULE_BUDGET = 24
+ROLE_BYTES_PER_RULE = 135
+ROLE_FILLER_RANGE = (0.17, 0.32)
 # Every role pins model and effort from the active deployment preset (user-directed
 # 2026-07-22); no role follows the main-session effort.
 PINNED_EFFORT_ROLES = ROLES
@@ -203,6 +212,103 @@ MAX_UNBROKEN_RUN = 200
 # 8.6 bytes/word, so this is set to catch an order-of-magnitude deviation and
 # nothing else - it must never become a second, tighter word budget.
 MAX_BYTES_PER_WORD = 16
+
+
+# Density companions to the word ceilings. A word cap bounds how large a
+# document is; it says nothing about whether the words bought rules or padding,
+# and at zero headroom it starts buying the wrong sentence rather than a shorter
+# one - `.codex/AGENTS.md` sat at exactly 540/540 and a clause lost its
+# grammatical subject to fit, inverting the guarantee it existed to make
+# (c143b72, 2026-08-03).
+#
+# Three metrics, because each closes the others' cheat. Padding a rule shows up
+# in bytes per rule; splitting one rule across several bullets to lower that
+# average shows up in the rule count; deleting connective tissue until the prose
+# stops parsing shows up in the filler ratio, which has a floor as well as a cap
+# for that reason.
+#
+# They are added to the word ceilings, not swapped in for them. For density to
+# bind first, the codex word cap would have to rise by roughly a quarter, and no
+# evidence asks for a resident layer that much larger (2026-08-04).
+def prose_only(text: str) -> str:
+    """Contract prose with YAML frontmatter and fenced code removed.
+
+    Neither behaves like a rule. Frontmatter is metadata the census budgets
+    separately, and a fenced command block is one unit however many lines it
+    spans - counting its lines as prose would make a file look denser the more
+    commands it quotes.
+    """
+    body = re.sub(r"\A---\n.*?\n---\n", "", text, flags=re.DOTALL)
+    return re.sub(
+        r"^```[^\n]*\n.*?^```[^\n]*\n", "", body, flags=re.DOTALL | re.MULTILINE)
+
+
+_LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+[a-z]?[.)])\s+")
+_SENTENCE_END = re.compile(r"(?<=[.!?。！？])\s+")
+
+
+def rule_units(text: str) -> list[str]:
+    """The countable obligations in a document body.
+
+    A markdown list item is one rule, continuation lines included. Outside
+    lists, one sentence of an ordinary paragraph is one rule. Headings count for
+    nothing - they are navigation, and charging for them would price a
+    well-signposted contract above an undifferentiated wall.
+    """
+    units: list[str] = []
+    for block in re.split(r"\n\s*\n", prose_only(text)):
+        lines = [line for line in block.splitlines() if line.strip()]
+        if not lines:
+            continue
+        if any(_LIST_ITEM.match(line) for line in lines):
+            item: list[str] = []
+            for line in lines:
+                if _LIST_ITEM.match(line):
+                    if item:
+                        units.append(" ".join(item))
+                    item = [line.strip()]
+                elif item:
+                    item.append(line.strip())
+            if item:
+                units.append(" ".join(item))
+            continue
+        prose = " ".join(
+            line.strip() for line in lines if not line.lstrip().startswith("#"))
+        units.extend(part for part in _SENTENCE_END.split(prose) if part.strip())
+    return units
+
+
+def bytes_per_rule(text: str) -> float:
+    """What one obligation costs to deliver, headings and all.
+
+    The numerator is the whole prose body rather than the matched units, so
+    scaffolding that carries no rule is charged to the rules it introduces.
+    """
+    units = rule_units(text)
+    return len(prose_only(text).encode("utf-8")) / len(units) if units else 0.0
+
+
+# Words that carry no obligation on their own: articles, copulas, demonstratives
+# and the commonest prepositions and conjunctions. Modals and quantifiers
+# (`must`, `may`, `never`, `only`, `every`) are deliberately absent - those are
+# the operative words of a rule, and pricing them as filler would aim every edit
+# at deleting exactly what the contract exists to say.
+FILLER_WORDS = frozenset("""
+a an the this that these those there here it its
+and or but so then as of to in on at by for from with
+is are was were be been being do does did have has had
+""".split())
+
+
+def filler_ratio(text: str) -> float:
+    """Share of English words that are pure connective tissue.
+
+    Latin-script words only: the CJK side of a bilingual document has no
+    comparable closed class, and mixing the two would turn the ratio into a
+    measurement of how much Chinese a file happens to contain.
+    """
+    words = re.findall(r"[a-z][a-z']*", prose_only(text).lower())
+    return sum(w in FILLER_WORDS for w in words) / len(words) if words else 0.0
 
 
 # One damage matrix for every JSONL reader in the harness. Six scripts parse

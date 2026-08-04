@@ -51,6 +51,8 @@ Claude no-write roles cannot execute Bash. Command-required independent verifica
 
 Use focused tests, builds, and static checks as intermediate evidence while iterating. If `provider-routing` establishes an independent-verifier trigger, place that verifier at the smallest coherent integration boundary where the complete acceptance claim can be refuted; do not re-verify every small fix. Trigger eligibility remains in `provider-routing`; this skill owns placement after that decision.
 
+Cap a target at five verification passes. Every pass after the first names what changed since the previous one; an unchanged candidate is not re-verified, because the standing verdict already covers it. At the cap, stop and surface the open findings instead of dispatching again.
+
 For large work, define a program envelope for shared constraints and independently approvable execution slices. Give each readiness unit a stable ID; each slice names its ready envelope, prerequisites, owner, rollback, and acceptance. Review the envelope first, then only the next executable slice. Unrelated downstream slices do not block approval; shared blockers cannot be hidden by cosmetic splitting.
 
 Before the first readiness review of a security-sensitive unit, complete `security-reviewer` and carry every finding plus its disposition into the Plan. Ask `plan-verifier` for bare `READY` or `REVISE` blocks with `Blocker`, `Evidence`, `Minimum revision`, and `Acceptance check`. Materially revise after `REVISE`; after two automatic revisions of the same readiness-unit ID, stop and surface options. Never resubmit a substantially unchanged Plan without material revision or new evidence; simplify, surface, or defer unresolved scope rather than silently overrule the verifier.

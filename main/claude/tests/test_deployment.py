@@ -873,7 +873,7 @@ class MachineStateHygieneTests(unittest.TestCase):
         stated = numerals.get(match.group(1))
         self.assertIsNotNone(stated, f"unparsed count: {match.group(1)!r}")
 
-        listed = re.sub(r"（[^）]*）", "", match.group(2))
+        listed = re.sub(r"\([^)]*\)", "", match.group(2))
         items = [item.strip() for item in listed.split("、") if item.strip()]
         self.assertEqual(
             stated, len(items),

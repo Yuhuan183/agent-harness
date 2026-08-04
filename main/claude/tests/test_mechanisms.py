@@ -1493,6 +1493,47 @@ class MechanismTests(unittest.TestCase):
             {"watch": 30.0, "checkpoint": 50.0, "compact": 65.0},
         )
 
+    def _operator_delta_module(self):
+        import importlib.util
+        path = ROOT / "scripts" / "contract-operator-delta.py"
+        spec = importlib.util.spec_from_file_location("contract_operator_delta", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_operator_delta_sees_the_flip_the_phrase_assertions_cannot(self) -> None:
+        # The defect class this exists for: every asserted phrase survives and
+        # the meaning does not. Here a disjunction becomes a conjunction, which
+        # is how upstream v1.3.7 made a disposition unreachable while 255
+        # phrase assertions passed verbatim.
+        module = self._operator_delta_module()
+        before = module.operator_counts("Reject when the claim is stale or unsigned.")
+        after = module.operator_counts("Reject when the claim is stale and unsigned.")
+        self.assertEqual(before["or"] - after["or"], 1)
+        self.assertEqual(after["and"] - before["and"], 1)
+        # A dropped scope limiter is the same class and equally invisible.
+        kept = module.operator_counts("Deploy only after the user says so.")
+        dropped = module.operator_counts("Deploy after the user says so.")
+        self.assertEqual(kept["only"] - dropped["only"], 1)
+
+    def test_operator_delta_is_scoped_to_what_a_session_obeys(self) -> None:
+        module = self._operator_delta_module()
+        for path in ("main/claude/CLAUDE.contract.md",
+                     "main/codex/agents/executor.toml",
+                     "main/claude/skills/baton-dispatch/SKILL.md"):
+            self.assertTrue(module.in_surface(path), path)
+        for path in ("docs/research/README.md", "main/claude/tests/support.py"):
+            self.assertFalse(module.in_surface(path), path)
+
+    def test_operator_delta_reports_without_blocking(self) -> None:
+        # Evidence, not a gate: it has to exit 0 even when operators moved, or
+        # the first noisy compression pass gets it disabled.
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "contract-operator-delta.py"),
+             "--range", "HEAD~1..HEAD"],
+            capture_output=True, text=True, cwd=ROOT)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("contract operator delta:", result.stdout)
 
 
 class TrapGraderIntegrityTests(unittest.TestCase):
