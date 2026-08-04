@@ -192,6 +192,33 @@ def git(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def git_in(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    """`git` against an arbitrary repository, for fixtures that build one."""
+    return subprocess.run(
+        ["git", "-C", str(repo), *args],
+        capture_output=True,
+        text=True,
+    )
+
+
+def load_module(name: str, path: Path):
+    """Import a harness script by path so its functions can be driven directly.
+
+    Some boundaries can only be asserted by calling the real function - a test
+    that greps the source for the fix cannot tell a working guard from one with
+    the bug added back underneath it.
+    """
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:  # pragma: no cover - path typo
+        raise ImportError(f"cannot load {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def word_count(text: str) -> int:
     """Budget unit: each CJK character counts as one word; other runs of
     non-space text count as one. Plain split() would let Chinese prose dodge

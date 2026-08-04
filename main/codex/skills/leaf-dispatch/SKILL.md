@@ -145,9 +145,11 @@ the complete acceptance claim can be independently refuted. Tests, builds, and
 static checks are intermediate evidence during iteration. Verify earlier for
 security, cross-language or FFI, serialization or pre-aggregation,
 irreversible-operation, and integration-blocking boundaries; earlier timing
-does not authorize another verifier over the same surface.
+adds no quota.
 
-Cap a target at five verification passes. Every pass after the first names what
-changed since the previous one; an unchanged candidate is not re-verified,
-because the standing verdict already covers it. At the cap, stop and surface
-the open findings instead of dispatching again.
+Cap a target at five verification passes. The cap does not widen the
+one-verifier quota: that quota is one outcome verifier per acceptance claim,
+and only a changed candidate is a new claim — so the passes are single
+verifiers in succession, and an unchanged candidate is not re-verified at all.
+Every pass after the first names what changed since the previous one. At the
+cap, stop and surface the open findings instead of dispatching again.

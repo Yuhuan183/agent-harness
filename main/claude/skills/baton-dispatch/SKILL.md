@@ -49,9 +49,9 @@ Claude no-write roles cannot execute Bash. Command-required independent verifica
 
 ## Gate placement and Plan convergence
 
-Use focused tests, builds, and static checks as intermediate evidence while iterating. If `provider-routing` establishes an independent-verifier trigger, place that verifier at the smallest coherent integration boundary where the complete acceptance claim can be refuted; do not re-verify every small fix. Trigger eligibility remains in `provider-routing`; this skill owns placement after that decision.
+Use focused tests, builds, and static checks as intermediate evidence while iterating. `provider-routing` owns verifier eligibility; this skill owns placement. Place a triggered verifier at the smallest coherent integration boundary where the complete acceptance claim can be refuted; do not re-verify every small fix.
 
-Cap a target at five verification passes. Every pass after the first names what changed since the previous one; an unchanged candidate is not re-verified, because the standing verdict already covers it. At the cap, stop and surface the open findings instead of dispatching again.
+Cap a target at five verification passes. The cap does not widen the one-verifier quota: that quota is one outcome verifier per acceptance claim, and only a changed candidate is a new claim — so the passes are single verifiers in succession, and an unchanged candidate is not re-verified at all. Every pass after the first names what changed since the previous one. At the cap, stop and surface the open findings instead of dispatching again.
 
 For large work, define a program envelope for shared constraints and independently approvable execution slices. Give each readiness unit a stable ID; each slice names its ready envelope, prerequisites, owner, rollback, and acceptance. Review the envelope first, then only the next executable slice. Unrelated downstream slices do not block approval; shared blockers cannot be hidden by cosmetic splitting.
 

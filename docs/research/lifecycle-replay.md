@@ -2,13 +2,13 @@
 
 狀態: **只有判準, replay 尚未開跑**. 這是刻意的順序, 不是進度落後.
 
-lifecycle replay 想量的三件事 — 中斷後恢復、連續 correction、互相衝突的 leaf 結果 — 目前都
+lifecycle replay 想量的三件事 — 中斷後恢復, 連續 correction, 互相衝突的 leaf 結果 — 目前都
 沒有本機實證, 這一點記在 [研究摘要](README.md) 的驗證缺口. 本文只解決前置問題: 一次 replay
 的結果要滿足什麼條件才有資格被引用.
 
 ## 為什麼判準要先寫
 
-replay 量的絕大部分是「沒發生」: 中斷後沒有重複寫入、correction 沒有失控疊加、衝突的 leaf
+replay 量的絕大部分是「沒發生」: 中斷後沒有重複寫入, correction 沒有失控疊加, 衝突的 leaf
 結果沒有被靜靜吞掉. 「沒發生」是最容易假造的一種數據 —— 一個什麼都沒做的 session, 在每一
 個「沒發生」欄位上都是滿分.
 
@@ -22,10 +22,10 @@ replay 量的絕大部分是「沒發生」: 中斷後沒有重複寫入、corre
 
 一次 replay run 的「沒發生」要算數, 四項全過:
 
-1. **活著結束**: session 跑到自然結束, 不是 context 耗盡、crash 或人為中斷 (被測的中斷情境
+1. **活著結束**: session 跑到自然結束, 不是 context 耗盡, crash 或人為中斷 (被測的中斷情境
    除外, 那種中斷本身是受測條件, 要在情境裡寫明預期的恢復點).
 2. **到達受測邊界**: 每個情境必須事先寫下一個 **reach marker** —— 一個只有在 session 真的
-   走到被測分支時才會存在的具體 artifact (某個 commit、某份 leaf 報告、某條 ledger 記錄).
+   走到被測分支時才會存在的具體 artifact (某個 commit, 某份 leaf 報告, 某條 ledger 記錄).
    泛用的「有做事」不夠: 失敗形態正是「做了很多事但從未走到那個分支」.
 3. **派工已對帳**: 這個 session staged 的每一筆 dispatch, 在 ledger 都要有對應 outcome.
    這一項就是上面那個 negative control —— 派到背景沒回收的驗證, 會留下一個沒有 ledger 對應
@@ -44,7 +44,7 @@ selection bias 做進結果裡.
 不需要另寫檢查, 接這個訊號即可.
 
 值得記下的推論: **這一項生命週期事實不需要 live session 就量得到** —— 它從 pending 檔與
-ledger 兩份留存 artifact 算得出來. 但另外三件事 (中斷恢復、連續 correction、衝突結果) 需要
+ledger 兩份留存 artifact 算得出來. 但另外三件事 (中斷恢復, 連續 correction, 衝突結果) 需要
 把情境誘發出來, 歷史 transcript 只記錄了碰巧發生過的事, 不構成對照. 所以 replay 仍然要跑,
 只是不必重新量第 3 項.
 

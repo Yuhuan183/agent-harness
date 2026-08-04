@@ -485,8 +485,11 @@ try:
             checks_completed = False
             findings.append(f"{label} prior-review check failed: {exc}")
 
-    # Informational only: surface dispatch-experience hints or a missing-data
-    # warning. Best-effort — a failure here neither blocks the throttle nor alarms.
+    # Informational only for what the reader *finds*: hints and the missing-data
+    # warning never block the throttle. A reader that cannot run is the other
+    # case and does block it, because "no hints today" and "the hints mechanism
+    # is broken" are not the same report. (This comment described the behaviour
+    # from before that distinction existed; corrected 2026-08-04.)
     #
     # Read the machine output, not the human table: a cohort exists per role x
     # task class, so most of them sit below the comparable-n threshold at any
@@ -532,6 +535,16 @@ try:
             findings.append(
                 "dispatch-experience gap: no reviewed outcomes in the configured window; "
                 "log the next comparable dispatch after quality-check"
+            )
+        # The reader now survives a damaged row instead of dying on it, which
+        # traded a loud failure for a quiet one: the numbers just get smaller.
+        # Informational, not throttle-blocking - the check ran fine, the file
+        # is what has a problem - but it has to be said somewhere, and this is
+        # the only place that reads the report without being asked.
+        if report.get("unusable_rows"):
+            findings.append(
+                f"experience ledger damage: {report['unusable_rows']} row(s) "
+                "unreadable or wrongly typed; they count toward no cohort above"
             )
     except (OSError, ValueError, subprocess.TimeoutExpired):
         pass

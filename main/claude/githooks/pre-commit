@@ -20,6 +20,11 @@ The decision itself is not duplicated: `run_suites` is imported from the Bash
 gate, so the suite set, the interpreter floor, the 300 s budget and the wording
 are shared. Escape hatch, deliberately the same one: `AGENT_SKIP_TEST_GATE=1`.
 
+It carries one thing that is not a gate: on a commit that is going through, it
+prints `scripts/contract-operator-delta.py` for any staged prompt-surface file.
+That script exits 0 by construction and is attached here only because the hook
+is the last moment a person is still looking at the change.
+
 Where this stops, and it is not a detail: a client-side hook only runs if the
 program committing lets it. `git commit --no-verify` and `git -c
 core.hooksPath=/dev/null commit` both turn it off, `git commit-tree` never
@@ -50,14 +55,49 @@ def load_gate(root: Path):
     return module
 
 
+def report_operator_delta(root: Path) -> None:
+    """Print the staged prompt-surface operator table. Never blocks.
+
+    `scripts/contract-operator-delta.py` is evidence a human reads, and it was
+    reachable only by remembering to type it - which is the same as not having
+    it, since the pass most likely to invert a connective is the one least
+    likely to stop and audit itself. Attaching it here makes it arrive at the
+    one moment the change is definitely about to become permanent.
+
+    Deliberately fail-open, unlike the gate above it: the script's own contract
+    is that legal operator moves vastly outnumber illegal ones, so a version of
+    this that could refuse a commit would be mostly false positives, and the
+    first person to hit one would remove the hook entirely. Silence when
+    nothing on a prompt surface changed, for the same reason - a table printed
+    on every commit is a table nobody reads.
+    """
+    path = root / "scripts" / "contract-operator-delta.py"
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "contract_operator_delta", path)
+        if spec is None or spec.loader is None:
+            return
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        reports = module.compare("HEAD", None, True)
+        if not reports:
+            return
+        sys.stderr.write(module.render(reports, "HEAD -> index") + "\n")
+    except Exception:  # noqa: BLE001 - evidence must never cost a commit
+        return
+
+
 def main() -> int:
-    if os.environ.get("AGENT_SKIP_TEST_GATE") == "1":
-        return 0
     top = subprocess.run(["git", "rev-parse", "--show-toplevel"],
                          capture_output=True, text=True)
     if top.returncode != 0:
         return 0  # not a work tree; let git report its own error
     root = Path(top.stdout.strip())
+    if os.environ.get("AGENT_SKIP_TEST_GATE") == "1":
+        # The hatch is named for the test gate and turns off exactly that. The
+        # operator table refuses nothing, so there is nothing here to escape.
+        report_operator_delta(root)
+        return 0
     try:
         gate = load_gate(root)
     except (OSError, SyntaxError, ValueError):
@@ -76,9 +116,14 @@ def main() -> int:
         )
         return 1
     suites = gate.test_suites(root)
-    if not suites:
-        return 0
-    return gate.run_suites([(root, tests) for tests in suites], "pre-commit")
+    status = (gate.run_suites([(root, tests) for tests in suites], "pre-commit")
+              if suites else 0)
+    if status == 0:
+        # Only on the way through. A blocked commit already has one thing for
+        # the operator to read, and this table would be about a state that is
+        # not going to exist.
+        report_operator_delta(root)
+    return status
 
 
 if __name__ == "__main__":

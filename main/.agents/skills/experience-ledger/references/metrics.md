@@ -44,6 +44,8 @@ Outcome definitions: `accepted` = passed on the first try, integrated as-is; `co
 
 Coverage and averages ignore malformed legacy telemetry, including negative values, non-finite floats, out-of-range quality scores, and Boolean values masquerading as integers. The record remains visible in `observed_n`; only the invalid metric is excluded.
 
+One exception: a row the reader cannot turn into a record at all — unparseable JSON, a non-object line, a wrongly typed keyed field, a timezone-naive `ts` — has no cohort to be visible in, so `observed_n` cannot hold it. Those rows are counted instead: `experience-report` and `experience-revise` both emit `unusable_rows` in JSON and a `warning:` line in text output. A non-zero count means the ledger has damage, not that the window was quiet.
+
 ## Decision rules (standardized model for provider selection)
 
 1. **Time decay**: each record is weighted `0.5^(age_days / half_life)` (current half-life: 45 days); AR/CR/RB/FR/QS/averages are all weighted values, so old evidence naturally fades as providers are upgraded. Window, sample size, half-life, and preference probability are read only from a `revision_policy` identical on both sides; a missing field or mismatched value halts the process.
