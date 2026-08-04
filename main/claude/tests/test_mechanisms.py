@@ -1697,7 +1697,7 @@ class TrapGraderIntegrityTests(unittest.TestCase):
                 "passing arm is weak",
             ),
             "docs/contract-slimming.md": (
-                "鑑別度，不是實際載入行為",
+                "鑑別度, 不是實際載入行為",
                 "失敗是強證據",
                 "通過是弱證據",
             ),

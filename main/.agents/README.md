@@ -1,34 +1,34 @@
 # `.agents/` — 跨 Agent 共用層
 
-> 專案全貌與跨平台資料流見[根 README](../../README.md)；方法、研究與部署指引見
-> [docs/README.md](../../docs/README.md)。
+> 專案全貌與跨平台資料流見[根 README](../../README.md); 方法, 研究與部署指引見
+> [docs/README.md](../../docs/README.md).
 
-不綁定單一 agent 的通用配置：共用 skill 本體、跨 agent runtime 知識、專案 skill 清單。
-回寫到 `~/.agents/`。`.claude/` 與 `.codex/` 以相對 symlink 引用此處，達到「一份本體、
-多處使用」。
+不綁定單一 agent 的通用配置: 共用 skill 本體, 跨 agent runtime 知識, 專案 skill 清單.
+回寫到 `~/.agents/`. `.claude/` 與 `.codex/` 以相對 symlink 引用此處, 達到「一份本體,
+多處使用」.
 
-> `~/.agents` 非公定標準——AGENTS.md 標準規範 repo 內指令檔、Agent Skills 標準規範 skill
-> 格式，均未定義全域共用目錄。採用它是因為本機工具鏈（skill 安裝器、find-skills）已以它
-> 為共用 skill 家目錄，且 `$HOME` 下 `~/.claude`／`~/.codex`／`~/.agents` 三者平級、與本
-> 專案佈局同構，使相對 symlink（`../../.agents/...`）在專案內與全域皆成立。
+> `~/.agents` 非公定標準 — AGENTS.md 標準規範 repo 內指令檔, Agent Skills 標準規範 skill
+> 格式, 均未定義全域共用目錄. 採用它是因為本機工具鏈 (skill 安裝器, find-skills) 已以它
+> 為共用 skill 家目錄, 且 `$HOME` 下 `~/.claude`/`~/.codex`/`~/.agents` 三者平級, 與本
+> 專案佈局同構, 使相對 symlink (`../../.agents/...`) 在專案內與全域皆成立.
 
 ## 內容索引
 
 | 路徑 | 職責 |
 |---|---|
-| `skills/headroom-protocol/` | 共用 skill 本體（含 Codex 端 `agents/openai.yaml`）；`.claude/skills` 與 `.codex/skills` 各以 symlink 引用 |
-| `skills/experience-ledger/` | 共用 skill 本體：派工經驗記帳與指標分析（含 `scripts/`）；帳本在 `~/.agents/telemetry/`（machine-local 不入庫） |
-| `skills/speak-human-tw/` | 共用 skill 本體：繁中去 AI 味改寫（蒸餾自上游，見其 `ATTRIBUTION.md`）；同以 symlink 雙端引用 |
-| `skills/task-observer/` | skill 使用受挫時主動詢問、明確同意後才記錄改善觀察；append-only JSONL 帳本在 `~/.agents/telemetry/`，不會自動修改 skill |
-| `skills/INSTALLED.txt` | 本專案擁有並部署的共用 skill 清單；同時界定 merge 時的管理範圍 |
-| `scripts/` | 跨端共用腳本：gate-line 正則的單一來源（`gate_lines.py`，供部署版 `qc-gate-lines` 稽核與 repo 內 trap graders 共用） |
-| `docs/headroom-runtime.md` | Headroom runtime 的跨 agent 架構與操作邊界（Claude 與 Codex 流量共用同一 proxy，故置於此、不各留一份） |
+| `skills/headroom-protocol/` | 共用 skill 本體 (含 Codex 端 `agents/openai.yaml`); `.claude/skills` 與 `.codex/skills` 各以 symlink 引用 |
+| `skills/experience-ledger/` | 共用 skill 本體: 派工經驗記帳與指標分析 (含 `scripts/`); 帳本在 `~/.agents/telemetry/` (machine-local 不入庫) |
+| `skills/speak-human-tw/` | 共用 skill 本體: 繁中去 AI 味改寫 (蒸餾自上游, 見其 `ATTRIBUTION.md`); 同以 symlink 雙端引用 |
+| `skills/task-observer/` | skill 使用受挫時主動詢問, 明確同意後才記錄改善觀察; append-only JSONL 帳本在 `~/.agents/telemetry/`, 不會自動修改 skill |
+| `skills/INSTALLED.txt` | 本專案擁有並部署的共用 skill 清單; 同時界定 merge 時的管理範圍 |
+| `scripts/` | 跨端共用腳本: gate-line 正則的單一來源 (`gate_lines.py`, 供部署版 `qc-gate-lines` 稽核與 repo 內 trap graders 共用) |
+| `docs/headroom-runtime.md` | Headroom runtime 的跨 agent 架構與操作邊界 (Claude 與 Codex 流量共用同一 proxy, 故置於此, 不各留一份) |
 
 ## 新增共用 skill 的方式
 
-1. skill 本體放 `main/.agents/skills/<name>/`。
-2. 把 `<name>` 加進 `main/.agents/skills/INSTALLED.txt`。
-3. 在 `main/claude/skills/` 與需要的 `main/codex/skills/` 各建相對 symlink：
-   `ln -s ../../.agents/skills/<name> <name>`。
-4. `scripts/sync.sh` 會精確同步清單內的 skill，但保留 `~/.agents/skills/` 內不在清單中的
-   第三方 skill；`rsync --links` 會原樣複製兩端 symlink。
+1. skill 本體放 `main/.agents/skills/<name>/`.
+2. 把 `<name>` 加進 `main/.agents/skills/INSTALLED.txt`.
+3. 在 `main/claude/skills/` 與需要的 `main/codex/skills/` 各建相對 symlink:
+   `ln -s ../../.agents/skills/<name> <name>`.
+4. `scripts/sync.sh` 會精確同步清單內的 skill, 但保留 `~/.agents/skills/` 內不在清單中的
+   第三方 skill; `rsync --links` 會原樣複製兩端 symlink.

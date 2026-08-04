@@ -1,153 +1,153 @@
 # Harness Engineering Playbook
 
-> 跨專案方法論（佐證數據見 `research/README.md`）。Runtime 規則放 contracts、角色契約
-> 放 `agents/`、按需流程放 `skills/`；本文件只保留可複用的設計與驗證方法。
+> 跨專案方法論 (佐證數據見 `research/README.md`). Runtime 規則放 contracts, 角色契約
+> 放 `agents/`, 按需流程放 `skills/`; 本文件只保留可複用的設計與驗證方法.
 
 ## 1. 核心立場
 
-Harness engineering 仍然需要，但形態已變：**常駐指令檔縮到只剩模型推不出來的東西**，
-其餘走漸進揭露（skills/docs）與確定性機制（hooks/CI）。預算以字數計，行數會被長行規避
-（[contract-slimming](contract-slimming.md)）。
-肥大指令檔的代價是遵循度，不是錢——每條新規則都稀釋所有其他規則。
-判準只有一句：「刪掉這一行會不會犯錯？不會就刪。」
+Harness engineering 仍然需要, 但形態已變: **常駐指令檔縮到只剩模型推不出來的東西**,
+其餘走漸進揭露 (skills/docs) 與確定性機制 (hooks/CI). 預算以字數計, 行數會被長行規避
+([contract-slimming](contract-slimming.md)).
+肥大指令檔的代價是遵循度, 不是錢 — 每條新規則都稀釋所有其他規則.
+判準只有一句: 「刪掉這一行會不會犯錯? 不會就刪.」
 
-常駐內容只該有四類：① 猜不到的精確指令（命令、環境怪癖）② 非預設慣例
-③ 硬性護欄 ④ 外部真值來源與衝突優先序。
+常駐內容只該有四類: ① 猜不到的精確指令 (命令, 環境怪癖) ② 非預設慣例
+③ 硬性護欄 ④ 外部真值來源與衝突優先序.
 
-常駐檔有兩種代價，稀釋之外還有**矛盾，而矛盾更貴**：新世代會花 reasoning 調和互斥規則，
-不像舊模型直接擇一。契約疊在供應商 system prompt 之上，**牴觸時是 bug，處置是刪那一行**；
-重述其已保證的行為則是純稅。官方數字與稽核結果見
-[研究摘要](research/context-and-vendors.md#供應商官方指引2026-07).
+常駐檔有兩種代價, 稀釋之外還有**矛盾, 而矛盾更貴**: 新世代會花 reasoning 調和互斥規則,
+不像舊模型直接擇一. 契約疊在供應商 system prompt 之上, **牴觸時是 bug, 處置是刪那一行**;
+重述其已保證的行為則是純稅. 官方數字與稽核結果見
+[研究摘要](research/context-and-vendors.md#供應商官方指引-2026-07).
 
 ## 2. 文件與機制分工
 
 | 位置 | 只放什麼 | 不放什麼 |
 |---|---|---|
-| `CLAUDE.md` / `AGENTS.md` | 每個 session 都需要的短合約；main-only routing | 長教學、歷史、角色細節、可推斷的結構描述 |
-| `agents/*.md` | 單一 leaf role 的自足契約 | main orchestration、要求讀其他合約 |
-| `skills/` | 觸發條件明確的按需工作流；深度內容放 `references/` | 每 session 都需要的規則、模型已內建的通用知識 |
+| `CLAUDE.md` / `AGENTS.md` | 每個 session 都需要的短合約; main-only routing | 長教學, 歷史, 角色細節, 可推斷的結構描述 |
+| `agents/*.md` | 單一 leaf role 的自足契約 | main orchestration, 要求讀其他合約 |
+| `skills/` | 觸發條件明確的按需工作流; 深度內容放 `references/` | 每 session 都需要的規則, 模型已內建的通用知識 |
 | `docs/` | 跨專案指引與 runtime 知識 | 當前任務狀態 |
-| `plans/` | 現況、未決項、簡短決策紀錄 | 已落地規則的重複全文 |
-| memory（CLI 自動記憶） | 跨 session 的個人事實與偏好、專案約束 | repo 已記錄的東西（結構、歷史、CLAUDE.md 內容） |
+| `plans/` | 現況, 未決項, 簡短決策紀錄 | 已落地規則的重複全文 |
+| memory (CLI 自動記憶) | 跨 session 的個人事實與偏好, 專案約束 | repo 已記錄的東西 (結構, 歷史, CLAUDE.md 內容) |
 | hooks / tests / CI | 確定性 enforcement 與證據 | 需要模型判斷的政策 |
-| 工具描述 | 該工具的用法與邊界 | ——（不要把工具用法寫回常駐契約） |
+| 工具描述 | 該工具的用法與邊界 | — (不要把工具用法寫回常駐契約) |
 
-Subagent 可能仍收到全域指令，因此 main-only 段必須短且邊界清楚。
-角色檔要自足，不要求 leaf agent 再讀 `CLAUDE.md`、Plan 或 orchestration skill。
+Subagent 可能仍收到全域指令, 因此 main-only 段必須短且邊界清楚.
+角色檔要自足, 不要求 leaf agent 再讀 `CLAUDE.md`, Plan 或 orchestration skill.
 
 ## 3. 四個原則
 
-1. **機制勝過提醒**：確定性檢查交給 hook、test、CI；模型負責判斷。
-2. **最短驗證迴路優先**：越快得到可觀察證據，模型越能安全自主。
-3. **常駐內容都是注意力稅**：規則互相稀釋，只留每 session 必需的。
-4. **抓不到蓄意錯誤的機制等於不存在**：hook 要 pipe-test，golden 要 mutation check。
+1. **機制勝過提醒**: 確定性檢查交給 hook, test, CI; 模型負責判斷.
+2. **最短驗證迴路優先**: 越快得到可觀察證據, 模型越能安全自主.
+3. **常駐內容都是注意力稅**: 規則互相稀釋, 只留每 session 必需的.
+4. **抓不到蓄意錯誤的機制等於不存在**: hook 要 pipe-test, golden 要 mutation check.
 
 ## 4. 指令設計
 
-- 先消除衝突，再新增規則；反應式維護——同一失敗第二次出現才加規則。
-- 只寫模型推不出的事；規則說明目的，不重複系統本來就保證的行為。
-- 一條規則只寫一次、只寫在一個地方。重複不是保險：它會誘發多餘確認，也讓兩份拷貝各自漂移。
-- **給參照物勝過寫描述**：能用 code、測試、grader、mockup 表達的驗收就別寫散文
-  （brief 指向 grader，比複述判準更不易漂移）。
-- 不要蓋「什麼都查得到」的中央倉庫，要蓋能在對的時機載入對的檔案的樹。
-- Chat Profile 管回答偏好；Cowork 管檔案交付；Claude Code 管改碼與 runtime——不跨平台逐字複製。
-- 對話可精簡，產物不可因精簡而不完整。「盡量簡短」這類籠統指令在 2026-07 世代可能反效果，
-  要留就說清楚保留什麼、捨棄什麼。
+- 先消除衝突, 再新增規則; 反應式維護 — 同一失敗第二次出現才加規則.
+- 只寫模型推不出的事; 規則說明目的, 不重複系統本來就保證的行為.
+- 一條規則只寫一次, 只寫在一個地方. 重複不是保險: 它會誘發多餘確認, 也讓兩份拷貝各自漂移.
+- **給參照物勝過寫描述**: 能用 code, 測試, grader, mockup 表達的驗收就別寫散文
+  (brief 指向 grader, 比複述判準更不易漂移).
+- 不要蓋「什麼都查得到」的中央倉庫, 要蓋能在對的時機載入對的檔案的樹.
+- Chat Profile 管回答偏好; Cowork 管檔案交付; Claude Code 管改碼與 runtime — 不跨平台逐字複製.
+- 對話可精簡, 產物不可因精簡而不完整. 「盡量簡短」這類籠統指令在 2026-07 世代可能反效果,
+  要留就說清楚保留什麼, 捨棄什麼.
 
 ## 5. 驗證迴路
 
-每個專案都要回答：「改完一行，最快用什麼證明它正確？」
+每個專案都要回答: 「改完一行, 最快用什麼證明它正確?」
 
 | 專案 | 最短迴路 | 次層 | 最終驗收 |
 |---|---|---|---|
-| 編譯／演算法 | typecheck + focused test | golden／fixture | 全量 build／實機 |
-| Web／UI | typecheck + lint | DOM、computed style 量測 | 多尺寸實機視覺驗收 |
-| library／framework | 自身測試 | 消費端 build 與行為 | 下游全量 |
-| MCP／工具 | schema／型別 | 合成 request-response contract | 真實 client |
-| 資料／數值 | 單元測試 | 確定性 fixture + tolerance | 全量資料 |
+| 編譯/演算法 | typecheck + focused test | golden/fixture | 全量 build/實機 |
+| Web/UI | typecheck + lint | DOM, computed style 量測 | 多尺寸實機視覺驗收 |
+| library/framework | 自身測試 | 消費端 build 與行為 | 下游全量 |
+| MCP/工具 | schema/型別 | 合成 request-response contract | 真實 client |
+| 資料/數值 | 單元測試 | 確定性 fixture + tolerance | 全量資料 |
 
-秒級檢查前移到 hook；中等成本由 agent 明確執行；慢速或主觀驗收由人執行、agent 供證據。
-Fresh verifier 放在完整主張可反駁的最小整合邊界；特殊信任／資料邊界提前驗，但不重複堆 gate。
-未實質修改且沒有新證據的 Plan 不重送審；無法收斂就簡化、揭露 blocker 或延後 scope。
+秒級檢查前移到 hook; 中等成本由 agent 明確執行; 慢速或主觀驗收由人執行, agent 供證據.
+Fresh verifier 放在完整主張可反駁的最小整合邊界; 特殊信任/資料邊界提前驗, 但不重複堆 gate.
+未實質修改且沒有新證據的 Plan 不重送審; 無法收斂就簡化, 揭露 blocker 或延後 scope.
 
-**Bootstrap 自依賴禁令**：repo 內的工具與 preflight 不得依賴「部署後的 HOME 狀態」才能通過
-（resolver、manifest、checkout 路徑一律 env 可覆寫、預設落在 source checkout）；
-否則新機器會死鎖在「部署需要 preflight、preflight 需要部署」。
+**Bootstrap 自依賴禁令**: repo 內的工具與 preflight 不得依賴「部署後的 HOME 狀態」才能通過
+(resolver, manifest, checkout 路徑一律 env 可覆寫, 預設落在 source checkout);
+否則新機器會死鎖在「部署需要 preflight, preflight 需要部署」.
 
-**Hook 建置**：真實目錄先證明可跑 → 合成 stdin pipe-test（正常/略過/防循環/錯誤）→
-`jq -e` 驗設定 → 失敗訊息要回到模型 → 保持秒級 → 新 session 驗載入。
+**Hook 建置**: 真實目錄先證明可跑 → 合成 stdin pipe-test (正常/略過/防循環/錯誤) →
+`jq -e` 驗設定 → 失敗訊息要回到模型 → 保持秒級 → 新 session 驗載入.
 
-**Golden／snapshot**：確定性合成輸入 → 可比較格式（UI 優先 DOM/computed style）→
-record 與 verify 分離 → guard 防靜默 fallback → 三關驗證（連跑穩定、蓄意改動只打中預期、還原全綠）。
+**Golden/snapshot**: 確定性合成輸入 → 可比較格式 (UI 優先 DOM/computed style) →
+record 與 verify 分離 → guard 防靜默 fallback → 三關驗證 (連跑穩定, 蓄意改動只打中預期, 還原全綠).
 
 ### 行為 trap 與規則 covenant
 
-字串測試證明規則存在，不證明有效；行為驗收用 trap fixture：自足小專案＋逐字 brief＋
-機械 grader（只執行與 diff、不信報告）＋answer sheet，每個 trap 對準一種失敗形態（假完成、
-越權裁決、文件≠授權）；QC 端以造假交付量測抓取率。迴圈：**trap → 失敗形態 → 一句對症
-措辭 → 同 trap A/B 重跑**。covenant「無失敗 trap 即修剪候選」，裁決計入風險不對稱與檔位
-覆蓋。已驗證：規則形式決定遵循率（machine-checked 逐字行＞散文；每角色只列真正欠的行）；
-失敗躲在條款字面縫隙；合成資料入 ledger 用不產生 hint 的 class；收斂後轉 regression 資產
-（數據：`evals/traps/`、research log）。
+字串測試證明規則存在, 不證明有效; 行為驗收用 trap fixture: 自足小專案+逐字 brief+
+機械 grader (只執行與 diff, 不信報告) +answer sheet, 每個 trap 對準一種失敗形態 (假完成,
+越權裁決, 文件≠授權); QC 端以造假交付量測抓取率. 迴圈: **trap → 失敗形態 → 一句對症
+措辭 → 同 trap A/B 重跑**. covenant「無失敗 trap 即修剪候選」, 裁決計入風險不對稱與檔位
+覆蓋. 已驗證: 規則形式決定遵循率 (machine-checked 逐字行>散文; 每角色只列真正欠的行);
+失敗躲在條款字面縫隙; 合成資料入 ledger 用不產生 hint 的 class; 收斂後轉 regression 資產
+(數據: `evals/traps/`, research log).
 
 ## 6. 外部真相與多 repo
 
-對 tracker、設計稿、上游實作記錄四件事：如何讀、何時重抓、衝突時誰優先、完成後如何回寫。
-多 repo 另記錄：上下游關係、build 產物傳播、版本釘選與升級 owner；
-`dist/` 不進版控就必須明列重建與下游刷新命令。
+對 tracker, 設計稿, 上游實作記錄四件事: 如何讀, 何時重抓, 衝突時誰優先, 完成後如何回寫.
+多 repo 另記錄: 上下游關係, build 產物傳播, 版本釘選與升級 owner;
+`dist/` 不進版控就必須明列重建與下游刷新命令.
 
 ## 7. Context 與用量
 
-- **靜態負載**：修剪不用的 plugins、MCP、全域 skills、長指令與過長的 skill description。
-- **動態流入才是大頭**：大輸出存檔後讀切片；探索交 subagent；main context 收結論不收 dump。
-- **長任務**：在收斂點 `/compact`（先落地目標/決策/未決）；複雜工作用
-  research → plan → implement 分段新 context；不要把任何固定 context 百分比當成通用失效線。
-- **記憶是快照**：引用前重新驗證；行為合約以版控文件為準。
-- 用 `scripts/usage-report --days 7` 看診斷訊號，不冒充供應商配額公式。
+- **靜態負載**: 修剪不用的 plugins, MCP, 全域 skills, 長指令與過長的 skill description.
+- **動態流入才是大頭**: 大輸出存檔後讀切片; 探索交 subagent; main context 收結論不收 dump.
+- **長任務**: 在收斂點 `/compact` (先落地目標/決策/未決); 複雜工作用
+  research → plan → implement 分段新 context; 不要把任何固定 context 百分比當成通用失效線.
+- **記憶是快照**: 引用前重新驗證; 行為合約以版控文件為準.
+- 用 `scripts/usage-report --days 7` 看診斷訊號, 不冒充供應商配額公式.
 
 ### 模型與 provider 的成本效益
 
-選擇順序是：任務／harness 相符的成功證據 → 可接受成果率 → wall-clock 與人工返工 →
-完整 token 類型與價格。綜合 Intelligence 只作外部先驗；coding 工作看 coding-agent 與 component
-評測，不能把基礎模型總分直接當 repository 修改成功率。
+選擇順序是: 任務/harness 相符的成功證據 → 可接受成果率 → wall-clock 與人工返工 →
+完整 token 類型與價格. 綜合 Intelligence 只作外部先驗; coding 工作看 coding-agent 與 component
+評測, 不能把基礎模型總分直接當 repository 修改成功率.
 
-比較成本時用「每個可接受成果的預期總成本」，而非輸出單價：API input/output、cache
-write/read、重試、人工修正、等待時間與失敗風險都要入帳。訂閱方案與 API pay-per-token 是
-不同口徑，不互相代換。外部榜單會更新，日期、模型設定、effort、harness、benchmark 版本與
-成本範圍必須一併記錄；本機 `experience-ledger` 的同 role/provider 結果用來覆寫舊先驗。
+比較成本時用「每個可接受成果的預期總成本」, 而非輸出單價: API input/output, cache
+write/read, 重試, 人工修正, 等待時間與失敗風險都要入帳. 訂閱方案與 API pay-per-token 是
+不同口徑, 不互相代換. 外部榜單會更新, 日期, 模型設定, effort, harness, benchmark 版本與
+成本範圍必須一併記錄; 本機 `experience-ledger` 的同 role/provider 結果用來覆寫舊先驗.
 
 ### Leaf 分派的三層契約
 
-不要為每種主題建立一個 agent。先拆清楚三層：
+不要為每種主題建立一個 agent. 先拆清楚三層:
 
 | 層 | 決定什麼 | 目前做法 |
 |---|---|---|
-| Role | 權限、工具、可做的判斷與停止邊界 | 七個固定角色；例如 `explore` 唯讀、`executor` 可在封閉範圍內實作 |
-| Task class | experience-ledger 的可比較 cohort | `recon`、`review`、`plan`、`impl`、`verify`、`security`；另有不參與決策的 `smoke`／`other` |
-| Scenario／lens | 這次要攻擊的情境與證據接縫 | 寫進 brief；例如 semantic seams、state/concurrency、contract boundaries、test validity |
+| Role | 權限, 工具, 可做的判斷與停止邊界 | 七個固定角色; 例如 `explore` 唯讀, `executor` 可在封閉範圍內實作 |
+| Task class | experience-ledger 的可比較 cohort | `recon`, `review`, `plan`, `impl`, `verify`, `security`; 另有不參與決策的 `smoke`/`other` |
+| Scenario/lens | 這次要攻擊的情境與證據接縫 | 寫進 brief; 例如 semantic seams, state/concurrency, contract boundaries, test validity |
 
-`recon` 只負責定位、盤點與摘要；`review` 是有界、對抗式的唯讀專案審查，必須指定主要 lens、
-接縫兩側的 truth source 與殘餘盲區。兩者即使都由 `explore` 執行也不能混成同一筆 route 證據。
-重複 execution 不看數量門檻；只有一份 stable brief 能完整描述獨立同型項目的 ownership 與逐項
-驗收時才合批，main 保留例外、整合與 acceptance。新增 role 仍須同 cohort 證明角色契約不足。
+`recon` 只負責定位, 盤點與摘要; `review` 是有界, 對抗式的唯讀專案審查, 必須指定主要 lens,
+接縫兩側的 truth source 與殘餘盲區. 兩者即使都由 `explore` 執行也不能混成同一筆 route 證據.
+重複 execution 不看數量門檻; 只有一份 stable brief 能完整描述獨立同型項目的 ownership 與逐項
+驗收時才合批, main 保留例外, 整合與 acceptance. 新增 role 仍須同 cohort 證明角色契約不足.
 
-主 session 在派工前後各輸出一筆獨立紀錄，避免與一般說明混雜：`LEAF_DISPATCH` 固定帶 task、
-role、class、source、完整 route 與 dispatch payoff；`LEAF_RESULT` 固定帶 outcome、QC tier 與
-ledger 是否成功寫入。task label 必須和 ledger 相同，讓人類回顧與 machine-local 遙測可對照。
-逐字模板只在兩份派工 skill 裡，本文不複製。
+主 session 在派工前後各輸出一筆獨立紀錄, 避免與一般說明混雜: `LEAF_DISPATCH` 固定帶 task,
+role, class, source, 完整 route 與 dispatch payoff; `LEAF_RESULT` 固定帶 outcome, QC tier 與
+ledger 是否成功寫入. task label 必須和 ledger 相同, 讓人類回顧與 machine-local 遙測可對照.
+逐字模板只在兩份派工 skill 裡, 本文不複製.
 
 ## 8. Skill 與第三方內容
 
-- 單專案流程放 project skill；跨專案才放全域；模型已內建的通用知識不做 skill。
-- Frontmatter description 短而精（1–2 句觸發 + 不適用情境）——它永遠常駐。
-- `SKILL.md` 只放路由與主流程；深度資料放 `references/`。
-- 重複解釋兩次以上才封裝；不再使用就移除。
-- 第三方 skill 安裝前查：外連、shell/eval、寫入面、prompt injection。
+- 單專案流程放 project skill; 跨專案才放全域; 模型已內建的通用知識不做 skill.
+- Frontmatter description 短而精 (1–2 句觸發 + 不適用情境) — 它永遠常駐.
+- `SKILL.md` 只放路由與主流程; 深度資料放 `references/`.
+- 重複解釋兩次以上才封裝; 不再使用就移除.
+- 第三方 skill 安裝前查: 外連, shell/eval, 寫入面, prompt injection.
 
 ## 9. Enforcement 層級與 bootstrap
 
-`Claude hook → pre-commit → CI → monitoring` 攔截點依序變晚；快檢查前移、完整檢查留 CI，
-重要規則不能只依賴單機 hook。
+`Claude hook → pre-commit → CI → monitoring` 攔截點依序變晚; 快檢查前移, 完整檢查留 CI,
+重要規則不能只依賴單機 hook.
 
-新專案 bootstrap：短指令檔（命令/鐵律/陷阱/最短迴路）→ 記錄拓撲與真相源 → 最小 allowlist →
-依成本分配 hook/agent/CI/人 → 可量測 preview → 重複流程才封裝 skill → 以蓄意錯誤證明機制有效。
+新專案 bootstrap: 短指令檔 (命令/鐵律/陷阱/最短迴路) → 記錄拓撲與真相源 → 最小 allowlist →
+依成本分配 hook/agent/CI/人 → 可量測 preview → 重複流程才封裝 skill → 以蓄意錯誤證明機制有效.
