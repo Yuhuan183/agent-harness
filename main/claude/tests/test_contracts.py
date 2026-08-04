@@ -5,8 +5,16 @@ from support import *  # noqa: F401,F403
 # Each provider's always-loaded contract. One source for the two tests that
 # budget it: the per-document ceiling and the resident-layer total (contract
 # plus skill metadata), which must not be able to drift apart.
+#
+# `words` is the outer ratchet. The three density figures beside it are what a
+# rewrite actually has to answer to, and they derive from the 2026-08-04
+# measurement of these same two files plus margin - a change of units, not a
+# tightening. Their definitions and the reasoning are in `support.py`.
+ContractBudget = namedtuple(
+    "ContractBudget", "path words rules bytes_per_rule filler_floor filler_cap")
 RESIDENT_CONTRACT_BUDGETS = {
-    "claude": (".claude/CLAUDE.contract.md", 520),
+    # measured 2026-08-04: 413 words, 14 rules, 203.6 bytes/rule, 0.209 filler
+    "claude": ContractBudget(".claude/CLAUDE.contract.md", 520, 16, 225, 0.15, 0.25),
     # +10 (2026-08-03): the rtk clause gained the "a rewritten command may
     # report 0 matches without running" rule, and fitting it into 540 cost the
     # sentence its subject — "Authorization, approvals, and sandboxing ... may
@@ -15,7 +23,9 @@ RESIDENT_CONTRACT_BUDGETS = {
     # file landed at exactly 540/540 before this, which is the state that
     # forced the bad compression; leaving a ceiling with zero headroom is how a
     # budget starts buying wrong sentences instead of short ones.
-    "codex": (".codex/AGENTS.contract.md", 550),
+    #
+    # measured 2026-08-04: 546 words, 24 rules, 158.7 bytes/rule, 0.212 filler
+    "codex": ContractBudget(".codex/AGENTS.contract.md", 550, 26, 175, 0.15, 0.25),
 }
 
 
@@ -227,6 +237,21 @@ class ClaudeContractTests(unittest.TestCase):
             self.assertIn("stable ID", text)
             self.assertIn("affected Plan", text)
             self.assertIn("first readiness review", text)
+
+    def test_verification_is_bounded_by_passes_and_by_state_change(self) -> None:
+        # Two independent bounds, because they catch different loops. The pass
+        # cap ends a long chain; the unchanged-candidate rule ends a chain that
+        # never moves, which a pass cap alone cannot see — five re-runs against
+        # identical state are still five passes. Five is calibrated on the
+        # local ledger: one target took four verifier dispatches inside 4.5
+        # hours on 2026-07-28 and each pass found new defects, so a three-pass
+        # cap would have fired on legitimate work.
+        for path in (".claude/skills/baton-dispatch/SKILL.md",
+                     ".codex/skills/leaf-dispatch/SKILL.md"):
+            text = " ".join(read(path).split())
+            self.assertIn("five verification passes", text, path)
+            self.assertIn("names what changed since the previous one", text, path)
+            self.assertIn("an unchanged candidate is not re-verified", text, path)
 
     def test_provider_routing_owns_model_and_fallback_policy(self) -> None:
         skill = read(".claude/skills/provider-routing/SKILL.md")
@@ -1041,12 +1066,54 @@ class DocumentationBudgetTests(unittest.TestCase):
                     f"{record['path']}: {ratio:.1f} bytes per resident word; "
                     "the words are not what this description actually costs")
 
-        for provider, (contract, contract_budget) in RESIDENT_CONTRACT_BUDGETS.items():
+        for provider, budget in RESIDENT_CONTRACT_BUDGETS.items():
             self.assertLessEqual(
                 census["totals"][provider]["resident"]["words"],
-                contract_budget + metadata_budgets[provider]
+                budget.words + metadata_budgets[provider]
                 + role_metadata_budgets[provider],
-                f"{provider} resident layer ({contract} plus skill and role metadata)")
+                f"{provider} resident layer "
+                f"({budget.path} plus skill and role metadata)")
+
+    def test_resident_contracts_stay_dense(self) -> None:
+        """What the word ceilings above cannot see: what the words bought.
+
+        A contract can pass its word cap while padding every rule, while
+        shredding one rule into six bullets, or while compressing until the
+        prose no longer carries a subject. Each of those moves one of these
+        three figures, and the caps come from the 2026-08-04 measurement of
+        these same files, so nothing here tightens the state that shipped.
+
+        Scope, so this is not read as more than it is: these are file-level
+        aggregates. The 540/540 defect that motivated them was ten words in one
+        clause and moved the filler ratio by about 0.005 - below anything a file
+        aggregate can resolve. That class of change is caught per commit by
+        `scripts/contract-operator-delta.py`, which reports operator deltas for
+        a human to read. This test catches the sustained version: a document
+        that drifts padded, shredded, or telegraphic over many edits.
+        """
+        for provider, budget in RESIDENT_CONTRACT_BUDGETS.items():
+            text = read(budget.path)
+            rules = len(rule_units(text))
+            self.assertLessEqual(
+                rules, budget.rules,
+                f"{budget.path}: {rules} rules; each one dilutes the rest, so "
+                "adding one is a decision to make here, not in the file")
+            density = bytes_per_rule(text)
+            self.assertLessEqual(
+                density, budget.bytes_per_rule,
+                f"{budget.path}: {density:.1f} bytes per rule")
+            filler = filler_ratio(text)
+            self.assertLessEqual(
+                filler, budget.filler_cap,
+                f"{budget.path}: {filler:.3f} of its English words carry no "
+                "obligation")
+            # The floor is the only guard pointing the other way. Every other
+            # budget in this file rewards deletion, and past some point deletion
+            # stops removing padding and starts removing grammar.
+            self.assertGreaterEqual(
+                filler, budget.filler_floor,
+                f"{budget.path}: {filler:.3f} filler is below the floor - check "
+                "that the compression left the sentences their subjects")
 
     def test_project_scoped_skills_pay_the_same_resident_ceiling(self) -> None:
         """The ratchet covered the deployed tier; one skill sat just outside it.
@@ -1140,7 +1207,7 @@ class DocumentationBudgetTests(unittest.TestCase):
         # Units are word_count() words: one per CJK character, one per other
         # non-space run — zh-TW prose pays the same attention tax as English.
         budgets = {
-            ".claude/CLAUDE.contract.md": RESIDENT_CONTRACT_BUDGETS["claude"][1],
+            ".claude/CLAUDE.contract.md": RESIDENT_CONTRACT_BUDGETS["claude"].words,
             # Root README owns the complete architecture overview and diagrams;
             # operational/research detail remains linked in docs/.
             # +30 (2026-07-25): alias generation check added to the mechanisms
@@ -1179,7 +1246,12 @@ class DocumentationBudgetTests(unittest.TestCase):
             # half-width vs 1695 full-width CJK-adjacent marks). One stated
             # convention is what lets a reviewer call a mixed file drift
             # instead of taste.
-            "docs/README.md": 1050,
+            # +20 (2026-08-04): nav row for "what do we do next", the one
+            # reading purpose the table did not route. It first pointed at a
+            # standalone upgrade-directions doc; that doc was folded into the
+            # research summary the same day, so the row now targets the
+            # section. Same width, one less file to keep in sync.
+            "docs/README.md": 1070,
             # Verification entry point for dispatch state and route evidence.
             # Cheaper here than in the resident contracts or the two skills it
             # ties together, both of which sit within ten words of their own
@@ -1264,7 +1336,7 @@ class DocumentationBudgetTests(unittest.TestCase):
             # where the invocation mechanics already lived. The ceiling drops
             # with the content — leaving it at 590 would just invite a refill,
             # and this file sat 2 words under it.
-            ".codex/AGENTS.contract.md": RESIDENT_CONTRACT_BUDGETS["codex"][1],
+            ".codex/AGENTS.contract.md": RESIDENT_CONTRACT_BUDGETS["codex"].words,
             ".codex/ANALYSIS.md": 500,
             ".codex/DEPLOY.md": 550,
             # +90 (2026-07-23): record template and QC fraud checklist moved
@@ -1273,7 +1345,12 @@ class DocumentationBudgetTests(unittest.TestCase):
             # +150 (2026-07-28): v1.3.4 readiness-unit schema, security review
             # sequencing, and live-discovery ownership. These remain on-demand;
             # the census records their cost instead of charging resident turns.
-            ".claude/skills/baton-dispatch/SKILL.md": 1130,
+            # +45 (2026-08-04): the five-pass verification cap and the
+            # unchanged-candidate rule. The ledger has one local four-pass
+            # fix-verify chain (four verifier dispatches on one target inside
+            # 4.5 hours, 2026-07-28), so the cap sits above observed legitimate
+            # work rather than being borrowed from an upstream number.
+            ".claude/skills/baton-dispatch/SKILL.md": 1175,
             # QC mechanics and fixed records belong to baton-dispatch; keep
             # provider-routing focused on route, fallback, and eligibility.
             ".claude/skills/provider-routing/SKILL.md": 1300,
@@ -1290,7 +1367,10 @@ class DocumentationBudgetTests(unittest.TestCase):
             # Codex dispatch stages its own launch and completion. Claude gets
             # that from a hook and pays nothing for it here; on Codex it is the
             # dispatcher's step, so the instruction has to reach the dispatcher.
-            ".codex/skills/leaf-dispatch/SKILL.md": 1075,
+            # +25 (2026-08-04): the Claude twin of the verification cap. A cap
+            # only one provider honours is the asymmetry these budgets exist to
+            # expose, so both sides carry the identical sentence.
+            ".codex/skills/leaf-dispatch/SKILL.md": 1100,
             # The four below were unbudgeted until 2026-07-30: the ceiling
             # existed on the three files someone had remembered, not on the
             # tier, so the largest dispatch-time surface in the repo

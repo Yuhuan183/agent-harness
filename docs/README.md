@@ -21,6 +21,7 @@
 | 理解 hook 系統怎麼運作 | [Hook 系統](hook-system.md) | [settings.json](../main/claude/settings.json) |
 | 跑行為 trap eval | [evals/traps/](../evals/traps/) 各 README | [QC 說明](qc-explainer.md)取證段 |
 | 深度審查本 repo 設計 | [harness-review](../.agents/skills/harness-review/SKILL.md)（dev-only） | [plan](../main/claude/plans/orchestration-plan.md) |
+| 決定下一步做什麼 | [待辦方向](research/README.md#待辦方向) | [plan](../main/claude/plans/orchestration-plan.md) |
 
 ## 文件責任
 

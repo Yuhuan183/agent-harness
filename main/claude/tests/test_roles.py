@@ -27,6 +27,45 @@ class AgentRosterTests(unittest.TestCase):
             for forbidden in ("CLAUDE.md", "baton-dispatch", "provider-routing", "orchestration"):
                 self.assertNotIn(forbidden, body, f"{role} leaks {forbidden}")
 
+    def test_role_bodies_stay_dense(self) -> None:
+        """The word budget bounds a role body's size, not its content.
+
+        Same three figures as the resident contracts, same reason: a body can
+        sit under 400 words while padding its rules, while splitting one rule
+        into several bullets to look leaner per rule, or while compressed past
+        the point where the sentences still say who acts. Caps and floor come
+        from measuring all fourteen bodies on 2026-08-04, so this locks in the
+        shipped state rather than trimming it.
+
+        Both providers in one loop. A role that drifted on one side only is the
+        exact failure twin-parity exists to catch, and reading the two bodies
+        apart would let one drift while the other holds.
+        """
+        floor, cap = ROLE_FILLER_RANGE
+        bodies = {
+            f"claude/{role}": read(f".claude/agents/{role}.md").split("---\n", 2)[-1]
+            for role in ROLES
+        }
+        bodies.update({
+            f"codex/{role}": tomllib.loads(
+                read(f".codex/agents/{role}.toml"))["developer_instructions"]
+            for role in CODEX_ROLES
+        })
+        for label, body in bodies.items():
+            rules = len(rule_units(body))
+            self.assertLessEqual(rules, ROLE_RULE_BUDGET, f"{label}: {rules} rules")
+            density = bytes_per_rule(body)
+            self.assertLessEqual(
+                density, ROLE_BYTES_PER_RULE,
+                f"{label}: {density:.1f} bytes per rule")
+            filler = filler_ratio(body)
+            self.assertLessEqual(
+                filler, cap, f"{label}: {filler:.3f} filler")
+            self.assertGreaterEqual(
+                filler, floor,
+                f"{label}: {filler:.3f} filler is below the floor - check that "
+                "the compression left the sentences their subjects")
+
     def test_model_tiers_are_pinned(self) -> None:
         self.assertIn("model: sonnet", frontmatter(".claude/agents/explore.md"))
         self.assertIn("model: sonnet", frontmatter(".claude/agents/mech-executor.md"))
@@ -94,6 +133,29 @@ class AgentRosterTests(unittest.TestCase):
         self.assertIn("intermediate evidence", outcome)
         self.assertNotIn("Bash", frontmatter(".claude/agents/verifier.md"))
 
+    def test_refuting_takes_more_than_a_reproducible_defect(self) -> None:
+        """Reproducibility alone is the wrong bar, and the cheap fix is a clause.
+
+        A verifier that refutes on any reproducible defect can sink a sound
+        change over a cosmetic one. Upstream answers this with a P0-P4 severity
+        ladder; that would push new vocabulary into six role files on both
+        providers, and the resident cost of a contract is its rule count, so we
+        buy a finer restatement of the same failure with real attention.
+
+        The clause below is the whole mechanism. It keeps the finding - the
+        advisory half is what stops this from being a licence to stay quiet -
+        and moves only the verdict. Locked on both providers because a threshold
+        that holds on one side is a threshold the caller cannot rely on
+        (2026-08-04).
+        """
+        for path in (".claude/agents/verifier.md", ".codex/agents/verifier.toml"):
+            body = " ".join(read(path).split())
+            self.assertIn("changes the acceptance conclusion", body, path)
+            self.assertIn("would not change it under `Advisory:`", body, path)
+            self.assertIn("never move the verdict for it", body, path)
+            # No severity ladder crept in alongside the clause.
+            self.assertNotRegex(body, r"\bP[0-4]\b", path)
+
     def test_security_review_and_execute_are_capability_separated(self) -> None:
         for suffix in ("",):
             reviewer = f".claude/agents/security-reviewer{suffix}.md"
@@ -138,8 +200,12 @@ class LeafArtifactGateTests(unittest.TestCase):
     def test_gate_lines_are_declared_machine_checked_in_every_writer(self) -> None:
         for path in self.ALL_WRITERS:
             self.assertIn("verbatim in English in the exact template shown", read(path), path)
-        # The clause names only the lines the role owes: mech has no INTENT/TWINS
-        # template, and naming them made low-tier leaves improvise drifted lines.
+        # The clause names only the lines the role owes, and mech owes no
+        # INTENT/TWINS. This once carried a stronger claim — that naming them is
+        # what made two bridge seeds improvise drifted lines on 2026-07-23. A
+        # commit-by-commit check on 2026-08-04 refuted it: neither mech contract
+        # has ever contained either word. The invariant is worth holding on its
+        # own terms; the causal story was not evidence.
         for path in (".claude/agents/mech-executor.md", ".codex/agents/mech-executor.toml"):
             body = read(path)
             self.assertNotIn("INTENT", body, path)

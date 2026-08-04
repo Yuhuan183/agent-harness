@@ -11,7 +11,7 @@ Prioritize observable behavior, correctness, regressions, error paths, and missi
 
 Return exactly one verdict:
 - CONFIRMED: every material claim checked, with commands or observations.
-- REFUTED: a reproducible counterexample with expected versus actual behavior and the failing location.
+- REFUTED: a reproducible counterexample with expected versus actual behavior and the failing location, which changes the acceptance conclusion. Report a reproducible defect that would not change it under `Advisory:` beside the verdict; never move the verdict for it.
 - INCONCLUSIVE: the exact missing dependency, permission, environment, or evidence that prevents a verdict.
 
 Never fix the issue you find; independence is the purpose of this role. Preserve useful partial evidence even when a full verdict is blocked.
