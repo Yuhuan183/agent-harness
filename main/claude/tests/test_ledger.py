@@ -1923,6 +1923,50 @@ class LedgerReaderDamageTests(unittest.TestCase):
                 self.assertNotIn("Traceback", revise.stderr, name)
                 self.assertIn("comparable cohorts", revise.stdout, name)
 
+    def test_an_unusable_row_is_counted_rather_than_vanished(self) -> None:
+        """Surviving the damage is half of it; saying so is the other half.
+
+        metrics.md promises a rejected record "remains visible in
+        `observed_n`", and a row that never became a record cannot keep that
+        promise - it has no cohort to be visible in. So it is counted instead.
+        Without the count, a hand-written record with no zone and a ledger
+        eaten by a torn write read exactly alike: a quiet, slightly smaller
+        report (2026-08-04 review).
+        """
+        for name, damage in JSONL_DAMAGE + tuple(
+            (field_name, json.dumps({**self.RECORD, **override}).encode("utf-8")
+             + b"\n")
+            for field_name, override in JSONL_FIELD_DAMAGE
+        ):
+            with self.subTest(name), tempfile.TemporaryDirectory() as temp_dir:
+                env = self._ledger(Path(temp_dir), damage)
+                for reader in (self.REPORT, self.REVISE):
+                    result = subprocess.run(
+                        [sys.executable, str(reader), "--json"],
+                        env=env, capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0,
+                                     f"{name}/{reader.name}: {result.stderr}")
+                    self.assertEqual(
+                        json.loads(result.stdout).get("unusable_rows"), 1,
+                        f"{name}: {reader.name} did not count the damaged row")
+
+    def test_neither_reader_counts_a_blank_line_as_damage(self) -> None:
+        """Absence is not damage, and an alarm that cries wolf gets ignored.
+
+        A trailing or stray newline is what an interrupted append leaves, and
+        both readers have to agree it costs nothing - otherwise the count that
+        is supposed to mean "this ledger is damaged" fires on an empty line.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            env = self._ledger(Path(temp_dir), b"\n   \n")
+            for reader in (self.REPORT, self.REVISE):
+                result = subprocess.run(
+                    [sys.executable, str(reader), "--json"],
+                    env=env, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(result.stdout)["unusable_rows"], 0,
+                                 f"{reader.name} called a blank line damage")
+
     def test_both_readers_guard_the_two_classes_that_escape_the_handler(self) -> None:
         """Named in source, because the handler tuple does not name them.
 

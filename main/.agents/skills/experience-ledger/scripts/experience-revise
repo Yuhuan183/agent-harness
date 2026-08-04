@@ -91,9 +91,16 @@ def usable_record(record: dict) -> bool:
 
 
 def load_cells(path: str, since: datetime, now: datetime, half_life: float,
-               excluded: set[str]) -> dict:
-    """Weights per (provider, role, task_class, profile, model, effort)."""
+               excluded: set[str]) -> tuple[dict, int]:
+    """Weights per (provider, role, task_class, profile, model, effort).
+
+    Returns the cells and the number of rows the reader could not use at all.
+    A row rejected here has no cohort to be visible in, so the count is the
+    only place it can still be seen - the same promise `experience-report`
+    keeps with `unusable_rows` (2026-08-04 review).
+    """
     cells = defaultdict(lambda: {"n": 0, "w": 0.0, "accepted": 0.0})
+    unusable = 0
     # Same two holes as experience-report's `load`, one worse here: this reader
     # decodes the whole file at once, so a single corrupt byte took every cell
     # with it. `errors="replace"` keeps the damage to its own row, and the
@@ -103,14 +110,20 @@ def load_cells(path: str, since: datetime, now: datetime, half_life: float,
         lines = Path(path).read_text(
             encoding="utf-8", errors="replace").splitlines()
     except FileNotFoundError:
-        return cells
+        return cells, unusable
     for line in lines:
+        # Blank lines are absence, not damage; experience-report skips them
+        # before counting and the two counts have to mean the same thing.
+        if not line.strip():
+            continue
         try:
             record = json.loads(line)
             if not isinstance(record, dict) or not usable_record(record):
+                unusable += 1
                 continue
             timestamp = parse_ts(record["ts"])
         except (json.JSONDecodeError, KeyError, ValueError):
+            unusable += 1
             continue
         task_class = record.get("task_class", "other")
         source = record.get("request_source")
@@ -145,7 +158,7 @@ def load_cells(path: str, since: datetime, now: datetime, half_life: float,
         cell["w"] += weight
         if record.get("outcome") == "accepted":
             cell["accepted"] += weight
-    return cells
+    return cells, unusable
 
 
 def p_beats(candidate: dict, current: dict) -> float:
@@ -264,9 +277,12 @@ def main() -> int:
     if policies["claude"] != policies["codex"]:
         parser.error("provider revision_policy values must match for comparison")
 
+    unusable = 0
     for provider, config in configs.items():
         policy = policies[provider]
-        cells = load_cells(
+        # Both providers read the same ledger, so the damage count is the same
+        # number twice over: assigned, not accumulated.
+        cells, unusable = load_cells(
             ledger,
             now - timedelta(days=policy["days"]),
             now,
@@ -279,10 +295,14 @@ def main() -> int:
         )
 
     if args.json:
-        print(json.dumps({"policies": policies, "rows": rows},
+        print(json.dumps({"policies": policies, "rows": rows,
+                          "unusable_rows": unusable},
                          ensure_ascii=False, indent=2))
         return 0
     print(f"experience-revise — config-driven comparable cohorts ({ledger})")
+    if unusable:
+        print(f"warning: {unusable} unreadable or wrongly typed row(s) skipped; "
+              "they count toward no cohort below")
     for row in rows:
         print(f"{row['provider']:<7}{row['role']:<18}{row['task_class']:<10}"
               f"{row['current']:<28}{row['status']:<13}{row['detail']}")

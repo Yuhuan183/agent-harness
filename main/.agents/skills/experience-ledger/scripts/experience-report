@@ -96,7 +96,7 @@ def usable_record(record: dict) -> bool:
                for field in KEYED_FIELDS)
 
 
-def load(path: str, since: datetime) -> list[dict]:
+def load(path: str, since: datetime) -> tuple[list[dict], int]:
     """Read the append-only ledger, costing a damaged row and nothing else.
 
     Two ways a single bad row used to take the whole report down, both outside
@@ -126,20 +126,34 @@ def load(path: str, since: datetime) -> list[dict]:
     dead until someone repaired the file by hand.
     """
     records = []
+    unusable = 0
     try:
         with open(path, encoding="utf-8", errors="replace") as handle:
             for line in handle:
+                if not line.strip():
+                    continue
                 try:
                     record = json.loads(line)
                     if not isinstance(record, dict) or not usable_record(record):
+                        # Counted, not vanished. metrics.md is explicit that an
+                        # unusable record "remains visible in `observed_n`" so
+                        # that missing data is missing *visibly*; a row rejected
+                        # here has no cohort to be visible in, so the count is
+                        # what keeps the promise. Dropping it silently, which is
+                        # what the 2026-08-03 guard did, made the one record a
+                        # human is most likely to hand-write - a timestamp with
+                        # no zone - disappear from every surface at once
+                        # (2026-08-04 review).
+                        unusable += 1
                         continue
                     if parse_ts(record["ts"]) >= since:
                         records.append(record)
                 except (json.JSONDecodeError, KeyError, ValueError):
+                    unusable += 1
                     continue
     except FileNotFoundError:
         pass
-    return records
+    return records, unusable
 
 
 def load_shared_policy(paths: list[Path]) -> tuple[dict, list[dict]]:
@@ -413,7 +427,7 @@ def main() -> int:
         "AGENT_EXPERIENCE_LEDGER",
         os.path.expanduser("~/.agents/telemetry/experience.jsonl"),
     )
-    records = load(path, now - timedelta(days=days))
+    records, unusable = load(path, now - timedelta(days=days))
     stats = summarize(records, now, half_life, excluded)
     route_stats = summarize(records, now, half_life, excluded, by_route=True)
     current_routes = {}
@@ -439,6 +453,10 @@ def main() -> int:
         print(json.dumps({
             "policy": policy,
             "records": len(records),
+            # Rows the reader could not use at all. Kept in the payload rather
+            # than left implicit so `weekly-integrity` and any other consumer
+            # can see that a ledger has damage without diffing record counts.
+            "unusable_rows": unusable,
             "decision_records": sum(row["n"] for row in public.values()),
             "by_cohort_provider": {
                 f"{role}/{task_class}/{provider}": row
@@ -458,6 +476,9 @@ def main() -> int:
     print(f"experience-report — {len(records)} records; policy {days}d, "
           f"half-life {half_life}d, comparable n>={min_samples}, "
           f"hint profile {scope} ({path})")
+    if unusable:
+        print(f"warning: {unusable} unreadable or wrongly typed row(s) skipped; "
+              "they count toward nothing and are invisible to every metric below")
     if not public:
         print("no records; log dispatches with experience-log first.")
         return 0

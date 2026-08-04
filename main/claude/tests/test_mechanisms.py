@@ -667,6 +667,39 @@ class MechanismTests(unittest.TestCase):
             self.assertFalse((home / ".claude/telemetry/.integrity-last-run").exists(),
                              "a failed reader still stamped the run complete")
 
+    def test_ledger_damage_reaches_the_weekly_report(self) -> None:
+        """Surviving the damage quietly is the failure the fix created.
+
+        Making the reader skip a bad row instead of dying on it turned a loud
+        break into a silent shrink: the report still exits 0, the tables are
+        just missing rows nobody knows about. So the count the reader now
+        publishes has to be read by something. This hook is the only consumer
+        that opens the report unasked (2026-08-04 review).
+
+        Informational, and deliberately not throttle-blocking: the check ran
+        correctly and it is the ledger file that is damaged, so withholding the
+        stamp would re-run a healthy check every session over a fact that will
+        not change until someone edits the file.
+        """
+        hook = ROOT / "main/claude/hooks/weekly-integrity.py"
+        with tempfile.TemporaryDirectory() as temp_home:
+            home = Path(temp_home)
+            scripts = home / ".agents/skills/experience-ledger/scripts"
+            scripts.mkdir(parents=True)
+            stub = scripts / "experience-report"
+            stub.write_text(
+                "#!/bin/sh\nprintf '%s\\n' '{\"unusable_rows\": 3}'\n",
+                encoding="utf-8")
+            stub.chmod(0o755)
+            (home / ".agents/telemetry").mkdir(parents=True)
+            (home / ".agents/telemetry/experience-pending.jsonl").write_bytes(b"")
+            result = subprocess.run(
+                [sys.executable, str(hook)],
+                env={**os.environ, "HOME": temp_home,
+                     "AGENT_HARNESS_REPO": str(home / "repo")},
+                check=True, capture_output=True, text=True)
+            self.assertIn("experience ledger damage: 3 row(s)", result.stdout)
+
     def test_sync_and_weekly_integrity_share_one_deployment_manifest(self) -> None:
         hook = read(".claude/hooks/weekly-integrity.py")
         sync = read("scripts/sync.sh")

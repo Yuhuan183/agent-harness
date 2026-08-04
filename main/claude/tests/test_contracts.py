@@ -246,12 +246,21 @@ class ClaudeContractTests(unittest.TestCase):
         # local ledger: one target took four verifier dispatches inside 4.5
         # hours on 2026-07-28 and each pass found new defects, so a three-pass
         # cap would have fired on legitimate work.
+        #
+        # The cap also has to say how it relates to the one-verifier quota, or
+        # the two land in the same file as bare numbers over three different
+        # units — one per "top-level task", five per "target", and the gate
+        # counting per prompt — and a reader can only guess whether five passes
+        # are permission to spend the quota five times (2026-08-04 review).
         for path in (".claude/skills/baton-dispatch/SKILL.md",
                      ".codex/skills/leaf-dispatch/SKILL.md"):
             text = " ".join(read(path).split())
             self.assertIn("five verification passes", text, path)
             self.assertIn("names what changed since the previous one", text, path)
             self.assertIn("an unchanged candidate is not re-verified", text, path)
+            self.assertIn("does not widen the one-verifier quota", text, path)
+            self.assertIn("one outcome verifier per acceptance claim", text, path)
+            self.assertIn("only a changed candidate is a new claim", text, path)
 
     def test_provider_routing_owns_model_and_fallback_policy(self) -> None:
         skill = read(".claude/skills/provider-routing/SKILL.md")
@@ -1370,7 +1379,14 @@ class DocumentationBudgetTests(unittest.TestCase):
             # fix-verify chain (four verifier dispatches on one target inside
             # 4.5 hours, 2026-07-28), so the cap sits above observed legitimate
             # work rather than being borrowed from an upstream number.
-            ".claude/skills/baton-dispatch/SKILL.md": 1175,
+            # +22 (2026-08-04): net, after displacement. The cap above landed
+            # as a bare "five" one paragraph away from a bare "one", over
+            # different units, and a reader could only guess whether five
+            # passes meant permission to spend the quota five times. Stating
+            # the relation cost 40 words; tightening the paragraph returned 9
+            # and merging the duplicated trigger-ownership sentence in the same
+            # section returned another 9.
+            ".claude/skills/baton-dispatch/SKILL.md": 1197,
             # QC mechanics and fixed records belong to baton-dispatch; keep
             # provider-routing focused on route, fallback, and eligibility.
             ".claude/skills/provider-routing/SKILL.md": 1300,
@@ -1390,7 +1406,12 @@ class DocumentationBudgetTests(unittest.TestCase):
             # +25 (2026-08-04): the Claude twin of the verification cap. A cap
             # only one provider honours is the asymmetry these budgets exist to
             # expose, so both sides carry the identical sentence.
-            ".codex/skills/leaf-dispatch/SKILL.md": 1100,
+            # +23 (2026-08-04): net, the twin of the baton-dispatch entry
+            # above. The same 40-word relation, the same 9-word tightening, and
+            # 6 more from the "same surface" clause this section already stated
+            # once. Measured size moved 1098 -> 1123; the file had been sitting
+            # two words under its ceiling rather than on it.
+            ".codex/skills/leaf-dispatch/SKILL.md": 1123,
             # The four below were unbudgeted until 2026-07-30: the ceiling
             # existed on the three files someone had remembered, not on the
             # tier, so the largest dispatch-time surface in the repo
@@ -1451,6 +1472,36 @@ class DocumentationBudgetTests(unittest.TestCase):
                 ratio, MAX_BYTES_PER_WORD,
                 f"{path}: {ratio:.1f} bytes per word against a {limit}-word "
                 "budget; the words are not what this file actually costs")
+
+    def test_human_docs_stay_half_width(self) -> None:
+        """The sweep was a commit; without this it is not a rule.
+
+        `docs/README.md` rule 7 says new prose is written half-width, and the
+        2026-08-04 pass converted the tree. Nine `、` survived it in a file
+        written on a branch that predated the sweep and merged after it, which
+        is how every future regression will arrive - not from anyone disagreeing
+        with the rule (2026-08-04 review).
+
+        Scoped to human-facing docs, where the rule has no exceptions. All five
+        exempt categories live outside this glob - verbatim external quotes,
+        `speak-human-tw` material, `evals/traps/**` fixtures, skill
+        descriptions and user-facing templates, and full-width literals used as
+        match data - so a failure here is drift and never a false positive.
+        Quotes and dashes are excluded because they have no half-width form,
+        which is rule 7's own carve-out.
+        """
+        convertible = "，。、：；？！（）％＃＆＊＋－／＜＝＞＠［＼］＾＿｀｛｜｝"
+        offenders = {}
+        for path in sorted(ROOT.glob("docs/**/*.md")) + sorted(ROOT.glob("*.md")):
+            marks = sorted({character
+                            for character in path.read_text(encoding="utf-8")
+                            if character in convertible})
+            if marks:
+                offenders[str(path.relative_to(ROOT))] = marks
+        self.assertEqual(
+            offenders, {},
+            "full-width punctuation that has a half-width form (docs/README.md "
+            "rule 7); convert it and put a space after the mark")
 
     def test_root_readme_is_a_complete_navigation_surface(self) -> None:
         readme = read("README.md")

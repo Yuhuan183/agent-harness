@@ -170,18 +170,106 @@ class MachineStateHygieneTests(unittest.TestCase):
         gate = read(".claude/hooks/commit-test-gate.py")
         support_src = (ROOT / "main/claude/tests/support.py").read_text(
             encoding="utf-8")
-        for label, body in (("commit-test-gate", gate), ("support", support_src)):
-            listed = set(re.findall(r'"(GIT_[A-Z_]+)"', body))
+        listed = {label: set(re.findall(r'"(GIT_[A-Z_]+)"', body))
+                  for label, body in (("commit-test-gate", gate),
+                                      ("support", support_src))}
+        for label, names in listed.items():
             self.assertTrue(
-                essential <= listed,
-                f"{label} does not scrub {sorted(essential - listed)}")
-        # The gate must build the suite environment from the filtered set, not
-        # from os.environ directly.
-        self.assertNotIn("env = dict(os.environ)", gate,
-                         "the gate passes its whole environment to the suite")
-        self.assertIn("if name not in GIT_HOOK_ENV", gate)
-        # And support must actually remove them, not merely name them.
-        self.assertIn("os.environ.pop(_name, None)", support_src)
+                essential <= names,
+                f"{label} does not scrub {sorted(essential - names)}")
+        # Two lists that must not drift. Asserted equal, not as subsets: the
+        # subset form was what let them diverge by one entry unnoticed, in the
+        # same commit that added a parity test for exactly this pattern
+        # elsewhere (2026-08-04 review).
+        self.assertEqual(listed["commit-test-gate"], listed["support"],
+                         "the gate and the suite scrub different variables")
+
+        # Everything above is a grep, and a grep cannot see behaviour: a probe
+        # that keeps every string asserted here and adds one `env.update(
+        # os.environ)` line restores the bug completely and still passes
+        # (demonstrated 2026-08-04). So the real assertion is a decoy: run the
+        # gate's own suite-runner with GIT_DIR pointed at a repository that
+        # must not be touched, and require that it was not.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            decoy = temp / "decoy"
+            decoy.mkdir()
+            git_in(decoy, "init", "-q")
+            (decoy / "seed.txt").write_text("seed\n", encoding="utf-8")
+            git_in(decoy, "add", "seed.txt")
+            git_in(decoy, "-c", "user.name=t", "-c", "user.email=t@e",
+                   "commit", "-q", "-m", "seed")
+            before = git_in(decoy, "rev-parse", "HEAD").stdout.strip()
+
+            # A one-test suite that does what this repo's fixtures do: create a
+            # scratch repository and commit in it. `--allow-empty` is what makes
+            # this a real reproduction rather than a comfortable one - `git add`
+            # under a leaked GIT_DIR fails on the missing worktree path and the
+            # commit never happens, so a probe built on `add` reports success
+            # while the bug is fully present. An empty commit has no such
+            # dependency: GIT_DIR outranks both `-C` and cwd, so it lands in the
+            # decoy exactly as the fixtures landed in this repo.
+            suite = temp / "suite"
+            suite.mkdir()
+            (suite / "test_probe.py").write_text(
+                "import subprocess, tempfile, unittest\n"
+                "from pathlib import Path\n"
+                "class T(unittest.TestCase):\n"
+                "    def test_scratch_commit(self):\n"
+                "        with tempfile.TemporaryDirectory() as d:\n"
+                "            r = Path(d)\n"
+                "            subprocess.run(['git', 'init', '-q', str(r)],\n"
+                "                           capture_output=True)\n"
+                "            subprocess.run(\n"
+                "                ['git', '-c', 'user.name=t',\n"
+                "                 '-c', 'user.email=t@e', 'commit', '-q',\n"
+                "                 '--allow-empty', '-m', 'probe'],\n"
+                "                cwd=str(r), capture_output=True)\n",
+                encoding="utf-8")
+
+            gate_module = load_module(
+                "gate_probe", ROOT / "main/claude/hooks/commit-test-gate.py")
+            leaked = {**os.environ, "GIT_DIR": str(decoy / ".git")}
+            restore = dict(os.environ)
+            try:
+                os.environ.update(leaked)
+                gate_module.run_suites([(temp, suite)], "probe")
+            finally:
+                os.environ.clear()
+                os.environ.update(restore)
+
+            after = git_in(decoy, "rev-parse", "HEAD").stdout.strip()
+            self.assertEqual(
+                before, after,
+                "the suite committed into the repository GIT_DIR pointed at; "
+                "this is the failure that moved this repo's own HEAD")
+
+    def test_the_two_git_env_lists_stay_identical(self) -> None:
+        """One list, copied, and the copies drift toward the wrong direction.
+
+        The gate strips these before running a suite; the suite strips them
+        again at import, because it is also run directly. A name that reaches
+        only one of the two is worse than a name in neither: the suite then
+        passes under the gate and fails when a person runs it, or - the way it
+        actually went - the fixtures' own `git commit` calls land in the outer
+        repository and move its HEAD. The drift already happened once, in the
+        direction of the gate's list being longer (2026-08-04 review).
+        """
+        pattern = r"GIT_HOOK_ENV = \((.*?)\)"
+        lists = []
+        for path in (".claude/hooks/commit-test-gate.py",
+                     "main/claude/tests/support.py"):
+            body = read(path) if path.startswith(".") else read_repo(path)
+            match = re.search(pattern, body, re.DOTALL)
+            self.assertIsNotNone(match, f"{path} has no GIT_HOOK_ENV")
+            lists.append(tuple(re.findall(r'"([^"]+)"', match.group(1))))
+        self.assertEqual(lists[0], lists[1],
+                         "the gate and the suite disagree about which git "
+                         "variables must not reach a test process")
+        for required in ("GIT_DIR", "GIT_INDEX_FILE", "GIT_WORK_TREE"):
+            self.assertIn(required, lists[0],
+                          "the list no longer covers the variables that "
+                          "actually redirect a commit")
 
     def test_commit_gate_outer_timeout_exceeds_its_suite_budget(self) -> None:
         """The same ordering as F-06, on the gate that blocks commits.
@@ -601,6 +689,116 @@ class MachineStateHygieneTests(unittest.TestCase):
                            capture_output=True, text=True, timeout=300)
             self.assertEqual(commits(repo), 2,
                              "the git hook committed without being able to check")
+
+    def test_an_inverted_connective_is_shown_to_the_operator_at_commit(self) -> None:
+        """The one thing the acceptance suite structurally cannot catch.
+
+        Every contract assertion in this repository tests for the presence of a
+        phrase. Turn `or` into `and` inside a clause and all of them still
+        pass, while the contract now means something else - the defect class
+        `contract-operator-delta.py` exists for. The script was correct and
+        unreachable: nothing ran it, so the pass most likely to invert a
+        connective (a compression pass, which does not stop to audit itself)
+        was also the pass least likely to type its name (2026-08-04 review).
+
+        Asserted here rather than by grepping the hook for a call, because what
+        matters is that the table reaches a human on a real commit: the script
+        loads, the staged surface file is found through git's own hook
+        environment, and the swapped operator appears in the output. And the
+        commit still lands - this is evidence, and evidence that can refuse a
+        commit gets deleted the first time it is wrong.
+        """
+        gate = ROOT / "main/claude/hooks/commit-test-gate.py"
+        githook = ROOT / "main/claude/githooks/pre-commit"
+        delta = ROOT / "scripts/contract-operator-delta.py"
+        identity = {
+            "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
+            "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid",
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir) / "repo"
+            (repo / "main/claude/hooks").mkdir(parents=True)
+            (repo / "main/claude/githooks").mkdir(parents=True)
+            (repo / "scripts").mkdir(parents=True)
+            shutil.copy(gate, repo / "main/claude/hooks/commit-test-gate.py")
+            shutil.copy(githook, repo / "main/claude/githooks/pre-commit")
+            shutil.copy(delta, repo / "scripts/contract-operator-delta.py")
+            # No test suite in the decoy: the green-before-commit half is
+            # already proved above, and this test is about the other half.
+            surface = repo / "main/claude/CLAUDE.contract.md"
+            surface.write_text("Stop or ask before deleting.\n", encoding="utf-8")
+            plain = repo / "notes.md"
+            plain.write_text("Stop or ask.\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+            subprocess.run(["git", "-C", str(repo), "config", "core.hooksPath",
+                            "main/claude/githooks"], check=True)
+            subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+            env = {**os.environ, **identity}
+            first = subprocess.run(["git", "-C", str(repo), "commit", "-q",
+                                    "-m", "seed"],
+                                   env=env, capture_output=True, text=True,
+                                   timeout=300)
+            self.assertEqual(first.returncode, 0, first.stderr)
+
+            surface.write_text("Stop and ask before deleting.\n", encoding="utf-8")
+            plain.write_text("Stop and ask.\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+            second = subprocess.run(["git", "-C", str(repo), "commit", "-q",
+                                     "-m", "compress"],
+                                    env=env, capture_output=True, text=True,
+                                    timeout=300)
+            self.assertEqual(second.returncode, 0,
+                             f"the table blocked a commit: {second.stderr}")
+            report = second.stderr
+            self.assertIn("contract operator delta", report)
+            self.assertIn("main/claude/CLAUDE.contract.md", report)
+            # The rows, not the words: "or" and "and" match half the English
+            # language, so a table that reported nothing would still pass a
+            # bare substring check.
+            collapsed = " ".join(report.split())
+            self.assertIn("or 1 -> 0 (-1)", collapsed)
+            self.assertIn("and 0 -> 1 (+1)", collapsed)
+            self.assertNotIn("notes.md", report,
+                             "a file no session loads was reported as a surface")
+
+    def test_the_operator_table_never_costs_a_commit(self) -> None:
+        """Fail-open, and provably so, because the alternative is deletion.
+
+        A gate that is mostly false positives gets bypassed; this one is
+        explicitly not a gate, so a broken or missing script has to cost a
+        warning at most. The two ways it can break in practice are the file
+        being absent and the file being unloadable.
+        """
+        gate = ROOT / "main/claude/hooks/commit-test-gate.py"
+        githook = ROOT / "main/claude/githooks/pre-commit"
+        identity = {
+            "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
+            "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid",
+        }
+        for name, body in (("missing", None), ("unloadable", "def compare(:\n")):
+            with self.subTest(name), tempfile.TemporaryDirectory() as temp_dir:
+                repo = Path(temp_dir) / "repo"
+                (repo / "main/claude/hooks").mkdir(parents=True)
+                (repo / "main/claude/githooks").mkdir(parents=True)
+                (repo / "scripts").mkdir(parents=True)
+                shutil.copy(gate, repo / "main/claude/hooks/commit-test-gate.py")
+                shutil.copy(githook, repo / "main/claude/githooks/pre-commit")
+                if body is not None:
+                    (repo / "scripts/contract-operator-delta.py").write_text(
+                        body, encoding="utf-8")
+                (repo / "main/claude/CLAUDE.contract.md").write_text(
+                    "Stop or ask.\n", encoding="utf-8")
+                subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+                subprocess.run(["git", "-C", str(repo), "config",
+                                "core.hooksPath", "main/claude/githooks"],
+                               check=True)
+                subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+                done = subprocess.run(
+                    ["git", "-C", str(repo), "commit", "-q", "-m", "seed"],
+                    env={**os.environ, **identity}, capture_output=True,
+                    text=True, timeout=300)
+                self.assertEqual(done.returncode, 0,
+                                 f"{name}: blocked the commit: {done.stderr}")
 
     def test_sync_installs_the_git_side_of_the_commit_gate(self) -> None:
         """A hook nobody points git at is a file, not a gate.
