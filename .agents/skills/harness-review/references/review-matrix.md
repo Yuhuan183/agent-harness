@@ -74,9 +74,9 @@ state, terminal result, and failure path at every edge?
 
 ### High-risk patterns
 
-- “Single-hop” fallback with no hop or origin state.
+- "Single-hop" fallback with no hop or origin state.
 - A handoff that loses scope, identity, or acceptance criteria.
-- A loop ending at “suggestion” despite claiming continuous improvement.
+- A loop ending at "suggestion" despite claiming continuous improvement.
 - A failure branch that has no wake-up, retry, or terminal state.
 - Two agents or scripts owning the same writable artifact.
 
@@ -143,7 +143,7 @@ units, and exceptions defined exactly once?
 ### High-risk patterns
 
 - The same field name used for origin, current provider, and fallback target.
-- “Available” meaning any surface in one file and all surfaces in another.
+- "Available" meaning any surface in one file and all surfaces in another.
 - A line budget presented as a context budget.
 - Historical rationale written as a current invariant.
 - Exact-string tests coupled to incidental line wrapping or file placement.
@@ -180,7 +180,7 @@ dependency direction, and an explicit deployment boundary?
 
 - Two writable owners for the same artifact.
 - Platform-neutral policy duplicated in provider-specific files.
-- Dev-only files included in deployment “for convenience”.
+- Dev-only files included in deployment "for convenience".
 - Merge behavior preserving stale target keys with no visibility.
 - Deployment validation that passes only after a previous successful
   deployment.
@@ -219,7 +219,7 @@ paid only where it changes behavior?
 - The same rule resident in contracts, role files, and skills.
 - Provider-specific incident history embedded in a permanent workflow.
 - Hooks re-probing stable facts on every session.
-- A “smaller” prompt that merely moves content into another always-loaded
+- A "smaller" prompt that merely moves content into another always-loaded
   artifact.
 
 ### Evidence to close

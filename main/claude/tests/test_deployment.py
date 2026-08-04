@@ -252,7 +252,7 @@ class MachineStateHygieneTests(unittest.TestCase):
         self.assertIn("headroom wrap agy", runtime)
         self.assertIn("`persistent-service`", runtime)
         self.assertIn("`persistent-task`", runtime)
-        self.assertIn("不支援 `start`、`stop`、`restart`", runtime)
+        self.assertIn("不支援 `start`, `stop`, `restart`", runtime)
         self.assertIn("headroom install restart --profile <profile>", runtime)
         self.assertIn("headroom install status --profile <profile>", runtime)
         self.assertIn("重新 `apply --preset persistent-service`", runtime)
@@ -868,13 +868,13 @@ class MachineStateHygieneTests(unittest.TestCase):
         """
         numerals = {"一": 1, "兩": 2, "二": 2, "三": 3, "四": 4, "五": 5}
         body = read_repo("docs/hook-system.md")
-        match = re.search(r"唯讀邊界是(.)層合力：(.*?)。", body, re.DOTALL)
+        match = re.search(r"唯讀邊界是(.)層合力: (.*?)\.(?:\s|$)", body, re.DOTALL)
         self.assertIsNotNone(match, "the reviewer boundary sentence moved")
         stated = numerals.get(match.group(1))
         self.assertIsNotNone(stated, f"unparsed count: {match.group(1)!r}")
 
         listed = re.sub(r"\([^)]*\)", "", match.group(2))
-        items = [item.strip() for item in listed.split("、") if item.strip()]
+        items = [item.strip() for item in listed.split(",") if item.strip()]
         self.assertEqual(
             stated, len(items),
             f"the sentence says {stated} layers and lists {len(items)}: {items}")

@@ -4,39 +4,39 @@
 
 ## LangChain Deep Agents
 
-查核版本：PyPI stable `0.6.12`、beta `0.7.0b2`。Deep Agents 的價值不在提供另一套固定流程，而在把幾個可組合能力做成 middleware 與 state boundary：
+查核版本: PyPI stable `0.6.12`, beta `0.7.0b2`. Deep Agents 的價值不在提供另一套固定流程, 而在把幾個可組合能力做成 middleware 與 state boundary:
 
-- tool／subagent allowlist 比 denylist 更可證明；
-- filesystem、state、memory、human-in-the-loop 各自有清楚生命週期；
-- context 壓縮與摘要是執行期能力，不等於可任意改寫 provider 的 compact payload；
-- rubric／grader 的輸入是待驗證 observation，不是可信 instruction；
-- persistence 與 hosted product 的能力、區域與 beta 狀態需分開陳述。
+- tool/subagent allowlist 比 denylist 更可證明;
+- filesystem, state, memory, human-in-the-loop 各自有清楚生命週期;
+- context 壓縮與摘要是執行期能力, 不等於可任意改寫 provider 的 compact payload;
+- rubric/grader 的輸入是待驗證 observation, 不是可信 instruction;
+- persistence 與 hosted product 的能力, 區域與 beta 狀態需分開陳述.
 
 ### 專案採用
 
-- no-write role 使用工具 allowlist。
-- report 與引用的 tool output 都視為 untrusted observation。
-- compact 後以 `SessionStart[source=compact]` 補最低限度 reseed；不宣稱能控制 PreCompact 摘要內容。
-- memory、ledger 與 Git ownership 分層：Git 保存可攜契約，ledger 保存 machine-local outcome evidence。
+- no-write role 使用工具 allowlist.
+- report 與引用的 tool output 都視為 untrusted observation.
+- compact 後以 `SessionStart[source=compact]` 補最低限度 reseed; 不宣稱能控制 PreCompact 摘要內容.
+- memory, ledger 與 Git ownership 分層: Git 保存可攜契約, ledger 保存 machine-local outcome evidence.
 
 ### 不採用
 
-- 不導入完整 Deep Agents runtime；目前 Claude/Codex 原生 agent surface 已足以承載角色契約。
-- 不把 hosted／beta 能力寫成穩定、自架或跨區皆可用。
-- 不把一般 middleware pattern 複製成 resident prompt；只有能改善本專案失敗形態者才落地。
+- 不導入完整 Deep Agents runtime; 目前 Claude/Codex 原生 agent surface 已足以承載角色契約.
+- 不把 hosted/beta 能力寫成穩定, 自架或跨區皆可用.
+- 不把一般 middleware pattern 複製成 resident prompt; 只有能改善本專案失敗形態者才落地.
 
 ## Pilotfish v1.3.0-v1.3.8
 
 研究基準為 [Pilotfish v1.3.8](https://github.com/Nanako0129/pilotfish/releases/tag/v1.3.8), tag commit `ad9600c5af3a4462c7de4bc9832f9b3a3c5e9d36` (2026-08-04). 前一次對齊為 v1.3.4 (`a4c5852...`, 2026-07-25). v1.3.0 到 v1.3.4 的逐版變動已收斂成以下仍存續的原則:
 
-1. **工作形狀決定派工**：同型、互相獨立、能由一份 stable one-shot brief 完整描述，才適合合批。
-2. **未知 bug 不切斷推理鏈**：root cause、第一個 minimal fix、live verification 留在同一 owner。
-3. **mechanical default 可被反駁**：已知修法的大量機械工作可交給 `mech-executor`；若 context 重建或整合成本較高，main 直接做。
-4. **Plan envelope 與 slice 分離**：共享 constraints 固定，下一個可執行 slice 有 stable ID、owner、prerequisites、acceptance、rollback。
-5. **readiness 與 outcome 分工**：`plan-verifier` 只判 Plan；`verifier` 只判完成 claim。
-6. **anti-churn**：同 readiness unit 最多兩次自動實質修訂，之後呈現選項。
-7. **安全分權**：read-only security review 先進 Plan，批准後只有一個 writer。
-8. **prompt surface 分層**：resident contract、on-demand skill、leaf role 分開計量與去重。
+1. **工作形狀決定派工**: 同型, 互相獨立, 能由一份 stable one-shot brief 完整描述, 才適合合批.
+2. **未知 bug 不切斷推理鏈**: root cause, 第一個 minimal fix, live verification 留在同一 owner.
+3. **mechanical default 可被反駁**: 已知修法的大量機械工作可交給 `mech-executor`; 若 context 重建或整合成本較高, main 直接做.
+4. **Plan envelope 與 slice 分離**: 共享 constraints 固定, 下一個可執行 slice 有 stable ID, owner, prerequisites, acceptance, rollback.
+5. **readiness 與 outcome 分工**: `plan-verifier` 只判 Plan; `verifier` 只判完成 claim.
+6. **anti-churn**: 同 readiness unit 最多兩次自動實質修訂, 之後呈現選項.
+7. **安全分權**: read-only security review 先進 Plan, 批准後只有一個 writer.
+8. **prompt surface 分層**: resident contract, on-demand skill, leaf role 分開計量與去重.
 
 ### v1.3.5-v1.3.8 增量
 
@@ -59,14 +59,14 @@ v1.3.4 已有 Gate, v1.3.6 之後改成對整條生命週期實跑並公開逐�
 
 | Pilotfish 存續設計 | 本專案現況 | 裁決 |
 |---|---|---|
-| shape-based batching | `baton-dispatch` 已採 shared context／artifact／dependency／verification surface | 已落地 |
+| shape-based batching | `baton-dispatch` 已採 shared context/artifact/dependency/verification surface | 已落地 |
 | direct-execution brake | resident contract 已以淨收益判斷派工 | 已落地 |
-| envelope + executable slice | Plan contract 已要求 stable boundary；rollback 由實際 release strategy 決定 | 已落地 |
+| envelope + executable slice | Plan contract 已要求 stable boundary; rollback 由實際 release strategy 決定 | 已落地 |
 | Plan anti-churn | 兩次 automatic revision 上限 | 已落地 |
-| readiness／outcome 分工 | Claude/Codex twin roles 與 vocabulary tests | 已落地 |
+| readiness/outcome 分工 | Claude/Codex twin roles 與 vocabulary tests | 已落地 |
 | security sequencing | reviewer → approved contract → single executor | 已落地 |
 | fixed dispatch/result records | 兩側 dispatch skill 與 experience ledger | 已落地 |
-| exact prompt compression evidence | words／bytes／hash census | 已落地（靜態） |
+| exact prompt compression evidence | words/bytes/hash census | 已落地 (靜態) |
 | lifecycle behavior proof | interruption, repeat correction, conflicting results replay | 尚缺實證; 開跑前的存活判準見 [lifecycle-replay.md](lifecycle-replay.md) |
 | verdict 三分 (v1.3.5) | `verifier` 契約已回 CONFIRMED/REFUTED/INCONCLUSIVE, Claude 與 Codex 雙側一致 | 已落地 |
 | 嚴重度閘: 只有 P0-P2 能 refute (v1.3.5) | `verifier` 兩端都要求反例「可重現**且會改變驗收結論**」, 其餘可重現缺陷列 `Advisory:` 照報但不動 verdict; 不引進嚴重度分級 | 已落地, 收斂成一條判準 |
@@ -78,21 +78,21 @@ v1.3.4 已有 Gate, v1.3.6 之後改成對整條生命週期實跑並公開逐�
 
 ### 關鍵修正
 
-早期本專案為了讓 Claude verifier 執行重現，設計 `readonly-bash` shell parser。2026-07-28 security review 證明它可被 Git callbacks、environment indirection、parameter expansion、executable resolution 與非 Git 工具副作用繞過。最終裁決不是繼續擴大 denylist，而是移除 Claude no-write roles 的 Bash；需要命令的獨立 verdict 轉給 Codex `sandbox_mode = "read-only"`。
+早期本專案為了讓 Claude verifier 執行重現, 設計 `readonly-bash` shell parser. 2026-07-28 security review 證明它可被 Git callbacks, environment indirection, parameter expansion, executable resolution 與非 Git 工具副作用繞過. 最終裁決不是繼續擴大 denylist, 而是移除 Claude no-write roles 的 Bash; 需要命令的獨立 verdict 轉給 Codex `sandbox_mode = "read-only"`.
 
-這個結果也修正了對「allowlist」的理解：tool-level allowlist 有有限且可列舉的能力面；shell command parser 面對的是可組合語言與外部程式，不能提供同等保證。
+這個結果也修正了對「allowlist」的理解: tool-level allowlist 有有限且可列舉的能力面; shell command parser 面對的是可組合語言與外部程式, 不能提供同等保證.
 
 第二個修正來自上游 v1.3.7, 直接打到本專案的假設: **短語斷言擋不住語意反轉**. 上游那輪壓縮通過了全部 255 條契約測試斷言的短語, 逐字保留, 卻仍帶進十二個語意缺陷 - 其中一個把選言改成連言, 使 `REJECT` 這個處置變成不可達; 另外兩個把獨立審查的觸發條件與「使用者親自要求判斷」擴大成任何使用者請求與泛稱的「user-requested judgment」, 等於把一般可派工作也吃進來. 這些是人工逐句對照與外部審查抓到的, 不是測試抓到的; 後續掃過全部 36 條規則還找到 13 處被刪掉的範圍限定詞 (`only`, `after`, `each time` 之類). 本專案的 `test_contracts.py` 同樣以「短語存在」為主要保護, 因此壓縮常駐契約時不能只跑測試: 必須對壓縮前後做逐句對照, 特別檢查連接詞, 範圍限定詞與否定詞, 因為這三類的改動不會動到任何被斷言的短語.
 
 ## 採用效果與驗證
 
-預期效果：
+預期效果:
 
-- 減少不必要派工、context duplication 與整合重工；
-- 降低 Plan verifier 無限來回；
-- 讓 security 與 outcome verdict 的權限邊界可檢查；
-- 讓 provider route、request source、成本與 QC 結果能回溯；
-- 壓縮過時 prompt，同時保留 authority、stop、QC 與 deployment boundary。
+- 減少不必要派工, context duplication 與整合重工;
+- 降低 Plan verifier 無限來回;
+- 讓 security 與 outcome verdict 的權限邊界可檢查;
+- 讓 provider route, request source, 成本與 QC 結果能回溯;
+- 壓縮過時 prompt, 同時保留 authority, stop, QC 與 deployment boundary.
 
 目前能證明的是契約, 設定與測試已落地. 效能與可靠度差異仍需用相同 brief, 相同權限, 相同 acceptance 的 lifecycle replay, 加上 experience ledger 的 wall-clock, review/rework, token coverage 與失敗形態比較. 上游 v1.3.6-v1.3.8 的 Gate 提供了一套可借用的**方法**: 固定 prompt 檔, 對出貨 bytes 而非雜湊重跑, 每個 cell 記錄嘗試次數與成本硬上限, 通過後不補跑以美化計數. 方法可借, 數字不可借 - 那是它的契約在它的 client 版本上的觀察.
 

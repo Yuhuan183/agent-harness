@@ -902,7 +902,7 @@ class AppPromptSurfaceTests(unittest.TestCase):
         readme = read(".codex/README.md")
         analysis = read(".codex/ANALYSIS.md")
         deploy = read(".codex/DEPLOY.md")
-        self.assertIn("ChatGPT Chat／Work", readme)
+        self.assertIn("ChatGPT Chat/Work", readme)
         self.assertIn("`AGENTS.contract.md`", readme)
         self.assertIn("ChatGPT Chat and Work", analysis)
         self.assertIn("ChatGPT Chat and Work Personalization", deploy)
@@ -1206,6 +1206,11 @@ class DocumentationBudgetTests(unittest.TestCase):
         # deliberate decision, not a mechanical bump.
         # Units are word_count() words: one per CJK character, one per other
         # non-space run — zh-TW prose pays the same attention tax as English.
+        # The five `(2026-08-04)` bumps below are that unit moving, not content
+        # arriving: the half-width sweep puts a space where `、` used to glue
+        # ASCII terms together, so `Claude、Codex` counts two runs where it
+        # counted one. Each ceiling moved by its own measured delta and keeps
+        # the ~1% headroom its ratchet had before; nothing else was relaxed.
         budgets = {
             ".claude/CLAUDE.contract.md": RESIDENT_CONTRACT_BUDGETS["claude"].words,
             # Root README owns the complete architecture overview and diagrams;
@@ -1228,7 +1233,8 @@ class DocumentationBudgetTests(unittest.TestCase):
             # inside a wrapper, which no client-side hook survives. The row now
             # names that residue and the layer that closes it; the fifth gate
             # is also counted where the four were listed.
-            "README.md": 2560,
+            # +90 (2026-08-04): half-width sweep, unit only (2534 -> 2625).
+            "README.md": 2650,
             # +80 (2026-07-26): navigation and responsibility rows for the
             # dispatch-lifecycle doc. A navigation surface has to grow when the
             # thing it navigates to appears, or it stops being complete.
@@ -1251,7 +1257,18 @@ class DocumentationBudgetTests(unittest.TestCase):
             # standalone upgrade-directions doc; that doc was folded into the
             # research summary the same day, so the row now targets the
             # section. Same width, one less file to keep in sync.
-            "docs/README.md": 1070,
+            # +50 (2026-08-04): half-width sweep, unit only (1045 -> 1095).
+            # +75 (2026-08-04): rule 7 said the conversion was gradual and
+            # commit-free. The sweep ran, so the rule now states the four
+            # places that stay full-width and why each is exempt — a rule
+            # describing a migration that already finished misleads the next
+            # writer about what to do with new text.
+            # +30 (2026-08-04): a fifth exempt place. The sweep's own residual
+            # scan surfaced regex character classes and assertions that quote
+            # exempt text — full-width marks that are data being matched, not
+            # prose. Four categories left a scanner calling those drift and a
+            # writer "fixing" them into broken matchers.
+            "docs/README.md": 1210,
             # Verification entry point for dispatch state and route evidence.
             # Cheaper here than in the resident contracts or the two skills it
             # ties together, both of which sit within ten words of their own
@@ -1271,7 +1288,8 @@ class DocumentationBudgetTests(unittest.TestCase):
             # toward the hard dispatches. The section names the carrier, the
             # commands, and what a dispatcher-written wrapper still cannot
             # close; the last part is why it is prose and not one table cell.
-            "docs/dispatch-lifecycle.md": 2300,
+            # +60 (2026-08-04): half-width sweep, unit only (2300 -> 2341).
+            "docs/dispatch-lifecycle.md": 2360,
             # The hook-system concept doc: fail-open/fail-closed semantics, the
             # per-event inventory, and why each gate is trustworthy. The
             # guardrail table in the README pointed at individual hooks but no
@@ -1299,7 +1317,8 @@ class DocumentationBudgetTests(unittest.TestCase):
             # so the distinction, the row disclosure, and the corrected
             # commit-gate copy count all had to land. A doc that classifies
             # guardrails owes the axis it classifies on.
-            "docs/hook-system.md": 1900,
+                # +80 (2026-08-04): half-width sweep, unit only (1897 -> 1959).
+            "docs/hook-system.md": 1980,
             # Top-down architecture spine: one diagram then a concise walk
             # through every layer, each pointing at its specialized doc. The
             # connective narrative the README (a repo landing page) and the
@@ -1324,7 +1343,8 @@ class DocumentationBudgetTests(unittest.TestCase):
             # research doc, and the repo-specific tool-description caveat lives
             # in contract-slimming's placement table. What is left is 13 lines of
             # reusable rule with no home elsewhere.
-            "docs/harness-engineering.md": 2760,
+            # +90 (2026-08-04): half-width sweep, unit only (2760 -> 2829).
+            "docs/harness-engineering.md": 2850,
             # +30 (2026-07-28): the deferred punctuation sweep as an open item.
             # A user-approved-but-deprioritized decision that lives only in a
             # chat log is indistinguishable from one nobody made.
@@ -1439,7 +1459,7 @@ class DocumentationBudgetTests(unittest.TestCase):
             "配置與部署拓撲",
             "派工與資料回饋迴路",
             "Main 與七個 leaf roles",
-            "Role、task class 與 scenario 分離",
+            "Role, task class 與 scenario 分離",
             "Routing 語意",
             "結構化派工回報",
             "機制與護欄",
