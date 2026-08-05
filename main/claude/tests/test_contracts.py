@@ -1327,7 +1327,16 @@ class DocumentationBudgetTests(unittest.TestCase):
             # commit-gate copy count all had to land. A doc that classifies
             # guardrails owes the axis it classifies on.
                 # +80 (2026-08-04): half-width sweep, unit only (1897 -> 1959).
-            "docs/hook-system.md": 1980,
+            # +90 (2026-08-05): two scope disclosures the classification owed.
+            # The commit-gate row required a nameable target without saying what
+            # names one, while `cd /repo; git commit` resolved to `/repo;` and
+            # passed; the verifier-quota row read as a per-task budget when the
+            # quota only counts Claude's `verifier` spelling, never the Codex
+            # bridge these same docs route executable verdicts to. Both were
+            # reproduced before the prose moved. Nothing in the row was
+            # displaceable: its four spelling examples map one-to-one onto the
+            # four copies the gate compares (1959 -> 2046).
+            "docs/hook-system.md": 2070,
             # Top-down architecture spine: one diagram then a concise walk
             # through every layer, each pointing at its specialized doc. The
             # connective narrative the README (a repo landing page) and the

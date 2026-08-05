@@ -107,7 +107,8 @@ launcher 長命, 重啟前要對帳, 否則同一 prompt 雙寫), **派工者說
 驗證收斂的總原則: **最短驗證迴路優先**. 秒級檢查前移到 hook; 中等成本由 agent 明確執行;
 慢速或主觀驗收由人執行, agent 供證據. Fresh verifier 放在完整主張可反駁的最小整合邊界,
 每個 top-level task 至多一個; [verifier-quota](../main/claude/hooks/verifier-quota.py)
-機械攔得住的是同一個 prompt 內的第二個, 跨 prompt 的重複仍由主 session 判斷.
+機械攔得住的是同一個 prompt 內的第二個 Claude `verifier`; 跨 prompt 的重複, 以及走
+`codex:codex-rescue` bridge 的 Codex verifier (bridge 名稱不分角色, 額度看不到), 仍由主 session 判斷.
 
 ## 五. Hook 系統實作
 

@@ -8,11 +8,12 @@ Reminders did not fix it; this hook makes green-before-commit deterministic.
 Scope: fires when the Bash command contains a `git commit` and any repository
 the command can plausibly target carries test modules under `.claude/tests/`
 or the harness bundle's canonical `main/claude/tests/`. The target set is the
-payload `cwd` plus every `git -C <path>` and `cd <path>` operand in the command,
-so repo-switching forms cannot dodge the gate. Other repos and non-commit
-commands pass through untouched. Escape hatch for intentional red commits
-(e.g. committing a failing reproduction): prefix the command with
-`AGENT_SKIP_TEST_GATE=1 `.
+payload `cwd` plus every `git -C`, `--git-dir`, `--work-tree`, `cd` and `pushd`
+operand in the command, and an absolute operand that names no directory blocks
+rather than vanishing, so repo-switching forms cannot dodge the gate. Other
+repos and non-commit commands pass through untouched. Escape hatch for
+intentional red commits (e.g. committing a failing reproduction): prefix the
+command with `AGENT_SKIP_TEST_GATE=1 `.
 
 Spellings that only become `git commit` in the shell (2026-07-28 .. 2026-07-29).
 The gate reads the command as text while the shell reads it as a program, so
@@ -142,8 +143,23 @@ SUITE_TIMEOUT = 300
 # The escape hatch must be a real leading shell assignment. A bare substring
 # match let the token anywhere — e.g. inside a commit message — disarm the gate.
 SKIP_RE = re.compile(r"^\s*(?:env\s+)?AGENT_SKIP_TEST_GATE=1(?=\s)")
-DASH_C_RE = re.compile(r"\bgit\s+(?:[^|;&\n]*?\s)?-C[= ]\s*(\"[^\"]+\"|'[^']+'|\S+)")
-CD_RE = re.compile(r"\bcd\s+(\"[^\"]+\"|'[^']+'|\S+)")
+# An unquoted operand ends where the shell says it ends. `\S+` used to run past
+# the separator, so `cd /repo; git commit` named `/repo;` - a path that exists
+# nowhere, which `git rev-parse` then rejected and the resolver dropped in
+# silence. A target the gate mis-read is a check that did not run, so the
+# unquoted branch stops at every character that ends a word (2026-08-05 review;
+# reproduced against real commits in three separator spellings).
+OPERAND = r"(\"[^\"]+\"|'[^']+'|[^\s;&|<>()]+)"
+DASH_C_RE = re.compile(r"\bgit\s+(?:[^|;&\n]*?\s)?-C[= ]\s*" + OPERAND)
+# `pushd` changes directory exactly as `cd` does and reached a real commit the
+# gate never looked at. Same list, same reason (2026-08-05 review).
+CD_RE = re.compile(r"\b(?:cd|pushd)\s+" + OPERAND)
+# `git --git-dir=X --work-tree=Y commit` names its repository without ever
+# leaving the current directory. Both operands are collected and neither is
+# anchored on `git`: one `git` token cannot be re-used by a second match, and
+# an over-eager candidate only costs a suite run, which this gate already
+# accepts (2026-08-05 review).
+GIT_DIR_RE = re.compile(r"--(?:git-dir|work-tree)[= ]\s*" + OPERAND)
 # Shell separators. Assignments and command position are per-segment notions:
 # `R=/repo; git -C $R commit` is two commands, and only the first token of the
 # second one is the executable.
@@ -309,11 +325,31 @@ def resolve_targets(command: str, cwd: str) -> tuple[list[str], list[str]]:
     used to resolve to nothing and pass. `~` is therefore expanded here, and
     reported unresolved if it cannot be (no HOME). Globs stand for a set of
     paths rather than one, so they are never guessed at.
+
+    A relative operand is joined to the payload `cwd` rather than left for
+    `git rev-parse` to interpret against this process's own directory, which is
+    somewhere else entirely. `cd main && git commit` only worked because `cwd`
+    happened to name the same repository; spelled out, it survives the check
+    below instead of depending on that coincidence.
+
+    An *absolute* operand that names no directory is unresolved, not absent.
+    Every silent pass found so far ended the same way - the target was mis-read,
+    the path did not exist, and the caller was told there was nothing to check
+    (2026-08-05 review). Held to absolute paths on purpose: these patterns also
+    fire inside a commit message (`-m "use -C foo"` yields `foo"`), and a
+    relative near-miss like that must not turn an innocent commit into a block.
+    A relative operand that does not exist costs nothing anyway - the `cd`
+    fails, and the command commits in `cwd`, which is already a candidate.
+
+    A directory that exists but is not a repository stays a skip: that is the
+    documented foreign-repo case, and `git commit` in it fails on its own.
     """
     expanded = expand_known(command)
     dirs = [cwd]
     unresolved: list[str] = []
-    for match in DASH_C_RE.findall(expanded) + CD_RE.findall(expanded):
+    operands = (DASH_C_RE.findall(expanded) + GIT_DIR_RE.findall(expanded)
+                + CD_RE.findall(expanded))
+    for match in operands:
         target = match.strip("\"'")
         if holds_expansion(target) or any(char in target for char in GLOB_CHARS):
             unresolved.append(target)
@@ -321,8 +357,19 @@ def resolve_targets(command: str, cwd: str) -> tuple[list[str], list[str]]:
         target = os.path.expanduser(target)
         if target.startswith("~"):
             unresolved.append(target)
-        elif target not in dirs:
-            dirs.append(target)
+            continue
+        rooted = os.path.isabs(target)
+        if not rooted:
+            target = os.path.join(cwd, target)
+        # `--git-dir` names the repository directory; the work tree it belongs
+        # to is its parent, and that is what `git rev-parse` can be asked from.
+        if os.path.basename(target) == ".git":
+            target = os.path.dirname(target)
+        if os.path.isdir(target):
+            if target not in dirs:
+                dirs.append(target)
+        elif rooted:
+            unresolved.append(target)
     return dirs, unresolved
 
 
