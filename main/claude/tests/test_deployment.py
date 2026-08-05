@@ -543,6 +543,15 @@ class MachineStateHygieneTests(unittest.TestCase):
             # and `git rev-parse` does not rewrite it back.
             ("git -C {tilde_repo} commit -m x", {}),
             ("cd {tilde_repo} && git commit -m x", {}),
+            # Repo-switching forms the target extractor used to miss whole: a
+            # separator glued to the operand, a second directory builtin, and a
+            # repository named without ever leaving the current directory. All
+            # four reached a real commit while the gate read the wrong target
+            # or none at all (2026-08-05 review).
+            ("cd {repo}; git commit -m x", {}),
+            ("cd {repo}&&git commit -m x", {}),
+            ("pushd {repo} && git commit -m x", {}),
+            ("git --git-dir={repo}/.git --work-tree={repo} commit -m x", {}),
             # Unresolvable targets: blocked for that reason, not silently allowed.
             ('cd "$(echo {repo})" && git commit -m x', {}),
             ("git -C {repo_glob} commit -m x", {}),
@@ -551,6 +560,10 @@ class MachineStateHygieneTests(unittest.TestCase):
             "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
             "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid",
         }
+        # `pushd` is a bash builtin, not a POSIX one, and `/bin/sh` is dash on
+        # some hosts. The gate's real caller is the agent's bash tool, so the
+        # spelling runs under bash rather than being dropped for portability.
+        needs_bash = {"pushd {repo} && git commit -m x"}
         # `~` only means anything for a path under HOME, and the platform temp
         # dir is not one, so the tilde spellings get a scratch repo that is.
         with (tempfile.TemporaryDirectory() as temp_dir,
@@ -578,7 +591,8 @@ class MachineStateHygieneTests(unittest.TestCase):
                 subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
                 (repo / "f.txt").write_text("x", encoding="utf-8")
                 subprocess.run(["git", "-C", str(repo), "add", "f.txt"], check=True)
-                subprocess.run(["sh", "-c", spelling], cwd=repo,
+                shell = "bash" if template in needs_bash else "sh"
+                subprocess.run([shell, "-c", spelling], cwd=repo,
                                env={**os.environ, **identity, **case_env},
                                capture_output=True, text=True)
                 counted = subprocess.run(
@@ -1134,6 +1148,41 @@ class MachineStateHygieneTests(unittest.TestCase):
             self.assertEqual(count, expected,
                              f"{path}: says {count}個有界 gate, shipped set is "
                              f"{expected}個 ({sorted(gates)} + githooks/pre-commit)")
+
+    def test_the_verifier_quota_docs_name_the_spelling_it_cannot_count(self) -> None:
+        """A quota that counts one provider's name has to say so where it is described.
+
+        `OUTCOME_VERIFIERS` keys on `subagent_type`, and the documented route for
+        a verdict that needs to run commands is a Codex `verifier` behind the
+        `codex:codex-rescue` bridge - a spelling the quota never counts. Three
+        docs disclosed the cross-prompt gap and not this one, so a reader could
+        take the gate for a per-task budget spanning both providers (2026-08-05
+        review).
+
+        Derived from the hook rather than pinned: adding the bridge name to the
+        tuple would close the gap and make the disclosure wrong, so this fails in
+        that direction too. Selects docs by markdown link to the hook - naming
+        the file in an inventory is not describing its scope, and only a
+        description can mislead about it.
+        """
+        source = read_repo("main/claude/hooks/verifier-quota.py")
+        carrier = re.search(r"^OUTCOME_VERIFIERS = \(([^)]*)\)$",
+                            source, re.MULTILINE)
+        self.assertIsNotNone(carrier, "OUTCOME_VERIFIERS carries the quota")
+        self.assertEqual(
+            set(re.findall(r"\"([^\"]+)\"", carrier.group(1))), {"verifier"},
+            "the counted spellings changed; every doc describing the quota's "
+            "provider boundary has to move with it")
+        bridge = "codex:codex-rescue"
+        describing = [path for path in tracked_markdown()
+                      if re.search(r"\]\([^)]*hooks/verifier-quota\.py\)",
+                                   read_repo(path))]
+        self.assertGreaterEqual(len(describing), 2,
+                                "the quota's scope is documented somewhere")
+        for path in describing:
+            self.assertIn(bridge, read_repo(path),
+                          f"{path}: describes the verifier quota without naming "
+                          f"{bridge}, the outcome-verifier route it cannot count")
 
     def test_every_copy_of_the_leaf_record_has_the_same_fields(self) -> None:
         """A fixed record format kept in three files is three formats.

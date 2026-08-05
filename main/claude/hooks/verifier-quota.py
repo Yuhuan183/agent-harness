@@ -24,6 +24,17 @@ to disarm the gate. Closing the gap needs a stable task id carried from the
 orchestrator into the payload; nothing in the runtime offers one today, so the
 gap is disclosed rather than papered over.
 
+Spelling is the second limit, and it is provider-shaped. The quota keys on
+`subagent_type`, so it counts the Claude `verifier` role and nothing else. The
+documented route for a verdict that needs to run commands is a Codex `verifier`
+reached through the `codex:codex-rescue` bridge, and that dispatch carries the
+bridge's name rather than the role's — it spends no quota here. Listing the
+bridge would refuse a second *implementation* dispatch in the same prompt,
+since one name covers every Codex role and the payload has no field that
+separates them. A cross-provider outcome verifier therefore stays a judgment
+call, disclosed here and in the docs rather than half-enforced (2026-08-05
+review).
+
 Budget guard, not a safety boundary: if the payload carries no `prompt_id`
 there is nothing to key on, and the dispatch proceeds with a note rather than
 being blocked on a carrier this hook could not read. A run of such dispatches
