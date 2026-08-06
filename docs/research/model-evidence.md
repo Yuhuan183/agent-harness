@@ -50,10 +50,13 @@ balanced/qg 的 low/medium/high 單調階梯); `claude-sonnet-5/high` 從 judgme
 allowlist 移除. Explore sonnet/low 和 mech-executor sonnet/medium 不動 — 數據沒有指控前緣
 內的 Sonnet 檔位, 而且 trap 低檔位輪 12/12 佐證它們的實質品質. 誠實邊界: BrowseComp 不是
 coding benchmark, 出處是社群轉貼; 本地 executor cohort 還沒有 n≥10 的 production 樣本, 這是
-外部先驗+使用者指示的 preset 變更, 不是 ledger 驅動的 route 修訂. 依 trap covenant,executor
-路由變更觸發 s7+s8 regression 重跑 (executor@opus/medium) — **結果 (同日, 已驗證)**:6/6
-實質防線全守 (s7 三筆修對, 無弱化, s7o3 加的回歸測試斷言 spec 值; s8 三筆零編輯停手),
-新 pin 通過 regression. 唯一 finding 是 s7o2 的 INTENT「編輯前有發, 報告未複誦」 — 和 a1
+外部先驗+使用者指示的 preset 變更, 不是 ledger 驅動的 route 修訂.
+
+依 trap covenant, executor 路由變更觸發 s7+s8 regression 重跑 (executor@opus/medium).
+**結果 (同日, 已驗證)**: 6/6 實質防線全守 — s7 三筆修對, 無弱化, s7o3 加的回歸測試斷言
+spec 值; s8 三筆零編輯停手. 新 pin 通過 regression.
+
+唯一 finding 是 s7o2 的 INTENT「編輯前有發, 報告未複誦」 — 和 a1
 的整行漏發不同型, 屬機率性殘餘, 只記錄. opus/medium 檔位由此拿到第一批 gate 遵循資料
 (INTENT 5/6, TWINS 6/6, AUTH 6/6).
 
@@ -230,10 +233,13 @@ Index) 不變, 數據也未變.
 ## Artificial Analysis 重新取數與 per-effort 曲線 (2026-07-25)
 
 **已驗證 (一手擷取)**: 從 AA 各 model 詳情頁的 `application/ld+json` Dataset 區塊直接擷取,
-不是讀圖或轉述. 方法備註: `?models=` 是 client-side filter,server 回同一份 HTML, 所以 per-effort
-資料要逐個 variant slug 頁抓; 成本用「Cost per Intelligence Index Task」的五個分項
-(input/cacheHit/cacheWrite/reasoning/answer) 相加, 此法在 13 個同時也有官方彙總值的
-label 上誤差 0.00%, 方法本身已驗證.
+不是讀圖或轉述. 方法備註兩點:
+
+- `?models=` 是 client-side filter, server 回同一份 HTML. 所以 per-effort 資料要逐個
+  variant slug 頁抓.
+- 成本用「Cost per Intelligence Index Task」的五個分項 (input/cacheHit/cacheWrite/
+  reasoning/answer) 相加. 此法在 13 個同時也有官方彙總值的 label 上誤差 0.00%,
+  方法本身已驗證.
 
 | model / effort | AAII v4.1 | US$/task | output tok | Briefcase Elo |
 |---|---|---|---|---|
@@ -417,9 +423,11 @@ plugin), dispatch/rollout 識別碼, 並盡量自動取得 input, output, cache 
 - 高能力模型只有在能提升可接受率, 減少返工或降低失敗風險時才划算; 機械任務不因總分高就
   自動升級, 安全/金錢/破壞性資料也不因 token 便宜就降級.
 
-Main 和七個 leaf roles 的責任, 三種 profile 語意, 以及各 surface 的套用方式, 已由
-[根 README](../../README.md#執行模型) 統一說明; 現行 pins, 品質門檻和 availability 的唯一真相源是
-[Claude routing](../../main/claude/model-routing.toml) 和 [Codex routing](../../main/codex/model-routing.toml),
+責任分工不在這裡: Main 和七個 leaf roles 的責任, 三種 profile 語意, 以及各 surface 的套用
+方式, 由 [根 README](../../README.md#執行模型) 統一說明.
+
+現行 pins, 品質門檻和 availability 的唯一真相源是
+[Claude routing](../../main/claude/model-routing.toml) 和 [Codex routing](../../main/codex/model-routing.toml).
 研究摘要不再複製容易過期的 route 表格和操作命令.
 
 2026-07-22 快照下的決策理由:

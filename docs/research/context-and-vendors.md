@@ -132,9 +132,11 @@ repo 就知道的事**, 多用漸進揭露. 對 skills 的建議: 當它是輕�
 「文件留得合宜」, 另一邊寫「不要加註解」.
 
 **2026-07-26 稽核結果 (已驗證)**: 拿當期 Claude Code system prompt 逐條比對
-`CLAUDE.contract.md` 的五條 working agreement 和三條 main-only 條款, **沒牴觸, 沒重述** —
-重述早在 52b434b 就清掉了, 剩下的每一條 (繁中回覆, `DECISION:` 標記, 最窄驗證, 保留 dirty
-worktree, 派工剎車)system prompt 都沒有涵蓋. 所以這次整合**不動常駐契約**, 落點是
+`CLAUDE.contract.md` 的五條 working agreement 和三條 main-only 條款, **沒牴觸, 沒重述**.
+重述早在 52b434b 就清掉了. 剩下的每一條 — 繁中回覆, `DECISION:` 標記, 最窄驗證, 保留 dirty
+worktree, 派工剎車 — system prompt 都沒有涵蓋.
+
+所以這次整合**不動常駐契約**, 落點是
 [契約瘦身規範](../contract-slimming.md) 的原則 2b 和內容判定表: 管的是**下一次**改契約時的
 判準, 不是現在多加幾句. 這本身就是文章的建議: 先找矛盾, 找不到就別動.
 
@@ -153,10 +155,12 @@ worktree, 派工剎車)system prompt 都沒有涵蓋. 所以這次整合**不動
 2. **不要重複「先問過再動」.** 官方點名: 重複這類話會對安全, 預期內的動作觸發多餘的
    確認請求; 正解是明確列出安全的本地動作, 政策只放一處, 每條只講一次.
    `AGENTS.contract.md` 第 8–9 行已經是這個形狀 (先列出免授權的安全動作, 再把授權邊界
-   `stated once here`). **2026-07-26 逐檔稽核結論: 無違反.** 唯一看起來像重複的, 是 AUTH
-   條款在 `executor`/`mech-executor`/`security-executor` 三個 role TOML 各出現一次 —
-   但那是三份**自足, 互斥載入**的角色契約, 一個 leaf 永遠只看到其中一份, 不算官方所指的
-   「同一個 prompt 內重複」. 記在這裡, 免得日後有人當它冗餘刪掉, 拆掉自足性.
+   `stated once here`). **2026-07-26 逐檔稽核結論: 無違反.**
+
+   唯一看起來像重複的, 是 AUTH 條款在 `executor`/`mech-executor`/`security-executor`
+   三個 role TOML 各出現一次. 但那是三份**自足, 互斥載入**的角色契約: 一個 leaf 永遠
+   只看到其中一份, 不算官方所指的「同一個 prompt 內重複」. 記在這裡, 免得日後有人
+   當它冗餘刪掉, 拆掉自足性.
 3. **`text.verbosity` 與「盡量簡短」.** GPT-5.6 預設就比 5.5 精簡, 籠統的簡短指令可能多餘,
    甚至讓回覆過短; 要留就得指名保留什麼, 捨棄什麼. 兩份契約現行的
    「Lead with the outcome. Keep conversation proportional and requested artifacts complete.」

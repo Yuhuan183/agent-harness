@@ -19,7 +19,7 @@ Hook 的「失敗模式」指的是它自己出錯時會怎樣, 這是設計時�
 預設是 fail-open. fail-closed 是刻意的例外, 目前五個, 每個都只在很窄的條件下攔截.
 
 兩類講的是**不同的故障**: fail-open 是「hook 自己壞掉時放行」, fail-closed 是「條件成立時
-主動攔」. 多數 gate 兩邊都成立 (套件跑不起來, 版本讀不到, 目標指不出來都擋),
+主動攔」. 多數 gate 兩邊都成立: 套件跑不起來, 版本讀不到, 目標指不出來都擋.
 `verifier-quota` 只有後者 — 自己的 state 壞掉時放行, 因為預算護欄不該為了自己的記帳拒絕
 派工. 分類看的是哪一種故障, 不是有沒有 `return 2`.
 
@@ -35,7 +35,7 @@ Hook 的「失敗模式」指的是它自己出錯時會怎樣, 這是設計時�
 | [verifier-quota](../main/claude/hooks/verifier-quota.py) | PreToolUse[Agent] | 同一 top-level task (以 prompt 為界) 派第二個 outcome verifier. **只認 Claude 的 `verifier`**: 走 `codex:codex-rescue` 的 Codex verifier 不計額度 (bridge 名稱不分角色, 列進去會誤擋同 prompt 的 Codex 實作派工), 這段仍屬判斷. **只有它自己狀態健康時會攔**: state 不可寫時兩個 verifier 都放行 (實測). 它是預算護欄不是安全邊界 | `AGENT_ALLOW_SECOND_VERIFIER=1` (確實是新任務時) |
 | [githooks/pre-commit](../main/claude/githooks/pre-commit) | Git pre-commit | 本 repo 走 git hook 路徑的 commit 且套件為紅 (或逾時). 這是 shell 的另一側: git 已經在動手了, 不必從文字推測目標, 所以 wrapper script, 名為 `git` 的 function, PATH 覆蓋都涵蓋 | `AGENT_SKIP_TEST_GATE=1`, `--no-verify` |
 
-commit 的兩道閘是互補而非取代: Bash gate 涵蓋「agent 在**任何** repo 的 commit, 執行前」, pre-commit 涵蓋「**這個** repo 走 git hook 路徑的 commit, 不管指令怎麼拼」. 判斷本體 (套件集合, 直譯器下限, 300 秒預算, 訊息措辭) 只有一份, 由 pre-commit 匯入 commit-test-gate 共用. 安裝方式是 repo-local 的 `core.hooksPath`, 由 `sync.sh` 呼叫 `scripts/install-git-hooks.sh` 設定, `git config --unset core.hooksPath` 即可還原; 已被別的工具 (husky 之類) 佔用時不覆寫, 改為報錯並讓 sync 以非零狀態結束 — git 只允許一個 hooks 目錄, 怎麼串要人決定. 其他 clone 沒跑過 sync 就沒有這道閘.
+commit 的兩道閘是互補而非取代: Bash gate 涵蓋「agent 在**任何** repo 的 commit, 執行前」, pre-commit 涵蓋「**這個** repo 走 git hook 路徑的 commit, 不管指令怎麼拼」. 判斷本體 (套件集合, 直譯器下限, 300 秒預算, 訊息措辭) 只有一份, 由 pre-commit 匯入 commit-test-gate 共用. 安裝方式是 repo-local 的 `core.hooksPath`, 由 `sync.sh` 呼叫 `scripts/install-git-hooks.sh` 設定, `git config --unset core.hooksPath` 即可還原. 已被別的工具 (husky 之類) 佔用時不覆寫, 改為報錯並讓 sync 以非零狀態結束 — git 只允許一個 hooks 目錄, 怎麼串要人決定. 其他 clone 沒跑過 sync 就沒有這道閘.
 
 **client-side 關不掉的殘餘**: `--no-verify`, `-c core.hooksPath=…`, `commit-tree` 都能讓 git 不跑 hook; 藏進 wrapper script 後外層指令看不出痕跡, Bash gate 也攔不到. 本機沒有機制能關掉這段, 真正關得掉的是 server-side (CI, protected branch) — 這就是 enforcement 分層不停在 pre-commit 的原因.
 

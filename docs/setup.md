@@ -35,9 +35,9 @@ skill 源檔放 `main/claude/skills/` (部署為 `~/.claude/skills/`), 契約源
 
 共用 skill 原則上採 symlink 佈局: `main/claude/skills/<name>` 與
 `main/codex/skills/<name>` 都連到 `../../.agents/skills/<name>`. 需要平台專用
-frontmatter 時使用薄 wrapper; 目前 Claude `task-observer` 以 wrapper 明確允許模型
-自動啟動, `headroom-protocol` 也以同樣方式讓 agent 依資料大小與用途自行判斷;
-內文與資源仍以 symlink 連回共用來源. `$HOME` 下三個目錄平級, 與專案同構, 因此
+frontmatter 時使用薄 wrapper. 目前 Claude `task-observer` 以 wrapper 明確允許模型
+自動啟動, `headroom-protocol` 也以同樣方式讓 agent 依資料大小與用途自行判斷.
+兩者的內文與資源仍以 symlink 連回共用來源. `$HOME` 下三個目錄平級, 與專案同構, 因此
 相對 symlink 原樣複製後仍成立 (與 lark 套件既有機制一致).
 `main/.agents/skills/INSTALLED.txt` 只列本專案擁有的共用 skill. 部署時會精確同步這些
 skill 與清單本身, 但保留 `~/.agents/skills/` 中其他第三方 skill; weekly integrity 也只對

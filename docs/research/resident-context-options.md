@@ -121,8 +121,8 @@ error log/Python 程式碼全導向 `speak-human-tw`.
 **結果: 稽核刪了三條, re-review 全部還原. 淨變動為零, 留下的是方法規則.**
 
 第一次只讀了**一份** rollout 就下結論. 實際上 91 份本機 rollout 有**八種不同的 host
-prompt**, 而我讀到的那份是唯一同時含〈File editing constraints〉與〈Destructive Actions〉
-兩段的變體 — **對減法決策而言是最糟的取樣**, 它讓供應商涵蓋看起來最大.
+prompt**. 我讀到的那份是唯一同時含〈File editing constraints〉與〈Destructive Actions〉
+兩段的變體 — **對減法決策而言是最糟的取樣**, 因為它讓供應商涵蓋看起來最大.
 
 分裂軸是 **session 類型**, 不是 CLI 版本. cli ≥ 0.145.0:
 

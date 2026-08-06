@@ -1332,6 +1332,25 @@ class DocumentationBudgetTests(unittest.TestCase):
             # unmeasured `research/` layer alone outweighs all of them, so
             # sprawl is a coverage gap rather than a writing habit.
             "docs/README.md": 1500,
+            # The rest of the human tree, ratcheted 2026-08-07 at measured + 2%
+            # once rule 8's rewrite had landed. Setting these first would have
+            # pinned the documents in the shape the rewrite was meant to change,
+            # which is why rule 8 says the tier is ratcheted after and not
+            # before. What made it necessary: the eight documents above held
+            # ~16,000 words under budget while these eleven held ~35,000 with
+            # nothing counting them, and the largest single file was twice the
+            # size of anything measured. Sprawl was a coverage gap.
+            "docs/setup.md": 2600,
+            "docs/contract-slimming.md": 3035,
+            "docs/qc-explainer.md": 1610,
+            "docs/research/README.md": 3650,
+            "docs/research/model-evidence.md": 7020,
+            "docs/research/trap-experiments.md": 4640,
+            "docs/research/resident-context-options.md": 3870,
+            "docs/research/peer-harnesses.md": 3075,
+            "docs/research/context-and-vendors.md": 3075,
+            "docs/research/local-experiments.md": 1300,
+            "docs/research/lifecycle-replay.md": 1160,
             # Verification entry point for dispatch state and route evidence.
             # Cheaper here than in the resident contracts or the two skills it
             # ties together, both of which sit within ten words of their own
@@ -1519,6 +1538,22 @@ class DocumentationBudgetTests(unittest.TestCase):
             deployed_skill_files(),
             "every deployed skill is budgeted or the ceiling is back to being "
             "whatever someone remembered to list")
+        # Same rule for the human tree, and it is here because the omission was
+        # real rather than hypothetical: until 2026-08-07 this dict listed eight
+        # documents and the rest of `docs/` was simply never counted, which is
+        # how the unmeasured half came to outweigh the measured one. A ceiling
+        # that covers whatever someone remembered to list is not a ratchet.
+        # `document-audit-*.md` is exempt by name: it is a dated record of one
+        # audit, not guidance that can drift, and it is never edited again.
+        documented = {
+            path.relative_to(ROOT).as_posix()
+            for path in (ROOT / "docs").rglob("*.md")
+            if not path.name.startswith("document-audit-")
+        }
+        self.assertEqual(
+            documented - {p for p in budgets if p.startswith("docs/")}, set(),
+            "a doc under docs/ has no word budget; add one at measured + 2% "
+            "(docs/README.md rule 8) so the tier stays ratcheted")
         for path, limit in budgets.items():
             self.assertLessEqual(word_count(read(path)), limit, path)
 
