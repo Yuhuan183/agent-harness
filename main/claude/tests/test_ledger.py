@@ -1396,16 +1396,36 @@ class NativeCodexStagingTests(unittest.TestCase):
             self.assertEqual(remaining, {ids[1]})
 
     def test_stager_and_logger_agree_on_loggable_roles(self) -> None:
-        """A staged role the logger would not accept stages an unloggable stub."""
+        """A staged role the logger would not accept stages an unloggable stub.
+
+        Extended 2026-08-06 to a third list. `weekly-integrity` decides which
+        forgotten stubs get named, and a role missing from it as well as from
+        the logger is unloggable and unreported at once: 60 `general-purpose`
+        stubs accumulated in silence that way, because nothing could log them
+        and nothing complained. The extractor also has to survive a role name
+        with punctuation in it — the old `[a-z-]+` pattern quietly dropped
+        `codex:codex-rescue`, so the sets could disagree on that name and still
+        compare equal.
+        """
         stage_source = read(".agents/skills/experience-ledger/scripts/experience-stage")
         log_source = read(".agents/skills/experience-ledger/scripts/experience-log")
+        weekly_source = read(".claude/hooks/weekly-integrity.py")
 
-        def roles(source: str) -> set[str]:
-            block = source.split("ROLES = (", 1)[1].split(")", 1)[0]
-            return set(re.findall(r'"([a-z-]+)"', block))
+        def names(source: str, marker: str, closer: str = ")") -> set[str]:
+            block = source.split(marker, 1)[1]
+            return set(re.findall(r'"([^"]+)"', block[:block.index(closer)]))
 
-        self.assertEqual(roles(stage_source), roles(log_source))
-        self.assertEqual(roles(stage_source), set(ROLES))
+        routed = names(log_source, "ROUTED_ROLES = (")
+        loggable = routed | names(log_source, "DIAGNOSTIC_ROLES = (")
+        self.assertEqual(loggable, names(stage_source, "ROLES = ("))
+        self.assertEqual(loggable, names(weekly_source, "loggable_roles = {", "}"))
+        # The routed half is exactly what model-routing pins. Keeping the
+        # diagnostic half out of it is what stops a cohort nothing routes from
+        # producing a hint or a revision.
+        self.assertEqual(routed, set(ROLES))
+        config = tomllib.loads(read("main/claude/model-routing.toml"))
+        self.assertEqual(routed, set(config["route_application"]["roles"]) - {"main"})
+        self.assertFalse(routed & names(log_source, "DIAGNOSTIC_ROLES = ("))
         self.assertTrue(os.access(self.STAGE, os.X_OK))
 
 

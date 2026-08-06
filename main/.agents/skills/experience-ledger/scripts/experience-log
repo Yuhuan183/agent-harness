@@ -26,10 +26,23 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 
-ROLES = (
+ROUTED_ROLES = (
     "explore", "mech-executor", "executor",
     "plan-verifier", "verifier", "security-reviewer", "security-executor",
 )
+# Agent types this machine dispatches that this harness does not route. They
+# are accepted so that a dispatch the hook staged cannot become one no command
+# can answer for - 30 `general-purpose` stubs sat in the pending file until
+# 2026-08-06 for exactly that reason. Accepting them costs nothing downstream:
+# no profile names them, so `experience-report` computes no hint and
+# `experience-revise` no revision for a cohort that is not a route.
+#
+# The list is the set the hook has actually staged, not a pattern. An agent
+# type invented for one run stays outside it on purpose: a one-off deserves
+# `experience-stage --abandon`, which needs no enum, rather than a cohort row
+# nothing will ever compare against.
+DIAGNOSTIC_ROLES = ("general-purpose", "claude", "codex:codex-rescue")
+ROLES = ROUTED_ROLES + DIAGNOSTIC_ROLES
 # Pre-rename records and callers spell the recon role "Explore"; accept and
 # canonicalize so cohorts stay comparable across the rename.
 LEGACY_ROLE_ALIASES = {"Explore": "explore"}
