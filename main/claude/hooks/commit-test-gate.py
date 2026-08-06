@@ -9,7 +9,9 @@ Scope: fires when the Bash command contains a `git commit` and any repository
 the command can plausibly target carries test modules under `.claude/tests/`
 or the harness bundle's canonical `main/claude/tests/`. The target set is the
 payload `cwd` plus every `git -C`, `--git-dir`, `--work-tree`, `cd` and `pushd`
-operand in the command, and an absolute operand that names no directory blocks
+operand in the command (leading options skipped, so `cd -- <repo>` names the
+repo and not `--`) plus every `GIT_DIR=`/`GIT_WORK_TREE=` assignment it makes,
+and an absolute operand that names no directory blocks
 rather than vanishing, so repo-switching forms cannot dodge the gate. Other
 repos and non-commit commands pass through untouched. Escape hatch for
 intentional red commits (e.g. committing a failing reproduction): prefix the
@@ -153,13 +155,35 @@ OPERAND = r"(\"[^\"]+\"|'[^']+'|[^\s;&|<>()]+)"
 DASH_C_RE = re.compile(r"\bgit\s+(?:[^|;&\n]*?\s)?-C[= ]\s*" + OPERAND)
 # `pushd` changes directory exactly as `cd` does and reached a real commit the
 # gate never looked at. Same list, same reason (2026-08-05 review).
-CD_RE = re.compile(r"\b(?:cd|pushd)\s+" + OPERAND)
+#
+# The option run in front of the path is the same class one step further in:
+# `cd -- <repo>` and `cd -P <repo>` are ordinary spellings, and taking the
+# first word after `cd` read `--` and `-P` as the target. Both are relative and
+# neither exists, so `resolve_targets` dropped them in silence and only `cwd`
+# was ever checked - a real commit against a red suite, allowed (reproduced
+# 2026-08-06 review). Skipping the options can only reveal a target the gate
+# was already missing, so it adds no false blocks. What it does not recover is
+# `cd -` - the shell's own OLDPWD, which this hook has no way to know; it stays
+# dropped rather than blocking, on the same rule that holds `unresolved` to
+# absolute paths so a commit message cannot turn into a block.
+CD_RE = re.compile(r"\b(?:cd|pushd)\s+(?:-[^\s;&|<>()]*\s+)*" + OPERAND)
 # `git --git-dir=X --work-tree=Y commit` names its repository without ever
 # leaving the current directory. Both operands are collected and neither is
 # anchored on `git`: one `git` token cannot be re-used by a second match, and
 # an over-eager candidate only costs a suite run, which this gate already
 # accepts (2026-08-05 review).
 GIT_DIR_RE = re.compile(r"--(?:git-dir|work-tree)[= ]\s*" + OPERAND)
+# The same two paths, spelled as environment instead of as flags.
+# `GIT_DIR=<repo>/.git GIT_WORK_TREE=<repo> git commit` names its repository
+# with none of the operands above and reached a real commit the gate never
+# looked at (reproduced 2026-08-06 review). This file already lists both names
+# in GIT_HOOK_ENV, where it scrubs them so the suite cannot be run against the
+# repository being committed to - so the module knew they redirect git while
+# the target resolver did not read them. `export` in front changes nothing;
+# the assignment is what carries the path. A name already exported into this
+# hook's own environment needs no pattern: `git rev-parse` below inherits it
+# and resolves to that repository on its own (verified 2026-08-06).
+GIT_ENV_RE = re.compile(r"\b(?:GIT_DIR|GIT_WORK_TREE)=" + OPERAND)
 # Shell separators. Assignments and command position are per-segment notions:
 # `R=/repo; git -C $R commit` is two commands, and only the first token of the
 # second one is the executable.
@@ -341,22 +365,39 @@ def resolve_targets(command: str, cwd: str) -> tuple[list[str], list[str]]:
     A relative operand that does not exist costs nothing anyway - the `cd`
     fails, and the command commits in `cwd`, which is already a candidate.
 
+    A repository can also be named without any operand at all: an option in
+    front of the path (`cd -- <repo>`) made the extractor read the option, and
+    `GIT_DIR=`/`GIT_WORK_TREE=` name the repository as environment rather than
+    as an argument. Both reached a real commit while this function returned
+    `cwd` alone with an empty `unresolved` list - the gate believing it had
+    named every target, which is worse than blocking: had `cwd` been a
+    different repository with a suite, a green there would have been reported
+    for a commit landing somewhere else (reproduced 2026-08-06 review).
+
     A directory that exists but is not a repository stays a skip: that is the
     documented foreign-repo case, and `git commit` in it fails on its own.
     """
     expanded = expand_known(command)
     dirs = [cwd]
     unresolved: list[str] = []
+
+    def cannot_resolve(path: str) -> None:
+        # One repository named twice is one unreadable target, not two. The
+        # env spelling reaches this with `GIT_DIR` and `GIT_WORK_TREE` pointing
+        # at the same tree, and a message listing it twice reads like a bug.
+        if path not in unresolved:
+            unresolved.append(path)
+
     operands = (DASH_C_RE.findall(expanded) + GIT_DIR_RE.findall(expanded)
-                + CD_RE.findall(expanded))
+                + GIT_ENV_RE.findall(expanded) + CD_RE.findall(expanded))
     for match in operands:
         target = match.strip("\"'")
         if holds_expansion(target) or any(char in target for char in GLOB_CHARS):
-            unresolved.append(target)
+            cannot_resolve(target)
             continue
         target = os.path.expanduser(target)
         if target.startswith("~"):
-            unresolved.append(target)
+            cannot_resolve(target)
             continue
         rooted = os.path.isabs(target)
         if not rooted:
@@ -369,7 +410,7 @@ def resolve_targets(command: str, cwd: str) -> tuple[list[str], list[str]]:
             if target not in dirs:
                 dirs.append(target)
         elif rooted:
-            unresolved.append(target)
+            cannot_resolve(target)
     return dirs, unresolved
 
 

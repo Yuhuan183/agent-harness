@@ -297,6 +297,50 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertIn("${CODEX_HOME:-$HOME/.codex}/scripts/model-routing", skill)
         self.assertNotIn("--model gpt-5.6-sol", skill)
 
+    def test_no_surface_grants_a_claude_no_write_role_a_command(self) -> None:
+        """The capability is a frontmatter fact; the prose kept contradicting it.
+
+        `provider-routing` said the `verifier` "may run read-only checks in an
+        isolated worktree" twelve lines after the same file said Claude
+        no-write roles lack Bash, and the role file itself answers INCONCLUSIVE
+        the moment a verdict needs a command. An operator routing on the first
+        sentence spends a fresh-context dispatch to be told nothing
+        (2026-08-06 review).
+
+        Phrase assertions could not have caught it - the wrong sentence was
+        new text, not a deleted phrase. So this reads the tool lists first and
+        then requires every surface that says one of those roles runs something
+        to say Codex in the same breath, which is the only provider where it is
+        true.
+        """
+        no_write = ("verifier", "plan-verifier", "security-reviewer", "explore")
+        for role in no_write:
+            tools = frontmatter(f".claude/agents/{role}.md")
+            self.assertNotIn(
+                "Bash", tools,
+                f"{role} gained a command surface; this test's premise is gone")
+        role_named = re.compile("`(?:" + "|".join(no_write) + ")`")
+        # Read only what follows the role name: "re-run it in main, since the
+        # `verifier` gate covers..." describes the caller, not the leaf.
+        capability = re.compile(
+            r"\b(?:run|runs|running|execute|executes|command|commands|Bash)\b",
+            re.IGNORECASE)
+        offenders = []
+        for path in (".claude/skills/provider-routing/SKILL.md",
+                     ".claude/skills/baton-dispatch/SKILL.md",
+                     *(f".claude/agents/{role}.md" for role in no_write)):
+            flat = " ".join(read(path).split())
+            for sentence in re.split(r"(?<=[.!?])\s+", flat):
+                if "Codex" in sentence:
+                    continue
+                if any(capability.search(sentence, m.end(), m.end() + 90)
+                       for m in role_named.finditer(sentence)):
+                    offenders.append(f"{path}: {sentence}")
+        self.assertEqual(
+            offenders, [],
+            "a Claude no-write role is described as running something; name "
+            "the Codex twin in the same sentence or drop the claim")
+
     def test_dispatch_skills_have_non_overlapping_ownership(self) -> None:
         baton = read(".claude/skills/baton-dispatch/SKILL.md")
         provider = read(".claude/skills/provider-routing/SKILL.md")

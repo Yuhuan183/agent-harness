@@ -502,6 +502,14 @@ class MechanismTests(unittest.TestCase):
 
         A stub with no dispatch id predates the field and cannot be reconciled
         by the command the finding recommends, so it is not reported either.
+
+        An agent type this harness does not route is reported all the same.
+        Keying the report on `experience-log`'s enum made "the logger would
+        refuse this" mean "say nothing", so a real dispatch of a real agent —
+        `claude-code-guide` on this machine, staged, completed, absent from the
+        ledger for eleven days — was invisible to every command and every
+        report at once (2026-08-06 review). The role picks the remedy, not
+        whether the operator hears about it.
         """
         hook = ROOT / "main/claude/hooks/weekly-integrity.py"
         old = "2020-01-01T00:00:00+00:00"  # comfortably past the 24h cutoff
@@ -511,10 +519,13 @@ class MechanismTests(unittest.TestCase):
             pending = home / ".agents/telemetry/experience-pending.jsonl"
             ledger = home / ".agents/telemetry/experience.jsonl"
             stub = {"event": "SubagentStop", "agent_type": "mech-executor", "ts": old}
+            unrouted = {"event": "SubagentStop", "agent_type": "claude-code-guide",
+                        "ts": old}
             pending.write_text("\n".join(json.dumps(row) for row in [
                 {**stub, "dispatch_id": "sess:logged-explicitly"},
                 {**stub, "dispatch_id": "sess:never-logged"},
                 {**stub},  # pre-migration stub: no dispatch id at all
+                {**unrouted, "dispatch_id": "sess:unrouted-role"},
             ]) + "\n", encoding="utf-8")
             ledger.write_text(json.dumps(
                 {"role": "mech-executor", "outcome": "accepted",
@@ -532,6 +543,14 @@ class MechanismTests(unittest.TestCase):
         # The id-less stub must not surface as a bare "?" the reader cannot act on.
         un_reconciled = result.stdout.split("un-reconciled dispatches")[-1]
         self.assertNotIn("?", un_reconciled)
+        # Reported, and reported with the command that can actually close it:
+        # `experience-log` refuses a role it does not route, so naming the id
+        # under the log instruction alone would be a finding with no exit.
+        self.assertIn("sess:unrouted-role", result.stdout)
+        self.assertIn("experience-stage --abandon", result.stdout)
+        routes_none = result.stdout.split("routes no role for")[-1]
+        self.assertIn("sess:unrouted-role", routes_none)
+        self.assertNotIn("sess:never-logged", routes_none)
 
     def test_a_staged_native_codex_launch_is_reconciled_too(self) -> None:
         """Native Codex has no completion hook, so the launch is the carrier.
