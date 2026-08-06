@@ -1148,6 +1148,59 @@ class NativeCodexStagingTests(unittest.TestCase):
         return [json.loads(line) for line in
                 path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
+    def test_abandon_closes_only_what_nobody_can_still_judge(self) -> None:
+        """The escape hatch has to be a bad one.
+
+        On 2026-08-06 twenty-three stubs from a session ten days gone had no
+        reachable reviewer, and the pending file had to be hand-edited because
+        `--cancel` refuses anything that ran and an outcome is a judgement
+        nobody could still make. `--abandon` is that missing close, so what
+        matters is that it stays useless for the case it must not serve: a
+        fresh dispatch whose owner simply has not done QC yet.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp = Path(temp_dir)
+            env = {**self._env(temp),
+                   "AGENT_EXPERIENCE_ABANDONED": str(temp / "abandoned.jsonl")}
+            old = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat(
+                timespec="seconds")
+            fresh = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            (temp / "pending.jsonl").write_text("\n".join(json.dumps(row) for row in [
+                {"ts": old, "event": "SubagentStop", "agent_type": "explore",
+                 "dispatch_id": "s:old", "secs": 3},
+                {"ts": fresh, "event": "SubagentStop", "agent_type": "explore",
+                 "dispatch_id": "s:fresh", "secs": 3},
+                {"ts": old, "event": "SubagentStart", "agent_type": "explore",
+                 "dispatch_id": "s:neverran"},
+            ]) + "\n", encoding="utf-8")
+
+            done = self._stage(env, "--abandon", "--dispatch-id", "s:old",
+                               "--reason", "session gone")
+            self.assertEqual(done.returncode, 0, done.stderr)
+            audit = [json.loads(line) for line in
+                     (temp / "abandoned.jsonl").read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(audit[0]["dispatch_id"], "s:old")
+            self.assertEqual(audit[0]["reason"], "session gone")
+            # The audit row is a sibling of the ledger, never a row in it: an
+            # abandoned dispatch has no outcome and must reach no metric.
+            self.assertFalse((temp / "ledger.jsonl").exists()
+                             and (temp / "ledger.jsonl").read_text().strip())
+            self.assertNotIn("s:old", [r.get("dispatch_id") for r in self._rows(temp)])
+
+            fresh_run = self._stage(env, "--abandon", "--dispatch-id", "s:fresh",
+                                    "--reason", "cannot be bothered")
+            self.assertNotEqual(fresh_run.returncode, 0)
+            self.assertIn("not for skipping QC", fresh_run.stderr)
+
+            never = self._stage(env, "--abandon", "--dispatch-id", "s:neverran",
+                                "--reason", "x")
+            self.assertNotEqual(never.returncode, 0)
+            self.assertIn("--cancel", never.stderr)
+
+            unexplained = self._stage(env, "--abandon", "--dispatch-id", "s:old")
+            self.assertNotEqual(unexplained.returncode, 0)
+            self.assertIn("--reason", unexplained.stderr)
+
     def test_launch_and_completion_reach_the_ledger_as_one_dispatch(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)
