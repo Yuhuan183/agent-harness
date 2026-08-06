@@ -112,6 +112,25 @@ subagents, so no hook stages a stub and their records are `explicit` — they
 compare rungs, they do not fill cohorts. Measured example: the 2026-08-06
 `explore` rung comparison in `evals/traps/s10-skill-recall/README.md`.
 
+## Closing a dispatch nobody can still judge
+
+`--cancel` retires a launch whose leaf never ran, and anything that ran is
+logged — `failed` included. Neither covers a dispatch that ran and whose
+outcome went unjudged long enough that no reviewer is left: inventing an
+outcome corrupts the cohort, and hand-editing the pending file removes the
+carrier the weekly reconciliation depends on. That case is closed with
+
+    experience-stage --abandon --dispatch-id <id> --reason "<why>"
+
+which is deliberately a poor escape hatch. It refuses a dispatch under a day
+old, so nobody can use it to skip QC; it refuses a launch that never ran and
+points at `--cancel`; it requires a reason, because an unexplained abandonment
+looks exactly like a forgotten one; and it writes to
+`experience-abandoned.jsonl` beside the ledger rather than into it, so no
+metric is ever computed from a judgement nobody made. Precedent: 23 stubs from
+a single 2026-07-27 session, abandoned on 2026-08-06 with the pending file
+edited by hand because this path did not exist yet.
+
 ## Evolution cadence
 
 Run `experience-report` weekly (can pair with the existing weekly-integrity cadence) and compare against `delegation-report`: when a hint changes, update the preference note in `provider-routing`; for roles with persistently high RB, revisit the brief template or cost-test criteria. `experience-revise` also uses only the route cells within the current deployment profile, to avoid mixing the different risk distributions of fast and quality-guarded routes. Policy adjustments change only the identical `revision_policy` on both sides, never an ad hoc CLI override.

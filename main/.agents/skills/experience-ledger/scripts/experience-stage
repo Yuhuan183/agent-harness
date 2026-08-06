@@ -65,6 +65,14 @@ LEDGER_PATH = os.environ.get(
     os.path.expanduser("~/.agents/telemetry/experience.jsonl"),
 )
 
+# Sibling of the ledger, never the ledger: an abandoned dispatch has no
+# outcome, and a file the metrics read must not carry rows that only look
+# like they do.
+ABANDONED_PATH = os.environ.get(
+    "AGENT_EXPERIENCE_ABANDONED",
+    os.path.join(os.path.dirname(LEDGER_PATH), "experience-abandoned.jsonl"),
+)
+
 try:
     import fcntl
 except ImportError:  # pragma: no cover - non-POSIX fallback keeps staging usable
@@ -284,6 +292,68 @@ def stage_cancel(args, parser) -> int:
     return 0
 
 
+ABANDON_MIN_AGE_DAYS = 1.0
+
+
+def stage_abandon(args, parser) -> int:
+    """Close a dispatch that ran and whose outcome nobody can still judge.
+
+    `--cancel` refuses this case on purpose: the leaf ran, and something that
+    ran is logged. But an outcome is a judgement, and a judgement has an expiry
+    — on 2026-08-06 twenty-three stubs from a single session ten days earlier
+    had no reachable reviewer, so the only honest moves were to invent an
+    outcome or to hand-edit the pending file. Both are worse than saying so.
+
+    This says so, and deliberately makes a poor escape hatch: it refuses
+    anything younger than a day, so a fresh dispatch cannot dodge QC through
+    it, and it writes to a sibling audit file rather than the ledger, so no
+    metric is ever computed from a judgement nobody made.
+    """
+    with pending_lock():
+        rows, unreadable = scan_pending()
+        matching = [row for row in rows if row.get("dispatch_id") == args.dispatch_id]
+        if not matching:
+            parser.error(f"nothing staged for {args.dispatch_id}")
+        if not any(row.get("event") == "SubagentStop" for row in matching):
+            parser.error(
+                f"{args.dispatch_id} has no staged completion, so its leaf never "
+                "ran; retire it with --cancel"
+            )
+        if args.dispatch_id in ledger_dispatch_ids():
+            parser.error(
+                f"{args.dispatch_id} is already in the ledger; its outcome is "
+                "recorded and there is nothing to abandon"
+            )
+        now = datetime.now(timezone.utc)
+        for row in matching:
+            try:
+                age = (now - datetime.fromisoformat(row["ts"])).total_seconds() / 86400
+            except (KeyError, ValueError, TypeError):
+                continue
+            if age < ABANDON_MIN_AGE_DAYS:
+                parser.error(
+                    f"{args.dispatch_id} is {age:.1f} days old; --abandon is for "
+                    "dispatches nobody can still judge, not for skipping QC. Log "
+                    "the outcome instead"
+                )
+        record = {
+            "ts": now.isoformat(timespec="seconds"),
+            "dispatch_id": args.dispatch_id,
+            "reason": args.reason,
+            "stubs": len(matching),
+        }
+        os.makedirs(os.path.dirname(ABANDONED_PATH), exist_ok=True)
+        with open(ABANDONED_PATH, "a", encoding="utf-8") as stream:
+            stream.write(json.dumps(record, ensure_ascii=False) + "\n")
+        keep = [row for row in rows if row.get("dispatch_id") != args.dispatch_id]
+        if unreadable:
+            print(f"WARN: dropped {unreadable} unreadable pending row(s) "
+                  f"from {PENDING_PATH}", file=sys.stderr)
+        write_pending(keep)
+    print(f"abandoned: {args.dispatch_id} ({args.reason})")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group(required=True)
@@ -294,6 +364,12 @@ def main() -> int:
     mode.add_argument("--cancel", action="store_true",
                       help="retire a launch whose leaf never ran; anything that "
                            "ran is logged instead, `failed` included")
+    mode.add_argument("--abandon", action="store_true",
+                      help="close a dispatch that ran but whose outcome nobody "
+                           "can still judge; writes an audit row, never a ledger "
+                           "record, and refuses anything under a day old")
+    parser.add_argument("--reason", default=None,
+                        help="required with --abandon: why the outcome is unknowable")
     parser.add_argument("--role", choices=ROLES, default=None)
     parser.add_argument("--dispatch-id", default=None,
                         help="stable id shared by [LEAF_DISPATCH], [LEAF_RESULT], "
@@ -305,13 +381,18 @@ def main() -> int:
 
     if args.start and args.role is None:
         parser.error("--start requires --role")
-    if (args.stop or args.cancel) and not args.dispatch_id:
+    if (args.stop or args.cancel or args.abandon) and not args.dispatch_id:
         parser.error("--stop and --cancel require --dispatch-id")
     if args.start:
         return stage_start(args, parser)
     if args.stop:
         return stage_stop(args, parser)
-    return stage_cancel(args, parser)
+    if args.cancel:
+        return stage_cancel(args, parser)
+    if not args.reason:
+        parser.error("--abandon requires --reason: an unexplained abandonment "
+                     "is indistinguishable from a forgotten one")
+    return stage_abandon(args, parser)
 
 
 if __name__ == "__main__":
