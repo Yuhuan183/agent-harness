@@ -50,6 +50,9 @@ from datetime import datetime, timezone
 ROLES = (
     "explore", "mech-executor", "executor",
     "plan-verifier", "verifier", "security-reviewer", "security-executor",
+    # Non-routed agent types this machine dispatches; see experience-log's
+    # DIAGNOSTIC_ROLES for why they are accepted and what they cannot do.
+    "general-purpose", "claude", "codex:codex-rescue",
 )
 # Native Codex only. The bridge and native Claude both have hooks, and a
 # hand-written stub racing a hook-written one is a reconciliation problem, not
