@@ -571,11 +571,21 @@ try:
     # Best-effort; never blocks the throttle.
     try:
         from datetime import datetime, timezone
-        # Must match experience-log's ROLES. A stub whose role the logger
-        # would refuse is one this finding cannot ask anyone to log, and until
-        # 2026-08-06 the non-routed agent types were missing here: their stubs
-        # were unloggable and unreported at the same time, so they accumulated
-        # in silence rather than showing up as work someone forgot.
+        # experience-log's ROLES: the set `--from-pending` will accept. Keying
+        # the *report* on it was the defect, not the set itself. Enumerating
+        # loggable roles here and skipping everything else meant an agent type
+        # the machine really dispatches but this harness does not route -
+        # `claude-code-guide` and the built-in `Explore` are the ones observed -
+        # was unloggable and unreported at the same time, which is the exact
+        # silence the 2026-08-06 pass set out to end and only half ended: it
+        # added the three diagnostic roles and left the rest outside
+        # (2026-08-06 review, reproduced against a real 11-day-old stub).
+        #
+        # A staged completion with a dispatch id the ledger never answered is
+        # un-reconciled whatever its role. The role now picks the *remedy*, not
+        # whether the operator is told: a role the logger accepts gets
+        # `experience-log`, one it does not gets `experience-stage --abandon`,
+        # which matches on dispatch id alone and therefore always works.
         loggable_roles = {
             "explore", "mech-executor", "executor", "plan-verifier",
             "verifier", "security-reviewer", "security-executor",
@@ -615,6 +625,7 @@ try:
         )
         cutoff = datetime.now(timezone.utc).timestamp() - 86400
         stale = {}
+        unroutable = set()
         # Same `errors="replace"` as the ledger read above, and for the same
         # reason twice over: the pending file is the one a hook appends to on
         # every subagent stop, and a UnicodeDecodeError is a ValueError, not an
@@ -642,12 +653,12 @@ try:
                         continue
                 elif row.get("event") != "SubagentStop":
                     continue
-                if agent_type not in loggable_roles and "codex" not in agent_type:
-                    continue
+                loggable = (agent_type in loggable_roles
+                            or "codex" in agent_type)
                 # A stub with no dispatch id predates the field and cannot be
-                # reconciled by the command this finding recommends, which
-                # requires `--dispatch-id`. The pending hook now always writes
-                # one, so no new stub can land here.
+                # reconciled by any command this finding recommends, all of
+                # which require `--dispatch-id`. The pending hook now always
+                # writes one, so no new stub can land here.
                 dispatch_id = row.get("dispatch_id")
                 if not dispatch_id or dispatch_id in reconciled:
                     continue
@@ -659,14 +670,28 @@ try:
                 # dispatch once, dated from whichever row is older.
                 if ts < cutoff:
                     stale[dispatch_id] = min(stale.get(dispatch_id, ts), ts)
+                    if not loggable:
+                        unroutable.add(dispatch_id)
         if stale:
+            unroutable = sorted(unroutable & set(stale))
             findings.append(
                 "un-reconciled dispatches (launched or completed but never "
                 "logged to the experience ledger; log with experience-log "
                 "--from-pending --dispatch-id <id> --outcome <o>, or retire a "
                 "native Codex launch that never ran with experience-stage "
-                "--cancel):\n" + "\n".join(stale)
+                "--cancel):\n" + "\n".join(sorted(stale))
             )
+            if unroutable:
+                # experience-log refuses a role it does not route, so naming
+                # these without naming the command that does work would leave
+                # the operator with a finding and no way to clear it.
+                findings.append(
+                    "of those, this harness routes no role for "
+                    + ", ".join(unroutable)
+                    + "; experience-log will refuse them. Close each with "
+                    "experience-stage --abandon --dispatch-id <id> --reason "
+                    "<why>, which matches on the id alone"
+                )
     except (OSError, ValueError):
         pass
 

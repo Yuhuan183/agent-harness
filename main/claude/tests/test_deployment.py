@@ -552,6 +552,20 @@ class MachineStateHygieneTests(unittest.TestCase):
             ("cd {repo}&&git commit -m x", {}),
             ("pushd {repo} && git commit -m x", {}),
             ("git --git-dir={repo}/.git --work-tree={repo} commit -m x", {}),
+            # An option in front of the path. The operand extractor took the
+            # first word after `cd`, so `--` and `-P` were read as the target;
+            # both are relative and neither exists, so they were dropped in
+            # silence and only cwd was ever checked (2026-08-06 review).
+            ("cd -- {repo} && git commit -m x", {}),
+            ("cd -P {repo} && git commit -m x", {}),
+            ("pushd -- {repo} && git commit -m x", {}),
+            # The repository named by the environment rather than by an
+            # operand. `GIT_DIR`/`GIT_WORK_TREE` do exactly what `--git-dir`
+            # and `--work-tree` do; this file already scrubs them before
+            # running a suite, so it knew they redirect git while the target
+            # resolver did not read them (2026-08-06 review).
+            ("GIT_DIR={repo}/.git GIT_WORK_TREE={repo} git commit -m x", {}),
+            ("export GIT_DIR={repo}/.git GIT_WORK_TREE={repo}; git commit -m x", {}),
             # Unresolvable targets: blocked for that reason, not silently allowed.
             ('cd "$(echo {repo})" && git commit -m x', {}),
             ("git -C {repo_glob} commit -m x", {}),
@@ -563,7 +577,14 @@ class MachineStateHygieneTests(unittest.TestCase):
         # `pushd` is a bash builtin, not a POSIX one, and `/bin/sh` is dash on
         # some hosts. The gate's real caller is the agent's bash tool, so the
         # spelling runs under bash rather than being dropped for portability.
-        needs_bash = {"pushd {repo} && git commit -m x"}
+        needs_bash = {
+            "pushd {repo} && git commit -m x",
+            "pushd -- {repo} && git commit -m x",
+            # `cd -- dir` and `cd -P dir` are POSIX, but dash's builtin has
+            # rejected `--` on some hosts; the agent's tool is bash either way.
+            "cd -- {repo} && git commit -m x",
+            "cd -P {repo} && git commit -m x",
+        }
         # `~` only means anything for a path under HOME, and the platform temp
         # dir is not one, so the tilde spellings get a scratch repo that is.
         with (tempfile.TemporaryDirectory() as temp_dir,
