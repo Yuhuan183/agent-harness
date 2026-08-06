@@ -2,83 +2,118 @@
 
 > 對齊日期: 2026-07-28, Pilotfish 段於 2026-08-04 重查至 v1.3.8. 這是目前專案採用決策的入口; 各來源的取證細節留在分題文件.
 
-## 現行結論
+## 這份文件回答什麼
 
-現代模型仍需要 harness, 但 harness 應縮到「模型無法可靠自行維持, 且能被驗證」的邊界: 權限, 派工深度, 可寫 artifact 所有權, Plan 收斂, provider route, 獨立驗證條件, 可追溯結果與部署邊界. 風格偏好, 一般工程常識與重複提醒不應膨脹 resident prompt.
+一個 harness 是包在模型外面的規則層: 它決定模型能做什麼, 什麼時候該找第二個模型, 以及結果怎麼被檢查. 規則越多, 每一條被遵守的機率越低, 所以「該放幾條」是本專案唯一真正要回答的問題.
 
-本專案的最佳平衡是:
+這份文件走完那個回答的四個階段:
 
-1. main task 保有整合與最終判斷, direct execution 為預設;
-2. 只因平行價值, context 保護或 fresh-context independence 派工;
-3. 以任務形狀 batching, 不以檔案數或 request bullets batching;
-4. Plan 最多兩次自動實質修訂, 之後讓使用者選擇;
-5. outcome verifier 最多一個, 放在最小完整驗收邊界;
-6. Claude no-write roles 不給 Bash; 需要命令的獨立 verdict 交給 Codex read-only sandbox;
-7. provider/model 決策只用同 role, 同 task class, 同 route cell 的本機結果, 樣本不足就探索;
-8. Git 是可攜真相源; installer lock, 憑證, session, 服務狀態留在 machine-local.
+```mermaid
+flowchart LR
+    prior["① 先驗<br/>外部 benchmark<br/>供應商指引<br/>同類專案原始碼"]
+    verdict["② 裁決<br/>來源互相衝突時<br/>本專案選哪一邊"]
+    landed["③ 落地<br/>寫成契約 · hook<br/>測試 · trap"]
+    gap["④ 缺口<br/>還沒證明的部分<br/>誠實標為 UNCERTAIN"]
+    prior --> verdict --> landed --> gap
+    gap -.-> |推翻條件成立就回頭| verdict
+```
+
+**先驗永遠可以被本機證據推翻**, 反過來不行. 這是全篇最重要的一條規則.
+
+## 一分鐘版: 八個現行結論
+
+harness 應該縮到「模型無法可靠自行維持, 且能被驗證」的邊界. 落在邊界內的是: 權限, 派工深度, 可寫 artifact 所有權, Plan 收斂, provider route, 獨立驗證條件, 可追溯結果, 部署邊界. 落在邊界外的是風格偏好, 一般工程常識, 重複提醒 - 這些寫進 resident prompt 只會稀釋其他規則.
+
+| # | 本專案採用 | 拒絕掉的替代做法 |
+|---|---|---|
+| 1 | main task 保有整合與最終判斷, direct execution 為預設 | 預設就派工, 讓 main 只當協調者 |
+| 2 | 只因平行價值, context 保護或 fresh-context independence 才派工 | 因為「任務看起來很大」就派工 |
+| 3 | 以任務形狀 batching | 以檔案數或 request bullets batching |
+| 4 | Plan 最多兩次自動實質修訂, 之後交還使用者 | 讓 verifier 無限要求修正 |
+| 5 | outcome verifier 最多一個, 放在最小完整驗收邊界 | 每個失敗面各放一個 verifier |
+| 6 | Claude no-write roles 不給 Bash; 要跑命令的獨立 verdict 交給 Codex read-only sandbox | 用 shell allowlist 擋掉危險命令 |
+| 7 | provider/model 決策只用同 role, 同 task class, 同 route cell 的本機結果, 樣本不足就探索 | 直接照外部排行榜選 provider |
+| 8 | Git 是可攜真相源; installer lock, 憑證, session, 服務狀態留 machine-local | 把整個 HOME 都納管 |
 
 ## 來源衝突與裁決
 
-| 議題 | 來源間衝突 | 專案裁決 | 理由 |
+八個結論不是憑空選的, 是三類來源互相矛盾時逐條裁決出來的.
+
+| 議題 | 衝突 | 裁決 | 理由 |
 |---|---|---|---|
 | 主動派工 | Pilotfish 鼓勵在合適形狀下主動 dispatch; 精簡 resident prompt 傾向少規則 | 保留三項成本測試, 未通過就 direct | 取得平行效益, 同時避免 delegation tax |
 | Batching | 上游示例偏向同形任務批次; 一般 checklist 容易按 request bullet 拆分 | 依 shared context, artifact, dependency, verification surface 分組 | 降低重建 context 與整合成本 |
-| Plan 迭代 | verifier 可持續要求修正; 不中止會形成 churn | 同 readiness-unit 最多兩次自動實質修訂 | 把真正選項交回使用者, 不假裝無限收斂 |
-| Bash 唯讀 | shell allowlist 想保留可執行重現; security review 證明 parser 可被 callbacks, 環境與 expansion 繞過 | Claude no-write roles 完全移除 Bash; 命令驗證轉 Codex read-only sandbox | 能力邊界比解析任意 shell 可證明 |
-| Prompt 壓縮 | Pilotfish benchmark 支持壓縮; vendor guidance 仍要求清楚結構與關鍵約束 | 移除重複/過時敘述, 不刪除 authority, stop, QC 與安全邊界 | 壓縮是降低 resident tax, 不是追求最短 |
-| 壓縮的驗證方式 | 上游 v1.3.7 顯示 255 條短語斷言全數通過, 仍放進十二個語意缺陷; 本專案測試同樣以短語為主 | 壓縮常駐契約時另做逐句對照, 重點檢查連接詞, 範圍限定詞與否定詞 | 這三類改動不會動到任何被斷言的短語, 測試綠燈不構成證據 |
+| Plan 迭代 | verifier 可持續要求修正; 不中止會形成 churn | 同 readiness-unit 最多兩次自動實質修訂 | 把真正的選項交回使用者, 不假裝無限收斂 |
+| Bash 唯讀 | shell allowlist 想保留可執行重現; security review 證明 parser 可被 callbacks, 環境與 expansion 繞過 | Claude no-write roles 完全移除 Bash; 命令驗證轉 Codex read-only sandbox | 能力邊界比「解析任意 shell」可證明 |
+| Prompt 壓縮 | Pilotfish benchmark 支持壓縮; vendor guidance 仍要求清楚結構與關鍵約束 | 移除重複與過時敘述, 不刪除 authority, stop, QC 與安全邊界 | 壓縮是降低 resident tax, 不是追求最短 |
+| 壓縮的驗證方式 | 上游 v1.3.7 的 255 條短語斷言全數通過, 仍放進十二個語意缺陷; 本專案測試同樣以短語為主 | 壓縮常駐契約時另做逐句對照, 重點檢查連接詞, 範圍限定詞, 否定詞 | 這三類改動不會動到任何被斷言的短語, 測試綠燈不構成證據 |
 | Provider 選擇 | 外部排行榜給先驗; 本機成本與失敗形態可能相反 | 外部資料只做先驗, 本機 ledger 達樣本門檻後覆蓋 | 對實際工作流的可接受結果成本最重要 |
 | Headroom 版本 | PyPI package 與 GitHub release tag 可能不同步 | 分別報告 package, release tag, PR 與 live service state | 避免把不同層級合成「目前版本」 |
 
 ## Pilotfish v1.3.0-v1.3.8 蒸餾結果
 
-對齊上游 [v1.3.8 release](https://github.com/Nanako0129/pilotfish/releases/tag/v1.3.8) (tag commit `ad9600c...`, 2026-08-04). v1.3.0 到 v1.3.4 存續下來, 且適合本專案的精華已落為:
+對齊上游 [v1.3.8 release](https://github.com/Nanako0129/pilotfish/releases/tag/v1.3.8) (tag commit `ad9600c...`, 2026-08-04).
 
-- shape-based batching 與 direct-execution brake;
-- 最小完整驗收邊界與 outcome verifier quota;
-- Plan anti-churn;
-- fixed dispatch/result record 與 provenance-aware QC;
-- security review/execution 分權;
-- resident prompt 去重與 current-state 文件收斂.
+v1.3.0 到 v1.3.4 存續下來且適合本專案的精華, 已經全部落為本專案的機制:
 
-v1.3.5-v1.3.8 的增量與本專案處置:
+- shape-based batching 與 direct-execution brake
+- 最小完整驗收邊界與 outcome verifier quota
+- Plan anti-churn
+- fixed dispatch/result record 與 provenance-aware QC
+- security review/execution 分權
+- resident prompt 去重與 current-state 文件收斂
 
-| 上游增量 | 本專案處置 |
-|---|---|
-| verdict 三分 CONFIRMED/REFUTED/INCONCLUSIVE | 已有等價, 雙 provider 一致 |
-| 只有可重現的 P0-P2 blocker 能 refute, P3/P4 僅建議 | 收斂成一條判準: 反例要可重現**且會改變驗收結論**, 其餘列 `Advisory:` 照報不動 verdict; 不引進嚴重度分級 |
-| 阻斷性修復共用五次 pass 預算 + candidate-state fingerprint | 已採五次上限; 指紋改成每 pass 自述上次之後改了什麼, 沒改就不重驗 |
-| readiness epoch 與一次最終 fresh readiness check | 維持現行硬性兩次上限, 不放寬 |
-| 常設 prompt 尺寸預算寫進測試 | 已有等價 (per-document 字數上限 + resident 總量 + role body budget), 另加規則條數/每條位元組/虛詞比例三項密度指標, 量測口徑不同 |
-| dispatch brake 壓過 explicit opt-in | 已有等價 |
+v1.3.5-v1.3.8 的增量分成三種處置:
 
-這些控制目前已有靜態契約與測試. 仍未證明的是長流程中的行為效果: 中斷後恢復, 連續 correction, 互相衝突的 leaf 結果, 以及真實 token/wall-clock 改善. 這些應用 lifecycle replay 與 ledger 驗證, 不能把「測試存在」寫成「效果已證明」. 上游 v1.3.6 之後已公開自己的 Gate replay 方法與成本, 方法可借用, 數字屬於它的契約與 client 版本, 不能當成本專案的證據.
+| 上游增量 | 處置 | 本專案怎麼做 |
+|---|---|---|
+| verdict 三分 CONFIRMED/REFUTED/INCONCLUSIVE | 已有等價 | 雙 provider 一致 |
+| dispatch brake 壓過 explicit opt-in | 已有等價 | - |
+| 常設 prompt 尺寸預算寫進測試 | 已有等價 | per-document 字數上限 + resident 總量 + role body budget; 另加規則條數, 每條位元組, 虛詞比例三項密度指標. 量測口徑與上游不同 |
+| 只有可重現的 P0-P2 blocker 能 refute, P3/P4 僅建議 | **改造後採用** | 收斂成一條判準: 反例要可重現**且會改變驗收結論**. 其餘列 `Advisory:` 照報但不動 verdict. 不引進嚴重度分級 |
+| 阻斷性修復共用五次 pass 預算 + candidate-state fingerprint | **改造後採用** | 五次上限照採; 指紋改成每個 pass 自述「上次之後改了什麼」, 沒改就不重驗 |
+| readiness epoch 與一次最終 fresh readiness check | **不採用** | 維持現行硬性兩次上限, 不放寬 |
+
+**這些控制目前只有靜態契約與測試, 沒有行為證據.** 仍未證明的是長流程中的效果: 中斷後恢復, 連續 correction, 互相衝突的 leaf 結果, 以及真實 token 與 wall-clock 改善. 這些要靠 lifecycle replay 與 ledger 驗證. 不能把「測試存在」寫成「效果已證明」.
+
+上游 v1.3.6 之後已公開自己的 Gate replay 方法與成本. **方法可借用, 數字不可借用** - 那是它的契約在它的 client 版本上的觀察.
 
 ## 時效性基準
 
-- Pilotfish: latest release tag `v1.3.8`, tag commit `ad9600c...` (2026-08-04 查核). 上游發版頻率高於本文件的重查頻率, 引用前先確認 tag.
-- Deep Agents: PyPI stable `0.6.12`; beta `0.7.0b2` (2026-07-28 查核). 版本與託管產品狀態需在引用時重查.
-- Headroom: PyPI `headroom-ai 0.32.1`; GitHub latest release tag `v0.32.0`; PR #1044 仍 open (2026-07-28 查核). 三者不可互換.
-- OpenAI prompting guidance 使用目前 canonical 文件: [Latest model guide](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.6#prompting-best-practices).
-- Anthropic context guidance: [Effective context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents).
+外部版本會變動, 引用前一律 live recheck.
+
+| 來源 | 查核時的狀態 | 查核日 | 注意 |
+|---|---|---|---|
+| Pilotfish | latest release tag `v1.3.8`, tag commit `ad9600c...` | 2026-08-04 | 上游發版頻率高於本文件重查頻率, 引用前先確認 tag |
+| Deep Agents | PyPI stable `0.6.12`, beta `0.7.0b2` | 2026-07-28 | 版本與託管產品狀態需在引用時重查 |
+| Headroom | PyPI `headroom-ai 0.32.1`; GitHub latest release tag `v0.32.0`; PR #1044 仍 open | 2026-07-28 | 三者不可互換 |
+| OpenAI prompting guidance | [Latest model guide](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.6#prompting-best-practices) | - | 目前 canonical 文件 |
+| Anthropic context guidance | [Effective context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) | - | - |
 
 ## 方向與落地紀錄
 
-這節回答「下一步做什麼, 為什麼是這一步」. 排序原則是**證據強度 × 成本**, 不是影響力大小.
-理由: 影響力是估出來的, 前兩者查得到; 用估出來的量當主排序鍵, 等於讓最會講故事的那條排第一.
+這節回答「下一步做什麼, 為什麼是這一步」.
 
-新方向沿用同一格式, 每條只寫三行: 做什麼, 為什麼排這裡, 什麼會推翻它. 沒有推翻條件的建議
-不是結論, 是偏好. 落地時先跑推翻條件, 成立就照該條自己寫的降級方案走.
+排序原則是**證據強度 × 成本**, 不是影響力大小. 理由: 影響力是估出來的, 前兩者查得到. 用估出來的量當主排序鍵, 等於讓最會講故事的那條排第一.
+
+每條方向只寫三行: 做什麼, 為什麼排這裡, 什麼會推翻它. **沒有推翻條件的建議不是結論, 是偏好.** 落地時先跑推翻條件, 成立就照該條自己寫好的降級方案走.
 
 ### 已落地 (2026-08-04)
 
-原本七條方向一次做完. 每條都先跑自己的推翻條件, 成立就照該條寫好的降級方案走, 不硬做 —
-這是這份清單的設計意圖, 不是偷工. 唯一調動過的順序是把第 4 條排在第 5 條之前: 第 5 條會鼓勵
-壓縮, 先開閘再補防護等於刻意製造暴露窗口.
+七條方向一次做完. 推翻條件的查核結果是這批最值得看的部分 - 七條裡有五條的原始理由**不成立**:
+
+```
+推翻條件查核結果
+  不成立      █████        5 條  ← 原始理由被本機證據推翻, 走降級方案
+  成立但理由不同 █          1 條  ← 目標本來就達成, 交付改成修文件
+  部分成立     █           1 條
+```
+
+順序只調動過一次: 第 4 條排到第 5 條之前. 第 5 條會鼓勵壓縮, 先開閘再補防護等於刻意製造暴露窗口.
 
 | # | 方向 | 推翻條件查核 | 落地形式 |
 |---|---|---|---|
-| 1 | `mech-executor` 強制行只留 `AUTH:` | **成立, 但理由不同**: 逐 commit 查核顯示兩端契約從未出現 INTENT/TWINS, 原本「規則自己製造它要防的失敗」的前提是錯的 | 目標狀態本來就成立且已被測試鎖住; 交付改成修正兩份寫錯因果的文件 |
+| 1 | `mech-executor` 強制行只留 `AUTH:` | **成立, 但理由不同**: 逐 commit 查核顯示兩端契約從未出現 INTENT/TWINS, 原本「規則自己製造它要防的失敗」這個前提是錯的 | 目標狀態本來就成立且已被測試鎖住; 交付改成修正兩份寫錯因果的文件 |
 | 2 | 解開 support pin 取樣死結 | 不成立: 兩端三個 profile 逐一查過, 沒有任何一個覆寫 support role 的 frontmatter pin | 走「承認由使用者偏好決定」那條. `model-routing.toml` 撤回 `n >= 10` 引用, 改記 `support_pin_evidence`; 論述見 [model-evidence.md](model-evidence.md) |
 | 3 | 有界重驗: pass 預算與指紋 | 不成立: ledger 有一條 2026-07-28 的四次 verifier 派工鏈 (同一目標, 4.5 小時內), 三次上限會誤殺合法工作 | 兩端 dispatch skill 加五次上限, 並要求每個 pass 先講出上一次之後改了什麼; 沒改的候選不重驗 |
 | 4 | 壓縮的語意守門機械化 | 不成立: `c143b72` 自己的 commit message 就是一筆本機壓縮語意缺陷 | 新增 `scripts/contract-operator-delta.py`, 永遠 exit 0 的附證腳本, 不是 gate |
@@ -86,18 +121,18 @@ v1.3.5-v1.3.8 的增量與本專案處置:
 | 6 | REFUTED 門檻收斂 | 不成立: ledger 九筆 verifier 記錄裡沒有 advisory 級發現退回好結果的實例 | 兩端 `verifier` 契約各加一句判準, 不引進嚴重度分級 |
 | 7 | lifecycle replay 存活判準 | **部分成立**: 判準第 3 項確實不需要 live session 就量得到 | 寫成 [lifecycle-replay.md](lifecycle-replay.md), 並註明第 3 項已有 `weekly-integrity` 在看; replay 仍未開跑 |
 
-第 5 條的落地與原本寫的不同, 值得說清楚: 密度指標是**加上去**而不是取代字數上限. 要讓密度
-先綁定, codex 那份的字數上限得往上拉約四分之一, 而沒有證據支持把常駐層放大到那個程度. 這條
-方向自己的推翻條件禁止把收緊偷渡進換算, 同一條理由也禁止偷渡放寬. 換掉的是**調高字數上限的
-判準**: 三項密度都還在上限內的擴充, 買到的是更好的句子而不是更多字.
+第 5 條的落地與原本寫的不同, 值得說清楚:
 
-同批完成的還有 trap 在 Opus 5 上的重跑 (2026-08-04): s7/s8 各 3 seeds, s9 補到 11 seeds,
-結果見 [model-evidence.md](model-evidence.md) 與 `evals/traps/*/README.md`.
+- 密度指標是**加上去**, 不是取代字數上限.
+- 要讓密度先綁定, codex 那份的字數上限得往上拉約四分之一. 沒有證據支持把常駐層放大到那個程度.
+- 這條方向自己的推翻條件禁止把收緊偷渡進換算. 同一條理由也禁止偷渡放寬.
+- 真正換掉的是**調高字數上限的判準**: 三項密度都還在上限內的擴充, 買到的是更好的句子而不是更多字.
+
+同批完成的還有 trap 在 Opus 5 上的重跑 (2026-08-04): s7/s8 各 3 seeds, s9 補到 11 seeds. 結果見 [model-evidence.md](model-evidence.md) 與 `evals/traps/*/README.md`.
 
 ### 待辦方向
 
-只剩一條: **跑 lifecycle replay**. 前置的存活判準已經寫完, 缺的是逐情境的 reach marker 與
-實際執行, 條件與「還不能做的事」見 [lifecycle-replay.md](lifecycle-replay.md).
+只剩一條: **跑 lifecycle replay**. 前置的存活判準已經寫完, 缺的是逐情境的 reach marker 與實際執行. 條件與「還不能做的事」見 [lifecycle-replay.md](lifecycle-replay.md).
 
 ### 明確不做的事
 
@@ -110,12 +145,12 @@ v1.3.5-v1.3.8 的增量與本專案處置:
 
 ## 文件索引
 
-| 文件 | 用途 |
+| 文件 | 回答什麼問題 |
 |---|---|
-| [context-and-vendors.md](context-and-vendors.md) | 常駐 context 與官方供應商指引 |
+| [context-and-vendors.md](context-and-vendors.md) | 常駐 context 有多貴, 兩家供應商官方怎麼說 |
 | [resident-context-options.md](resident-context-options.md) | 常駐成本現況, 可用槓桿與延後的 runtime-selection eval |
-| [peer-harnesses.md](peer-harnesses.md) | Deep Agents, Pilotfish 原始碼與版本拆解 |
-| [model-evidence.md](model-evidence.md) | route, effort, 成本口徑與外部先驗 |
+| [peer-harnesses.md](peer-harnesses.md) | Deep Agents 與 Pilotfish 的原始碼與版本拆解 |
+| [model-evidence.md](model-evidence.md) | route 與 effort 怎麼選, 成本口徑怎麼算, 外部先驗有多可信 |
 | [trap-experiments.md](trap-experiments.md) | 可重播的失敗情境與反證 |
 | [local-experiments.md](local-experiments.md) | 本機任務結果 |
 | [lifecycle-replay.md](lifecycle-replay.md) | replay 開跑前的存活判準; 尚無 replay 結果 |

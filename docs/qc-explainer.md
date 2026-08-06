@@ -24,7 +24,25 @@ coding agent 最有據可查的失敗不是「做不出來」, 而是**「宣稱
 
 ## 如何運作
 
-每一次派工結束, main session 依序做四件事:
+每一次派工結束, main session 依序做四件事. 注意每一步吃的是**什麼東西**:
+
+```mermaid
+flowchart TD
+    r["leaf 交回最終回覆"] --> s1
+    s1["① 收件與分級<br/>機械性 → spot 抽查<br/>判斷性 → full review"] --> s2
+    s2["② 機械稽核 owed lines<br/><b>吃 diff, 不吃報告</b><br/>qc-gate-lines --diff"] --> s3
+    s3["③ 抓詐欺清單<br/>弱化的檢查 · 捏造的 fixture<br/>範圍外改動 · 殘留檔案<br/><b>found 0/none 一律自己 grep</b>"] --> s4
+    s4{"④ 裁決"}
+    s4 --> a["accepted"]
+    s4 --> c["corrected"]
+    s4 --> rb["rebriefed"]
+    s4 --> f["failed"]
+    a & c & rb & f --> led["寫入 experience ledger"]
+```
+
+**第 2, 3 步刻意不看報告怎麼寫.** 一份說謊的報告在第 2 步碰到的是 diff, 在第 3 步碰到的是 grep - 兩樣都不會被文筆說服.
+
+四個步驟的細節:
 
 1. **收件與分級.** 取回 leaf 的最終回覆 (就是交付物). 機械性工作 (規格完整,
    照樣板套用) 用 spot 抽查: 抽 diff, 跑 brief 裡的驗收指令; 判斷性或驗證性
