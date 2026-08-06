@@ -309,6 +309,42 @@ output token 每 Index task`; decode 時間排除 TTFT, 工具和其他平台 ov
 <https://artificialanalysis.ai/methodology/intelligence-benchmarking>,
 <https://artificialanalysis.ai/agents/coding-agents>.
 
+## Leaf agent 的 context window 實測 (2026-08-06)
+
+量測方式: 在 Headroom proxy 後面開一個 parent session 並固定成 `claude-sonnet-5`
+(不帶 1M), 從那裡派出 probe subagent, 再從 proxy log 讀每一筆請求的
+`anthropic-beta` 是否帶 `context-1m-2025-08-07`. parent 不帶 beta, 所以任何帶
+beta 的請求必然來自 subagent. subagent 的請求體積在 8-10 KB 之間, parent 在
+104-117 KB, 兩者靠體積就能分辨.
+
+| frontmatter `model:` | leaf 實際視窗 |
+|---|---|
+| `opus` (alias) | 1M |
+| `claude-opus-5` | 1M |
+| `claude-sonnet-5[1m]` | 1M |
+| `sonnet` (alias) | **200k** |
+
+三個結論.
+
+1. **Opus 系的 leaf 本來就在 1M**, 不需要任何契約變更. `executor`,
+   `verifier`, `plan-verifier`, `security-*` 都在此列. 先前推測「alias 會解析成
+   不帶 `[1m]` 的具體 id, 所以 leaf 是 200k」是錯的 — alias 由 CLI 解析, 而 CLI
+   解出來的就是帶 1M 的那一個.
+2. **Sonnet 系的 leaf 是 200k**, 而 `claude-sonnet-5[1m]` 這個具體 id 會被
+   frontmatter 接受並生效. 所以要把 `explore` / `mech-executor` 搬上 1M 是做得到
+   的, 代價是 frontmatter 從 tier alias 改成具體 id, 與 `model-routing.py` 的
+   「repo 永不送具體 id」契約衝突.
+3. **目前不需要搬**. usage-report 30 天資料裡 subagent/claude-sonnet-5 的每輪
+   prompt 是 p50 5.4% / p95 16.3% (1M 分母), 換算成真正的 200k 分母是
+   **27% / 81.5%**; 但 ledger 顯示本 repo 的 `explore` 中位 cache_read 只有
+   4.3 KB, 而 Claude Code 內建的 `Explore` 是 168 KB. 那條 p95 是內建 agent 撐出來
+   的, 不是 harness 的 pin. 真的要動再說.
+
+配套的量測陷阱, 記下來免得重踩. usage-report 是用 model id 去查視窗, 所以它把每
+一個 sonnet-5 subagent 都算成 1M 分母 — 對 sonnet leaf 而言那個百分比偏低 3 到 5
+倍. `--context-window 200000` 可以覆寫, 但那又會把 opus leaf 算錯方向. 這份工具目
+前沒有辦法按 leaf 的實際視窗分別計算, 讀它的 subagent 行時要自己換算.
+
 ## 從 benchmark 到 routing 的決策框架
 
 ### 成本口徑

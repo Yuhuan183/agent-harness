@@ -571,9 +571,15 @@ try:
     # Best-effort; never blocks the throttle.
     try:
         from datetime import datetime, timezone
+        # Must match experience-log's ROLES. A stub whose role the logger
+        # would refuse is one this finding cannot ask anyone to log, and until
+        # 2026-08-06 the non-routed agent types were missing here: their stubs
+        # were unloggable and unreported at the same time, so they accumulated
+        # in silence rather than showing up as work someone forgot.
         loggable_roles = {
             "explore", "mech-executor", "executor", "plan-verifier",
             "verifier", "security-reviewer", "security-executor",
+            "general-purpose", "claude", "codex:codex-rescue",
         }
         ledger_path = os.environ.get(
             "AGENT_EXPERIENCE_LEDGER",

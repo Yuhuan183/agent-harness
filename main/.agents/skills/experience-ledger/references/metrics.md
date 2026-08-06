@@ -89,6 +89,48 @@ context rot and conflicting instructions, not a claim that any model fails at
 a fixed percentage. Compare P95 trends and task outcomes before changing these
 thresholds.
 
+## Sampling a second rung on Claude
+
+Native Claude records normally omit `--profile/--model/--effort`, because the
+resolver fills them from the role's frontmatter pin and the transcript confirms
+the model. A dispatch that overrode the pin through the Agent tool's `model`
+argument breaks that assumption: the resolver still fills in the pin, its fill
+contradicts the hook-recorded `observed_model`, and the record is refused as a
+routing violation — quoting a `--model` the caller never passed, which reads as
+a tooling bug until you know the shape. Pass the model that actually ran. The
+tag stays `route_source: transcript-verified`, because an explicit value that
+agrees with the provider's own record is evidence, not a hand-typed route, so
+these samples do enter their cohort.
+
+The Agent tool overrides `model` only. Effort still comes from frontmatter, so
+a dispatch samples the model axis of a role and never its effort ladder. For
+the effort axis, or for any sample that must not touch deployed state, use
+`evals/scripts/rung-run.py`: it runs the repo's contract in its own
+`claude --print` process with `--model` and `--effort` on the command line, so
+there is no pin to restore afterwards. Those runs are sessions rather than
+subagents, so no hook stages a stub and their records are `explicit` — they
+compare rungs, they do not fill cohorts. Measured example: the 2026-08-06
+`explore` rung comparison in `evals/traps/s10-skill-recall/README.md`.
+
+## Closing a dispatch nobody can still judge
+
+`--cancel` retires a launch whose leaf never ran, and anything that ran is
+logged — `failed` included. Neither covers a dispatch that ran and whose
+outcome went unjudged long enough that no reviewer is left: inventing an
+outcome corrupts the cohort, and hand-editing the pending file removes the
+carrier the weekly reconciliation depends on. That case is closed with
+
+    experience-stage --abandon --dispatch-id <id> --reason "<why>"
+
+which is deliberately a poor escape hatch. It refuses a dispatch under a day
+old, so nobody can use it to skip QC; it refuses a launch that never ran and
+points at `--cancel`; it requires a reason, because an unexplained abandonment
+looks exactly like a forgotten one; and it writes to
+`experience-abandoned.jsonl` beside the ledger rather than into it, so no
+metric is ever computed from a judgement nobody made. Precedent: 23 stubs from
+a single 2026-07-27 session, abandoned on 2026-08-06 with the pending file
+edited by hand because this path did not exist yet.
+
 ## Evolution cadence
 
 Run `experience-report` weekly (can pair with the existing weekly-integrity cadence) and compare against `delegation-report`: when a hint changes, update the preference note in `provider-routing`; for roles with persistently high RB, revisit the brief template or cost-test criteria. `experience-revise` also uses only the route cells within the current deployment profile, to avoid mixing the different risk distributions of fast and quality-guarded routes. Policy adjustments change only the identical `revision_policy` on both sides, never an ad hoc CLI override.
