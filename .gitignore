@@ -22,3 +22,4 @@ __pycache__/
 #headroom
 .tokensave
 .claude/.headroom_wrap_marker.json
+.serena/
