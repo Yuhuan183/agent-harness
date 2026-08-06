@@ -103,8 +103,13 @@ agrees with the provider's own record is evidence, not a hand-typed route, so
 these samples do enter their cohort.
 
 The Agent tool overrides `model` only. Effort still comes from frontmatter, so
-this samples the model axis of a role and never its effort ladder; a second
-effort rung needs a deployed preset change. Measured example: the 2026-08-06
+a dispatch samples the model axis of a role and never its effort ladder. For
+the effort axis, or for any sample that must not touch deployed state, use
+`evals/scripts/rung-run.py`: it runs the repo's contract in its own
+`claude --print` process with `--model` and `--effort` on the command line, so
+there is no pin to restore afterwards. Those runs are sessions rather than
+subagents, so no hook stages a stub and their records are `explicit` — they
+compare rungs, they do not fill cohorts. Measured example: the 2026-08-06
 `explore` rung comparison in `evals/traps/s10-skill-recall/README.md`.
 
 ## Evolution cadence
