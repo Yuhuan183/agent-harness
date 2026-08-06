@@ -82,11 +82,11 @@ record 與 verify 分離 → guard 防靜默 fallback → 三關驗證 (連跑�
 
 ### 行為 trap 與規則 covenant
 
-字串測試證明規則存在, 不證明有效; 行為驗收用 trap fixture: 自足小專案+逐字 brief+
-機械 grader (只執行與 diff, 不信報告) +answer sheet, 每個 trap 對準一種失敗形態 (假完成,
+字串測試證明規則存在, 不證明有效. 行為驗收用 trap fixture: 自足小專案+逐字 brief+
+機械 grader (只執行與 diff, 不信報告) +answer sheet. 每個 trap 對準一種失敗形態 (假完成,
 越權裁決, 文件≠授權); QC 端以造假交付量測抓取率. 迴圈: **trap → 失敗形態 → 一句對症
 措辭 → 同 trap A/B 重跑**. covenant「無失敗 trap 即修剪候選」, 裁決計入風險不對稱與檔位
-覆蓋. 已驗證: 規則形式決定遵循率 (machine-checked 逐字行>散文; 每角色只列真正欠的行);
+覆蓋. 已驗證四項: 規則形式決定遵循率 (machine-checked 逐字行>散文; 每角色只列真正欠的行);
 失敗躲在條款字面縫隙; 合成資料入 ledger 用不產生 hint 的 class; 收斂後轉 regression 資產
 (數據: `evals/traps/`, research log).
 

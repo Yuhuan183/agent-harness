@@ -87,7 +87,7 @@ main 依序做收件分級 → 機械稽核 owed lines → 抓詐欺清單 (含�
 有約束力的 QC 規則字面在 [baton-dispatch](../main/claude/skills/baton-dispatch/SKILL.md)
 與 [leaf-dispatch](../main/codex/skills/leaf-dispatch/SKILL.md); 白話的「為什麼可以信」在
 [qc-explainer](qc-explainer.md). 關鍵設計取捨: leaf 契約只放少量決策點強制行
-(INTENT/TWINS/AUTH, 有 A/B 實驗背書), 謊言與遺漏的攔截責任放在 QC 機制 — 因為機制勝過
+(INTENT/TWINS/AUTH, 有 A/B 實驗背書). 謊言與遺漏的攔截責任放在 QC 機制 — 因為機制勝過
 提醒, 工具不會忘記設旗標, grep 不會被漂亮的報告說服.
 
 ## 四. 生命週期與驗證收斂
@@ -105,10 +105,12 @@ launcher 長命, 重啟前要對帳, 否則同一 prompt 雙寫), **派工者說
 [dispatch-lifecycle](dispatch-lifecycle.md).
 
 驗證收斂的總原則: **最短驗證迴路優先**. 秒級檢查前移到 hook; 中等成本由 agent 明確執行;
-慢速或主觀驗收由人執行, agent 供證據. Fresh verifier 放在完整主張可反駁的最小整合邊界,
-每個 top-level task 至多一個; [verifier-quota](../main/claude/hooks/verifier-quota.py)
-機械攔得住的是同一個 prompt 內的第二個 Claude `verifier`; 跨 prompt 的重複, 以及走
-`codex:codex-rescue` bridge 的 Codex verifier (bridge 名稱不分角色, 額度看不到), 仍由主 session 判斷.
+慢速或主觀驗收由人執行, agent 供證據.
+
+Fresh verifier 放在完整主張可反駁的最小整合邊界, 每個 top-level task 至多一個.
+[verifier-quota](../main/claude/hooks/verifier-quota.py) 機械攔得住的只有同一個 prompt
+內的第二個 Claude `verifier`. 跨 prompt 重複, 以及走 `codex:codex-rescue` bridge 的
+Codex verifier (bridge 名稱不分角色, 額度看不到), 仍由主 session 判斷.
 
 ## 五. Hook 系統實作
 

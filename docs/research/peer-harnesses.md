@@ -52,9 +52,13 @@
 ### v1.3.5-v1.3.8 增量
 
 9. **verdict 三分與嚴重度閘** (v1.3.5): outcome verifier 回 `CONFIRMED`/`REFUTED`/`INCONCLUSIVE`; 只有可重現的 P0-P2 blocker 能推翻 claim, P3/P4 只作建議, 最終處置權留在 main. 長自主執行宣告 `AUTO` 或 `ASK`, 但不因此取得額外權限. 阻斷性 P1/P2 的修復共用五次 pass 預算, 且重驗前必須有變動過的 candidate-state fingerprint - 未改動就重試不算一次機會.
-10. **readiness epoch** (v1.3.6): 兩次自動 `REVISE` 後不是硬停, 而是在有實質修正, 收窄, 拆分或新證據時記一個新的 readiness epoch, 並可再要求「剛好一次」全新 readiness check; 再次 `REVISE` 就暫停或升級, 不重開自動迴圈.
+10. **readiness epoch** (v1.3.6): 兩次自動 `REVISE` 後不是硬停. 有實質修正, 收窄, 拆分或新證據時記一個新的 readiness epoch, 並可再要求「剛好一次」全新 readiness check. 再次 `REVISE` 就暫停或升級, 不重開自動迴圈.
 11. **prompt 尺寸是常設預算, 不是一次性壓縮** (v1.3.7): #27 在 v1.3.4 砍掉 24.653% 常駐 policy, 但樹裡沒有任何東西能因為尺寸而擋下 release, 到 v1.3.6 policy 已長回壓縮前之上 (bytes/rule: v1.3.3 649.0 -> v1.3.4 489.0 -> v1.3.5 474.3 -> v1.3.6 544.2). 修法是把兩個**正規化**指標寫進測試: 每條規則 UTF-8 bytes <= 500 且規則數釘在 36, contraction 正規化後的贅詞比例 policy <= 10.5%/八個 role 檔 <= 12.0%. 用兩個指標是因為各自堵住對方的作弊路徑 - 只刪虛詞能大幅改善贅詞比例卻幾乎不減 bytes, 把一條規則拆成多個 bullet 則能壓低 bytes/rule 而不動贅詞比例.
-12. **dispatch brake 優先於 explicit opt-in** (v1.3.8): 建議的顯式 opt-in 改成要求模型遵守 dispatch brake, 而不是把每個「可派」的任務都派出去. 風險觸發條件在「小工作走捷徑」之前先判; 穩定的機械性重複交給**一個**且必須回收的 `mech-executor`; 例行文件與單一未知 bug 留在 main; schema 類工作的強制 Plan/outcome review 與「誰來實作」的 brake 決策分開處理.
+12. **dispatch brake 優先於 explicit opt-in** (v1.3.8): 建議的顯式 opt-in 改成要求模型遵守 dispatch brake, 而不是把每個「可派」的任務都派出去. 四條隨之而來:
+    - 風險觸發條件在「小工作走捷徑」之前先判.
+    - 穩定的機械性重複交給**一個**且必須回收的 `mech-executor`.
+    - 例行文件與單一未知 bug 留在 main.
+    - schema 類工作的強制 Plan/outcome review 與「誰來實作」的 brake 決策分開處理.
 
 ### 上游 runtime 證據的新進展
 
@@ -68,7 +72,14 @@ v1.3.4 已有 Gate, v1.3.6 之後改成對整條生命週期實跑並公開逐�
 
 v1.3.8 那輪期間 Claude Code 自 2.1.220 更新到 2.1.221.
 
-上游自己標註這些是**有界的 reachability 觀察, 不是確定性行為, 不是派工率**, 也不是因果性的檔案所有權歸屬 - 這個限定要一起引用, 否則就變成我們替它誇大. 同樣值得記的是它公開的兩個失敗形態: 語意缺陷還在時, 批准閘曾在 4 次中被跳過 2 次; 某個修訂版本上有一次把驗證派到背景後從未回收 (該版完整驗收 1/2). 另外 v1.3.8 修正了自己的回溯分類器 (把 child-agent 工具與 main session 分開, 並比對已完成的 Agent 結果), 歷史結果由 0/20 更正為 7/20 通過 dispatch-reachability, 但二十次嘗試最終都落在同樣的十二個修改路徑與 12/12 fixture 測試.
+上游自己標註這些是**有界的 reachability 觀察, 不是確定性行為, 不是派工率**, 也不是因果性的檔案所有權歸屬. 這個限定要一起引用, 否則就變成我們替它誇大.
+
+同樣值得記的是它公開的兩個失敗形態:
+
+- 語意缺陷還在時, 批准閘曾在 4 次中被跳過 2 次.
+- 某個修訂版本上有一次把驗證派到背景後從未回收 (該版完整驗收 1/2).
+
+另外 v1.3.8 修正了自己的回溯分類器, 把 child-agent 工具與 main session 分開, 並比對已完成的 Agent 結果. 歷史結果由 0/20 更正為 7/20 通過 dispatch-reachability. 但二十次嘗試最終都落在同樣的十二個修改路徑與 12/12 fixture 測試.
 
 ### 與本專案的比較
 
