@@ -45,6 +45,15 @@ DIAGNOSTIC_ROLES = ("general-purpose", "claude", "codex:codex-rescue")
 ROLES = ROUTED_ROLES + DIAGNOSTIC_ROLES
 # Pre-rename records and callers spell the recon role "Explore"; accept and
 # canonicalize so cohorts stay comparable across the rename.
+#
+# Claude Code also ships a built-in agent named `Explore`, which makes this
+# alias look like it merges two different contracts into one cohort. It does
+# not, and the ledger says so: the rename landed in 243422d on 2026-07-23, and
+# every `Explore` row is dated 2026-07-22 while every `explore` row is
+# 2026-07-30 or later — no overlap. Those 18 rows are also pre-v3, carrying
+# neither `request_source` nor `route_source`, so no decision cohort can reach
+# them in any case. Checked 2026-08-06 after this comment's absence produced
+# exactly that false alarm.
 LEGACY_ROLE_ALIASES = {"Explore": "explore"}
 PROVIDERS = ("claude", "codex")
 OUTCOMES = ("accepted", "corrected", "rebriefed", "failed")
