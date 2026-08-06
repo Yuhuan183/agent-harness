@@ -1749,6 +1749,49 @@ class TrapGraderIntegrityTests(unittest.TestCase):
                     "not skill loading, and every reader of a result needs "
                     "that scope plus the strong/weak asymmetry")
 
+    def test_rung_runner_isolates_the_sample_from_project_and_proxy(self) -> None:
+        """The two properties that make a rung sample worth anything.
+
+        Both were learned the hard way on 2026-08-06. The runner exists because
+        sampling a second rung otherwise means editing a deployed pin, so it
+        must put model and effort on the command line and read the contract
+        from the repo rather than from `~/.claude`. And its first live run
+        still landed in the proxy log, because clearing `ANTHROPIC_BASE_URL`
+        from the child environment does not survive a project settings file
+        that sets it again — which this repository's untracked
+        `.claude/settings.local.json` does. Asserting the argv shape is cheap;
+        asserting that the default run directory is not the repository is the
+        one that would have caught the real defect.
+        """
+        runner = ROOT / "evals/scripts/rung-run.py"
+        result = subprocess.run(
+            [sys.executable, str(runner), "--role", "explore",
+             "--model", "claude-opus-5", "--effort", "xhigh",
+             "--prompt", "x", "--dry-run"],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        argv = json.loads(result.stdout)
+        for flag, value in (("--model", "claude-opus-5"), ("--effort", "xhigh")):
+            self.assertIn(flag, argv)
+            self.assertEqual(argv[argv.index(flag) + 1], value)
+        # The contract under test is the repo's, not the deployed copy's.
+        body = read("main/claude/agents/explore.md").split("---", 2)[2].strip()
+        self.assertIn(body, argv)
+        # Frontmatter tools become the allowlist, so a read-only role stays one.
+        self.assertIn("--allowedTools", argv)
+        self.assertNotIn("Bash", argv)
+        # Machine state that would otherwise ride along.
+        self.assertIn("--strict-mcp-config", argv)
+        self.assertIn("--exclude-dynamic-system-prompt-sections", argv)
+
+        source = runner.read_text(encoding="utf-8")
+        self.assertIn("ANTHROPIC_BASE_URL", source)
+        # A run inside the repository re-inherits the proxy through project
+        # settings; the default must be a directory outside every project.
+        self.assertIn("tempfile.mkdtemp", source)
+        self.assertNotIn("cwd=REPO", source)
+
     def test_the_selection_grader_exit_zero_means_what_it_claims(self) -> None:
         """Four ways a perfect-looking run reached exit 0 with findings absent.
 

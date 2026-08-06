@@ -1,4 +1,3 @@
-<!-- VARIANT D: speak-human-tw document kinds AND exclusions both removed. -->
 # Resident skill descriptions
 
 This is the whole routing surface a Claude session carries: for each installed
