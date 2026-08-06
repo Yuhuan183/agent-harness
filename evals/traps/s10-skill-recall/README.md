@@ -55,6 +55,13 @@ trap graded against last month's routing surface measures nothing.
    anywhere under the workdir, and the surface is recognised. `--json` for a
    machine-readable summary.
 
+For a rung other than the role's deployed pin, or for any run that must not
+reach the operator's proxy, dispatch through `evals/scripts/rung-run.py`
+rather than the Agent tool. It puts `--model` and `--effort` on the command
+line of its own `claude --print` process and runs outside every project, so no
+deployed pin is edited and no project `env` block re-attaches the proxy. Those
+runs are sessions, not subagents, so their ledger records are `explicit`.
+
 Arms B/C/D are the same brief over a workdir whose `descriptions.md` was
 replaced by that arm's variant. Three samples per arm minimum; one sample cannot
 separate a discrimination defect from run-to-run variance. Lever table and
@@ -97,6 +104,7 @@ route-preference decision counts).
 | 2026-08-06 | `explore` **claude-opus-5/low** — opu1/opu2/opu3 | A | 0 findings ×3 | First run of this fixture on a second rung, through the Agent tool's per-dispatch `model` override; every route confirmed from the pending hook's `observed_model`, not from the dispatcher's intent. Both rungs sit at ceiling on arm A, so it separates nothing — which is why arm D was re-cut below. |
 | 2026-08-06 | `explore` claude-sonnet-5/low — dson1/dson2/dson3 | D (both) | 0 findings ×3 | Held 3/3 where 2026-07-31 lost d1, confirming that row's own reading of 1/3 as a floor rather than a rate. |
 | 2026-08-06 | `explore` **claude-opus-5/low** — dopu1/dopu2/dopu3 | D | `R2-overtriggered-critical` ×3 on dopu3; 0 findings on dopu1/dopu2 | **The higher rung did not hold the line.** dopu3 routed U09/U10/U11 to `speak-human-tw` on the literal `改自然一點`/`說人話` match — the same failure d1 made in July — and said so explicitly: with neither clause left, nothing in the surface rules out code/log/config. dopu1/dopu2 held on `對外文字` alone and both named U09–U11 as their lowest-confidence group. Median wall-clock 37.1s against sonnet/low's 30.6s. AA's per-rung Briefcase Elo puts opus/low 295 points above sonnet/low; at n=6 that gap bought nothing here and the only failure of the twelve was on the higher rung. |
+| 2026-08-06 | `explore` claude-sonnet-5/low — rr1/rr2 via `rung-run.py` | A (isolation check) | rr1 `R1-missed` (U16); rr2 0 findings | Not a rung sample — these validated the runner itself. rr1 still reached the proxy, because its `cwd` was the repository and this checkout's untracked `.claude/settings.local.json` re-injects `ANTHROPIC_BASE_URL`; it answered `none` on U16. rr2, run from outside every project, does not appear in the proxy log at all and scored 18/18. One seed each settles nothing about U16; what it establishes is that the isolation now holds. |
 
 ### What the four arms say together
 
