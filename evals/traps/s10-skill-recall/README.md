@@ -93,6 +93,10 @@ route-preference decision counts).
 | 2026-07-31 | `explore` claude-sonnet-5/low — b1/b2/b3 (re-cut) | B | 0 findings ×3 | Document kinds removed, exclusions intact both languages. U02/U05 3/3 — each run generalised from `檢查對外文字的語感`. **Dropping the seven document kinds cost no recall on this item set.** |
 | 2026-07-31 | `explore` claude-sonnet-5/low — c1/c2/c3 | C | 0 findings ×3 | Exclusions removed in both languages, document kinds intact. U09–U11 3/3 correct — every run reasoned from the positive scope (`對外文字` plus the listed kinds) instead. **The exclusion clause was not load-bearing while the enumeration was present.** |
 | 2026-07-31 | `explore` claude-sonnet-5/low — d1/d2/d3 | D (both) | `R2-overtriggered-critical` ×3 on d1; 0 findings on d2/d3 | **The trap fired.** With neither clause, d1 routed all three of nginx-config, error-log and Python-code asks to `speak-human-tw` on the literal `改自然一點`/`說人話` match. d2/d3 held the line on `對外文字` alone but both flagged U09–U11 as the most ambiguous group and said a different reasonable reading selects the skill. 1/3 failure at 3 samples is a floor, not a rate. |
+| 2026-08-06 | `explore` claude-sonnet-5/low — son1/son2/son3 | A (control) | 0 findings ×3 | Same-day control for the rung A/B below; 18/18 ×3, unchanged from 2026-07-31. |
+| 2026-08-06 | `explore` **claude-opus-5/low** — opu1/opu2/opu3 | A | 0 findings ×3 | First run of this fixture on a second rung, through the Agent tool's per-dispatch `model` override; every route confirmed from the pending hook's `observed_model`, not from the dispatcher's intent. Both rungs sit at ceiling on arm A, so it separates nothing — which is why arm D was re-cut below. |
+| 2026-08-06 | `explore` claude-sonnet-5/low — dson1/dson2/dson3 | D (both) | 0 findings ×3 | Held 3/3 where 2026-07-31 lost d1, confirming that row's own reading of 1/3 as a floor rather than a rate. |
+| 2026-08-06 | `explore` **claude-opus-5/low** — dopu1/dopu2/dopu3 | D | `R2-overtriggered-critical` ×3 on dopu3; 0 findings on dopu1/dopu2 | **The higher rung did not hold the line.** dopu3 routed U09/U10/U11 to `speak-human-tw` on the literal `改自然一點`/`說人話` match — the same failure d1 made in July — and said so explicitly: with neither clause left, nothing in the surface rules out code/log/config. dopu1/dopu2 held on `對外文字` alone and both named U09–U11 as their lowest-confidence group. Median wall-clock 37.1s against sonnet/low's 30.6s. AA's per-rung Briefcase Elo puts opus/low 295 points above sonnet/low; at n=6 that gap bought nothing here and the only failure of the twelve was on the higher rung. |
 
 ### What the four arms say together
 
@@ -117,7 +121,18 @@ re-run D-shaped arms before taking the second.
   skill applies. A real runtime-selection eval would need one fresh session per
   utterance and provider-side invocation events; it does not exist here. Read
   every arm through the strong/weak asymmetry above.
-- One route, one model, one item set, three samples per arm.
+- One route, one item set, three samples per arm per rung. Two models as of
+  2026-08-06 (claude-sonnet-5/low and claude-opus-5/low); effort is still one
+  rung, because the Agent tool overrides `model` per dispatch but not `effort`.
+- **The variant surfaces announce themselves.** `variants/d-both.md` opens with
+  `<!-- VARIANT D: speak-human-tw document kinds AND exclusions both removed. -->`,
+  and two of the six 2026-08-06 arm-D runs quoted it back — one reasoned
+  explicitly that the header flagged both clauses as removed and that it still
+  resolved U09/U11 as `none`. An agent told which clause was cut is cued to
+  compensate for the cut, which biases arm D towards passing. Every arm-D row
+  in this table, 2026-07-31's included, was graded under that cue. Removing the
+  comment re-cuts the fixture and makes the existing rows uncomparable, so it
+  is recorded here rather than quietly fixed.
 - **Cross-arm bleed observed.** Two arm-D runs' notes referenced description
   copies from outside their own workdir — one named a compression-store hash,
   one named "the Variant B/D copies surfaced via proactive expansion" and

@@ -41,10 +41,10 @@ Own provider/model/role selection, bridge resolution, cross-provider fallback, a
 | `mech-executor` | A complete spec makes the work mechanical |
 | `executor` | Isolation or preserved main context repays reconstruction cost |
 | `plan-verifier` | A material Plan warrants a fresh Opus challenge |
-| `verifier` | A completed claim matches an independent-verifier trigger (below) |
+| `verifier` | A completed claim matches an independent-verifier trigger (below); the other provider verifies |
 | `security-reviewer` / `security-executor` | Security review (read-only) / approved security implementation; provider by CP-first choice, either side routes at its critical floor |
 
-Named Claude roles own model and effort in frontmatter; omit invocation-level `model`. Security keeps its capability split on either provider: review is read-only; implementation starts only from an approved contract. Dual-provider review may use independent read-only perspectives; implementation has one writer — never two writers on the same artifacts. Cross-provider fallback is one hop to the matching role on the other provider, at that role's active preset route (named-role presets never include Fable). In dual-provider implementation one provider writes and the other verifies after integration.
+Named Claude roles own model and effort in frontmatter; omit invocation-level `model` except to sample a second rung deliberately. Security keeps its capability split on either provider: review is read-only; implementation starts only from an approved contract. Dual-provider review may use independent read-only perspectives; implementation has one writer — never two writers on the same artifacts. Named-role presets never include Fable. In dual-provider implementation one provider writes and the other verifies after integration.
 
 Claude no-write roles lack Bash. Executable verdicts use a Codex `verifier` with `sandbox_mode = "read-only"`; main-run commands remain intermediate evidence.
 
@@ -58,4 +58,4 @@ Claude no-write roles lack Bash. Executable verdicts use a Codex `verifier` with
 
 ## Independent-verifier triggers
 
-Dispatch at most one outcome `verifier` per top-level task — distinct failure surfaces do not add quota — and only when a trigger in [references/verifier-triggers.md](references/verifier-triggers.md) holds — security/trust boundaries, money, destructive data, adversarial acceptance, conflicting evidence, failed reproduction, or explicit user request. `plan-verifier` returns READY/REVISE without Bash; `verifier` returns CONFIRMED/REFUTED/INCONCLUSIVE and may run read-only checks in an isolated worktree. Do not stack gates over the same failure surface.
+Dispatch at most one outcome `verifier` per top-level task — distinct failure surfaces do not add quota — and only when a trigger in [references/verifier-triggers.md](references/verifier-triggers.md) holds — security/trust boundaries, money, destructive data, adversarial acceptance, conflicting evidence, failed reproduction, or explicit user request. `plan-verifier` returns READY/REVISE without Bash; `verifier` returns CONFIRMED/REFUTED/INCONCLUSIVE and may run read-only checks in an isolated worktree. Do not stack gates over the same failure surface. Provider follows independence, not CP-first: the side that did not produce the claim verifies.

@@ -89,6 +89,24 @@ context rot and conflicting instructions, not a claim that any model fails at
 a fixed percentage. Compare P95 trends and task outcomes before changing these
 thresholds.
 
+## Sampling a second rung on Claude
+
+Native Claude records normally omit `--profile/--model/--effort`, because the
+resolver fills them from the role's frontmatter pin and the transcript confirms
+the model. A dispatch that overrode the pin through the Agent tool's `model`
+argument breaks that assumption: the resolver still fills in the pin, its fill
+contradicts the hook-recorded `observed_model`, and the record is refused as a
+routing violation — quoting a `--model` the caller never passed, which reads as
+a tooling bug until you know the shape. Pass the model that actually ran. The
+tag stays `route_source: transcript-verified`, because an explicit value that
+agrees with the provider's own record is evidence, not a hand-typed route, so
+these samples do enter their cohort.
+
+The Agent tool overrides `model` only. Effort still comes from frontmatter, so
+this samples the model axis of a role and never its effort ladder; a second
+effort rung needs a deployed preset change. Measured example: the 2026-08-06
+`explore` rung comparison in `evals/traps/s10-skill-recall/README.md`.
+
 ## Evolution cadence
 
 Run `experience-report` weekly (can pair with the existing weekly-integrity cadence) and compare against `delegation-report`: when a hint changes, update the preference note in `provider-routing`; for roles with persistently high RB, revisit the brief template or cost-test criteria. `experience-revise` also uses only the route cells within the current deployment profile, to avoid mixing the different risk distributions of fast and quality-guarded routes. Policy adjustments change only the identical `revision_policy` on both sides, never an ad hoc CLI override.
