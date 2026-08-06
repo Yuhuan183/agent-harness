@@ -2,6 +2,17 @@
 
 > 對齊日期: Pilotfish 段 2026-08-04; Deep Agents 段 2026-07-28 (本次未重查). 只保留會影響本專案設計的存續結論.
 
+## 這份文件回答什麼
+
+看兩個同類專案, 各自解決什麼問題, 本專案抄了什麼, 為什麼有些不抄.
+
+| 專案 | 它是什麼 | 本專案主要拿走什麼 |
+|---|---|---|
+| LangChain Deep Agents | 一組可組合的 middleware 與 state boundary, 不是固定流程 | allowlist 優於 denylist; report 與 tool output 視為 untrusted observation |
+| Pilotfish | 一套完整的 agent 派工契約, 版本迭代快 | 派工形狀, Plan anti-churn, verdict 三分, prompt 尺寸當常設預算 |
+
+貫穿全文的一條限制: **方法可借, 數字不可借.** 上游的 Gate 數字是它的契約在它的 client 版本上的觀察, 引用時必須連同它自己標的限定一起引.
+
 ## LangChain Deep Agents
 
 查核版本: PyPI stable `0.6.12`, beta `0.7.0b2`. Deep Agents 的價值不在提供另一套固定流程, 而在把幾個可組合能力做成 middleware 與 state boundary:
@@ -49,9 +60,13 @@
 
 v1.3.4 已有 Gate, v1.3.6 之後改成對整條生命週期實跑並公開逐次嘗試. 可引用的觀察:
 
-- v1.3.6: schema migration 走完 `plan-verifier` -> 批准 -> `executor` -> `verifier`, 例行文件維持 direct, 並實際跑出 `REVISE` -> `REVISE` -> 新 readiness epoch -> 收尾 `READY`. 現行控制回報 $2.82515035, 含失敗與被取代的整輪 campaign 為 $5.16072710.
-- v1.3.7: `verifier-boundary` Gate 對「實際出貨的 bytes」重跑 (不是刷新雜湊), 三個 cell 都重現; schema cell 2/2 停在批准閘, 批准前無寫入, 再前景派一個 `mech-executor` 與一個 `verifier` 並回收 `CONFIRMED`.
-- v1.3.8: policy replay 中例行文件與單一 bug 對照組 2/2 維持 direct, 機械性重複 2/2 派工, schema 2/2 保住 Plan review/批准/主要測試/outcome review. 十次完成的 invocation 回報 $3.89565485, 硬上限 $8. 期間 Claude Code 自 2.1.220 更新到 2.1.221.
+| 版本 | 跑了什麼 | 觀察到的結果 | 回報成本 |
+|---|---|---|---|
+| v1.3.6 | schema migration 走完 `plan-verifier` -> 批准 -> `executor` -> `verifier`, 例行文件維持 direct | 實際跑出 `REVISE` -> `REVISE` -> 新 readiness epoch -> 收尾 `READY` | 現行控制 $2.82515035; 含失敗與被取代的整輪 campaign 為 $5.16072710 |
+| v1.3.7 | `verifier-boundary` Gate 對「實際出貨的 bytes」重跑 (不是刷新雜湊) | 三個 cell 都重現; schema cell 2/2 停在批准閘, 批准前無寫入; 再前景派一個 `mech-executor` 與一個 `verifier` 並回收 `CONFIRMED` | - |
+| v1.3.8 | policy replay | 例行文件與單一 bug 對照組 2/2 維持 direct, 機械性重複 2/2 派工, schema 2/2 保住 Plan review/批准/主要測試/outcome review | 十次完成的 invocation $3.89565485, 硬上限 $8 |
+
+v1.3.8 那輪期間 Claude Code 自 2.1.220 更新到 2.1.221.
 
 上游自己標註這些是**有界的 reachability 觀察, 不是確定性行為, 不是派工率**, 也不是因果性的檔案所有權歸屬 - 這個限定要一起引用, 否則就變成我們替它誇大. 同樣值得記的是它公開的兩個失敗形態: 語意缺陷還在時, 批准閘曾在 4 次中被跳過 2 次; 某個修訂版本上有一次把驗證派到背景後從未回收 (該版完整驗收 1/2). 另外 v1.3.8 修正了自己的回溯分類器 (把 child-agent 工具與 main session 分開, 並比對已完成的 Agent 結果), 歷史結果由 0/20 更正為 7/20 通過 dispatch-reachability, 但二十次嘗試最終都落在同樣的十二個修改路徑與 12/12 fixture 測試.
 
@@ -82,7 +97,19 @@ v1.3.4 已有 Gate, v1.3.6 之後改成對整條生命週期實跑並公開逐�
 
 這個結果也修正了對「allowlist」的理解: tool-level allowlist 有有限且可列舉的能力面; shell command parser 面對的是可組合語言與外部程式, 不能提供同等保證.
 
-第二個修正來自上游 v1.3.7, 直接打到本專案的假設: **短語斷言擋不住語意反轉**. 上游那輪壓縮通過了全部 255 條契約測試斷言的短語, 逐字保留, 卻仍帶進十二個語意缺陷 - 其中一個把選言改成連言, 使 `REJECT` 這個處置變成不可達; 另外兩個把獨立審查的觸發條件與「使用者親自要求判斷」擴大成任何使用者請求與泛稱的「user-requested judgment」, 等於把一般可派工作也吃進來. 這些是人工逐句對照與外部審查抓到的, 不是測試抓到的; 後續掃過全部 36 條規則還找到 13 處被刪掉的範圍限定詞 (`only`, `after`, `each time` 之類). 本專案的 `test_contracts.py` 同樣以「短語存在」為主要保護, 因此壓縮常駐契約時不能只跑測試: 必須對壓縮前後做逐句對照, 特別檢查連接詞, 範圍限定詞與否定詞, 因為這三類的改動不會動到任何被斷言的短語.
+第二個修正來自上游 v1.3.7, 直接打到本專案的假設: **短語斷言擋不住語意反轉**.
+
+上游那輪壓縮通過了全部 255 條契約測試斷言的短語, 逐字保留, 卻仍帶進十二個語意缺陷:
+
+| 缺陷 | 做了什麼 | 後果 |
+|---|---|---|
+| 1 處 | 把選言改成連言 | `REJECT` 這個處置變成不可達 |
+| 2 處 | 把獨立審查的觸發條件與「使用者親自要求判斷」擴大 | 變成任何使用者請求與泛稱的「user-requested judgment」, 等於把一般可派工作也吃進來 |
+| 13 處 | 刪掉範圍限定詞 (`only`, `after`, `each time` 之類) | 後續掃過全部 36 條規則才找到 |
+
+**這些全部是人工逐句對照與外部審查抓到的, 不是測試抓到的.**
+
+本專案的 `test_contracts.py` 同樣以「短語存在」為主要保護. 所以壓縮常駐契約時不能只跑測試: 必須對壓縮前後做逐句對照, 特別檢查連接詞, 範圍限定詞與否定詞 - 這三類的改動不會動到任何被斷言的短語.
 
 ## 採用效果與驗證
 

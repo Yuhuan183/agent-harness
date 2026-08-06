@@ -1321,7 +1321,17 @@ class DocumentationBudgetTests(unittest.TestCase):
             # exempt text — full-width marks that are data being matched, not
             # prose. Four categories left a scanner calling those drift and a
             # writer "fixing" them into broken matchers.
-            "docs/README.md": 1210,
+            # +290 (2026-08-07): rule 8, reader tiers and presentation. Rules 6
+            # and 7 fixed the language and the punctuation of each layer and
+            # stopped there, so "how plain, and plain for whom" stayed taste -
+            # which is why a reader asking for it had no rule to point at. The
+            # rule costs a table because the answer differs by tier: explainers
+            # and research owe a diagram or a table before prose, operations
+            # docs owe brevity instead. It also records the measurement that
+            # motivated it - the ratchet covers eight documents while the
+            # unmeasured `research/` layer alone outweighs all of them, so
+            # sprawl is a coverage gap rather than a writing habit.
+            "docs/README.md": 1500,
             # Verification entry point for dispatch state and route evidence.
             # Cheaper here than in the resident contracts or the two skills it
             # ties together, both of which sit within ten words of their own
@@ -1380,7 +1390,18 @@ class DocumentationBudgetTests(unittest.TestCase):
             # reproduced before the prose moved. Nothing in the row was
             # displaceable: its four spelling examples map one-to-one onto the
             # four copies the gate compares (1959 -> 2046).
-            "docs/hook-system.md": 2070,
+            # +40 (2026-08-07): two more target-naming forms the gate had to
+            # start reading (`cd -- <repo>`, `GIT_DIR=`), paid for inside the
+            # row by merging its two operand examples and moving the OLDPWD
+            # residue to the module docstring; plus the throttle handle on the
+            # weekly-integrity row. That row said "每週一次" and stopped, which
+            # is the period without the consequence: a check that says nothing
+            # because it ran two days ago reads exactly like a clean bill of
+            # health, and the operator asking "did my deploy get checked?" had
+            # no way to tell the two apart or to force the answer. Naming the
+            # stamp is the whole remedy and it does not fit in six words
+            # (2046 -> 2110).
+            "docs/hook-system.md": 2110,
             # Top-down architecture spine: one diagram then a concise walk
             # through every layer, each pointing at its specialized doc. The
             # connective narrative the README (a repo landing page) and the

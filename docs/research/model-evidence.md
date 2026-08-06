@@ -2,6 +2,37 @@
 
 [← 回研究摘要入口](README.md)
 
+## 怎麼讀這份文件
+
+這是 routing 決策的**證據紀錄**, 不是 route 表. 現行 pin 的唯一真相源是兩份 `model-routing.toml`; 這裡只回答「當初為什麼這樣選, 什麼會推翻它」.
+
+證據分三級. 上層可以推翻下層, 反過來不行:
+
+```mermaid
+flowchart BT
+    ext["外部 benchmark<br/>Artificial Analysis · Briefcase Elo<br/>只能當先驗, 決定探索順序"]
+    trap["本機 trap<br/>evals/traps/, 可重播, 有機械 grader<br/>能推翻外部先驗"]
+    ledger["本機 ledger<br/>真實派工結果, 需 n >= 10<br/>最終仲裁"]
+    ext --> trap --> ledger
+```
+
+**本文按時間排, 不按有效性排.** 讀任何一節之前先看這張表:
+
+| 節 | 日期 | 現在還算不算數 |
+|---|---|---|
+| Sonnet 5 effort 曲線與 executor 檔位修訂 | 2026-07-23 | 部分. BrowseComp 曲線已退役 (由 07-25 AA 節宣告); 同節的 executor@opus/medium trap 重跑結果仍有效 |
+| Opus 世代升級: 4.8 → Opus 5 | 2026-07-25 | 現行 |
+| AA 重新取數: 完整 effort 階梯 | 2026-07-26 | **現行的外部先驗**, 要查數字先看這節 |
+| AA 重新取數與 per-effort 曲線 | 2026-07-25 | 部分. 「opus/low 無分數」與「Sonnet 是唯一無逐檔證據的一格」兩項已被 07-26 取代, 其餘結論與數據不變 |
+| AA 快照 | 2026-07-21 | 歷史. index 與成本同 07-26, decode 分鐘已全部重測 |
+| Leaf agent 的 context window 實測 | 2026-08-06 | 現行 |
+| 從 benchmark 到 routing 的決策框架 | 不隨快照更新 | 現行 |
+
+目前的外部先驗, 兩句話:
+
+- Opus 5 的五個 rung 全部量測完成. 級距極不平均 - 最便宜那一階買到最多能力, 最貴那一階買到最少.
+- Sonnet 的逐檔成本至今未發布. 所以 support pin 由使用者偏好決定, 不是由數據決定.
+
 ## Sonnet 5 effort 曲線與 executor 檔位修訂 (2026-07-23)
 
 **已驗證 (外部先驗)**: 兩份獨立資料交叉指向同一結論 — Sonnet 5 在 high effort 以上跌出

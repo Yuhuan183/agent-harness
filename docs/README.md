@@ -56,3 +56,12 @@
 5. 文件改動仍需通過 contract tests, 連結檢查, `git diff --check` 與部署 dry-run.
 6. 語言分層: runtime 檔案 (contracts, roles, skills, script 註解) 的**操作本體** (指令, 流程, 格式) 用英文, 人讀文件用 zh-TW. 窄例外: skill/agent `description` 的**觸發詞**與對使用者輸出的**模板**可用所需語言以對上使用者; `speak-human-tw` 是繁中素材. 其餘 runtime 中文即漂移.
 7. 標點: 人讀文件寫 zh-TW 文字 + 英文術語 + 半形標點 (`, . : ; ? ! ( ) " ' -`), 標點後空一格, 本條自身即範例. 全形只留在五處: 逐字引用的外部原文, `speak-human-tw` 繁中素材, `evals/traps/**` 的 fixture 與結果表 (文字本身是被量的變數), skill `description` 的觸發詞與對使用者輸出的模板 (前者被 s10 trap 以位元組釘住, 後者是給人看的成品), 以及程式裡拿全形當資料比對的字面值 (regex class, 對前四類的逐字斷言). 引號 (「」『』《》〈〉) 與破折號沒有半形對應, 照舊. 全樹已於 2026-08-04 掃過一次, 新文字直接用半形寫; `docs/**` 這層由測試盯住.
+8. 讀者分層與呈現. 全域底線是短句: 一句一義, 拆掉嵌套修飾, 但術語照留 - 換成白話近義詞會把精確性一起換掉. 在此之上分三層, 依讀者分而不依主題分:
+
+   | 層 | 涵蓋 | 寫法 |
+   |---|---|---|
+   | 給模型讀 | contracts, roles, skills, script 註解的操作本體 | 英文, 見規則 6 |
+   | 說明與研究 | [架構總覽](architecture.md), [QC 白話說明](qc-explainer.md), [research/](research/) | 讀者不必先懂本 repo 的內部詞彙. 核心概念先給圖, 數據對比先給表, 結論條列; 散文只用來講圖表講不了的因果 |
+   | 操作與規範 | [setup](setup.md), [hook-system](hook-system.md), [dispatch-lifecycle](dispatch-lifecycle.md), [contract-slimming](contract-slimming.md), 兩份 README | 直白精簡, 不為了淺顯加篇幅 |
+
+   字數棘輪目前只蓋住八份文件, 而未受管的 `research/` 一層就比受管全部還大 - 發散來自沒被量過, 不是來自寫作習慣. 說明與研究層的棘輪在改寫落地後才依實測值訂, 先訂會把改寫卡在舊形狀裡.
