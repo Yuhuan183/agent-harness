@@ -51,7 +51,7 @@ SOURCE = ROOT / "main" / "claude" / "CLAUDE.contract.md"
 SENTINEL = Path.home() / ".claude" / ".s11-arm-b-in-progress"
 
 sys.path.insert(0, str(HERE))
-from arms import REMOVALS, arm_b  # noqa: E402
+from arms import POINTER, variant  # noqa: E402
 
 
 def sha(path: Path) -> str:
@@ -158,14 +158,14 @@ def run_arm(clause: str, arm: str, scenario: Path | None, out: Path | None,
     snapshot = None
     before = sha(DEPLOYED)
     try:
-        if arm == "b":
+        if arm in ("b", "c"):
             snapshot = Path(tempfile.mkdtemp(prefix="s11-snapshot-")) / "CLAUDE.md"
             shutil.copy2(DEPLOYED, snapshot)
             SENTINEL.write_text(f"{clause}\n{snapshot}\n", encoding="utf-8")
             DEPLOYED.write_text(
-                arm_b(DEPLOYED.read_text(encoding="utf-8"), clause),
+                variant(DEPLOYED.read_text(encoding="utf-8"), clause, arm),
                 encoding="utf-8")
-            print(f"arm B: removed {clause} clause "
+            print(f"arm {arm.upper()}: {clause} "
                   f"({before[:12]} -> {sha(DEPLOYED)[:12]})", file=sys.stderr)
 
         with tempfile.TemporaryDirectory(prefix="s11-work-") as work:
@@ -185,11 +185,28 @@ def run_arm(clause: str, arm: str, scenario: Path | None, out: Path | None,
             if built:
                 print(f"fixture: {', '.join(built)}", file=sys.stderr)
             mcp = mcp_config_for(text)
+            # Provenance, written from the live file at the moment of the call.
+            # The 2026-08-08 pilot recorded none, so every arm-B row was a claim
+            # about a condition nothing in the artifacts could confirm - the
+            # exact failure the surface fingerprints exist to prevent, repeated
+            # one level down. The post-run diff proves the contract was restored;
+            # only this proves what it was during the call.
+            in_effect = sha(DEPLOYED)
+            names_left = DEPLOYED.read_text(encoding="utf-8").count(f"`{clause}`")
             code, stdout = claude(body.strip(), workdir, mcp)
             if out:
                 out.parent.mkdir(parents=True, exist_ok=True)
                 out.write_text(stdout, encoding="utf-8")
-                print(f"events -> {out}", file=sys.stderr)
+                out.with_suffix(".meta.json").write_text(json.dumps({
+                    "clause": clause, "arm": arm,
+                    "scenario": scenario.name,
+                    "contract_sha256_in_effect": in_effect,
+                    "clause_name_mentions_in_effect": names_left,
+                    "mcp_attached": bool(mcp),
+                    "exit": code,
+                }, indent=2), encoding="utf-8")
+                print(f"events -> {out} (contract {in_effect[:12]}, "
+                      f"{names_left} mention(s))", file=sys.stderr)
             return code
     finally:
         if snapshot is not None:
@@ -207,8 +224,8 @@ def run_arm(clause: str, arm: str, scenario: Path | None, out: Path | None,
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--clause", required=True, choices=sorted(REMOVALS))
-    parser.add_argument("--arm", required=True, choices=("a", "b"))
+    parser.add_argument("--clause", required=True, choices=sorted(POINTER))
+    parser.add_argument("--arm", required=True, choices=("a", "b", "c"))
     parser.add_argument("--scenario", type=Path)
     parser.add_argument("--out", type=Path, help="write the event stream here")
     parser.add_argument("--preflight", action="store_true",
@@ -221,11 +238,11 @@ def main() -> int:
     if args.dry_run:
         check_no_drift()
         current = DEPLOYED.read_text(encoding="utf-8")
-        variant = arm_b(current, args.clause) if args.arm == "b" else current
+        text = variant(current, args.clause, args.arm)
         print(f"deployed  {sha(DEPLOYED)[:12]}  {len(current)} bytes")
         print(f"arm {args.arm}      "
-              f"{hashlib.sha256(variant.encode()).hexdigest()[:12]}  "
-              f"{len(variant)} bytes")
+              f"{hashlib.sha256(text.encode()).hexdigest()[:12]}  "
+              f"{len(text)} bytes")
         print("nothing was written")
         return 0
 

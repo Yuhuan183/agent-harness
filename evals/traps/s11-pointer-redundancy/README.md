@@ -83,8 +83,54 @@ breed an agent that loads everything.
 
 ## Results log
 
-> No runs yet. The harness landed 2026-08-08 with arm A unrun; the first rows
-> must carry `[surface <short>]` from `evals/scripts/trap-surface.py`.
+> **A first batch of 20 runs on 2026-08-08 is archived under `runs/unprovenanced/`
+> and does not count.** Its driver piped `run.py`'s stderr to `/dev/null`, so no
+> artifact recorded which contract each run executed under — the post-run diff
+> proved the file was restored, never what it was during the call. Every arm-B
+> row was therefore a claim about a condition nothing could confirm, which is
+> the failure the surface fingerprints exist to prevent, one level down. The
+> runs below record the contract sha and the remaining name count per run.
 
-| Date | Clause | Arm | Scenario | Preflight | Verdict | Surface | Notes |
-|---|---|---|---|---|---|---|---|
+**2026-08-08, `provider-routing`, `[surface 32cc98cf]`, Claude Code 2.1.226.**
+30 runs, 3 arms × 2 cells × 5 seeds. Zero invalid, zero run failures.
+
+| Arm | Contract | Mentions left | p1 (should load) | p2 (should not load) |
+|---|---|---|---|---|
+| A shipped | `12a0d188f9ea` | 2 | **5/5 loaded** | 5/5 stayed away |
+| B pointer removed | `35ba056f2de3` | 1 | **5/5 loaded** | 5/5 stayed away |
+| C every mention removed | `7cb97309ebb8` | 0 | **5/5 loaded** | 5/5 stayed away |
+
+Manipulation check, 13 observations: arm A answered YES 3/4, arms B and C
+answered NO 7/7. One arm-A run said NO while the clause was present, so the
+control is noisy in the direction of under-reporting. What it establishes is the
+part that matters: arm A **can** report the clause, which it could not do if the
+contract never reached the session — the alternative explanation that would have
+made this whole null meaningless.
+
+**Reading, against the rule declared before the runs.** Arm A 5/5 and arm B 5/5
+is not a separation, so this records as **no separation at n=5**, not as "no
+difference". A passing arm B authorises nothing. What is new is arm C: with the
+skill's name absent from the contract entirely, loading was unchanged, so on
+this cell the contract contributed nothing measurable and the description
+carried the routing alone.
+
+Four limits, none of them footnotes:
+
+- **Arm C was designed after seeing arm B**, so its decision rule was inherited
+  rather than pre-registered. It cannot be read as a confirmed prediction. The
+  outcome is a null, which is the direction post-hoc design cannot manufacture,
+  but the asymmetry is worth stating.
+- **Arm C is not a pure name removal.** Erasing the second mention meant
+  deleting the verifier clause's trigger condition, so arm C also relaxes when
+  an outcome verifier is allowed (`arms.py` records this as its side effect).
+- **Ceiling effect, measured rather than assumed.** The p1 prompt and the skill
+  description share `GPT`, `fallback` and `profile`. That is an explicit trigger
+  — not the near-verbatim overlap an earlier note claimed, but explicit enough
+  that both arms sit at the ceiling and a difference would have to be large to
+  show. An oblique-trigger variant is the obvious next cell.
+- **One headless turn, fresh session.** No compaction, no long context, no
+  mid-session moment where a skill is most likely to be forgotten — plausibly
+  where a contract clause earns its keep, and exactly where this cannot look.
+
+The negative control is what makes the rest readable: p2 stayed away 15/15
+across all three arms, so the 5/5 on p1 is not an agent loading everything.
