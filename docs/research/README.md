@@ -266,6 +266,8 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 
 所以方向 5 的交付改成一條新的待查項: **先讓拒絕可觀測, 再談要不要升級門檻**. 順序理由與 lifecycle replay 同源 - 沒有判準就先開跑, 產出的是撤不回的數字.
 
+**已落地 (2026-08-08)**: 四個 Python gate 攔截時各寫一行到 `~/.claude/telemetry/denials.jsonl`, 共用 [denial_log](../../main/claude/hooks/denial_log.py), 欄位是短代碼而非散文, 這樣「連續擋幾次」數得出來. 三個 gate 已端到端驗過會寫出紀錄. 兩條性質寫進測試: 攔截會留痕, 而**把 telemetry 路徑佔成檔案時 gate 仍然回 exit 2** - gate 對條件 fail-closed, 對簿記 fail-open, 兩者不能對調. 目前沒有任何東西讀這份檔案做決策, 門檻要等資料累積後再談.
+
 ### 明確不做的事
 
 | 不做 | 理由 |

@@ -2391,6 +2391,65 @@ class BridgeJobLivenessTests(unittest.TestCase):
         self.assertNotIn("no duplicate", result.stdout)
 
 
+class DenialLogTests(unittest.TestCase):
+    """Denials were the one thing the gates do that nothing recorded, so
+    answering "how often does this fire" meant grepping transcripts - and the
+    hooks' own docstrings contain the block strings, which is how the first
+    three attempts at that question came back wrong. These assert the two
+    properties that make the log worth having: it records, and it cannot break
+    the gate it observes."""
+
+    def _deny(self, home: Path, extra_env: dict | None = None):
+        hook = ROOT / "main/claude/hooks/leaf-redispatch.py"
+        env = {**os.environ, "HOME": str(home), **(extra_env or {})}
+        return subprocess.run(
+            [sys.executable, str(hook)],
+            input=json.dumps({"tool_name": "Agent", "agent_type": "executor",
+                              "session_id": "sess-test"}),
+            capture_output=True, text=True, env=env)
+
+    def test_a_denial_is_recorded_with_enough_to_count_it(self) -> None:
+        with tempfile.TemporaryDirectory() as home:
+            result = self._deny(Path(home))
+            self.assertEqual(result.returncode, 2, result.stderr)
+            log = Path(home) / ".claude" / "telemetry" / "denials.jsonl"
+            self.assertTrue(log.exists(), "denial produced no row")
+            row = json.loads(log.read_text(encoding="utf-8").splitlines()[0])
+            # A reason code rather than prose: counting runs of denials must not
+            # depend on parsing the message a human reads.
+            self.assertEqual(row["gate"], "leaf-redispatch")
+            self.assertEqual(row["reason"], "leaf-tried-to-dispatch")
+            self.assertEqual(row["session_id"], "sess-test")
+            self.assertIn("ts", row)
+
+    def test_an_unwritable_log_still_blocks(self) -> None:
+        """The gate is fail-closed on its condition and fail-open on its
+        bookkeeping. If those ever swap, a broken telemetry directory turns
+        into a boundary that silently stops holding."""
+        with tempfile.TemporaryDirectory() as home:
+            # Occupy the telemetry path with a file so makedirs cannot create it.
+            claude = Path(home) / ".claude"
+            claude.mkdir()
+            (claude / "telemetry").write_text("not a directory", encoding="utf-8")
+            result = self._deny(Path(home))
+            self.assertEqual(result.returncode, 2,
+                             "logging failure must not turn a block into a pass")
+            self.assertIn("[leaf-redispatch] blocked", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+
+    def test_the_module_is_deployed_next_to_the_hooks_that_import_it(self) -> None:
+        # The hooks import it as a sibling, so it has to travel with them; the
+        # manifest ships the directory, and this catches a future move out of it.
+        self.assertTrue((ROOT / "main/claude/hooks/denial_log.py").exists())
+        for hook in ("leaf-redispatch.py", "runtime-guard.py",
+                     "verifier-quota.py", "commit-test-gate.py"):
+            source = (ROOT / "main/claude/hooks" / hook).read_text(encoding="utf-8")
+            with self.subTest(hook=hook):
+                self.assertIn("import denial_log", source)
+                self.assertIn("denial_log = None", source,
+                              f"{hook}: import must fall back, not raise")
+
+
 class TrapSurfaceTests(unittest.TestCase):
     """The surface declaration is what dates a trap's evidence, so it is the one
     part of the mechanism that has to be checked rather than reported. A surface
