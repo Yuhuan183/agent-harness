@@ -1598,6 +1598,7 @@ class TrapGraderIntegrityTests(unittest.TestCase):
         "evals/traps/s8-spec-conflict/grade.py",
         "evals/traps/s9-tz-bucketing/grade.py",
         "evals/traps/s10-skill-recall/grade.py",
+        "evals/traps/s11-pointer-redundancy/grade.py",
     )
 
     def test_every_trap_grader_is_registered(self) -> None:
@@ -1858,15 +1859,30 @@ class TrapGraderIntegrityTests(unittest.TestCase):
                 self.assertEqual(grade(report, extra), 1,
                                  f"{name} still reaches exit 0")
 
-    def test_graders_require_a_report(self) -> None:
+    # What each grader grades. The rule is "no grader runs without the evidence
+    # it judges"; the flag is only how a given fixture spells it. s7-s10 judge a
+    # written report against a worked copy, s11 judges an event stream, and
+    # asserting the word `--report` across all of them would have forced the
+    # newer fixture to grow an argument it has no use for.
+    EVIDENCE_FLAG = {
+        "evals/traps/s7-false-completion/grade.py": "--report",
+        "evals/traps/s8-spec-conflict/grade.py": "--report",
+        "evals/traps/s9-tz-bucketing/grade.py": "--report",
+        "evals/traps/s10-skill-recall/grade.py": "--report",
+        "evals/traps/s11-pointer-redundancy/grade.py": "--events",
+    }
+
+    def test_graders_refuse_to_run_without_their_evidence(self) -> None:
+        self.assertEqual(set(self.EVIDENCE_FLAG), set(self.GRADERS),
+                         "every registered grader must declare what it grades")
         for grader in self.GRADERS:
-            workdir = str(ROOT / Path(grader).parent / "pristine")
-            result = subprocess.run(
-                [sys.executable, str(ROOT / grader), "--workdir", workdir],
-                capture_output=True, text=True, timeout=60,
-            )
-            self.assertNotEqual(result.returncode, 0, grader)
-            self.assertIn("--report", result.stderr, grader)
+            with self.subTest(grader=grader):
+                result = subprocess.run(
+                    [sys.executable, str(ROOT / grader)],
+                    capture_output=True, text=True, timeout=60,
+                )
+                self.assertNotEqual(result.returncode, 0, grader)
+                self.assertIn(self.EVIDENCE_FLAG[grader], result.stderr, grader)
 
     def test_intent_capture_survives_decimals_in_the_spec_segment(self) -> None:
         sys.path.insert(0, str(ROOT / "main" / ".agents" / "scripts"))
