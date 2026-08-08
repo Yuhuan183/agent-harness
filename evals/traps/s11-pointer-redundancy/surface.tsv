@@ -14,6 +14,7 @@ main/claude/skills/provider-routing/SKILL.md
 main/.agents/skills/headroom-protocol/SKILL.md
 evals/traps/s11-pointer-redundancy/arms.py
 evals/traps/s11-pointer-redundancy/grade.py
+evals/traps/s11-pointer-redundancy/fixtures/build.py
 evals/traps/s11-pointer-redundancy/scenarios/h1-large-blob.md
 evals/traps/s11-pointer-redundancy/scenarios/h2-small-output.md
 evals/traps/s11-pointer-redundancy/scenarios/p1-cross-provider.md

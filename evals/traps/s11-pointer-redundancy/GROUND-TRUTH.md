@@ -76,6 +76,30 @@ that only rewarded loading would breed an agent that loads everything.
     opposite of deletion: that the contract layer carries loading that the
     description does not.
 
+## What the dry run changed (2026-08-08, before any paid run)
+
+- **Five of six scenarios named files that would not exist.** An agent with one
+  headless turn spends it discovering the file is missing, and still mentions
+  the filename — so a marker keyed on the name would have counted the derailed
+  run as valid. Fixtures are now generated into the workdir by
+  `fixtures/build.py`, deterministically from a fixed seed.
+- **Every marker was re-keyed onto something only the fixture contains** —
+  `zephyr-codec`, `render_row`, `max-line-length` — so a run that never opened
+  the artifact cannot produce one. The exception is `p1`, whose branch is a
+  routing decision rather than a file, and where echoing the prompt is
+  acceptable evidence that the run got there rather than erroring out.
+- **`h1`/`h2` needed the real Headroom MCP server.** The clause is conditional
+  on those tools existing, so under a strict empty MCP config the correct
+  behaviour in *both* arms is to not load and the cell measures nothing. Option
+  A was chosen: those two cells attach the machine's own server and therefore
+  **depend on the operator's machine**, which their result rows must say. The
+  other four keep the strict empty config.
+- Confirmed by one probe call rather than assumed: tools do run under
+  `--permission-mode manual` in `--print`, so a `Skill` call is observable; and
+  the user-level contract does reach a headless run from a scratch directory —
+  the reply came back in Traditional Chinese, which is the contract's first
+  rule and nothing else in that invocation asked for it.
+
 ## What the construct cannot support
 
 - Opportunities are **constructed**. Natural triggers for these three skills ran
