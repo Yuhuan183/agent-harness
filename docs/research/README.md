@@ -153,7 +153,7 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 | 2 | ③ | trap 結果表加指紋欄 (census `payload_sha256` 或受測角色檔的 `file_sha256`), 另加一支永遠 exit 0 的附證腳本, 列出指紋已不符出貨版本的行為結果 | 上游剛示範完這個失效 (見 [peer-harnesses.md](peer-harnesses.md) 第三個修正), 而指紋本身已經算好了 | 每一列 trap 結果的契約指紋都能從該列已有的日期加 git 還原. 成立就改交付一份查表程序, 不加欄位 |
 | 3 | ① | 常駐預算分程序/權限型與 repo 知識型兩類記帳; 後者預設可砍, 要留就得自帶本機反例 | 外部第一次給了知識型的有界證據, 而本機證據指向相反方向且兩者不衝突 - 量的不是同一種子句. 數字與限定見 [context-and-vendors.md](context-and-vendors.md) | census 顯示兩份契約裡沒有知識型子句. 成立就只寫成判定規則, 不動預算結構 |
 | 4 | ④ | 為 fail-closed gate 與 owed gate line 各補一個 negative control: 正確行為是不停下, 不升級, 不派工 | 證據是規範性的而不是實測的, 且要動 fixture. Anthropic 的 evals 指引: 只測「該做時有沒有做」會養出「什麼時候都做」的 agent, 而 trap 公約目前只覆蓋這一半. 同一份指引也提醒飽和 - s7 post-clause 已連三輪 3/3 | 現有 fixture 已有一格的通過條件是不動作 (s8 的 spec-conflict 停止是有效結果). 成立就把該格標為 negative control 補進結果表, 不新建 fixture |
-| 5 | ⑤ | 檢查五個 fail-closed gate 各自回給模型什麼, 以及有沒有連續拒絕的升級門檻 | 最可能被自己的推翻條件打掉, 而查核便宜. 兩個獨立實作收斂到 deny-and-continue 加連續拒絕升級 (見 [context-and-vendors.md](context-and-vendors.md)), 但本機沒有一筆證據顯示我們有這個失效, 甚至沒在量連續拒絕 | (預期成立) hook log 或 ledger 裡找不到同一 gate 在單一 session 內連續擋三次以上. 成立就只確認拒絕訊息說得出下一步, 不加升級機制 |
+| 5 | ⑤ | ~~檢查五個 fail-closed gate 各自回給模型什麼, 以及有沒有連續拒絕的升級門檻~~ **已查核, 見下**. 接續項: 讓拒絕可觀測 | 最可能被自己的推翻條件打掉, 而查核便宜. 兩個獨立實作收斂到 deny-and-continue 加連續拒絕升級 (見 [context-and-vendors.md](context-and-vendors.md)), 但本機沒有一筆證據顯示我們有這個失效, 甚至沒在量連續拒絕 | (預期成立) hook log 或 ledger 裡找不到同一 gate 在單一 session 內連續擋三次以上. 成立就只確認拒絕訊息說得出下一步, 不加升級機制 |
 
 #### 2026-08-08 查核結果 (方向 1, 2)
 
@@ -178,6 +178,35 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 - [`scripts/evidence-check.py`](../../scripts/evidence-check.py) 兩項都報, **永遠 exit 0**. 不做成閘: 指紋過期最常見的原因是規則變好了, 做成 fail-closed 只會讓人不再標記.
 
 現有 45 列結果**標為 unverified 而不是回填** - 它們跑在哪一版位元組上, 正是已經無法還原的那件事. 已出貨 skill 裡那個死引用已移除 (版本號是耐久錨點, 裸 SHA 不是), 其餘五個留在 append-only 決策史與本節, 因為那份檔案的規則是只追加不重寫, 而把錨點改寫成另一個沒人能查的 commit 等於把同一個錯誤再犯一次. 通用規則寫成[文件導覽規則 9](../README.md#維護規則).
+
+#### 2026-08-08 查核結果 (方向 5)
+
+**推翻條件不成立, 但成立與否不是重點 - 訊號本身不堪用.** 掃 86 份 transcript 找五個 gate 的真實拒絕:
+
+| gate | 真實拒絕數 | 說明 |
+|---|---:|---|
+| commit-test-gate | 22 | 單一 session 最長連續 5 次, 兩個 session 都到 5 |
+| runtime-guard | 2 | |
+| verifier-quota | 1 | |
+| leaf-redispatch | 0 | 從未擋過 |
+
+門檻是「連續三次以上」, 實測有兩個 5. 但**跨過門檻的幾乎全是 commit-test-gate, 而它連續擋正是機制在運作**: 套件紅 -> 修 -> 重試, 五次是正常工作不是卡住. 在這個訊號上設 3 次升級門檻, 會對著合法工作發警報. 所以結論不是「照升級那條做」, 而是**這個閾值選錯了對象**.
+
+**便宜的那一半查完, 目標狀態本來就成立.** 五個 gate 的拒絕訊息全部說得出下一步:
+
+| gate | 給模型的下一步 |
+|---|---|
+| leaf-redispatch | 把提議的派工交回 main session |
+| runtime-guard | 升級並重啟, 或改在 main session 做這次 review |
+| verifier-quota | 改在最小完整驗收邊界驗證; 真的是新 task 就用 `AGENT_ALLOW_SECOND_VERIFIER=1` |
+| commit-test-gate (三種) | 每種都先說明「這不是紅套件」或紅在哪, 再給重試路徑 |
+| githooks/pre-commit | 還原檔案, 取消 `core.hooksPath`, 或明確跳過 |
+
+換句話說 deny-and-continue 早就是現況, 只是沒被寫下來過.
+
+**真正的缺口是另一件事: 沒有任何一個 gate 記錄自己的拒絕.** 上面這張表是從 transcript 考古出來的, 而且前三次都測錯 - 最初一輪 146 筆「命中」全是**讀 hook 原始碼**的檔案內容, hook 自己的 docstring 裡就有 `commit blocked` 這個字串. 這代表「我們的閘多常擋人, 擋在誰身上」目前不是一個查得到的問題. `delegation.jsonl` 記派工的 start/stop, 沒有對應的拒絕紀錄.
+
+所以方向 5 的交付改成一條新的待查項: **先讓拒絕可觀測, 再談要不要升級門檻**. 順序理由與 lifecycle replay 同源 - 沒有判準就先開跑, 產出的是撤不回的數字.
 
 ### 明確不做的事
 
