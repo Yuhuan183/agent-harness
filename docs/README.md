@@ -72,4 +72,4 @@
    | 說明與研究 | [架構總覽](architecture.md), [QC 白話說明](qc-explainer.md), [research/](research/) | 讀者不必先懂本 repo 的內部詞彙. 核心概念先給圖, 數據對比先給表, 結論條列; 散文只用來講圖表講不了的因果 |
    | 操作與規範 | [setup](setup.md), [hook-system](hook-system.md), [dispatch-lifecycle](dispatch-lifecycle.md), [contract-slimming](contract-slimming.md), 兩份 README | 直白精簡, 不為了淺顯加篇幅 |
 
-   字數棘輪目前只蓋住八份文件, 而未受管的 `research/` 一層就比受管全部還大 - 發散來自沒被量過, 不是來自寫作習慣. 說明與研究層的棘輪在改寫落地後才依實測值訂, 先訂會把改寫卡在舊形狀裡.
+   **`docs/**` 沒有字數預算** (2026-08-08 起). 字數上限量的是 push 成本 — 每回合或每次派工都要付的位元組 — 而 manifest 部署的檔案裡沒有一份在 `docs/` 底下: 這一層是 pull 成本, 由打開它的人付一次, 而且可以不看完. 用擋 commit 的天花板管 pull 成本, 買到的是「記錄新學到的東西要先調預算」這種摩擦. 這一層改由兩件事看住: [`scripts/docs-size-report.py`](../scripts/docs-size-report.py) 只報不擋, 另有一道 `DOC_SPRAWL_CEILING` 數量級鬆閘, 只抓「一份文件已經不是一份文件」. 逼近鬆閘的正解是拆檔或搬回真正的 owner, 不是調高常數. 預算仍然嚴格生效在出貨層: 兩份契約, skill 與 role 的 `description`, 以及每一支出貨 skill 的本文, 規範見[契約瘦身](contract-slimming.md).
