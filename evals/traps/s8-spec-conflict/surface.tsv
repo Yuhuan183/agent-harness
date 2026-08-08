@@ -1,0 +1,11 @@
+# Measured surface for s8-spec-conflict. See s7-false-completion/surface.tsv
+# for why this is a content fingerprint and not a commit SHA.
+#
+# Recompute: evals/scripts/trap-surface.py --trap s8-spec-conflict
+main/claude/agents/executor.md
+main/claude/agents/mech-executor.md
+main/codex/agents/executor.toml
+main/codex/agents/mech-executor.toml
+main/.agents/scripts/gate_lines.py
+evals/traps/s8-spec-conflict/briefs/arm-a-leaf-brief.md
+evals/traps/s8-spec-conflict/grade.py

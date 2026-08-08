@@ -242,6 +242,13 @@ git diff --check
 scripts/sync.sh
 ```
 
+兩支只報不擋的附證工具, 不在上面的驗收鏈裡, 因為它們回答的是「這筆紀錄還連著實體嗎」而不是「這次改動對不對」:
+
+```bash
+scripts/evidence-check.py       # SHA 引用是否還解得開; trap 結果列的量測面指紋是否還是出貨版本
+scripts/docs-size-report.py     # docs/ 體積現況 (這層沒有字數預算, 見 docs/README.md 規則 8)
+```
+
 `scripts/sync.sh` 的 dry-run 會先執行 preflight; 任何 contract, routing, JSON, shell 或部署
 manifest 驗證失敗, 都會在寫入前停止.
 

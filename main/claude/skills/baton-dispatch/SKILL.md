@@ -8,7 +8,7 @@ description: |
 
 # Baton Dispatch
 
-Apply the resident dispatch brake, then choose the smallest reliable shape. This skill owns dispatch shape, grouping, briefs, collection, QC, and fixed records. It does not choose a provider/model or decide verifier eligibility; load `provider-routing` for those decisions. This is a local distillation of cablate/baton v0.1.1 plus scope fix `0ab4d2e`.
+Apply the resident dispatch brake, then choose the smallest reliable shape. This skill owns dispatch shape, grouping, briefs, collection, QC, and fixed records. It does not choose a provider/model or decide verifier eligibility; load `provider-routing` for those decisions. This is a local distillation of cablate/baton v0.1.1 plus a scope fix.
 
 ## Cost test
 

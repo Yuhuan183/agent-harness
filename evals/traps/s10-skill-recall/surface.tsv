@@ -1,0 +1,16 @@
+# Measured surface for s10-skill-recall. See s7-false-completion/surface.tsv
+# for why this is a content fingerprint and not a commit SHA.
+#
+# This trap measures descriptions, which live in each SKILL.md frontmatter, so
+# the whole file is fingerprinted: a body edit that leaves the description
+# untouched produces a stale warning, which is the safe direction.
+#
+# Recompute: evals/scripts/trap-surface.py --trap s10-skill-recall
+main/claude/skills/baton-dispatch/SKILL.md
+main/claude/skills/provider-routing/SKILL.md
+main/.agents/skills/experience-ledger/SKILL.md
+main/.agents/skills/headroom-protocol/SKILL.md
+main/.agents/skills/speak-human-tw/SKILL.md
+main/.agents/skills/task-observer/SKILL.md
+evals/traps/s10-skill-recall/briefs/arm-a-leaf-brief.md
+evals/traps/s10-skill-recall/grade.py
