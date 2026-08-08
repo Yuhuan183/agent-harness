@@ -65,6 +65,11 @@ import os
 import sys
 from contextlib import contextmanager
 
+try:  # Observability must never be able to break the boundary it observes.
+    import denial_log
+except Exception:  # noqa: BLE001
+    denial_log = None
+
 STATE = os.path.expanduser("~/.claude/telemetry/.verifier-quota.json")
 OUTCOME_VERIFIERS = ("verifier",)
 # Bookkeeping that is not a spent quota. The session prune below drops it along
@@ -159,6 +164,9 @@ def main() -> int:
                 "instead of stacking gates. If this really is a new top-level "
                 "task, re-dispatch with AGENT_ALLOW_SECOND_VERIFIER=1.",
                 file=sys.stderr)
+            if denial_log is not None:
+                denial_log.record("verifier-quota", "second-outcome-verifier",
+                                  payload, already_spent=str(spent[key]))
             return 2
 
         spent[key] = payload.get("tool_use_id") or "dispatched"
