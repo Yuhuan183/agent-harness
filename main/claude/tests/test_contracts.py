@@ -1253,206 +1253,34 @@ class DocumentationBudgetTests(unittest.TestCase):
             self.assertIn(exclusion, frontmatter_text,
                           f"lost exclusion: {exclusion}")
 
-    def test_docs_stay_distilled(self) -> None:
+    def test_deployed_prose_stays_distilled(self) -> None:
         # Word budgets, not line budgets — a line count is gameable by long
-        # lines; words track resident attention cost. Raising a budget is a
-        # deliberate decision, not a mechanical bump.
+        # lines; words track attention cost. Raising a budget is a deliberate
+        # decision, not a mechanical bump.
         # Units are word_count() words: one per CJK character, one per other
         # non-space run — zh-TW prose pays the same attention tax as English.
-        # The five `(2026-08-04)` bumps below are that unit moving, not content
-        # arriving: the half-width sweep puts a space where `、` used to glue
-        # ASCII terms together, so `Claude、Codex` counts two runs where it
-        # counted one. Each ceiling moved by its own measured delta and keeps
-        # the ~1% headroom its ratchet had before; nothing else was relaxed.
+        #
+        # Scope narrowed 2026-08-08, from every markdown file to the fifteen the
+        # manifest ships. A word ceiling is an instrument for *push* cost: bytes
+        # a session pays for whether or not anyone wanted them, on every turn
+        # (the two contracts) or on every dispatch (the skills). `docs/` is
+        # *pull* cost — paid once, by a reader who asked, who can stop. The
+        # dropped nineteen were never the expensive layer: none of them deploys,
+        # and the manifest ships nothing under `docs/` at all.
+        #
+        # The 2026-08-07 comment that extended the ratchet to `docs/research/`
+        # argued coverage symmetry (the unmeasured tier outweighed the measured
+        # one), which is an argument about measurement, not about attention. It
+        # bought a real cost: recording upstream evidence on 2026-08-08 required
+        # three ceiling raises and three justification comments before the
+        # evidence could land. Taxing the act of writing down what we learned is
+        # the wrong place to spend a guardrail. Sprawl in the human tree is now
+        # a report plus an order-of-magnitude guard, both below.
+        #
+        # The dropped entries' rationale is not lost; it is in git, attached to
+        # the changes it explains. What it is no longer doing is gating a commit.
         budgets = {
             ".claude/CLAUDE.contract.md": RESIDENT_CONTRACT_BUDGETS["claude"].words,
-            # Root README owns the complete architecture overview and diagrams;
-            # operational/research detail remains linked in docs/.
-            # +30 (2026-07-25): alias generation check added to the mechanisms
-            # table — a new guardrail belongs in that inventory, and the row is
-            # already at the terseness of its neighbours.
-            # +90 (2026-07-26): the accurate fail-closed gate set (four bounded
-            # gates, not two) plus the architecture and hook-system pointers. A
-            # guardrail the index does not list is a guardrail nobody verifies.
-            # +15 (2026-07-29): the verifier-quota row said the gate refuses a
-            # second verifier per task; it refuses one per prompt. The index
-            # naming a stronger guarantee than the mechanism has is worse than
-            # the words it saves.
-            # +45 (2026-07-29): the commit-gate row claimed the gate resolves
-            # every repo a command targets and stopped there. A limit that is
-            # not written down reads as a guarantee, so the row now names the
-            # class only the Git argv boundary can catch.
-            # +40 (2026-07-30): a review reproduced `git -c core.hooksPath=...`
-            # inside a wrapper, which no client-side hook survives. The row now
-            # names that residue and the layer that closes it; the fifth gate
-            # is also counted where the four were listed.
-            # +90 (2026-08-04): half-width sweep, unit only (2534 -> 2625).
-            "README.md": 2650,
-            # +80 (2026-07-26): navigation and responsibility rows for the
-            # dispatch-lifecycle doc. A navigation surface has to grow when the
-            # thing it navigates to appears, or it stops being complete.
-            # +60 (2026-07-26): the language-layering rule and its one
-            # exception. An unstated convention cannot distinguish a
-            # deliberate exception from drift, which is what a reviewer found.
-            # +55 (2026-07-26): navigation and responsibility rows for the
-            # hook-system concept doc.
-            # +70 (2026-07-26): navigation and responsibility rows for the
-            # top-down architecture overview, now the recommended entry point.
-            # +20 (2026-07-26): nav row for the Fable 5 fallback research doc.
-            # +100 (2026-07-28): the punctuation rule. Rule 6 fixed which
-            # *language* each layer writes in but left the width of the marks
-            # unstated, and the repo drifted into both conventions (481
-            # half-width vs 1695 full-width CJK-adjacent marks). One stated
-            # convention is what lets a reviewer call a mixed file drift
-            # instead of taste.
-            # +20 (2026-08-04): nav row for "what do we do next", the one
-            # reading purpose the table did not route. It first pointed at a
-            # standalone upgrade-directions doc; that doc was folded into the
-            # research summary the same day, so the row now targets the
-            # section. Same width, one less file to keep in sync.
-            # +50 (2026-08-04): half-width sweep, unit only (1045 -> 1095).
-            # +75 (2026-08-04): rule 7 said the conversion was gradual and
-            # commit-free. The sweep ran, so the rule now states the four
-            # places that stay full-width and why each is exempt — a rule
-            # describing a migration that already finished misleads the next
-            # writer about what to do with new text.
-            # +30 (2026-08-04): a fifth exempt place. The sweep's own residual
-            # scan surfaced regex character classes and assertions that quote
-            # exempt text — full-width marks that are data being matched, not
-            # prose. Four categories left a scanner calling those drift and a
-            # writer "fixing" them into broken matchers.
-            # +290 (2026-08-07): rule 8, reader tiers and presentation. Rules 6
-            # and 7 fixed the language and the punctuation of each layer and
-            # stopped there, so "how plain, and plain for whom" stayed taste -
-            # which is why a reader asking for it had no rule to point at. The
-            # rule costs a table because the answer differs by tier: explainers
-            # and research owe a diagram or a table before prose, operations
-            # docs owe brevity instead. It also records the measurement that
-            # motivated it - the ratchet covers eight documents while the
-            # unmeasured `research/` layer alone outweighs all of them, so
-            # sprawl is a coverage gap rather than a writing habit.
-            "docs/README.md": 1500,
-            # The rest of the human tree, ratcheted 2026-08-07 at measured + 2%
-            # once rule 8's rewrite had landed. Setting these first would have
-            # pinned the documents in the shape the rewrite was meant to change,
-            # which is why rule 8 says the tier is ratcheted after and not
-            # before. What made it necessary: the eight documents above held
-            # ~16,000 words under budget while these eleven held ~35,000 with
-            # nothing counting them, and the largest single file was twice the
-            # size of anything measured. Sprawl was a coverage gap.
-            "docs/setup.md": 2600,
-            "docs/contract-slimming.md": 3035,
-            "docs/qc-explainer.md": 1610,
-            "docs/research/README.md": 3650,
-            "docs/research/model-evidence.md": 7020,
-            "docs/research/trap-experiments.md": 4640,
-            "docs/research/resident-context-options.md": 3870,
-            "docs/research/peer-harnesses.md": 3075,
-            "docs/research/context-and-vendors.md": 3075,
-            "docs/research/local-experiments.md": 1300,
-            "docs/research/lifecycle-replay.md": 1160,
-            # Verification entry point for dispatch state and route evidence.
-            # Cheaper here than in the resident contracts or the two skills it
-            # ties together, both of which sit within ten words of their own
-            # ceilings.
-            # +250 (2026-07-28): readiness-unit state and live-discovery
-            # ownership now have a verification entry point outside prompts.
-            # +130 (2026-07-29): route attestation is now two paths, not one.
-            # The Claude side gained its own evidence chain, and the tier list
-            # gained the rule that decides which tiers move a route — the part
-            # a reader needs before trusting any of the numbers downstream.
-            # +10 (2026-07-29): what a real per-task quota would need (a stable
-            # task id in the payload) and why there isn't one. A disclosed gap
-            # that does not say what would close it reads as an oversight.
-            # +260 (2026-07-30): the state table promised a carrier for every
-            # state, but native Codex had none for launched or collected — a
-            # forgotten outcome there was undetectable, and the omissions skew
-            # toward the hard dispatches. The section names the carrier, the
-            # commands, and what a dispatcher-written wrapper still cannot
-            # close; the last part is why it is prose and not one table cell.
-            # +60 (2026-08-04): half-width sweep, unit only (2300 -> 2341).
-            "docs/dispatch-lifecycle.md": 2360,
-            # The hook-system concept doc: fail-open/fail-closed semantics, the
-            # per-event inventory, and why each gate is trustworthy. The
-            # guardrail table in the README pointed at individual hooks but no
-            # doc explained the system as a whole.
-            # +100 (2026-07-29): the commit-gate row described how the text is
-            # matched but not which repo the match is checked against, nor that
-            # a program can commit with the word nowhere in the command. Both
-            # are what a reader needs to know when the gate stays silent.
-            # +200 (2026-07-29): the git-side pre-commit gate — its own row, and
-            # what the two boundaries do and do not each cover. A second gate
-            # documented only in the first one's caveat is a gate readers will
-            # attribute the wrong guarantee to.
-            # +130 (2026-07-30): the paragraph naming what a client-side gate
-            # cannot close (`--no-verify`, `-c core.hooksPath=...`,
-            # `commit-tree`, all hidable in a wrapper) and where it is closed
-            # instead, plus what the installer does when another tool already
-            # owns core.hooksPath. Both were reproduced by review before the
-            # prose claimed otherwise.
-            # +170 (2026-08-03): the two failure kinds were never distinguished.
-            # This doc defines fail-open as "放行 when the hook itself breaks"
-            # and fail-closed as "攔 when the condition holds", then sorted every
-            # gate by the second while readers took the first as implied.
-            # `verifier-quota` is the one that is only the second — an unwritable
-            # state directory lets two verifiers through, reproduced by probe —
-            # so the distinction, the row disclosure, and the corrected
-            # commit-gate copy count all had to land. A doc that classifies
-            # guardrails owes the axis it classifies on.
-                # +80 (2026-08-04): half-width sweep, unit only (1897 -> 1959).
-            # +90 (2026-08-05): two scope disclosures the classification owed.
-            # The commit-gate row required a nameable target without saying what
-            # names one, while `cd /repo; git commit` resolved to `/repo;` and
-            # passed; the verifier-quota row read as a per-task budget when the
-            # quota only counts Claude's `verifier` spelling, never the Codex
-            # bridge these same docs route executable verdicts to. Both were
-            # reproduced before the prose moved. Nothing in the row was
-            # displaceable: its four spelling examples map one-to-one onto the
-            # four copies the gate compares (1959 -> 2046).
-            # +40 (2026-08-07): two more target-naming forms the gate had to
-            # start reading (`cd -- <repo>`, `GIT_DIR=`), paid for inside the
-            # row by merging its two operand examples and moving the OLDPWD
-            # residue to the module docstring; plus the throttle handle on the
-            # weekly-integrity row. That row said "每週一次" and stopped, which
-            # is the period without the consequence: a check that says nothing
-            # because it ran two days ago reads exactly like a clean bill of
-            # health, and the operator asking "did my deploy get checked?" had
-            # no way to tell the two apart or to force the answer. Naming the
-            # stamp is the whole remedy and it does not fit in six words
-            # (2046 -> 2110).
-            "docs/hook-system.md": 2110,
-            # Top-down architecture spine: one diagram then a concise walk
-            # through every layer, each pointing at its specialized doc. The
-            # connective narrative the README (a repo landing page) and the
-            # per-topic docs each lacked.
-            "docs/architecture.md": 2000,
-            # How to avoid Anthropic's Fable 5 -> Opus safety fallback while on
-            # a Fable main session: dispatch flagging work to Opus-immune
-            # leaves, keep main context clean, and turn auto-switch off as the
-            # observable safety net. Distinct from the repo's own cross-provider
-            # fallback, which the doc disambiguates.
-            # +440 (2026-07-26): design notes for four unimplemented directions
-            # (heuristic hook, payoff codification, routing disambiguation,
-            # main-session audit gap), recorded with approach/principle/open-
-            # questions for later evaluation rather than built now.
-            "docs/fable-5-fallback.md": 2000,
-            # +100 (2026-07-23): behavioral trap-eval method section added.
-            # +310 (2026-07-26): both vendors published context-engineering
-            # guidance in the same week and both name rule *contradiction* as a
-            # failure mode distinct from dilution — the playbook had only the
-            # dilution half. Everything that could be moved out was: the numbers,
-            # the source-by-source comparison, and the repo audit live in the
-            # research doc, and the repo-specific tool-description caveat lives
-            # in contract-slimming's placement table. What is left is 13 lines of
-            # reusable rule with no home elsewhere.
-            # +90 (2026-08-04): half-width sweep, unit only (2760 -> 2829).
-            "docs/harness-engineering.md": 2850,
-            # +30 (2026-07-28): the deferred punctuation sweep as an open item.
-            # A user-approved-but-deprioritized decision that lives only in a
-            # chat log is indistinguishable from one nobody made.
-            # +50 (2026-07-28): current-state rows for v1.3.4 readiness,
-            # discovery ownership, prompt census, and deferred mech evidence.
-            ".claude/plans/orchestration-plan.md": 1380,
             # -50 (2026-07-26): route resolution, priority selection, and
             # unavailability reporting moved to the on-demand `leaf-dispatch`,
             # where the invocation mechanics already lived. The ceiling drops
@@ -1538,22 +1366,16 @@ class DocumentationBudgetTests(unittest.TestCase):
             deployed_skill_files(),
             "every deployed skill is budgeted or the ceiling is back to being "
             "whatever someone remembered to list")
-        # Same rule for the human tree, and it is here because the omission was
-        # real rather than hypothetical: until 2026-08-07 this dict listed eight
-        # documents and the rest of `docs/` was simply never counted, which is
-        # how the unmeasured half came to outweigh the measured one. A ceiling
-        # that covers whatever someone remembered to list is not a ratchet.
-        # `document-audit-*.md` is exempt by name: it is a dated record of one
-        # audit, not guidance that can drift, and it is never edited again.
-        documented = {
-            path.relative_to(ROOT).as_posix()
-            for path in (ROOT / "docs").rglob("*.md")
-            if not path.name.startswith("document-audit-")
-        }
-        self.assertEqual(
-            documented - {p for p in budgets if p.startswith("docs/")}, set(),
-            "a doc under docs/ has no word budget; add one at measured + 2% "
-            "(docs/README.md rule 8) so the tier stays ratcheted")
+        # The scope rule, asserted rather than trusted to the reader. Without it
+        # the dict drifts back to covering whatever someone remembered to list,
+        # which is how a bundle file that ships nowhere
+        # (`main/claude/plans/orchestration-plan.md`) came to carry a ceiling
+        # that gated commits for two weeks.
+        for path in budgets:
+            self.assertTrue(
+                is_deployed(path),
+                f"{path}: budgeted but the manifest does not ship it, so no "
+                "session pays for it; budgets bind on push cost only")
         for path, limit in budgets.items():
             self.assertLessEqual(word_count(read(path)), limit, path)
 
@@ -1581,6 +1403,29 @@ class DocumentationBudgetTests(unittest.TestCase):
                 ratio, MAX_BYTES_PER_WORD,
                 f"{path}: {ratio:.1f} bytes per word against a {limit}-word "
                 "budget; the words are not what this file actually costs")
+
+    def test_the_human_tree_has_a_sprawl_guard_not_a_budget(self) -> None:
+        # Deliberately not a budget. No per-file ceiling, no raise per edit, no
+        # justification comment for ordinary growth: `docs/` is pull cost, and
+        # a reader who opens a long document chose to. What this catches is the
+        # one failure a reader cannot choose their way out of — a document that
+        # has stopped being a document — and it sits an order of magnitude
+        # above anything the tree has ever held (largest today:
+        # docs/research/model-evidence.md, ~6.9K words).
+        #
+        # The shape is borrowed from MAX_BYTES_PER_WORD, whose own comment says
+        # a guard like this "must never become a second, tighter word budget".
+        # If a file approaches this number the answer is to split it or move
+        # content to its real owner, never to raise the constant. Sizes are
+        # reported, not asserted, by `scripts/docs-size-report.py`.
+        for path in sorted((ROOT / "docs").rglob("*.md")):
+            relative = path.relative_to(ROOT).as_posix()
+            words = word_count(path.read_text(encoding="utf-8"))
+            self.assertLess(
+                words, DOC_SPRAWL_CEILING,
+                f"{relative}: {words} words. This is not a budget overrun, it "
+                "is a document that outgrew its single responsibility - split "
+                "it or move sections to the doc that owns them")
 
     def test_human_docs_stay_half_width(self) -> None:
         """The sweep was a commit; without this it is not a rule.

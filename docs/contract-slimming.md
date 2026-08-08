@@ -44,6 +44,11 @@
 
 ## 預算與強制
 
+- **預算只綁在出貨層** (2026-08-08 起): 判準是 `scripts/deployment-manifest.tsv`
+  有沒有部署它, 不是路徑長什麼樣. 理由是字數上限量的是 push 成本 — 每回合 (兩份
+  契約) 或每次派工 (skills) 都要付的位元組. 不部署的檔案沒有 session 在付,
+  `docs/**` 因此改由「只報不擋的體積報告 + 數量級鬆閘」看住, 見
+  [文件導覽規則 8](README.md#維護規則).
 - 預算以 `word_count` (CJK-aware, 每個 CJK 字元計一詞) 計, 行數不可作為預算單位
   (長行可規避). 現行數值的唯一真相源是
   [test_contracts.py](../main/claude/tests/test_contracts.py) 的 `DocumentationBudgetTests`;

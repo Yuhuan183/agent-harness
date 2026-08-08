@@ -121,12 +121,32 @@ def read(path: str) -> str:
     verbatim. Those links must therefore resolve identically in the repo and in
     `$HOME`; renaming the shared root here would deploy 13 broken links.
     """
+    return (ROOT / source_path(path)).read_text(encoding="utf-8")
+
+
+def source_path(path: str) -> Path:
+    """The repo-relative source behind a deployed (HOME-relative) spelling."""
     source = Path(path)
     if source.parts and source.parts[0] in {".claude", ".codex"}:
-        source = Path("main") / source.parts[0].lstrip(".") / Path(*source.parts[1:])
-    elif source.parts and source.parts[0] == ".agents":
-        source = Path("main") / source
-    return (ROOT / source).read_text(encoding="utf-8")
+        return Path("main") / source.parts[0].lstrip(".") / Path(*source.parts[1:])
+    if source.parts and source.parts[0] == ".agents":
+        return Path("main") / source
+    return source
+
+
+def is_deployed(path: str) -> bool:
+    """Whether the manifest ships `path`, directly or under a directory entry.
+
+    This is the test for "does a session ever pay for this file". The manifest
+    is the repo's only source->HOME mapping, so it is also the only answer that
+    cannot drift from what actually deploys. A `.claude/` spelling is not
+    sufficient on its own: `main/claude/plans/` lives in the bundle but ships
+    nowhere.
+    """
+    posix = source_path(path).as_posix()
+    return any(
+        posix == source or posix.startswith(source.rstrip("/") + "/")
+        for source, _ in deployment_manifest())
 
 
 def deployment_manifest() -> list[tuple[str, str]]:
@@ -239,6 +259,13 @@ MAX_UNBROKEN_RUN = 200
 # 8.6 bytes/word, so this is set to catch an order-of-magnitude deviation and
 # nothing else - it must never become a second, tighter word budget.
 MAX_BYTES_PER_WORD = 16
+
+# Order-of-magnitude guard for the repo-only `docs/` tree, which carries no word
+# budget (see test_deployed_prose_stays_distilled for why). Set at roughly 3x
+# the largest document the tree has ever held, so that ordinary growth and an
+# ordinary rewrite both pass and only a file that has stopped being one document
+# fails. It is not a budget and must not be tuned toward one.
+DOC_SPRAWL_CEILING = 20000
 
 
 # Density companions to the word ceilings. A word cap bounds how large a
