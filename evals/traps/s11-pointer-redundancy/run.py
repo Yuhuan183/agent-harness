@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -72,16 +73,27 @@ def check_no_drift() -> None:
             "unexpected state would make that drift permanent.")
 
 
-def claude(prompt: str, workdir: Path) -> tuple[int, str]:
+def claude(prompt: str, workdir: Path, mcp: str | None = None) -> tuple[int, str]:
     """One headless turn, outside any project so no project CLAUDE.md leaks in."""
     argv = [
         "claude", "--print", prompt,
         "--output-format", "stream-json", "--verbose",
-        # The machine's own hooks and MCP servers are not part of this construct.
+        # The machine's own hooks are not part of this construct.
         "--settings", json.dumps({"hooks": {}}),
-        "--strict-mcp-config",
         "--permission-mode", "manual",
     ]
+    if mcp:
+        # Option A, chosen 2026-08-08. The `headroom-protocol` clause is
+        # conditional on Headroom MCP tools existing, so under a strict empty
+        # MCP config the correct behaviour in *both* arms is to not load, and
+        # the cell measures nothing. Attaching the real server is the only way
+        # to reproduce the trigger, and it costs the isolation that
+        # `rung-run.py` established as worth having: these rows depend on the
+        # operator's machine, and rows say so. Cells that do not need it keep
+        # the strict empty config.
+        argv += ["--mcp-config", mcp]
+    else:
+        argv += ["--strict-mcp-config"]
     env = {**os.environ}
     env.pop("ANTHROPIC_BASE_URL", None)
     done = subprocess.run(argv, cwd=workdir, capture_output=True, text=True,
@@ -94,6 +106,38 @@ PROBE = (
     "global working contract contain an explicit instruction to load a skill "
     "named `{clause}`?"
 )
+
+
+def build_fixture(scenario_stem: str, workdir: Path) -> list[str]:
+    spec = importlib.util.spec_from_file_location(
+        "s11_fixtures", HERE / "fixtures" / "build.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.build(scenario_stem, workdir)
+
+
+def mcp_config_for(scenario_text: str) -> str | None:
+    """The path to an MCP config when a scenario declares it needs one.
+
+    Written out fresh from the machine's own `~/.claude.json` entry rather than
+    kept in the repo: an MCP server definition can carry a local path or a
+    token, and neither belongs in a fixture.
+    """
+    match = re.search(r"^needs_mcp:\s*(\S+)", scenario_text, re.M)
+    if not match:
+        return None
+    server = match.group(1)
+    source = json.loads((Path.home() / ".claude.json").read_text(encoding="utf-8"))
+    entry = (source.get("mcpServers") or {}).get(server)
+    if entry is None:
+        raise SystemExit(
+            f"scenario needs the {server!r} MCP server and this machine has no "
+            "such entry; the cell cannot reproduce its own trigger condition")
+    handle = tempfile.NamedTemporaryFile(
+        "w", suffix=".json", prefix="s11-mcp-", delete=False, encoding="utf-8")
+    json.dump({"mcpServers": {server: entry}}, handle)
+    handle.close()
+    return handle.name
 
 
 def preflight(clause: str, arm: str, workdir: Path) -> bool:
@@ -132,9 +176,16 @@ def run_arm(clause: str, arm: str, scenario: Path | None, out: Path | None,
                 return 2
             if scenario is None:
                 return 0
-            body = re.sub(r"\A---\n.*?\n---\n", "",
-                          scenario.read_text(encoding="utf-8"), flags=re.S)
-            code, stdout = claude(body.strip(), workdir)
+            text = scenario.read_text(encoding="utf-8")
+            body = re.sub(r"\A---\n.*?\n---\n", "", text, flags=re.S)
+            # The files the scenario talks about have to be there. Without them
+            # the agent spends its one turn discovering they are missing, which
+            # is not the branch under test (dry run, 2026-08-08).
+            built = build_fixture(scenario.stem, workdir)
+            if built:
+                print(f"fixture: {', '.join(built)}", file=sys.stderr)
+            mcp = mcp_config_for(text)
+            code, stdout = claude(body.strip(), workdir, mcp)
             if out:
                 out.parent.mkdir(parents=True, exist_ok=True)
                 out.write_text(stdout, encoding="utf-8")
