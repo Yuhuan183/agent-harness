@@ -151,7 +151,7 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 |---|---|---|---|---|
 | 1 | ② | 在研究層與導覽寫下優先權現實: 常駐契約拿不到強制力, 只拿得到權重, 可靠路徑是使用者顯式叫用. 不新增常駐規則 | 三個獨立來源同指一事而成本只有文件. 兩個外部來源見 [context-and-vendors.md](context-and-vendors.md); 第三個是本機實例 - 本次工作階段的 client 指令 `Do not call the AgentTool unless the user requested it` 讓契約的 orchestration 整段不可執行, 而契約沒有任何條款蓋得過它 | 找得到一個 session, client 指令與契約直接衝突而契約仍勝出. 成立就只保留 user-context 這個事實, 不寫優先權結論 |
 | 2 | ③ | trap 結果表加指紋欄 (census `payload_sha256` 或受測角色檔的 `file_sha256`), 另加一支永遠 exit 0 的附證腳本, 列出指紋已不符出貨版本的行為結果 | 上游剛示範完這個失效 (見 [peer-harnesses.md](peer-harnesses.md) 第三個修正), 而指紋本身已經算好了 | 每一列 trap 結果的契約指紋都能從該列已有的日期加 git 還原. 成立就改交付一份查表程序, 不加欄位 |
-| 3 | ① | 常駐預算分程序/權限型與 repo 知識型兩類記帳; 後者預設可砍, 要留就得自帶本機反例 | 外部第一次給了知識型的有界證據, 而本機證據指向相反方向且兩者不衝突 - 量的不是同一種子句. 數字與限定見 [context-and-vendors.md](context-and-vendors.md) | census 顯示兩份契約裡沒有知識型子句. 成立就只寫成判定規則, 不動預算結構 |
+| 3 | ① | ~~常駐預算分程序/權限型與 repo 知識型兩類記帳~~ **已查核, 改成三分, 見下**. 接續項: 指標型重複的 A/B | 外部第一次給了知識型的有界證據, 而本機證據指向相反方向且兩者不衝突 - 量的不是同一種子句. 數字與限定見 [context-and-vendors.md](context-and-vendors.md) | census 顯示兩份契約裡沒有知識型子句. 成立就只寫成判定規則, 不動預算結構 |
 | 4 | ④ | 為 fail-closed gate 與 owed gate line 各補一個 negative control: 正確行為是不停下, 不升級, 不派工 | 證據是規範性的而不是實測的, 且要動 fixture. Anthropic 的 evals 指引: 只測「該做時有沒有做」會養出「什麼時候都做」的 agent, 而 trap 公約目前只覆蓋這一半. 同一份指引也提醒飽和 - s7 post-clause 已連三輪 3/3 | 現有 fixture 已有一格的通過條件是不動作 (s8 的 spec-conflict 停止是有效結果). 成立就把該格標為 negative control 補進結果表, 不新建 fixture |
 | 5 | ⑤ | ~~檢查五個 fail-closed gate 各自回給模型什麼, 以及有沒有連續拒絕的升級門檻~~ **已查核, 見下**. 接續項: 讓拒絕可觀測 | 最可能被自己的推翻條件打掉, 而查核便宜. 兩個獨立實作收斂到 deny-and-continue 加連續拒絕升級 (見 [context-and-vendors.md](context-and-vendors.md)), 但本機沒有一筆證據顯示我們有這個失效, 甚至沒在量連續拒絕 | (預期成立) hook log 或 ledger 裡找不到同一 gate 在單一 session 內連續擋三次以上. 成立就只確認拒絕訊息說得出下一步, 不加升級機制 |
 
@@ -178,6 +178,35 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 - [`scripts/evidence-check.py`](../../scripts/evidence-check.py) 兩項都報, **永遠 exit 0**. 不做成閘: 指紋過期最常見的原因是規則變好了, 做成 fail-closed 只會讓人不再標記.
 
 現有 45 列結果**標為 unverified 而不是回填** - 它們跑在哪一版位元組上, 正是已經無法還原的那件事. 已出貨 skill 裡那個死引用已移除 (版本號是耐久錨點, 裸 SHA 不是), 其餘五個留在 append-only 決策史與本節, 因為那份檔案的規則是只追加不重寫, 而把錨點改寫成另一個沒人能查的 commit 等於把同一個錯誤再犯一次. 通用規則寫成[文件導覽規則 9](../README.md#維護規則).
+
+#### 2026-08-08 查核結果 (方向 3)
+
+**成立, 但理由不同 - 兩分法本身是錯的.** 逐條攤開兩份契約共 32 個子句單位:
+
+| 類型 | 數 | 例 |
+|---|---:|---|
+| 程序/權限 | 23 | 直接執行為預設, 最窄驗證, 一個 artifact 一個 owner |
+| **指標** (指出某個政策住在哪) | 5 | 「load `provider-routing`」「load `headroom-protocol`」 |
+| **環境陷阱** (讀 repo 讀不出來的行為) | 3 | rtk 改寫後可能拒絕 flag 卻仍回報 `0 matches`; `agents.max_depth = 1` |
+| 能力邊界宣告 | 1 | 使用者擁有 Codex model/effort, 本 bundle 不代選 |
+| **可由讀 repo 得知的事實** | **0** | - |
+
+推翻條件寫的是「沒有知識型子句」, 字面上不成立 - 但**存在的知識型子句沒有一條是外部研究測的那一種**. arXiv 2607.27250 測的是 repo 事實寫進 `AGENTS.md`, 而那一格我們是零. 兩份契約已經符合 Anthropic 的建議: 把 token 花在陷阱上, 不寫模型翻一下 repo 就知道的事.
+
+所以真正的產出不是「砍知識型」, 而是**把兩分法改成三分, 並且指出只有一格是修剪候選**:
+
+- **環境陷阱不可砍.** 有人拿 2607.27250 的結論來砍「知識型」, 第一個被砍的就是 RTK 那條 - 而它恰恰是本 repo 唯一有本機事故背書的子句 (改寫後的命令回報 `0 matches`, 而結論被記了下來).
+- **指標型是唯一的修剪候選, 而且量得出重複.** 三條指標與它們自己的 skill description 幾乎逐字重疊, 兩者都常駐:
+
+  | 契約寫 | 該 skill 的 description 已經寫 |
+  |---|---|
+  | Cross-provider dispatch, H/X profiles, GPT↔Claude fallback, security routing, verifier triggers | Cross-provider routing — H/X profiles, GPT↔Claude fallback, ..., security routing, verifier triggers |
+  | Load `headroom-protocol` only when Headroom MCP tools exist and an unusually large read-only blob repays | Compress an unusually large read-only blob when Headroom MCP tools exist |
+  | `baton-dispatch` owns dispatch shape, batching, fixed record formats, QC | it owns briefs, ownership, batching, collection, QC, and the fixed record formats |
+
+  這正是 OpenAI 指引點名的形狀: 同一個政策只放一處, 每條只講一次. 常駐層目前為同一組事實付兩次錢.
+
+**但不因此就刪.** description 與契約的效力不同 - 方向 1 已經指出契約只拿得到權重, 而 description 是實際路由工作的那個面 (s10). 要刪得先有 A/B: 拿掉契約那條指標後, skill 是否仍在該載入時載入. 在有那個結果之前, 這裡記的是**已量到的重複**, 不是刪除許可.
 
 #### 2026-08-08 查核結果 (方向 5)
 
