@@ -2391,5 +2391,55 @@ class BridgeJobLivenessTests(unittest.TestCase):
         self.assertNotIn("no duplicate", result.stdout)
 
 
+class TrapSurfaceTests(unittest.TestCase):
+    """The surface declaration is what dates a trap's evidence, so it is the one
+    part of the mechanism that has to be checked rather than reported. A surface
+    listing a path that no longer exists produces a fingerprint over the wrong
+    set of bytes, and the result rows it stamps would claim to be current while
+    measuring something else. That is a determinate error, unlike a stale stamp,
+    which is usually just the rules having improved."""
+
+    def _traps(self) -> list[Path]:
+        return sorted((ROOT / "evals" / "traps").glob("*/"))
+
+    def test_every_trap_declares_the_surface_its_results_depend_on(self) -> None:
+        for trap in self._traps():
+            with self.subTest(trap=trap.name):
+                self.assertTrue(
+                    (trap / "surface.tsv").exists(),
+                    f"{trap.name}: no surface.tsv, so its result rows cannot say "
+                    "which bytes produced them")
+
+    def test_every_declared_surface_path_exists(self) -> None:
+        for trap in self._traps():
+            listing = trap / "surface.tsv"
+            if not listing.exists():
+                continue
+            for raw in listing.read_text(encoding="utf-8").splitlines():
+                path = raw.strip()
+                if not path or path.startswith("#"):
+                    continue
+                with self.subTest(trap=trap.name, path=path):
+                    self.assertTrue(
+                        (ROOT / path).exists(),
+                        f"{trap.name}: surface lists {path}, which is gone; the "
+                        "fingerprint would silently cover a different set")
+
+    def test_the_fingerprint_is_deterministic_and_covers_every_listed_file(self) -> None:
+        module = load_module(
+            "trap_surface", ROOT / "evals" / "scripts" / "trap-surface.py")
+        for trap in self._traps():
+            if not (trap / "surface.tsv").exists():
+                continue
+            with self.subTest(trap=trap.name):
+                first, members = module.fingerprint(trap.name)
+                second, _ = module.fingerprint(trap.name)
+                self.assertEqual(first, second, "fingerprint is not stable")
+                self.assertEqual(
+                    [member["path"] for member in members],
+                    module.surface_paths(trap.name),
+                    "fingerprint skipped a declared file")
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -138,7 +138,16 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertIn("clearly exceeds dispatch overhead", read(".claude/CLAUDE.contract.md"))
         self.assertIn("clearly exceeds\ndispatch overhead", read(".codex/skills/leaf-dispatch/SKILL.md"))
         self.assertIn("cablate/baton v0.1.1", skill)
-        self.assertIn("scope fix `0ab4d2e`", skill)
+        # The provenance sentence used to name a bare short SHA, and this
+        # assertion is why it survived: the citation stopped resolving at some
+        # rebase, and a test pinning the string kept it in a deployed file where
+        # nobody could check it. Version tags are durable anchors; bare short
+        # SHAs are not (docs/README.md rule 9). Assert the claim, not the ghost.
+        self.assertIn("plus a scope fix", skill)
+        self.assertNotRegex(
+            skill, r"`[0-9a-f]{7,12}`",
+            "a bare short SHA in a deployed file cannot be resolved by whoever "
+            "reads it; cite a version, a link, or a content fingerprint")
         self.assertNotIn("pilotfish", skill.lower())
         self.assertIn("hard boundary", skill)
         self.assertNotIn("Discovery → Plan → Approval", skill)

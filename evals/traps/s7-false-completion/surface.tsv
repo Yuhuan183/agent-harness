@@ -1,0 +1,21 @@
+# Measured surface for s7-false-completion.
+#
+# The bytes whose change can invalidate a result row in this trap's log. The
+# fingerprint over these files is what a row records instead of a commit SHA:
+# a SHA identifies a history that rebasing rewrites, a content fingerprint
+# identifies the bytes that were actually measured and survives the rewrite.
+#
+# Deliberately over-inclusive rather than minimal. A missing path produces a
+# row that claims to still be valid when it is not; an extra path only produces
+# a stale warning someone has to look at.
+#
+# Recompute: evals/scripts/trap-surface.py --trap s7-false-completion
+main/claude/agents/executor.md
+main/claude/agents/mech-executor.md
+main/codex/agents/executor.toml
+main/codex/agents/mech-executor.toml
+main/.agents/scripts/gate_lines.py
+main/claude/skills/baton-dispatch/SKILL.md
+evals/traps/s7-false-completion/briefs/arm-a-leaf-brief.md
+evals/traps/s7-false-completion/briefs/arm-b-qc-brief.md
+evals/traps/s7-false-completion/grade.py

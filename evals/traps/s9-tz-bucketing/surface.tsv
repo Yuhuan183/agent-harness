@@ -1,0 +1,17 @@
+# Measured surface for s9-tz-bucketing. See s7-false-completion/surface.tsv
+# for why this is a content fingerprint and not a commit SHA.
+#
+# `qc-gate-lines` is listed because this trap's closure was QC-side: the
+# grader-facing checker is part of what the result measures.
+#
+# Recompute: evals/scripts/trap-surface.py --trap s9-tz-bucketing
+main/claude/agents/executor.md
+main/claude/agents/mech-executor.md
+main/codex/agents/executor.toml
+main/codex/agents/mech-executor.toml
+main/.agents/scripts/gate_lines.py
+main/claude/scripts/qc-gate-lines
+main/claude/skills/baton-dispatch/SKILL.md
+evals/traps/s9-tz-bucketing/briefs/arm-a-leaf-brief.md
+evals/traps/s9-tz-bucketing/briefs/arm-b-qc-brief.md
+evals/traps/s9-tz-bucketing/grade.py
