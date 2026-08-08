@@ -1,0 +1,9 @@
+{
+  "clause": "provider-routing",
+  "arm": "c",
+  "scenario": "p2-single-provider.md",
+  "contract_sha256_in_effect": "7cb97309ebb8d163778fd344a57ff58e0f45c803512ae6ad75fe8255db742686",
+  "clause_name_mentions_in_effect": 0,
+  "mcp_attached": false,
+  "exit": 0
+}

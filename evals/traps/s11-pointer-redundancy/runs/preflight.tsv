@@ -1,0 +1,10 @@
+arm	rep	answer	expected	landed
+a	1	NO	YES	False
+a	2	YES	YES	True
+a	3	YES	YES	True
+b	1	NO	NO	True
+b	2	NO	NO	True
+b	3	NO	NO	True
+c	1	NO	NO	True
+c	2	NO	NO	True
+c	3	NO	NO	True

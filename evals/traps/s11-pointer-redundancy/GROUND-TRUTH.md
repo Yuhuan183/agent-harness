@@ -100,6 +100,21 @@ that only rewarded loading would breed an agent that loads everything.
   the reply came back in Traditional Chinese, which is the contract's first
   rule and nothing else in that invocation asked for it.
 
+## Arm C, and what it is not
+
+Arm C — every mention of the skill removed, not just the load instruction — was
+added on 2026-08-08 **after** arm B returned 5/5 loaded. Its decision rule is
+the separation criterion inherited from above, not one registered in advance,
+and this section exists so that nobody reading the results table has to
+reconstruct that from commit order. A post-hoc arm can manufacture a positive;
+it cannot manufacture a null, which is what arm C returned, but the asymmetry is
+the reader's to weigh rather than mine to omit.
+
+It is also not a clean name removal. A name can only be deleted by deleting the
+clause that carries it, and for two of the three clauses that sentence says
+something else too — `arms.py` records the side effect per clause. For
+`provider-routing`, arm C additionally relaxes the verifier trigger condition.
+
 ## What the construct cannot support
 
 - Opportunities are **constructed**. Natural triggers for these three skills ran

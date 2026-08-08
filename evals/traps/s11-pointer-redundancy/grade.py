@@ -67,7 +67,9 @@ def skills_invoked(events: list[dict]) -> list[str]:
     """Every skill this run actually loaded, by name, from tool-call events."""
     names = []
     for event in events:
-        message = event.get("message") or {}
+        message = event.get("message")
+        if not isinstance(message, dict):
+            continue
         content = message.get("content")
         if not isinstance(content, list):
             continue
@@ -89,7 +91,9 @@ def transcript_text(events: list[dict]) -> str:
     for event in events:
         if isinstance(event.get("result"), str):
             chunks.append(event["result"])
-        message = event.get("message") or {}
+        message = event.get("message")
+        if not isinstance(message, dict):
+            continue
         content = message.get("content")
         if isinstance(content, str):
             chunks.append(content)

@@ -23,3 +23,7 @@ __pycache__/
 .tokensave
 .claude/.headroom_wrap_marker.json
 .serena/
+# s11 run artifacts: event streams are large, machine-specific, and the results
+# table plus per-run .meta.json carry everything a reader needs.
+evals/traps/s11-pointer-redundancy/runs/*.jsonl
+evals/traps/s11-pointer-redundancy/runs/unprovenanced/
