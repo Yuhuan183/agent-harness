@@ -171,3 +171,40 @@ from every count above.** They are kept, because an invalid rate is data about
 the scenario, and this one says the scenario was broken in three ways at once —
 ambiguous wording, a fixture that cannot support the task, and a marker that let
 both through.
+
+### p3 rebuilt — `p3-capability-choice`, 15 runs, `[surface 7af69201]`
+
+All three defects fixed and each verified separately. The wording asks whether
+the agent should do the work itself or hand it to a stronger model, which cannot
+be read as a worktree handoff and still shares **zero** tokens with the
+description (measured). The fixture is a real git repository with a 38-line
+multi-currency ledger and four passing tests, so the task is possible and worth
+discussing. The marker accepts only an answer to *who does the work*, and was
+checked against a simulated run that reads the file and answers nothing — which
+now scores invalid, the exact case that slipped through before.
+
+| Arm | Mentions left | Loaded the skill |
+|---|---|---|
+| A shipped | 2 | **0/5** |
+| B pointer removed | 1 | **0/5** |
+| C every mention removed | 0 | **0/5** |
+
+Zero invalid this time, and the transcripts say why that is trustworthy: 15/15
+engaged with the capability question, 0/15 claimed the task was impossible, and
+each run made 6–10 tool calls investigating the module first. The replies are
+substantive routing answers — one weighs dispatch overhead against the module's
+size, notes that no stronger tier exists above the current one, and concludes the
+real blocker is an accounting question only the user can settle.
+
+**So the ceiling is gone and the finding holds at both ends.** With an explicit
+trigger every arm loads; with a trigger that needs a semantic hop no arm loads.
+The contract's mentions changed nothing either way. What decides loading here is
+how closely the request's wording sits to the description's, which is a property
+of the description and not of the contract.
+
+That has a measurable cost, which is the more useful half of this result: **5 of
+the 15 replies named `GPT-5.4`, while the model this repo actually routes to is
+`gpt-5.6`.** The skill that did not load is where that fact lives. The lever this
+points at is therefore the description's coverage of oblique phrasing, not the
+contract clause — deleting or keeping the clause would not have moved any of
+these 45 runs.

@@ -18,7 +18,9 @@ so two runs of the same scenario get byte-identical inputs.
 from __future__ import annotations
 
 import argparse
+import os
 import random
+import subprocess
 import sys
 from pathlib import Path
 
@@ -30,6 +32,11 @@ PACKAGES = [
 # name, which appears nowhere in the prompt, so a run that never opened the file
 # cannot produce it - that is the whole point of choosing it over the filename.
 DUPLICATE = "zephyr-codec"
+
+
+# Scenarios whose question presupposes a repository. Without one the agent
+# reasons, correctly, that the work cannot be moved anywhere.
+NEEDS_GIT = {"p3-capability-choice"}
 
 
 def deps_log() -> str:
@@ -120,14 +127,86 @@ def settle_batch(entries):
     return sum(entry["amount"] for entry in entries)
 '''
 
+# p3's first wording failed because the fixture argued against the task: a bare
+# non-git directory holding one six-line stub, so 14 of 15 runs correctly
+# answered "there is nothing to hand off" and never reached the decision. A
+# capability question needs something whose size is a real argument, and a
+# repository, so that moving the work is physically possible.
+LEDGER = '''"""Multi-currency ledger. Rounding, FX, and settlement in one module."""
+from decimal import Decimal, ROUND_HALF_UP
+
+
+RATES = {"USD": "1.0", "EUR": "1.09", "JPY": "0.0067", "TWD": "0.031"}
+
+
+def to_base(amount, currency):
+    """Convert to base currency at the table rate."""
+    return Decimal(str(amount)) * Decimal(RATES[currency])
+
+
+def quantize(amount):
+    return Decimal(str(amount)).quantize(Decimal("0.01"), ROUND_HALF_UP)
+
+
+def settle_batch(entries):
+    """Sum a batch of mixed-currency entries into base currency."""
+    total = Decimal("0")
+    for entry in entries:
+        total += to_base(entry["amount"], entry["currency"])
+    return quantize(total)
+
+
+def split_by_currency(entries):
+    buckets = {}
+    for entry in entries:
+        buckets.setdefault(entry["currency"], []).append(entry)
+    return buckets
+
+
+def reconcile(expected, entries):
+    """Difference between an expected total and what the entries settle to."""
+    return quantize(Decimal(str(expected)) - settle_batch(entries))
+
+
+def format_line(entry):
+    return f"{entry['currency']} {quantize(entry['amount'])}"
+'''
+
+TEST_LEDGER = '''import unittest
+from decimal import Decimal
+
+from ledger import quantize, reconcile, settle_batch, split_by_currency
+
+
+class LedgerTests(unittest.TestCase):
+    def test_settle_batch_mixes_currencies(self):
+        entries = [{"amount": 10, "currency": "USD"},
+                   {"amount": 10, "currency": "EUR"}]
+        self.assertEqual(settle_batch(entries), Decimal("20.90"))
+
+    def test_split_by_currency_groups(self):
+        entries = [{"amount": 1, "currency": "USD"},
+                   {"amount": 2, "currency": "USD"},
+                   {"amount": 3, "currency": "JPY"}]
+        self.assertEqual(sorted(split_by_currency(entries)), ["JPY", "USD"])
+
+    def test_reconcile_reports_the_gap(self):
+        entries = [{"amount": 10, "currency": "USD"}]
+        self.assertEqual(reconcile(12, entries), Decimal("2.00"))
+
+    def test_quantize_is_half_up(self):
+        self.assertEqual(quantize(2.675), Decimal("2.68"))
+
+
+if __name__ == "__main__":
+    unittest.main()
+'''
+
 SCENARIOS: dict[str, dict[str, object]] = {
     "h1-large-blob": {"deps.log": deps_log},
     "h2-small-output": {},
     "p1-cross-provider": {"payments.py": PAYMENTS},
-    # Same fixture as p1 deliberately. p3 changes one thing only - how the
-    # request is worded - so the code under discussion must stay identical or
-    # the cell would vary two things at once.
-    "p3-oblique-handoff": {"payments.py": PAYMENTS},
+    "p3-capability-choice": {"ledger.py": LEDGER, "test_ledger.py": TEST_LEDGER},
     "p2-single-provider": {"utils.py": UTILS, "test_utils.py": TEST_UTILS},
     "b1-parallel-batch": {
         "README.md": "# core\n\n## Install\n\n    pip install core\n",
@@ -147,6 +226,30 @@ SCENARIOS: dict[str, dict[str, object]] = {
 }
 
 
+def git_init(into: Path) -> None:
+    """Make the fixture a real repository, with history.
+
+    Env is scrubbed of GIT_DIR and GIT_WORK_TREE on purpose: inherited, they
+    would point these commits at whatever repository the caller happens to be
+    in, which is a documented way to move the wrong HEAD.
+    """
+    env = {k: v for k, v in os.environ.items()
+           if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
+    env.update({
+        "GIT_AUTHOR_NAME": "fixture", "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
+        "GIT_COMMITTER_NAME": "fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid",
+        # Fixed dates keep the fixture deterministic across builds.
+        "GIT_AUTHOR_DATE": "2026-07-01T09:00:00+00:00",
+        "GIT_COMMITTER_DATE": "2026-07-01T09:00:00+00:00",
+    })
+    run = lambda *args: subprocess.run(  # noqa: E731
+        ["git", "-C", str(into), *args], env=env, check=True,
+        capture_output=True, text=True)
+    run("init", "-q", "-b", "main")
+    run("add", "-A")
+    run("commit", "-q", "-m", "ledger: settlement, FX and reconciliation")
+
+
 def build(scenario: str, into: Path) -> list[str]:
     if scenario not in SCENARIOS:
         raise SystemExit(f"unknown scenario {scenario!r}")
@@ -156,6 +259,9 @@ def build(scenario: str, into: Path) -> list[str]:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(body() if callable(body) else body, encoding="utf-8")
         written.append(name)
+    if scenario in NEEDS_GIT:
+        git_init(into)
+        written.append("(git repository with one commit)")
     return written
 
 
