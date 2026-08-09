@@ -1,0 +1,9 @@
+{
+  "clause": "provider-routing",
+  "arm": "b",
+  "scenario": "p3-oblique-handoff.md",
+  "contract_sha256_in_effect": "35ba056f2de3a2173c4f98c9d0a89cf9a468c8f98f700fbae094b73ec7116513",
+  "clause_name_mentions_in_effect": 1,
+  "mcp_attached": false,
+  "exit": 0
+}

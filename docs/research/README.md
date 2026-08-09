@@ -251,7 +251,9 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 
 照事前寫死的判準, A 5/5 對 B 5/5 **不算分離**, 記為「n=5 無分離」而不是「沒有差異」; 通過的 arm B 授權不了刪除. 新東西是 arm C - 它把「是名字在扛還是指令在扛」這個替代解釋也排除了.
 
-四條限制與結論同等重要, 詳見該 trap 的 README: arm C 是**看到 B 的結果之後才設計的**, 判準是繼承而非事前登記; arm C 順帶拿掉了 verifier 的觸發條件, 不是純粹的移除名字; 觸發詞明確 (prompt 與 description 共用 `GPT`, `fallback`, `profile`), 兩臂都在天花板上; 而 headless 單回合看不到長 context 與 compaction - 那恰恰是契約子句最可能發揮作用的地方.
+**天花板那條限制試著補過, 失敗了.** 另加一格 p3 用零共用詞的隱晦說法描述同一情境, 三臂各 5 seeds. 15 次全部沒載入, 乍看是漂亮的地板結果 - 但讀 transcript 發現 15/15 把「換另一邊的工具」讀成 worktree/agent 交接而不是換模型, 14/15 因為 fixture 是個非 git 的裸目錄而結論「沒東西可交接」. **路由那個分支從未被走到**, 15 列全部重新歸類為 invalid, 不進任何計數. 情境同時壞在三處: 措辭有歧義, fixture 撐不起任務, 而 marker 收了 `settle_batch` 這種「只要讀了檔案就會出現」的詞, 讓脫軌的 run 被記成 incorrect 而不是 invalid. 所以天花板問題**仍然未解**.
+
+其餘四條限制與結論同等重要, 詳見該 trap 的 README: arm C 是**看到 B 的結果之後才設計的**, 判準是繼承而非事前登記; arm C 順帶拿掉了 verifier 的觸發條件, 不是純粹的移除名字; 觸發詞明確 (prompt 與 description 共用 `GPT`, `fallback`, `profile`), 兩臂都在天花板上; 而 headless 單回合看不到長 context 與 compaction - 那恰恰是契約子句最可能發揮作用的地方.
 
 negative control 是讓上面這些讀得懂的前提: p2 在三個臂共 15 次全部沒有誤載入, 所以 p1 的 5/5 不是「什麼都載入」的假象.
 

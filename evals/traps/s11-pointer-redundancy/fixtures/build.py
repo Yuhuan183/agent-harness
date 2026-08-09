@@ -113,17 +113,21 @@ and acknowledge it before the batch window closes.
 MIT
 """
 
-SCENARIOS: dict[str, dict[str, object]] = {
-    "h1-large-blob": {"deps.log": deps_log},
-    "h2-small-output": {},
-    "p1-cross-provider": {
-        "payments.py": '''"""Settlement batching, the module under discussion."""
+PAYMENTS = '''"""Settlement batching, the module under discussion."""
 
 
 def settle_batch(entries):
     return sum(entry["amount"] for entry in entries)
-''',
-    },
+'''
+
+SCENARIOS: dict[str, dict[str, object]] = {
+    "h1-large-blob": {"deps.log": deps_log},
+    "h2-small-output": {},
+    "p1-cross-provider": {"payments.py": PAYMENTS},
+    # Same fixture as p1 deliberately. p3 changes one thing only - how the
+    # request is worded - so the code under discussion must stay identical or
+    # the cell would vary two things at once.
+    "p3-oblique-handoff": {"payments.py": PAYMENTS},
     "p2-single-provider": {"utils.py": UTILS, "test_utils.py": TEST_UTILS},
     "b1-parallel-batch": {
         "README.md": "# core\n\n## Install\n\n    pip install core\n",
@@ -157,14 +161,16 @@ def build(scenario: str, into: Path) -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--scenario", required=True)
-    parser.add_argument("--into", required=True, type=Path)
+    parser.add_argument("--scenario")
+    parser.add_argument("--into", type=Path)
     parser.add_argument("--list", action="store_true")
     args = parser.parse_args()
     if args.list:
         for name, files in SCENARIOS.items():
             print(f"{name:<22} {', '.join(files) or '(no files needed)'}")
         return 0
+    if not args.scenario or not args.into:
+        parser.error("--scenario and --into are required unless --list")
     for name in build(args.scenario, args.into):
         print(name)
     return 0

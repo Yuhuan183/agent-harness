@@ -142,3 +142,32 @@ Four limits, none of them footnotes:
 
 The negative control is what makes the rest readable: p2 stayed away 15/15
 across all three arms, so the 5/5 on p1 is not an agent loading everything.
+
+### p3 oblique trigger — 15 runs, all **invalid**, scenario defect
+
+Added to attack the ceiling: p1 hands the agent `GPT`, `fallback` and `profile`,
+which the description already contains, so a difference between arms would have
+to be large to show. p3 was worded to share zero tokens with the description
+(measured, not assumed) while describing the same situation.
+
+It does not describe the same situation. All 15 runs loaded nothing, which at
+first read looked like a clean floor — the contract failing to rescue an oblique
+trigger — and that reading is wrong. Reading the transcripts:
+
+| what the runs actually did | count |
+|---|---|
+| read "換另一邊的工具" as a worktree / agent handoff, not a model provider | 15/15 |
+| concluded the handoff was impossible and stopped | 14/15 |
+
+The fixture is a bare directory holding one six-line stub and is not a git repo,
+so the agent correctly reasoned that there was nothing to hand off and no
+mechanism to hand it off with. The routing branch was never reached.
+
+The grader scored them `incorrect` rather than `invalid` because the marker
+included `settle_batch`, which any run that opens the file produces. That is the
+same marker-design failure the dry run was supposed to have fixed: a token that a
+derailed run can still emit. **All 15 rows are reclassified invalid and excluded
+from every count above.** They are kept, because an invalid rate is data about
+the scenario, and this one says the scenario was broken in three ways at once —
+ambiguous wording, a fixture that cannot support the task, and a marker that let
+both through.
