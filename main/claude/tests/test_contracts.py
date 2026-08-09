@@ -632,9 +632,41 @@ class CodexBundleTests(unittest.TestCase):
         # assert the union — otherwise moving a line between them reads as
         # deleting it.
         self.assertIn("The user owns the Codex GPT model", read(".codex/AGENTS.contract.md"))
-        self.assertIn("GPT-5.6 Sol/high",
+        self.assertIn("reserving the strongest route/high",
                       read(".codex/AGENTS.contract.md")
                       + read(".codex/skills/leaf-dispatch/SKILL.md"))
+
+    def test_no_deployed_prose_pins_a_model_version(self) -> None:
+        """Concrete model versions belong to the resolver, not to prose.
+
+        This clause used to read "reserving GPT-5.6 Sol/high", and the version
+        was pinned here as well, so the tree carried the same number in two
+        places and neither would notice the model moving. Worse, an s11 run on
+        2026-08-09 measured the cost of a stale one: five of fifteen replies
+        named GPT-5.4 while the routing table said gpt-5.6, because the file
+        holding the correct id was never loaded. Prose that names a version is
+        a second truth source with no way to be checked against the first.
+
+        `model-routing.toml` and the tests that assert against it are exempt by
+        construction: they *are* the routing truth, and a routing table without
+        model ids would resolve nothing.
+        """
+        version = re.compile(r"\b(?:gpt|claude|opus|sonnet|fable)[-\s]?\d+\.\d+",
+                             re.IGNORECASE)
+        surfaces = [
+            ".claude/CLAUDE.contract.md", ".codex/AGENTS.contract.md",
+            ".codex/skills/leaf-dispatch/SKILL.md",
+            ".claude/skills/baton-dispatch/SKILL.md",
+            ".claude/skills/provider-routing/SKILL.md",
+        ]
+        for path in surfaces:
+            with self.subTest(path=path):
+                found = version.findall(read(path))
+                self.assertEqual(
+                    found, [],
+                    f"{path}: names a model version in prose ({found}); let the "
+                    "resolver answer that, so there is one truth source rather "
+                    "than two that can disagree silently")
 
     def test_config_merge_and_verifier_are_leaf_bounded(self) -> None:
         config = tomllib.loads(read(".codex/config.merge.toml"))

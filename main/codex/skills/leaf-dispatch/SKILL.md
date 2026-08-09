@@ -22,9 +22,9 @@ must meet its quality tier before optimizing for `fast`, `quality-guarded`, or
 benchmarks. Before every leaf dispatch resolve the role with
 `${CODEX_HOME:-$HOME/.codex}/scripts/model-routing` (source checkout:
 `main/codex/scripts/model-routing`). High-risk routes use `quality-guarded`,
-reserving GPT-5.6 Sol/high for judgment and critical roles. If the selected GPT
-model is unavailable or fails, report the model, attempts, evidence, artifacts,
-and acceptance checks.
+reserving the strongest route/high for judgment and critical roles. If the
+selected model is unavailable or fails, report the model, attempts, evidence,
+artifacts, and acceptance checks.
 
 ## Invocation mechanics
 
