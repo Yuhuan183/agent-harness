@@ -98,16 +98,25 @@ def audit_traps() -> list[dict[str, object]]:
         trap = listing.parent.name
         current = fingerprint(trap)[0][:short]
         readme = listing.parent / "README.md"
-        stamps = STAMP.findall(readme.read_text(encoding="utf-8")) if readme.exists() else []
-        table = [line for line in readme.read_text(encoding="utf-8").splitlines()
-                 if line.startswith("| 2026-")] if readme.exists() else []
+        text = readme.read_text(encoding="utf-8") if readme.exists() else ""
+        stamps = STAMP.findall(text)
+        # Result rows are counted by their date prefix, which is how s7-s10
+        # write them. s11 reports a batch as one stamped block instead, so the
+        # count would be zero while a stamp exists - and subtracting one from
+        # the other produced "unverified -1" in the first run of this tool.
+        # Report the two independently and never derive a negative: an
+        # unrecognised table shape is a thing to look at, not a number to
+        # invent.
+        dated_rows = [line for line in text.splitlines()
+                      if line.startswith("| 2026-")]
         rows.append({
             "trap": trap,
             "current": current,
-            "result_rows": len(table),
+            "result_rows": len(dated_rows),
             "stamped": len(stamps),
             "current_stamps": sum(1 for stamp in stamps if stamp == current),
             "stale_stamps": sum(1 for stamp in stamps if stamp != current),
+            "unstamped_rows": max(0, len(dated_rows) - len(stamps)),
         })
     return rows
 
@@ -137,12 +146,12 @@ def main() -> int:
     print()
     print("trap evidence:")
     for row in traps:
-        unverified = row["result_rows"] - row["stamped"]
         print(f"  {row['trap']:<22} surface {row['current']}  "
-              f"rows {row['result_rows']:>3}  "
-              f"current {row['current_stamps']:>3}  "
-              f"stale {row['stale_stamps']:>3}  "
-              f"unverified {unverified:>3}")
+              f"dated-rows {row['result_rows']:>3}  "
+              f"stamps {row['stamped']:>2}  "
+              f"current {row['current_stamps']:>2}  "
+              f"stale {row['stale_stamps']:>2}  "
+              f"unstamped {row['unstamped_rows']:>3}")
     return 0
 
 
