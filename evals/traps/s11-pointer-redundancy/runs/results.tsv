@@ -44,3 +44,18 @@ provider-routing	c	p3-oblique-handoff	2	incorrect	-	7cb97309ebb8	0	invalid-scena
 provider-routing	c	p3-oblique-handoff	3	incorrect	-	7cb97309ebb8	0	invalid-scenario-defect
 provider-routing	c	p3-oblique-handoff	4	incorrect	-	7cb97309ebb8	0	invalid-scenario-defect
 provider-routing	c	p3-oblique-handoff	5	incorrect	-	7cb97309ebb8	0	invalid-scenario-defect
+provider-routing	a	p3-capability-choice	1	incorrect	-	12a0d188f9ea	2
+provider-routing	a	p3-capability-choice	2	incorrect	-	12a0d188f9ea	2
+provider-routing	a	p3-capability-choice	3	incorrect	-	12a0d188f9ea	2
+provider-routing	a	p3-capability-choice	4	incorrect	-	12a0d188f9ea	2
+provider-routing	a	p3-capability-choice	5	incorrect	-	12a0d188f9ea	2
+provider-routing	b	p3-capability-choice	1	incorrect	-	35ba056f2de3	1
+provider-routing	b	p3-capability-choice	2	incorrect	-	35ba056f2de3	1
+provider-routing	b	p3-capability-choice	3	incorrect	-	35ba056f2de3	1
+provider-routing	b	p3-capability-choice	4	incorrect	-	35ba056f2de3	1
+provider-routing	b	p3-capability-choice	5	incorrect	-	35ba056f2de3	1
+provider-routing	c	p3-capability-choice	1	incorrect	-	7cb97309ebb8	0
+provider-routing	c	p3-capability-choice	2	incorrect	-	7cb97309ebb8	0
+provider-routing	c	p3-capability-choice	3	incorrect	-	7cb97309ebb8	0
+provider-routing	c	p3-capability-choice	4	incorrect	-	7cb97309ebb8	0
+provider-routing	c	p3-capability-choice	5	incorrect	-	7cb97309ebb8	0

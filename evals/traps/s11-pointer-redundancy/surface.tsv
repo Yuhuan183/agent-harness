@@ -20,6 +20,6 @@ evals/traps/s11-pointer-redundancy/scenarios/h1-large-blob.md
 evals/traps/s11-pointer-redundancy/scenarios/h2-small-output.md
 evals/traps/s11-pointer-redundancy/scenarios/p1-cross-provider.md
 evals/traps/s11-pointer-redundancy/scenarios/p2-single-provider.md
-evals/traps/s11-pointer-redundancy/scenarios/p3-oblique-handoff.md
+evals/traps/s11-pointer-redundancy/scenarios/p3-capability-choice.md
 evals/traps/s11-pointer-redundancy/scenarios/b1-parallel-batch.md
 evals/traps/s11-pointer-redundancy/scenarios/b2-one-small-edit.md
