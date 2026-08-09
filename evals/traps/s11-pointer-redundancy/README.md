@@ -94,6 +94,14 @@ breed an agent that loads everything.
 **2026-08-08, `provider-routing`, `[surface 32cc98cf]`, Claude Code 2.1.226.**
 30 runs, 3 arms × 2 cells × 5 seeds. Zero invalid, zero run failures.
 
+> The stamp stays at `32cc98cf` because that is what produced these rows. An
+> audit immediately afterwards fixed a leak in `run.py` — the MCP config was
+> written with `delete=False` into the system temp dir — which moved the surface
+> to `6ccd707a`. The rows are **not** re-stamped: back-dating a fingerprint onto
+> bytes that did not produce it is the failure this mechanism exists to catch.
+> What can be said instead is checkable — all 30 `.meta.json` files record
+> `mcp_attached: false`, so the changed code path was never on this batch.
+
 | Arm | Contract | Mentions left | p1 (should load) | p2 (should not load) |
 |---|---|---|---|---|
 | A shipped | `12a0d188f9ea` | 2 | **5/5 loaded** | 5/5 stayed away |

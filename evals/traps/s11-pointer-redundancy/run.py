@@ -116,12 +116,16 @@ def build_fixture(scenario_stem: str, workdir: Path) -> list[str]:
     return module.build(scenario_stem, workdir)
 
 
-def mcp_config_for(scenario_text: str) -> str | None:
+def mcp_config_for(scenario_text: str, workdir: Path) -> str | None:
     """The path to an MCP config when a scenario declares it needs one.
 
-    Written out fresh from the machine's own `~/.claude.json` entry rather than
-    kept in the repo: an MCP server definition can carry a local path or a
-    token, and neither belongs in a fixture.
+    Written fresh from the machine's own `~/.claude.json` entry rather than kept
+    in the repo: an MCP server definition can carry a local path or a token, and
+    neither belongs in a fixture. Written *into the run's own directory* for the
+    same reason - that directory is deleted when the run ends, whereas the first
+    version used `delete=False` in the system temp dir and would have left one
+    copy of the server definition behind per run (caught by audit before any
+    headroom cell ran, so nothing leaked).
     """
     match = re.search(r"^needs_mcp:\s*(\S+)", scenario_text, re.M)
     if not match:
@@ -133,11 +137,10 @@ def mcp_config_for(scenario_text: str) -> str | None:
         raise SystemExit(
             f"scenario needs the {server!r} MCP server and this machine has no "
             "such entry; the cell cannot reproduce its own trigger condition")
-    handle = tempfile.NamedTemporaryFile(
-        "w", suffix=".json", prefix="s11-mcp-", delete=False, encoding="utf-8")
-    json.dump({"mcpServers": {server: entry}}, handle)
-    handle.close()
-    return handle.name
+    target = workdir / ".s11-mcp.json"
+    target.write_text(json.dumps({"mcpServers": {server: entry}}),
+                      encoding="utf-8")
+    return str(target)
 
 
 def preflight(clause: str, arm: str, workdir: Path) -> bool:
@@ -184,7 +187,7 @@ def run_arm(clause: str, arm: str, scenario: Path | None, out: Path | None,
             built = build_fixture(scenario.stem, workdir)
             if built:
                 print(f"fixture: {', '.join(built)}", file=sys.stderr)
-            mcp = mcp_config_for(text)
+            mcp = mcp_config_for(text, workdir)
             # Provenance, written from the live file at the moment of the call.
             # The 2026-08-08 pilot recorded none, so every arm-B row was a claim
             # about a condition nothing in the artifacts could confirm - the
