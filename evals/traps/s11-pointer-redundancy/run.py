@@ -81,19 +81,24 @@ def claude(prompt: str, workdir: Path, mcp: str | None = None) -> tuple[int, str
         # The machine's own hooks are not part of this construct.
         "--settings", json.dumps({"hooks": {}}),
         "--permission-mode", "manual",
+        # Always strict: this flag is what makes `--mcp-config` a replacement
+        # rather than an addition. Passing them as alternatives - strict when no
+        # server was wanted, `--mcp-config` alone when one was - meant the
+        # headroom cells loaded the operator's entire MCP surface on top of the
+        # one server they asked for. Caught 2026-08-10 four runs in: the session
+        # listed pencil, serena, Figma and four Google servers alongside
+        # headroom, and 63 tools where the other cells see a minimal set.
+        "--strict-mcp-config",
     ]
     if mcp:
         # Option A, chosen 2026-08-08. The `headroom-protocol` clause is
-        # conditional on Headroom MCP tools existing, so under a strict empty
-        # MCP config the correct behaviour in *both* arms is to not load, and
-        # the cell measures nothing. Attaching the real server is the only way
-        # to reproduce the trigger, and it costs the isolation that
-        # `rung-run.py` established as worth having: these rows depend on the
-        # operator's machine, and rows say so. Cells that do not need it keep
-        # the strict empty config.
+        # conditional on Headroom MCP tools existing, so under an empty MCP
+        # config the correct behaviour in *both* arms is to not load, and the
+        # cell measures nothing. Attaching the real server is the only way to
+        # reproduce the trigger, and it costs some isolation - the server
+        # definition comes from this machine - but with strict set, that is the
+        # only thing it costs.
         argv += ["--mcp-config", mcp]
-    else:
-        argv += ["--strict-mcp-config"]
     env = {**os.environ}
     env.pop("ANTHROPIC_BASE_URL", None)
     done = subprocess.run(argv, cwd=workdir, capture_output=True, text=True,

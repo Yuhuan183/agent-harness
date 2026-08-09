@@ -208,3 +208,46 @@ the 15 replies named `GPT-5.4`, while the model this repo actually routes to is
 points at is therefore the description's coverage of oblique phrasing, not the
 contract clause — deleting or keeping the clause would not have moved any of
 these 45 runs.
+
+## `headroom-protocol` — 2026-08-10, `[surface ff1a1328]`
+
+The clean clause: it appears once, so removing the pointer removes the name.
+**Arms B and C are therefore byte-identical here** (verified), which makes this
+two conditions rather than three — mention present (arm A) and absent (B and C
+together) — and the counts below say so.
+
+An earlier batch of four runs was discarded, not archived. `--mcp-config` was
+passed *without* `--strict-mcp-config`, which adds a server rather than
+replacing the set, so those runs saw the operator's whole MCP surface: eight
+servers and 63 tools instead of one and 33. Both flags are now always passed and
+the isolation was probed before re-running.
+
+### h2, small output, negative control — usable
+
+| Condition | Correctly stayed away |
+|---|---|
+| mention present (arm A) | 5/5 |
+| mention absent (arms B+C) | 10/10 |
+
+The precondition really was met — the sessions list `headroom` connected with
+its three tools — so this is the clause's own trigger condition being respected
+with and without the clause. No difference.
+
+### h1, large blob — **not usable, fixture defect**
+
+Only 1 of 15 runs loaded the skill, and the marker excluded exactly that run.
+Two runs explained why, and they are right: the generated log draws 18,000 lines
+from a pool of ten packages, so **every package appears thousands of times** and
+"which packages are pulled in more than once" answers itself with "all of them".
+The planted `zephyr-codec` is the *least* repeated name in the file, not a
+findable duplicate. The marker keyed on it anyway and hit 13/15 by accident —
+agents enumerating packages tend to list all eleven names — so it was never
+testing whether the run reached the branch.
+
+The cost of that is concrete: the single run that did load `headroom-protocol`
+answered without naming `zephyr-codec`, so it scored invalid and dropped out of
+the count. A marker that discards the one positive observation is not a marker.
+
+**All 15 h1 rows are excluded.** Fixing the cell needs a log where exactly one
+package is genuinely duplicated and the rest are not, and a marker that follows
+from that rather than from a token planted on the assumption.
