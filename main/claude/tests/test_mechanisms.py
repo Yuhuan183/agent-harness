@@ -2516,5 +2516,89 @@ class TrapSurfaceTests(unittest.TestCase):
                     "fingerprint skipped a declared file")
 
 
+class VersionAttestationTests(unittest.TestCase):
+    """A sentence claiming a dated local check is behavioural evidence, and it
+    was the only kind this repo had no mechanism for. Two of them were wrong on
+    2026-08-10: the runtime guide said the machine ran Headroom 0.34.0 while it
+    ran 0.33.0, and `RTK.md` said rtk 0.45.0 while the only rtk here was 0.42.4
+    (the number came off `brew info`, which prints a formula's version directly
+    above `Not installed`).
+
+    So this class is the instrument's own negative control. Half of it proves
+    the scanner fires on those two exact shapes; the other half proves it stays
+    quiet on the four shapes that made its first draft unusable. Both halves are
+    load-bearing - a version of this check that reported twenty findings, of
+    which eighteen were percentages and IP addresses, would be read once."""
+
+    def _module(self):
+        import importlib.util
+        path = ROOT / "scripts" / "evidence-check.py"
+        spec = importlib.util.spec_from_file_location("evidence_check", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_it_fires_on_the_two_claims_that_were_actually_wrong(self) -> None:
+        module = self._module()
+        guide = "2026-08-10 本機查核: CLI 與 proxy 都是 `headroom-ai 0.34.0`."
+        self.assertIn(("headroom", "0.34.0"), module.attributions_in(guide))
+        self.assertEqual(
+            "differs", module.verdict_for("0.34.0", "0.33.0", is_floor=False))
+
+        rtk = "`rtk find … -not` still fails this way (verified against rtk 0.45.0)."
+        self.assertIn(("rtk", "0.45.0"), module.attributions_in(rtk))
+        self.assertEqual(
+            "differs", module.verdict_for("0.45.0", "0.42.4", is_floor=False))
+
+    def test_it_stays_quiet_on_the_shapes_that_are_not_claims(self) -> None:
+        module = self._module()
+        # Every one of these produced a "difference" in the first draft, which
+        # attributed any number on a line to any tool the line mentioned.
+        for line in (
+            "Headroom saved 56.28% of input tokens, up from 55.69%.",
+            "add Headroom with --proxy-url http://127.0.0.1:8787",
+            "Pilotfish v1.3.10 蒸餾結果; Headroom 另見 runtime guide",
+            "reserving GPT-5.6 for judgment; codex routes stay pinned",
+        ):
+            with self.subTest(line=line):
+                self.assertEqual([], module.attributions_in(line))
+
+    def test_a_floor_is_not_a_stale_attestation(self) -> None:
+        # `需要 Claude Code 2.1.207 以上版本` differs from the local version for
+        # as long as the requirement stands. Reported as a discrepancy it would
+        # appear on every run forever, which is how a report teaches people to
+        # skip it.
+        module = self._module()
+        line = "1. `verifier` 需要 Claude Code 2.1.207 以上版本."
+        self.assertIn(("claude code", "2.1.207"), module.attributions_in(line))
+        self.assertTrue(module.FLOOR.search(line))
+        self.assertEqual(
+            "floor-met", module.verdict_for("2.1.207", "2.1.226", is_floor=True))
+        self.assertEqual(
+            "floor-unmet", module.verdict_for("2.1.207", "2.1.99", is_floor=True))
+
+    def test_a_truncated_claim_still_matches_the_release_it_names(self) -> None:
+        # Prose writes `headroom 0.34`; the binary answers `0.34.0`. Treating
+        # that as a difference would bury the real ones.
+        module = self._module()
+        self.assertEqual("match", module.verdict_for("0.34", "0.34.0", False))
+        self.assertEqual("differs", module.verdict_for("0.33", "0.34.0", False))
+
+    def test_it_reports_and_never_fails(self) -> None:
+        # Same contract as the rest of this script: a stale attestation is a
+        # fact to weigh. Made fail-closed, the cheapest way to stay green would
+        # be to stop writing the date next to what was checked.
+        finished = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "evidence-check.py"), "--json"],
+            capture_output=True, text=True, cwd=ROOT)
+        self.assertEqual(0, finished.returncode, finished.stderr)
+        report = json.loads(finished.stdout)
+        self.assertIn("versions", report)
+        self.assertIn("attestations", report)
+        for row in report["versions"]:
+            self.assertIn(row["verdict"], {
+                "match", "differs", "floor-met", "floor-unmet", "unprobeable"})
+
+
 if __name__ == '__main__':
     unittest.main()
