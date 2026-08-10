@@ -1,9 +1,0 @@
-{
-  "clause": "headroom-protocol",
-  "arm": "b",
-  "scenario": "h1-large-blob.md",
-  "contract_sha256_in_effect": "48bb62e943b9cc9ebc01392c06c3aabbe6c7162583d749f51bfc920a6821874c",
-  "clause_name_mentions_in_effect": 0,
-  "mcp_attached": true,
-  "exit": 0
-}

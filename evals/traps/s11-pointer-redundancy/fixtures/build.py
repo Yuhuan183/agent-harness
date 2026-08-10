@@ -24,14 +24,22 @@ import subprocess
 import sys
 from pathlib import Path
 
-PACKAGES = [
-    "argon-parse", "beryl-io", "cobalt-net", "delta-fmt", "ember-cache",
-    "flint-log", "garnet-db", "helio-rpc", "iris-tls", "jade-queue",
+STEMS = [
+    "argon", "beryl", "cobalt", "delta", "ember", "flint", "garnet", "helio",
+    "iris", "jade", "kyanite", "lumen", "mica", "nickel", "onyx", "pyrite",
 ]
-# Planted three times under different parents. The marker for h1 keys on this
-# name, which appears nowhere in the prompt, so a run that never opened the file
-# cannot produce it - that is the whole point of choosing it over the filename.
+SUFFIXES = ["parse", "io", "net", "fmt", "cache", "log", "db", "rpc", "tls",
+            "queue", "codec", "sync", "pool", "trace", "shim", "guard"]
+# Planted three times under three different parents, and the *only* name in the
+# file that repeats. The first version of this fixture drew all 18,000 lines
+# from a pool of ten packages, so every package repeated thousands of times and
+# "which package is pulled in more than once" answered itself with "all of
+# them" - two runs said so, correctly, on 2026-08-10. Worse, the marker keyed on
+# this name anyway and hit 13/15 by accident, discarding the single run that did
+# load the skill because it answered without naming it. Now every other package
+# is unique, so the name can only come from finding it.
 DUPLICATE = "zephyr-codec"
+DUPLICATE_PARENTS = ("garnet-db", "helio-rpc", "cobalt-net")
 
 
 # Scenarios whose question presupposes a repository. Without one the agent
@@ -40,14 +48,29 @@ NEEDS_GIT = {"p3-capability-choice"}
 
 
 def deps_log() -> str:
+    """18,000 resolutions in which exactly one package is pulled in twice.
+
+    Every other name is unique, so the question has one answer and finding it
+    requires reading or searching the file. `(from <parent>)` names a real
+    parent rather than a running index: the earlier version wrote `from step N`,
+    which a run correctly pointed out carries no parentage at all and makes the
+    duplicate question unanswerable in principle.
+    """
     rng = random.Random(20260808)
+    names = [f"{stem}-{suffix}" for stem in STEMS for suffix in SUFFIXES]
+    names = [f"{name}-{index // len(names):02d}" if index >= len(names)
+             else name
+             for index, name in enumerate(
+                 (names * (18_000 // len(names) + 1))[:18_000])]
+    assert len(set(names)) == len(names), "package names must be unique"
+
     lines = ["dependency resolution trace v3", "-" * 46]
-    for index in range(18_000):
+    for index, name in enumerate(names):
         depth = rng.randint(1, 5)
-        name = rng.choice(PACKAGES)
         version = f"{rng.randint(0, 4)}.{rng.randint(0, 20)}.{rng.randint(0, 9)}"
-        lines.append(f"{'  ' * depth}resolve {name}@{version} (from step {index})")
-    for parent in ("garnet-db", "helio-rpc", "cobalt-net"):
+        parent = names[rng.randrange(0, max(1, index))] if index else "root"
+        lines.append(f"{'  ' * depth}resolve {name}@{version} (from {parent})")
+    for parent in DUPLICATE_PARENTS:
         lines.insert(rng.randint(10, 17_000),
                      f"    resolve {DUPLICATE}@2.1.0 (from {parent})")
     return "\n".join(lines) + "\n"
