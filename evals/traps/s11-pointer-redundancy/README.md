@@ -248,6 +248,45 @@ The cost of that is concrete: the single run that did load `headroom-protocol`
 answered without naming `zephyr-codec`, so it scored invalid and dropped out of
 the count. A marker that discards the one positive observation is not a marker.
 
-**All 15 h1 rows are excluded.** Fixing the cell needs a log where exactly one
-package is genuinely duplicated and the rest are not, and a marker that follows
-from that rather than from a token planted on the assumption.
+**All 15 h1 rows are excluded**, kept in the table as `h1-large-blob-v1`.
+
+### h1 rebuilt — 15 runs, `[surface 0e3e246e]`
+
+The log now generates 18,001 unique package names with exactly one duplicate,
+verified by counting, and `(from <parent>)` names a real parent instead of a
+running index — a run had objected, correctly, that the old form recorded no
+parentage and made the question unanswerable in principle. The marker accepts a
+reasoned "none found" as well as the right name, so searching and concluding
+wrongly counts as reaching the branch rather than as derailing.
+
+| Condition | Found the duplicate | Loaded the skill |
+|---|---|---|
+| mention present (arm A) | 5/5 | **0/5** |
+| mention absent (arms B+C) | 10/10 | **0/10** |
+
+Zero invalid. Every run's provenance reads one server, `headroom` connected, and
+33 tools, so the precondition held and the isolation did too — recorded per run
+rather than asserted once.
+
+**Read the labels carefully.** `expect: invoked` encodes an assumption of mine,
+that a 970 KB log warrants compression. Every run disagreed and every run was
+right: 15/15 found `zephyr-codec` and its three parents with ordinary reads and
+greps. So these rows are not "the agent erred" — they are "the contract's
+mention did not change the decision", which is the only thing this cell was
+built to see.
+
+## Both clauses together — 90 runs
+
+| Clause | Cell | Mention present | Mention absent |
+|---|---|---|---|
+| `provider-routing` | explicit trigger | 5/5 load | 10/10 load |
+| | semantic trigger | 0/5 load | 0/10 load |
+| | negative control | 5/5 stay away | 10/10 stay away |
+| `headroom-protocol` | large blob | 0/5 load | 0/10 load |
+| | negative control | 5/5 stay away | 10/10 stay away |
+
+**Across 90 runs the contract's mentions never moved a single loading
+decision**, at either extreme of trigger strength, on the confounded clause and
+on the clean one alike. What moved decisions was the wording of the request
+against the skill's own description, and — in the headroom cells — the agent's
+judgement that the task did not need the tool at all.
