@@ -18,13 +18,32 @@ that most of this repo's evidence citations had quietly stopped resolving.
    is *undated* - it measured rules that have since changed, and saying so is the
    whole point. Rows with no stamp predate the mechanism and count as unverified.
 
+3. **Prose attestations.** A sentence claiming a dated local check is behavioural
+   evidence exactly like a stamped result row, and until 2026-08-11 it was the
+   only kind with no mechanism at all. Every line carrying both a verification
+   verb and an ISO date is listed with its age, so the set is enumerable and
+   re-checkable instead of being discovered by accident.
+
+4. **Version attestations.** The subset that names a version of a tool this
+   machine can be asked about, cross-checked against the live `--version`. This
+   is the instrument with teeth, and it exists because both failures that
+   prompted it were of this exact shape: the runtime guide attested "0.34.0
+   verified locally" while the machine ran 0.33.0, and `RTK.md` attested rtk
+   0.45.0 - read off `brew info`, which prints the formula's version directly
+   above `Not installed` - while the only rtk here was 0.42.4.
+
+   `differs` is not an accusation. A document legitimately records history (the
+   before/after table in `RTK.md` names both versions on purpose), and a document
+   may describe another machine. What it stops is the case where nobody looked.
+
 Exit status is always 0. This is an attestation, not a gate: a stale row is a
 fact to weigh, and the legitimate reasons for one (the rules improved) outnumber
 the illegitimate ones by far. Making it fail-closed would only teach people to
-stop stamping rows.
+stop stamping rows - and, now, to stop writing the date next to what they
+checked, which would cost more than it saved.
 
 Usage:
-    scripts/evidence-check.py [--json]
+    scripts/evidence-check.py [--json] [--attestation-age DAYS]
 """
 from __future__ import annotations
 
@@ -34,6 +53,7 @@ import json
 import re
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -41,6 +61,44 @@ ROOT = Path(__file__).resolve().parents[1]
 CITATION = re.compile(r"`([0-9a-f]{7,40})`")
 STAMP = re.compile(r"\[surface ([0-9a-f]{8})\]")
 URL = re.compile(r"https?://")
+
+# A verification verb next to an ISO date. Both halves are required: a bare date
+# is a changelog entry, and a bare verb is a plan. Only the pair claims that
+# something was actually checked on a particular day.
+ISO_DATE = re.compile(r"\b(20\d{2}-\d{2}-\d{2})\b")
+VERIFICATION_VERB = re.compile(
+    r"查核|實測|驗證|重跑|verified|measured|re-run|reproduced", re.IGNORECASE)
+
+# Tools whose claimed version can be checked against the machine. The key is the
+# name as it appears in prose, the value is how to ask. Anything not listed is
+# still inventoried by instrument 3, it just cannot be cross-checked.
+PROBES = {
+    "headroom": ("headroom", "--version"),
+    "rtk": ("rtk", "--version"),
+    "ripgrep": ("rg", "--version"),
+    "claude code": ("claude", "--version"),
+    "codex": ("codex", "--version"),
+}
+# Prose spellings that mean the same tool. `headroom-ai` is the PyPI package name
+# and is what the version tables use.
+ALIASES = {"headroom-ai": "headroom", "claude-code": "claude code"}
+VERSION_TOKEN = re.compile(r"\bv?(\d+\.\d+(?:\.\d+)?)\b")
+
+# The version has to be *adjacent* to the tool name. The first draft of this
+# instrument attributed every number on any line mentioning a tool, and reported
+# twenty "differences": percentages (`56.28`), an IP (`127.0.0`), Pilotfish's
+# `1.3.10` on a line that also said Headroom, model names (`5.6`). A check that
+# is mostly false positives gets skimmed and then ignored, which is worse than
+# not having it - so the pattern now demands an explicit attribution and accepts
+# only `rtk 0.45.0`, `headroom, version 0.34.0`, `Claude Code v2.1.226` shapes.
+ATTRIBUTION = r"[\s,:]*(?:version\s+)?v?(\d+\.\d+(?:\.\d+)?)"
+
+# A floor is not an attestation. `需要 Claude Code 2.1.207 以上版本` names the
+# oldest release that works, so it differs from the local version on purpose and
+# for as long as the requirement stands - reporting it as a discrepancy every
+# run is how a report earns the right to be ignored. Satisfied floors are
+# counted and dropped; an unmet one is the thing worth printing.
+FLOOR = re.compile(r"以上|至少|or newer|or later|at least|minimum|\bmin\b|>=|\+ ")
 
 
 def tracked_markdown() -> list[Path]:
@@ -121,16 +179,132 @@ def audit_traps() -> list[dict[str, object]]:
     return rows
 
 
+def local_version(tool: str) -> str | None:
+    """The version this machine reports for `tool`, or None if it cannot say.
+
+    Cached per process: the same binary is named on many lines, and asking it
+    once per line would make the report slower than the work it audits.
+    """
+    if tool in local_version.cache:  # type: ignore[attr-defined]
+        return local_version.cache[tool]  # type: ignore[attr-defined]
+    answer = None
+    try:
+        finished = subprocess.run(
+            PROBES[tool], capture_output=True, text=True, timeout=15)
+        found = VERSION_TOKEN.search(finished.stdout or finished.stderr)
+        answer = found.group(1) if found else None
+    except (OSError, subprocess.SubprocessError):
+        # Not installed, not executable, or too slow to answer. All three mean
+        # the same thing here: this machine cannot confirm or deny the claim.
+        answer = None
+    local_version.cache[tool] = answer  # type: ignore[attr-defined]
+    return answer
+
+
+local_version.cache = {}  # type: ignore[attr-defined]
+
+
+def attribution_patterns() -> list[tuple[re.Pattern[str], str]]:
+    """One compiled `<tool><version>` matcher per prose spelling."""
+    spellings = list(ALIASES.items()) + [(name, name) for name in PROBES]
+    # Longest spelling first so `headroom-ai 0.34.0` is read as the package and
+    # not as `headroom` followed by something starting with a hyphen.
+    spellings.sort(key=lambda pair: len(pair[0]), reverse=True)
+    return [(re.compile(re.escape(spelling) + ATTRIBUTION, re.IGNORECASE),
+             canonical) for spelling, canonical in spellings]
+
+
+def same_version(claimed: str, here: str) -> bool:
+    """Whether a claim is satisfied by the local version.
+
+    Prose truncates: `headroom 0.34` and `rtk 0.45+` both mean the release the
+    machine reports as `0.34.0` / `0.45.0`. Treat the claim as a prefix, so a
+    shorter claim matches, while `0.33` against `0.34.0` still differs.
+    """
+    return here == claimed or here.startswith(claimed + ".")
+
+
+def as_tuple(version: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in version.split("."))
+
+
+def attributions_in(line: str) -> list[tuple[str, str]]:
+    """(tool, claimed version) pairs a single line explicitly attributes."""
+    found: set[tuple[str, str]] = set()
+    for pattern, tool in attribution_patterns():
+        for match in pattern.finditer(line):
+            found.add((tool, match.group(1)))
+    return sorted(found)
+
+
+def verdict_for(claimed: str, here: str | None, is_floor: bool) -> str:
+    """How a claimed version stands against what the machine reports."""
+    if here is None:
+        return "unprobeable"
+    if same_version(claimed, here):
+        return "match"
+    if is_floor:
+        return "floor-met" if as_tuple(here) >= as_tuple(claimed) else "floor-unmet"
+    return "differs"
+
+
+def audit_attestations(today: date) -> list[dict[str, object]]:
+    """Every line claiming a dated check, with its age in days."""
+    rows = []
+    for path in tracked_markdown():
+        relative = path.relative_to(ROOT).as_posix()
+        for number, line in enumerate(
+                path.read_text(encoding="utf-8").splitlines(), 1):
+            if not VERIFICATION_VERB.search(line):
+                continue
+            stamps = ISO_DATE.findall(line)
+            if not stamps:
+                continue
+            # The newest date on the line is the claim's own date; an older one
+            # beside it is usually the thing being described.
+            newest = max(stamps)
+            try:
+                age = (today - date.fromisoformat(newest)).days
+            except ValueError:  # pragma: no cover - regex already shaped it
+                continue
+            rows.append({"site": f"{relative}:{number}", "date": newest,
+                         "age_days": age, "line": line.strip()[:120]})
+    return sorted(rows, key=lambda row: row["date"])
+
+
+def audit_versions() -> list[dict[str, object]]:
+    """Versions attributed to a probeable tool, against what it reports here."""
+    rows = []
+    for path in tracked_markdown():
+        relative = path.relative_to(ROOT).as_posix()
+        for number, line in enumerate(
+                path.read_text(encoding="utf-8").splitlines(), 1):
+            for tool, claimed in attributions_in(line):
+                here = local_version(tool)
+                rows.append({"site": f"{relative}:{number}", "tool": tool,
+                             "claimed": claimed, "local": here,
+                             "verdict": verdict_for(
+                                 claimed, here, bool(FLOOR.search(line)))})
+    return rows
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="machine-readable")
+    parser.add_argument("--attestation-age", type=int, default=30,
+                        metavar="DAYS",
+                        help="list dated claims at least this old (default 30)")
     args = parser.parse_args()
 
     citations = audit_citations()
     traps = audit_traps()
+    attestations = audit_attestations(date.today())
+    versions = audit_versions()
 
     if args.json:
-        print(json.dumps({"citations": citations, "traps": traps}, indent=2))
+        print(json.dumps({"citations": citations, "traps": traps,
+                          "attestations": attestations, "versions": versions},
+                         indent=2))
         return 0
 
     total = sum(len(bucket) for bucket in citations.values())
@@ -152,6 +326,28 @@ def main() -> int:
               f"current {row['current_stamps']:>2}  "
               f"stale {row['stale_stamps']:>2}  "
               f"unstamped {row['unstamped_rows']:>3}")
+
+    print()
+    aged = [row for row in attestations if row["age_days"] >= args.attestation_age]
+    print(f"prose attestations: {len(attestations)} dated claims, "
+          f"{len(aged)} at least {args.attestation_age} days old")
+    for row in aged:
+        print(f"  {row['date']}  {row['age_days']:>4}d  {row['site']}")
+
+    print()
+    tally = {verdict: sum(1 for row in versions if row["verdict"] == verdict)
+             for verdict in ("match", "differs", "floor-met", "floor-unmet",
+                             "unprobeable")}
+    print(f"version attestations: {len(versions)} attributed, "
+          f"{tally['match']} match, {tally['differs']} differ, "
+          f"{tally['floor-met']} floors met, {tally['floor-unmet']} unmet, "
+          f"{tally['unprobeable']} unprobeable")
+    for row in versions:
+        if row["verdict"] not in ("differs", "floor-unmet"):
+            continue
+        print(f"  {row['verdict']:<11}{row['tool']}: doc says "
+              f"{row['claimed']}, here {row['local']}")
+        print(f"             {row['site']}")
     return 0
 
 
