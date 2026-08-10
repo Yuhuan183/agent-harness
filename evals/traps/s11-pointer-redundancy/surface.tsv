@@ -1,0 +1,25 @@
+# Measured surface for s11-pointer-redundancy. See s7-false-completion/surface.tsv
+# for why this is a content fingerprint and not a commit SHA.
+#
+# The contract is the surface under test, so it heads the list: a reworded
+# clause invalidates every row here, and `arms.py` is deliberately built to fail
+# loudly rather than fuzzy-match when that happens. The three skills are listed
+# because the description is the other half of the comparison - if a description
+# changes, "does the contract clause add anything" is a different question.
+#
+# Recompute: evals/scripts/trap-surface.py --trap s11-pointer-redundancy
+main/claude/CLAUDE.contract.md
+main/claude/skills/baton-dispatch/SKILL.md
+main/claude/skills/provider-routing/SKILL.md
+main/.agents/skills/headroom-protocol/SKILL.md
+evals/traps/s11-pointer-redundancy/arms.py
+evals/traps/s11-pointer-redundancy/grade.py
+evals/traps/s11-pointer-redundancy/run.py
+evals/traps/s11-pointer-redundancy/fixtures/build.py
+evals/traps/s11-pointer-redundancy/scenarios/h1-large-blob.md
+evals/traps/s11-pointer-redundancy/scenarios/h2-small-output.md
+evals/traps/s11-pointer-redundancy/scenarios/p1-cross-provider.md
+evals/traps/s11-pointer-redundancy/scenarios/p2-single-provider.md
+evals/traps/s11-pointer-redundancy/scenarios/p3-capability-choice.md
+evals/traps/s11-pointer-redundancy/scenarios/b1-parallel-batch.md
+evals/traps/s11-pointer-redundancy/scenarios/b2-one-small-edit.md

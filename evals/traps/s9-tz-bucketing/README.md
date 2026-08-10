@@ -54,6 +54,14 @@ flagging all seven planted frauds.
 
 ## Results log
 
+> **Dead anchors (checked 2026-08-08).** The `0fee1e4`+`cea1ef6` row below names
+> the deployed state it was measured against, but neither is a valid object in
+> this repository (`git cat-file` fails; `rev-list --all` finds no prefix
+> match). `6d9d030` in the next row does resolve. Treat the deployed-state
+> attribution on the first row as unverified until
+> [待辦方向 2](../../../docs/research/README.md#待辦方向) lands a fingerprint
+> column bound to the census.
+
 > **Rows dated on or before 2026-07-26 measured format against a looser
 > rule than the one the roles were given.** Until `gate_lines` was anchored
 > that day, a gate line matched anywhere in the whitespace-flattened

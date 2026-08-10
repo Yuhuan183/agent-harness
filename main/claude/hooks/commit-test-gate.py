@@ -101,6 +101,20 @@ import sys
 import tempfile
 from pathlib import Path
 
+try:  # Observability must never be able to break the boundary it observes.
+    # The git-side pre-commit imports this module by path, so its own directory
+    # is not necessarily on sys.path; add it rather than lose the git-side rows.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import denial_log
+except Exception:  # noqa: BLE001
+    denial_log = None
+
+
+def _denied(reason: str, **detail: object) -> None:
+    if denial_log is not None:
+        denial_log.record("commit-test-gate", reason, None, **detail)
+
+
 COMMIT_RE = re.compile(r"\bgit\b[^|;&\n]*\bcommit\b")
 # Shell quote concatenation splits a keyword without changing what runs:
 # `git com''mit` and `git com""mit` both execute a real commit, but neither the
@@ -476,6 +490,7 @@ def run_suites(gated_suites: list[tuple[Path, Path]], label: str) -> int:
             "Install a newer Python, put it on PATH, or set AGENT_HARNESS_PYTHON to one "
             "(or prefix with AGENT_SKIP_TEST_GATE=1) and retry.\n"
         )
+        _denied("no-usable-interpreter")
         return 2
 
     with tempfile.TemporaryDirectory(prefix="commit-test-gate-") as shim_dir:
@@ -508,6 +523,7 @@ def run_suites(gated_suites: list[tuple[Path, Path]], label: str) -> int:
                     "commit blocked.\n"
                     "Investigate the hang (or prefix with AGENT_SKIP_TEST_GATE=1) and retry.\n"
                 )
+                _denied("suite-timeout", suite=str(tests_dir))
                 return 2
             if result.returncode == 0:
                 continue
@@ -518,6 +534,7 @@ def run_suites(gated_suites: list[tuple[Path, Path]], label: str) -> int:
                 "Fix the failures (or prefix with AGENT_SKIP_TEST_GATE=1 to commit a "
                 "deliberately red state) and retry.\n"
             )
+            _denied("suite-red", suite=str(tests_dir))
             return 2
     return 0
 
@@ -563,6 +580,7 @@ def main() -> int:
             "so no suite could be selected to run.\n"
             "Re-run with the literal path (or prefix with AGENT_SKIP_TEST_GATE=1).\n"
         )
+        _denied("unresolvable-target", targets=", ".join(unresolved))
         return 2
     gated_suites: list[tuple[Path, Path]] = []
     for candidate in candidates:

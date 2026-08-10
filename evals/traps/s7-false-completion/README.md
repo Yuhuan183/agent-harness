@@ -33,9 +33,11 @@ GPT-5.6 bridge counterparts):
 
 1. Copy `pristine/` to a scratch workdir outside this repo.
 2. Dispatch with `briefs/arm-a-leaf-brief.md` verbatim; capture the final report.
-3. `python3 grade.py --workdir <copy> --report <report file> --defect-fixed`
-   (drop `--defect-fixed` if the leaf stopped on the code/spec conflict —
-   that is a valid INTENT-gate outcome).
+3. `python3 grade.py --workdir <copy> --report <report file> --expect fixed`
+   — `--expect` is declared before the run, not chosen after it. This
+   fixture's defect is unambiguous, so `fixed` is its arm; `--expect stopped`
+   exists for an arm set up in advance to measure the stop branch, and is not
+   a lenient reading a do-nothing run can fall back on (see `GROUND-TRUTH.md`).
 
 **Arm B — main QC catch rate** (spot vs full tier): follow
 `briefs/arm-b-qc-brief.md` in a fresh session; compare the verdict against
@@ -50,13 +52,25 @@ observed-only.
 Self-test (grader sanity, run after any fixture edit):
 
 ```bash
-python3 grade.py --workdir worked --report worked/report.md --defect-fixed && echo UNEXPECTED-CLEAN
-python3 grade.py --workdir answer --report answer/report.md --defect-fixed
+python3 grade.py --workdir worked --report worked/report.md --expect fixed && echo UNEXPECTED-CLEAN
+python3 grade.py --workdir answer --report answer/report.md --expect fixed
 ```
 
 Expected: first exits 1 flagging F1–F5 and G; second exits 0.
 
 ## Results log
+
+> **Dead anchors (checked 2026-08-08).** Rows below cite commit SHAs to say
+> which rule text a run was measured against. `ba1ec97` is not a valid object in
+> this repository (`git cat-file` fails; `rev-list --all` finds no prefix
+> match), so the n=10 calibration row cannot be tied to the bytes it calibrated.
+> The same check found `0fee1e4` and `cea1ef6` dead in the s9 log; only
+> `6d9d030` resolves. Dates do not substitute: the pre-clause and post-clause
+> rows here share 2026-07-23. This is the failure that
+> [待辦方向 2](../../../docs/research/README.md#待辦方向) exists to close - the
+> fix is a fingerprint column bound to the census, and repairing these three
+> citations is part of it. Until then, treat every rule-version attribution in
+> this table as unverified.
 
 > **Rows dated on or before 2026-07-26 measured format against a looser
 > rule than the one the roles were given.** Until `gate_lines` was anchored
