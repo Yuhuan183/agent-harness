@@ -59,11 +59,13 @@ sync 之前, 先確認以下工具鏈到位; 除 codex plugin 外, 其他 plugin
 brew install python@3.13
 
 # 1. 基礎 CLI
-brew install rtk                 # hook 依賴; 未裝時 fail-open, 可後補
+brew install rtk ripgrep         # hook 依賴; 未裝時 fail-open, 可後補
                                  # 裝完不要跑 `rtk init`: hook 由本 repo settings.json 管理
                                  # 必須是 Headroom 以外的來源: `headroom wrap` 每次都會刪掉
                                  # ~/.headroom/bin/rtk 與指向它的 ~/.local/bin/rtk.
                                  # 用 `which -a rtk` 確認解析結果不在那兩個路徑
+                                 # ripgrep 是 rtk 0.45+ 的 `rtk rg` 實際呼叫的程式, 缺了會讓
+                                 # 每個 rg 命令以 `rtk: search failed` 收場
 curl -LsSf https://astral.sh/uv/install.sh | sh   # headroom CLI 由 uv tool 管理
 uv tool install headroom-ai      # 詳見 ~/.agents/docs/headroom-runtime.md
 # Claude Code 與 Codex CLI 依官方文件安裝 (本 repo 不管理其版本)
