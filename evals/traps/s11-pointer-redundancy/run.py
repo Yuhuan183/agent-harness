@@ -113,6 +113,34 @@ PROBE = (
 )
 
 
+def session_environment(stdout: str) -> dict[str, object]:
+    """What the run actually had, read back out of its own event stream.
+
+    Asking for a condition and getting it are different things, and this fixture
+    has now confused them four times - a marker a file read could satisfy, a
+    driver that discarded the swap confirmation, an `--mcp-config` that added
+    servers instead of replacing them, and a planted token that was not unique.
+    Three were caught by hand afterwards. Recording the condition rather than
+    the intent is what makes the fourth kind visible without anyone remembering
+    to look.
+    """
+    servers, tools = None, None
+    for line in stdout.splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(event.get("mcp_servers"), list):
+            servers = [{"name": s.get("name"), "status": s.get("status")}
+                       for s in event["mcp_servers"]]
+        if event.get("type") == "system" and isinstance(event.get("tools"), list):
+            tools = event["tools"]
+    return {
+        "mcp_servers_in_session": servers,
+        "tool_count_in_session": len(tools) if tools is not None else None,
+    }
+
+
 def build_fixture(scenario_stem: str, workdir: Path) -> list[str]:
     spec = importlib.util.spec_from_file_location(
         "s11_fixtures", HERE / "fixtures" / "build.py")
@@ -210,7 +238,8 @@ def run_arm(clause: str, arm: str, scenario: Path | None, out: Path | None,
                     "scenario": scenario.name,
                     "contract_sha256_in_effect": in_effect,
                     "clause_name_mentions_in_effect": names_left,
-                    "mcp_attached": bool(mcp),
+                    "mcp_requested": bool(mcp),
+                    **session_environment(stdout),
                     "exit": code,
                 }, indent=2), encoding="utf-8")
                 print(f"events -> {out} (contract {in_effect[:12]}, "
