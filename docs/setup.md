@@ -61,6 +61,9 @@ brew install python@3.13
 # 1. 基礎 CLI
 brew install rtk                 # hook 依賴; 未裝時 fail-open, 可後補
                                  # 裝完不要跑 `rtk init`: hook 由本 repo settings.json 管理
+                                 # 必須是 Headroom 以外的來源: `headroom wrap` 每次都會刪掉
+                                 # ~/.headroom/bin/rtk 與指向它的 ~/.local/bin/rtk.
+                                 # 用 `which -a rtk` 確認解析結果不在那兩個路徑
 curl -LsSf https://astral.sh/uv/install.sh | sh   # headroom CLI 由 uv tool 管理
 uv tool install headroom-ai      # 詳見 ~/.agents/docs/headroom-runtime.md
 # Claude Code 與 Codex CLI 依官方文件安裝 (本 repo 不管理其版本)
@@ -93,8 +96,22 @@ headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787
 本專案採 **wrap-first, session-scoped** 的 Headroom 操作方式: Claude, Codex 分別使用
 `hclaude`, `hcodex`; 原生 session 仍直接使用 `claude`, `codex`. 不要把
 `ANTHROPIC_BASE_URL`, `OPENAI_BASE_URL` 或 Headroom provider 永久寫進 tracked config
-或 shell profile; `headroom doctor` 看見 routed 只代表當下 machine-local CLI/shell
+或手寫進 shell profile; `headroom doctor` 看見 routed 只代表當下 machine-local CLI/shell
 狀態, 不能據此判斷 Codex App.
+
+這條通則有一個明文例外, 就是下面的 `headroom install apply --preset persistent-service`:
+該 preset 會由 Headroom 自己在 `~/.zshrc` 維護一段 marker-fenced 區塊寫入這些變數. 選用
+它是使用者的 machine-local 決定, 但要知道代價 — 上面「原生 session 直連」的分界就消失了,
+`claude` 與 `hclaude` 一樣走 proxy, `/remote-control` 在所有 Claude session 都不可用,
+而且 proxy 沒起來時每個 shell 的 agent 都連不出去. 想拿回 wrap-first 就
+`headroom install remove`, 它會一併撤掉自己寫的區塊.
+
+Claude Code 在自訂 `ANTHROPIC_BASE_URL` 之下會關閉 on-demand tool loading, 改成一次載入
+全部 tool schema (upstream #746). Headroom v0.34 起的 `wrap claude` 會設
+`ENABLE_TOOL_SEARCH` 把它開回來, 預設 `true`, 也可用 `--tool-search auto`/`auto:N`/`false`
+調整; 環境裡既有的值優先於預設, 會被原封不動保留. 走 `persistent-service` 常駐 routing 時,
+這個變數必須跟 base URL 一起常駐, 否則原生 `claude` 會在沒有 deferral 的狀態下走 proxy.
+完整語意與 `--1m` 的預設模型陷阱見 [`headroom-runtime.md`](../main/.agents/docs/headroom-runtime.md).
 
 Antigravity CLI 的直接入口是 `agy`. `agy-auto` 已可用; `hagy`/`hagy-auto` 只有在
 安裝版本真的提供 `headroom wrap agy` 時才會啟動, 否則 exit 127. 具日期的版本與

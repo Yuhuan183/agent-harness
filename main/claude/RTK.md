@@ -15,6 +15,14 @@ rtk's own installer. Keep it that way:
   prunes hook entries matching `rtk-rewrite` / `rtk rewrite` on every
   `headroom wrap` run; whether today's `rtk init` still emits those exact names
   is unverified, so treat the collision as likely rather than certain.
+- **Install rtk from a source Headroom does not manage.** That same cleanup pass
+  deletes `~/.headroom/bin/rtk` outright, and `~/.local/bin/rtk` whenever it is a
+  symlink into that directory — so an rtk left over from an older Headroom is
+  removed by the next wrapped session. The hook's `command -v rtk` guard then
+  makes it a silent no-op: filtering stops and nothing reports it. `which -a rtk`
+  must not resolve into either path. This repo's own `rtk hook claude` command
+  matches none of the cleanup's markers and is not at risk (re-checked against
+  Headroom 0.34.0 source, 2026-08-10).
 - `rtk gain` ends with `[warn] No hook installed — run rtk init -g`. Expected here;
   it only means rtk did not install the hook itself. Do not act on it.
 - Codex gets no hook: `rtk hook` supports claude, cursor, gemini, copilot, droid and
@@ -54,19 +62,19 @@ Use normal commands such as `git status`; the hook handles supported rewrites.
 
 A rejected flag can surface in two ways, and the second is the dangerous one:
 
-- an `rtk:` message, which is unmistakable. `rtk find … -not` still fails this way
-  (verified against rtk 0.45.0, 2026-08-10); or
+- an `rtk:` message, which is unmistakable. `rtk find … -not` fails this way; or
 - **the substituted tool's own usage error**, because the rewrite can hand the
-  command to a different program than the one written. On rtk 0.42.4 (2026-08-02)
-  `rg -n <pat> <paths> --glob '*.md'` became a `grep` invocation, `grep` rejected
-  `--glob`, and the wrapper still printed `0 matches for '<pat>'` — a
-  definitive-looking negative for a search that never ran.
+  command to a different program than the one written. `rg -n <pat> <paths>
+  --glob '*.md'` is rewritten to `rtk grep`, BSD `grep` rejects `--glob`, and the
+  wrapper still prints `0 matches for '<pat>'` and exits 0 — a definitive-looking
+  negative for a search that never ran.
 
-That second signature **no longer reproduces on 0.45.0**: `rtk rg` runs ripgrep
-natively, passes `--glob` through, and a genuine no-match returns empty output
-rather than a fabricated count. Treat it as fixed upstream, not as impossible —
-the contract keeps the rule because the version varies per machine and the failure
-is silent when it does happen.
+Both signatures were re-run against a two-file fixture on 2026-08-10 and the
+second one **reproduced**: two real matches, `0 matches` reported. The rtk on
+that machine was 0.42.4. A 0.45.0 claim previously recorded here was not grounded
+in a binary this deployment ever had — `rtk rg` running ripgrep natively is a fix
+to look for on upgrade, not a fix to assume. Check `rtk --version` before relying
+on it; the failure is silent on any version that still substitutes.
 
 So the rule is about the result, not the prefix: **never record a "no hits"
 conclusion from a rewritten command.** If a negative result is load-bearing,
