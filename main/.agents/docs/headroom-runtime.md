@@ -1,8 +1,10 @@
 # Headroom Runtime Guide
 
-> 2026-08-10 本機查核: CLI 與 persistent-service proxy 都是 `headroom-ai 0.34.0`.
-> `wrap claude` / `wrap codex` 已移除 CLI context tools, `wrap agy` 仍不存在. 這只證明
-> 本機安裝版本與 live service capability, 不等於上游 latest release 證據.
+> 2026-08-10 本機查核: CLI 與 persistent-service proxy 都是 `headroom-ai 0.34.0`
+> (`headroom install status` running/healthy, `doctor` 的 version check pass).
+> 已退場的 context-tool 舊旗標實測被 `wrap claude` 拒絕 (exit 1), 不帶它則 exit 0;
+> `wrap agy` 仍不存在. 這只證明本機安裝版本與 live service capability, 不等於上游
+> latest release 證據.
 
 > 只記錄跨機器的架構, 操作邊界與版本轉換. venv, PID, port 與 profile 名稱屬 machine-local state, 不進 git.
 
@@ -22,7 +24,12 @@ agent 指令維持直連或使用者自己的 machine-local 狀態.
 | Headroom MCP | `headroom mcp install --agent <agent> --proxy-url http://127.0.0.1:8787` | 提供 marker retrieve, compress 與 stats; 實際可用 agent 以安裝版本的 registrar 為準 |
 
 不得把 `ANTHROPIC_BASE_URL`, `OPENAI_BASE_URL` 或其他 provider endpoint 永久寫入
-shell profile 或 git-tracked agent settings. RTK 指引由 harness 契約管理. Headroom
+git-tracked agent settings, 也不得手寫進 shell profile. 唯一的例外是使用者明確選擇
+`headroom install apply --preset persistent-service`: 該 preset 由 Headroom 自己在
+`~/.zshrc` 維護一個 marker-fenced 區塊寫入這些變數, 屬 machine-local 選用狀態, 不是本
+repo 的預設. 選了它就等於放棄 wrap-first 的分界 — 上表「原生 session」那幾列不再成立,
+`claude` 與 `hclaude` 同樣走 proxy, Remote Control 在**所有** Claude session 都不可用.
+RTK 指引由 harness 契約管理. Headroom
 v0.34 起已移除 CLI context tools, 因此 Claude 與 Codex wrap 不再傳入舊版選項; 舊旗標
 會被 CLI 明確拒絕並附遷移訊息, 不是被忽略.
 
@@ -33,6 +40,26 @@ v0.34 把注入入口換成兩個新的預設值, 兩者都要知道:
   會被 Claude Code 載入的專案指引, 繞過單一契約來源.
 - code-memory MCP 預設是 Serena, 每個 wrapped session 都會註冊, 屬於固定要付的 context
   成本. 要關掉用 `--code-memory none`. 這個 MCP 由 wrap 註冊, 不由本 repo 部署或版控.
+
+### 每次 wrap 都會清除舊 context tool 的殘留
+
+v0.34 不只是拒絕舊旗標: 每一次 `headroom wrap` 與 `headroom unwrap` 都會呼叫
+`purge_context_tool_artifacts()` 主動刪除舊版裝過的東西 (best-effort, 失敗不擋啟動,
+報告寫 stderr). 刪除範圍包含 `~/.claude/settings.json` 與 `~/.cursor/hooks.json` 裡
+命令含 `rtk-rewrite` / `rtk rewrite` / `lean-ctx-rewrite` / `lean-ctx-redirect` /
+`lean-ctx hook` 的 hook, `~/.claude/hooks/` 下對應的 script 與 `.lean-ctx.bak`,
+`~/.claude.json` 裡名為 `rtk` / `lean-ctx` 的 MCP entry, 各 hint 檔中
+`<!-- headroom:rtk-instructions -->` 圍起來的區塊 (含**當前工作目錄**的那份), 以及
+
+- `~/.local/bin/{rtk,lean-ctx}` — 只在它是指向 Headroom 自己 bin 目錄的 symlink 時,
+- `~/.headroom/bin/{rtk,lean-ctx}` — **無條件刪除**.
+
+本 repo 註冊的 hook 命令是 `rtk hook claude`, 不含上列任何 marker, 所以不會被誤刪
+(2026-08-10 對 0.34 原始碼再次核對). 但**二進位檔會**: 若機器上的 `rtk` 是早期
+Headroom 裝的 (`~/.local/bin/rtk` 指向 `~/.headroom/bin/rtk`), 下一次 `hclaude` 或
+`hcodex` 就會把它連同 symlink 一起刪掉. hook 的 `command -v rtk` 前置檢查會讓它安靜地
+變成 no-op — RTK 整個消失而不報錯. 因此 rtk 必須改由**與 Headroom 無關**的來源安裝
+(見 `docs/setup.md`), 並用 `which -a rtk` 確認解析到的不是 `~/.local/bin/rtk`.
 
 `headroom doctor` 回報 Codex routed, 只證明當下 shell environment 或
 `~/.codex/config.toml` 的 machine-local 狀態; 不代表本 repo 的預設, 也不證明 Codex
@@ -54,7 +81,9 @@ Claude App 使用 OAuth 直連, 不經 proxy, 只能透過 MCP 做手動文字�
 
 ## 操作指引
 
-- **Claude**: 需要 Headroom 時使用 `hclaude`; Auto Mode 使用 `hclaude-auto`. 底層是 `headroom wrap claude`. 只有 context 明確不足時才加 `--1m`.
+- **Claude**: 需要 Headroom 時使用 `hclaude`; Auto Mode 使用 `hclaude-auto`. 底層是 `headroom wrap claude`. 只有 context 明確不足時才加 `--1m`, 而且加之前要先讀下面那條.
+- **`--1m` 的預設模型陷阱**: 自訂 `ANTHROPIC_BASE_URL` 之下, Claude Code 的 `/model` 選擇不會傳到 API, 只有帶 `[1m]` 後綴的 model id 才會送出 `context-1m` beta header. `--1m` 的做法是在啟動的 process 上設 `ANTHROPIC_MODEL`; 它會保留使用者自己設過的 model, 但 `ANTHROPIC_MODEL` 未設時退回 Headroom 內建的常數 (0.34.0 是 `claude-opus-4-8`). 也就是在乾淨 shell 直接下 `--1m` 會把 session 釘在 Opus 4.8 而不是當前選的模型. 要用就自己一起指定 `ANTHROPIC_MODEL`, 並在 session 內確認實際 model id.
+- **on-demand tool loading (`--tool-search`)**: 自訂 `ANTHROPIC_BASE_URL` 會讓 Claude Code 關閉 tool deferral, 改成一次載入所有 tool schema, 吃掉數十 K 的 local context (upstream issue #746). v0.34 的 `wrap claude` 因此會設 `ENABLE_TOOL_SEARCH`, 預設 `true`. 可用值 `true`/`1`/`yes`/`on`, `false`/`0`/`no`/`off`, `auto`, `auto:N` (N 為 0-100); 打錯會直接報錯而不是默默關掉. 優先序是 `--tool-search` 旗標 > 環境裡既有的 `ENABLE_TOOL_SEARCH` (原封不動) > 內建預設; 空字串視同未設. Read/Edit/Bash 這類內建工具永遠不會被延後載入, agent loop 不受影響. 若採 always-on routing (下面的 `persistent-service`), 這個變數要跟 base URL 一起常駐, 否則原生 `claude` 會在沒有 deferral 的情況下走 proxy.
 - **Codex**: 需要 Headroom 時使用 `hcodex`; Auto Mode 使用 `hcodex-auto`. 底層是 `headroom wrap codex`, 不依賴預先存在的永久 provider.
 - **Antigravity CLI**: 原生 Auto Mode 使用 `agy-auto` (`agy --mode accept-edits`). Headroom 入口保留為 `hagy`/`hagy-auto`, 但會先確認安裝版本真的提供 `headroom wrap agy`; 沒有就 exit 127, 不能降級成未壓縮的 `agy`.
 - **權限**: 一般自動執行分別使用 Claude `--permission-mode auto`, Codex `-a on-request -s workspace-write`, Antigravity `--mode accept-edits`. `--dangerously-skip-permissions` 與 `--dangerously-bypass-approvals-and-sandbox` 不是 Auto Mode, 也不是 Headroom 的必要參數; 只有外層已有隔離環境時才能針對單次任務明確選用. 可重用的 shell functions 見 `docs/setup.md`.

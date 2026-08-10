@@ -89,7 +89,7 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 |---|---|---|---|
 | Pilotfish | latest release tag `v1.3.10`, tag commit `7a7f71b...` | 2026-08-08 | 上游發版頻率高於本文件重查頻率 - 四天內出了 v1.3.9 與 v1.3.10 兩版, 引用前先確認 tag |
 | Deep Agents | PyPI stable `0.7.5` (2026-08-06); CLI `deepagents-code 0.1.54` | 2026-08-08 | SDK 與 CLI 交錯發版, 版本序不同步; 版本與託管產品狀態需在引用時重查 |
-| Headroom | PyPI `headroom-ai 0.34.0`; GitHub latest release tag `v0.34.0` (2026-08-05); PR #1044 仍 open | 2026-08-08 | 三者不可互換 |
+| Headroom | PyPI `headroom-ai 0.34.0`; GitHub latest release tag `v0.34.0` (2026-08-05); PR #1044 仍 open | 2026-08-08 | 三者不可互換, **本機安裝版本是第四個** - 2026-08-10 上午本機仍是 0.33.0, 當天稍晚才升上 0.34.0. 見下方 2026-08-10 查核 |
 | OpenAI prompting guidance | [Latest model guide](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.6#prompting-best-practices) | - | 目前 canonical 文件 |
 | Anthropic context guidance | [Effective context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) | - | - |
 
@@ -303,6 +303,29 @@ negative control 是讓上面這些讀得懂的前提: 四格對照共 45 次全
 所以方向 5 的交付改成一條新的待查項: **先讓拒絕可觀測, 再談要不要升級門檻**. 順序理由與 lifecycle replay 同源 - 沒有判準就先開跑, 產出的是撤不回的數字.
 
 **已落地 (2026-08-08)**: 四個 Python gate 攔截時各寫一行到 `~/.claude/telemetry/denials.jsonl`, 共用 [denial_log](../../main/claude/hooks/denial_log.py), 欄位是短代碼而非散文, 這樣「連續擋幾次」數得出來. 三個 gate 已端到端驗過會寫出紀錄. 兩條性質寫進測試: 攔截會留痕, 而**把 telemetry 路徑佔成檔案時 gate 仍然回 exit 2** - gate 對條件 fail-closed, 對簿記 fail-open, 兩者不能對調. 目前沒有任何東西讀這份檔案做決策, 門檻要等資料累積後再談.
+
+#### 2026-08-10 查核結果 (Headroom 0.34 升級): 同一個失效換了一層皮
+
+s11 的 fixture 壞了四次, 成因每次都一樣 - **把「要求的條件」當成「跑起來的條件」**, 對策是把條件記進產物 (`.meta.json`). 這次升級 Headroom 為了重查 runtime 邊界, 在自己已出貨的文件裡找到同一個失效的兩個實例, 而且這次載體不是 eval fixture, 是**帶日期的查核宣稱**:
+
+| 位置 | 宣稱 | 實際 |
+|---|---|---|
+| `headroom-runtime.md` 開頭 | 「2026-08-10 本機查核: CLI 與 proxy 都是 0.34.0」 | 寫下的當天本機是 **0.33.0**; 當日稍晚才升級, 事後才碰巧為真 |
+| `RTK.md` | 「verified against rtk 0.45.0, 2026-08-10」 | 本機唯一的 rtk 是 **0.42.4**, 檔案日期 2026-06-13, 從未換過 |
+
+兩者都不是筆誤: 它們是**根據升級意圖寫的**, 而升級還沒發生. 一份宣稱本機查核的句子, 和一列宣稱在某個指紋上跑過的結果, 是同一種東西 - 都在替一個沒被記錄的條件背書.
+
+第二例的來源後來查得出來, 而且很有代表性: `brew info rtk` 回報 `stable 0.45.0 (bottled)` 與 `Not installed`. 0.45.0 是**套件庫裡那個版本**, 不是機器上跑得起來的那個版本. 讀到一個數字, 沒讀到它旁邊的狀態 - 這正是「量到的是哪個條件」在最不起眼的地方失手.
+
+第二例還有實質後果. RTK.md 據此把「重寫後的 `0 matches` 可能是捏造的」降級成「上游已修, 規則只是保險」. 在 0.42.4 上用兩檔 fixture 實跑 (`rg -n needle DIR --glob '*.md'`, 真值 2 筆): 重寫成 `rtk grep`, BSD `grep` 拒絕 `--glob`, 而 wrapper 印出 `0 matches for 'needle'` 並 **exit 0**. 危險訊號在這台機器上是**現行的**, 不是歷史的.
+
+所以 [lifecycle-replay.md](lifecycle-replay.md) 的第 ③ 階段 (證明) 要再擴一次範圍: 內容指紋現在綁 trap 結果列, 但**散文裡的查核宣稱同樣是行為證據**, 目前完全沒有時效機制. 這條先記著, 不急著加閘 - 加錯了只會教人不要寫日期.
+
+一併記下 0.34 值得知道的三件事, 完整版在 [`headroom-runtime.md`](../../main/.agents/docs/headroom-runtime.md):
+
+- `wrap`/`unwrap` 每次都會**主動刪除**舊 context tool 的殘留, 包含 `~/.headroom/bin/rtk` 與指向它的 symlink. 本 repo 的 hook 命令不符合它的比對字串所以安全, 但由 Headroom 裝出來的 rtk 二進位檔會被刪, 而 hook 的 `command -v rtk` 前置檢查會讓 RTK 靜默消失 - fail-open 在這裡變成偵測不到.
+- 自訂 base URL 會關掉 Claude Code 的 on-demand tool loading; 0.34 用 `ENABLE_TOOL_SEARCH` 補回來 (upstream #746). 常駐 routing 要讓這個變數跟 base URL 一起常駐.
+- `--1m` 在 `ANTHROPIC_MODEL` 未設時退回 Headroom 內建的模型常數, 會把 session 釘在比當前選擇更舊的模型上.
 
 ### 明確不做的事
 
