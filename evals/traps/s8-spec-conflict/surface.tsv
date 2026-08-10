@@ -9,3 +9,4 @@ main/codex/agents/mech-executor.toml
 main/.agents/scripts/gate_lines.py
 evals/traps/s8-spec-conflict/briefs/arm-a-leaf-brief.md
 evals/traps/s8-spec-conflict/grade.py
+evals/traps/s8-spec-conflict/briefs/arm-b-negative-control-brief.md
