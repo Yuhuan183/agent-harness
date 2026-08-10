@@ -69,12 +69,22 @@ A rejected flag can surface in two ways, and the second is the dangerous one:
   wrapper still prints `0 matches for '<pat>'` and exits 0 — a definitive-looking
   negative for a search that never ran.
 
-Both signatures were re-run against a two-file fixture on 2026-08-10 and the
-second one **reproduced**: two real matches, `0 matches` reported. The rtk on
-that machine was 0.42.4. A 0.45.0 claim previously recorded here was not grounded
-in a binary this deployment ever had — `rtk rg` running ripgrep natively is a fix
-to look for on upgrade, not a fix to assume. Check `rtk --version` before relying
-on it; the failure is silent on any version that still substitutes.
+Both signatures were run against a two-file fixture on 2026-08-10, before and
+after upgrading, and the difference is real:
+
+| rtk | `rg -n <pat> DIR --glob '*.md'` rewrites to | result |
+|---|---|---|
+| 0.42.4 | `rtk grep` → BSD `grep` | `unrecognized option --glob`, then `0 matches`, **exit 0**, while two files matched |
+| 0.45.0 | `rtk rg` → real ripgrep | `--glob` honoured, one correct match, and a genuine no-match returns empty output with **exit 1** |
+
+So the fabricated count is fixed — but it is fixed *per machine*, on a version
+that has to actually be installed. An earlier 0.45.0 claim here came from
+`brew info rtk`, which reports the formula's version next to `Not installed`.
+Check `rtk --version`, never the package index.
+
+`rtk rg` on 0.45.0 **shells out to real ripgrep**. Without it the rewrite fails
+with `rtk: search failed: … (os error 2)` and exit 1 — loud, so no conclusion is
+at risk, but every `rg` command dies. Install ripgrep alongside rtk.
 
 So the rule is about the result, not the prefix: **never record a "no hits"
 conclusion from a rewritten command.** If a negative result is load-bearing,
