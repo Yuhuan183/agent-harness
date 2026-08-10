@@ -1,0 +1,106 @@
+clause	arm	scenario	seed	verdict	skills	contract_sha	names_left	note
+provider-routing	a	p1-cross-provider	1	correct	provider-routing	12a0d188f9ea	2	-
+provider-routing	a	p1-cross-provider	2	correct	provider-routing	12a0d188f9ea	2	-
+provider-routing	a	p1-cross-provider	3	correct	provider-routing	12a0d188f9ea	2	-
+provider-routing	a	p1-cross-provider	4	correct	provider-routing	12a0d188f9ea	2	-
+provider-routing	a	p1-cross-provider	5	correct	provider-routing	12a0d188f9ea	2	-
+provider-routing	a	p2-single-provider	1	correct	-	12a0d188f9ea	2	-
+provider-routing	a	p2-single-provider	2	correct	-	12a0d188f9ea	2	-
+provider-routing	a	p2-single-provider	3	correct	-	12a0d188f9ea	2	-
+provider-routing	a	p2-single-provider	4	correct	-	12a0d188f9ea	2	-
+provider-routing	a	p2-single-provider	5	correct	-	12a0d188f9ea	2	-
+provider-routing	b	p1-cross-provider	1	correct	provider-routing	35ba056f2de3	1	-
+provider-routing	b	p1-cross-provider	2	correct	provider-routing	35ba056f2de3	1	-
+provider-routing	b	p1-cross-provider	3	correct	provider-routing	35ba056f2de3	1	-
+provider-routing	b	p1-cross-provider	4	correct	provider-routing	35ba056f2de3	1	-
+provider-routing	b	p1-cross-provider	5	correct	provider-routing	35ba056f2de3	1	-
+provider-routing	b	p2-single-provider	1	correct	-	35ba056f2de3	1	-
+provider-routing	b	p2-single-provider	2	correct	-	35ba056f2de3	1	-
+provider-routing	b	p2-single-provider	3	correct	-	35ba056f2de3	1	-
+provider-routing	b	p2-single-provider	4	correct	-	35ba056f2de3	1	-
+provider-routing	b	p2-single-provider	5	correct	-	35ba056f2de3	1	-
+provider-routing	c	p1-cross-provider	1	correct	provider-routing	7cb97309ebb8	0	-
+provider-routing	c	p1-cross-provider	2	correct	provider-routing	7cb97309ebb8	0	-
+provider-routing	c	p1-cross-provider	3	correct	provider-routing	7cb97309ebb8	0	-
+provider-routing	c	p1-cross-provider	4	correct	provider-routing	7cb97309ebb8	0	-
+provider-routing	c	p1-cross-provider	5	correct	provider-routing	7cb97309ebb8	0	-
+provider-routing	c	p2-single-provider	1	correct	-	7cb97309ebb8	0	-
+provider-routing	c	p2-single-provider	2	correct	-	7cb97309ebb8	0	-
+provider-routing	c	p2-single-provider	3	correct	-	7cb97309ebb8	0	-
+provider-routing	c	p2-single-provider	4	correct	-	7cb97309ebb8	0	-
+provider-routing	c	p2-single-provider	5	correct	-	7cb97309ebb8	0	-
+provider-routing	a	p3-oblique-handoff	1	incorrect	-	12a0d188f9ea	2	invalid-scenario-defect
+provider-routing	a	p3-oblique-handoff	2	incorrect	-	12a0d188f9ea	2	invalid-scenario-defect
+provider-routing	a	p3-oblique-handoff	3	incorrect	-	12a0d188f9ea	2	invalid-scenario-defect
+provider-routing	a	p3-oblique-handoff	4	incorrect	-	12a0d188f9ea	2	invalid-scenario-defect
+provider-routing	a	p3-oblique-handoff	5	incorrect	-	12a0d188f9ea	2	invalid-scenario-defect
+provider-routing	b	p3-oblique-handoff	1	incorrect	-	35ba056f2de3	1	invalid-scenario-defect
+provider-routing	b	p3-oblique-handoff	2	incorrect	-	35ba056f2de3	1	invalid-scenario-defect
+provider-routing	b	p3-oblique-handoff	3	incorrect	-	35ba056f2de3	1	invalid-scenario-defect
+provider-routing	b	p3-oblique-handoff	4	incorrect	-	35ba056f2de3	1	invalid-scenario-defect
+provider-routing	b	p3-oblique-handoff	5	incorrect	-	35ba056f2de3	1	invalid-scenario-defect
+provider-routing	c	p3-oblique-handoff	1	incorrect	-	7cb97309ebb8	0	invalid-scenario-defect
+provider-routing	c	p3-oblique-handoff	2	incorrect	-	7cb97309ebb8	0	invalid-scenario-defect
+provider-routing	c	p3-oblique-handoff	3	incorrect	-	7cb97309ebb8	0	invalid-scenario-defect
+provider-routing	c	p3-oblique-handoff	4	incorrect	-	7cb97309ebb8	0	invalid-scenario-defect
+provider-routing	c	p3-oblique-handoff	5	incorrect	-	7cb97309ebb8	0	invalid-scenario-defect
+provider-routing	a	p3-capability-choice	1	incorrect	-	12a0d188f9ea	2	-
+provider-routing	a	p3-capability-choice	2	incorrect	-	12a0d188f9ea	2	-
+provider-routing	a	p3-capability-choice	3	incorrect	-	12a0d188f9ea	2	-
+provider-routing	a	p3-capability-choice	4	incorrect	-	12a0d188f9ea	2	-
+provider-routing	a	p3-capability-choice	5	incorrect	-	12a0d188f9ea	2	-
+provider-routing	b	p3-capability-choice	1	incorrect	-	35ba056f2de3	1	-
+provider-routing	b	p3-capability-choice	2	incorrect	-	35ba056f2de3	1	-
+provider-routing	b	p3-capability-choice	3	incorrect	-	35ba056f2de3	1	-
+provider-routing	b	p3-capability-choice	4	incorrect	-	35ba056f2de3	1	-
+provider-routing	b	p3-capability-choice	5	incorrect	-	35ba056f2de3	1	-
+provider-routing	c	p3-capability-choice	1	incorrect	-	7cb97309ebb8	0	-
+provider-routing	c	p3-capability-choice	2	incorrect	-	7cb97309ebb8	0	-
+provider-routing	c	p3-capability-choice	3	incorrect	-	7cb97309ebb8	0	-
+provider-routing	c	p3-capability-choice	4	incorrect	-	7cb97309ebb8	0	-
+provider-routing	c	p3-capability-choice	5	incorrect	-	7cb97309ebb8	0	-
+headroom-protocol	a	h1-large-blob-v1	1	incorrect	-	12a0d188f9ea	1	invalid-fixture-defect
+headroom-protocol	a	h1-large-blob-v1	2	incorrect	-	12a0d188f9ea	1	invalid-fixture-defect
+headroom-protocol	a	h1-large-blob-v1	3	incorrect	-	12a0d188f9ea	1	invalid-fixture-defect
+headroom-protocol	a	h1-large-blob-v1	4	invalid	-	12a0d188f9ea	1	invalid-fixture-defect
+headroom-protocol	a	h1-large-blob-v1	5	incorrect	-	12a0d188f9ea	1	invalid-fixture-defect
+headroom-protocol	a	h2-small-output	1	correct	-	12a0d188f9ea	1	-
+headroom-protocol	a	h2-small-output	2	correct	-	12a0d188f9ea	1	-
+headroom-protocol	a	h2-small-output	3	correct	-	12a0d188f9ea	1	-
+headroom-protocol	a	h2-small-output	4	correct	-	12a0d188f9ea	1	-
+headroom-protocol	a	h2-small-output	5	correct	-	12a0d188f9ea	1	-
+headroom-protocol	b	h1-large-blob-v1	1	incorrect	-	48bb62e943b9	0	invalid-fixture-defect
+headroom-protocol	b	h1-large-blob-v1	2	incorrect	-	48bb62e943b9	0	invalid-fixture-defect
+headroom-protocol	b	h1-large-blob-v1	3	incorrect	-	48bb62e943b9	0	invalid-fixture-defect
+headroom-protocol	b	h1-large-blob-v1	4	incorrect	-	48bb62e943b9	0	invalid-fixture-defect
+headroom-protocol	b	h1-large-blob-v1	5	incorrect	-	48bb62e943b9	0	invalid-fixture-defect
+headroom-protocol	b	h2-small-output	1	correct	-	48bb62e943b9	0	-
+headroom-protocol	b	h2-small-output	2	correct	-	48bb62e943b9	0	-
+headroom-protocol	b	h2-small-output	3	correct	-	48bb62e943b9	0	-
+headroom-protocol	b	h2-small-output	4	correct	-	48bb62e943b9	0	-
+headroom-protocol	b	h2-small-output	5	correct	-	48bb62e943b9	0	-
+headroom-protocol	c	h1-large-blob-v1	1	incorrect	-	48bb62e943b9	0	invalid-fixture-defect
+headroom-protocol	c	h1-large-blob-v1	2	incorrect	-	48bb62e943b9	0	invalid-fixture-defect
+headroom-protocol	c	h1-large-blob-v1	3	invalid	headroom-protocol	48bb62e943b9	0	invalid-fixture-defect
+headroom-protocol	c	h1-large-blob-v1	4	incorrect	-	48bb62e943b9	0	invalid-fixture-defect
+headroom-protocol	c	h1-large-blob-v1	5	incorrect	-	48bb62e943b9	0	invalid-fixture-defect
+headroom-protocol	c	h2-small-output	1	correct	-	48bb62e943b9	0	-
+headroom-protocol	c	h2-small-output	2	correct	-	48bb62e943b9	0	-
+headroom-protocol	c	h2-small-output	3	correct	-	48bb62e943b9	0	-
+headroom-protocol	c	h2-small-output	4	correct	-	48bb62e943b9	0	-
+headroom-protocol	c	h2-small-output	5	correct	-	48bb62e943b9	0	-
+headroom-protocol	a	h1-large-blob	1	incorrect	-	12a0d188f9ea	1
+headroom-protocol	a	h1-large-blob	2	incorrect	-	12a0d188f9ea	1
+headroom-protocol	a	h1-large-blob	3	incorrect	-	12a0d188f9ea	1
+headroom-protocol	a	h1-large-blob	4	incorrect	-	12a0d188f9ea	1
+headroom-protocol	a	h1-large-blob	5	incorrect	-	12a0d188f9ea	1
+headroom-protocol	b	h1-large-blob	1	incorrect	-	48bb62e943b9	0
+headroom-protocol	b	h1-large-blob	2	incorrect	-	48bb62e943b9	0
+headroom-protocol	b	h1-large-blob	3	incorrect	-	48bb62e943b9	0
+headroom-protocol	b	h1-large-blob	4	incorrect	-	48bb62e943b9	0
+headroom-protocol	b	h1-large-blob	5	incorrect	-	48bb62e943b9	0
+headroom-protocol	c	h1-large-blob	1	incorrect	-	48bb62e943b9	0
+headroom-protocol	c	h1-large-blob	2	incorrect	-	48bb62e943b9	0
+headroom-protocol	c	h1-large-blob	3	incorrect	-	48bb62e943b9	0
+headroom-protocol	c	h1-large-blob	4	incorrect	-	48bb62e943b9	0
+headroom-protocol	c	h1-large-blob	5	incorrect	-	48bb62e943b9	0

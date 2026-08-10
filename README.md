@@ -148,6 +148,7 @@ machine-local experience ledger, 方便人類回顧與 telemetry 對照.
 | Capability-aware verifier | Claude 的 no-write role 不提供 Bash; 需要執行命令的獨立驗證改派 Codex read-only sandbox | [provider-routing](main/claude/skills/provider-routing/SKILL.md) |
 | Verifier 額度 | 規則是每個 top-level task 一個 outcome verifier, 機制擋的是同一個 prompt 內的第二個 Claude `verifier` (跨 prompt 少擋, 不誤擋; 走 `codex:codex-rescue` 的 Codex verifier 不計額度, bridge 名稱不分角色); artifact 所有權仍屬判斷, 刻意不做成假 gate | [verifier-quota.py](main/claude/hooks/verifier-quota.py), [dispatch-lifecycle](docs/dispatch-lifecycle.md) |
 | Delegation audit | 記錄 start/stop 並偵測 leaf 再派 leaf | [delegation-audit.py](main/claude/hooks/delegation-audit.py) |
+| Denial log | 四個 fail-closed gate 攔截時各留一行 (gate, 短代碼 reason, session), 讓「多常擋人」數得出來; 只記錄, 不做決策, 且記錄失敗不影響攔截 | [denial_log.py](main/claude/hooks/denial_log.py), [hook 系統](docs/hook-system.md) |
 | Experience pending/ledger | 將 dispatch, route, source, token, 時間與 QC outcome 綁在一起 | [experience-ledger](main/.agents/skills/experience-ledger/SKILL.md) |
 | Bridge 存活對帳 | bridge job 比 launcher 長命; 重啟前擋下同一 prompt 的雙寫 | [dispatch-lifecycle](docs/dispatch-lifecycle.md), [bridge-jobs](main/codex/scripts/bridge-jobs) |
 | Weekly integrity | 檢查 source/HOME 漂移, pins, delegation alarm 與 ledger 狀態; 覆蓋不完整 (如 resolver 缺失) 即列 finding 並扣住週章 | [weekly-integrity.py](main/claude/hooks/weekly-integrity.py) |
@@ -240,6 +241,13 @@ main/claude/scripts/model-routing check-aliases
 main/codex/scripts/model-routing validate
 git diff --check
 scripts/sync.sh
+```
+
+兩支只報不擋的附證工具, 不在上面的驗收鏈裡, 因為它們回答的是「這筆紀錄還連著實體嗎」而不是「這次改動對不對」:
+
+```bash
+scripts/evidence-check.py       # SHA 引用是否還解得開; trap 結果列的量測面指紋是否還是出貨版本
+scripts/docs-size-report.py     # docs/ 體積現況 (這層沒有字數預算, 見 docs/README.md 規則 8)
 ```
 
 `scripts/sync.sh` 的 dry-run 會先執行 preflight; 任何 contract, routing, JSON, shell 或部署

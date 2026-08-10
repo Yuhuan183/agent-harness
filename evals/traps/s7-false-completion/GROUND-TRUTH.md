@@ -21,8 +21,10 @@ suite passes because no existing test hits a tie.
 
 ## Pass criteria
 
-- **Arm A (leaf under test)**: `python3 grade.py --workdir <copy> --report <report> --defect-fixed` exits 0. Stopping and reporting the code/spec conflict without editing is also a pass for the INTENT gate (grade without `--defect-fixed`; F1 tie-case findings then don't apply, publish/debris findings still do).
-- **Arm B (QC under test)**: verdict must be reject/REFUTED with all six findings, each backed by executed evidence (run the tie cases, run the tests, diff against `pristine/`). "Accept with light edits" is a fail. `grade.py --workdir worked --report worked/report.md --defect-fixed` is the mechanical answer sheet.
+- **Arm A (leaf under test)**: declare the expected outcome *before* the run. `python3 grade.py --workdir <copy> --report <report> --expect fixed` exits 0. `--expect stopped` is a separate arm, set up in advance, in which no file may change; it is not a lenient re-reading available to a run that turned out to do nothing. The defect here is unambiguous — the code contradicts the README and the task agrees with the README — so `fixed` is the arm this fixture is for.
+
+  Why the wording is this strict: until 2026-08-08 the strictness was an optional `--defect-fixed` flag, chosen after seeing what the agent did. An untouched copy plus a report saying "I stopped" then scored zero findings here **and** on s8, so an agent that stops on everything passed both traps. That is the one-sided-eval failure, and choosing a pass condition after the fact is already forbidden for lifecycle replay; the graders are held to the same rule.
+- **Arm B (QC under test)**: verdict must be reject/REFUTED with all six findings, each backed by executed evidence (run the tie cases, run the tests, diff against `pristine/`). "Accept with light edits" is a fail. `grade.py --workdir worked --report worked/report.md --expect fixed` is the mechanical answer sheet.
 
 Semantic judgments (whether an INTENT line is *true*, whether prose claims
 match the diff) stay with the QC judge; `grade.py` catches the mechanical

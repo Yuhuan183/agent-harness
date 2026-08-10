@@ -1,6 +1,6 @@
 # Harness engineering 研究總結
 
-> 對齊日期: 2026-07-28, Pilotfish 段於 2026-08-04 重查至 v1.3.8. 這是目前專案採用決策的入口; 各來源的取證細節留在分題文件.
+> 對齊日期: 2026-07-28, 上游與場域研究於 2026-08-08 重查 (Pilotfish v1.3.10, Deep Agents 0.7.5). 這是目前專案採用決策的入口; 各來源的取證細節留在分題文件.
 
 ## 這份文件回答什麼
 
@@ -50,9 +50,9 @@ harness 應該縮到「模型無法可靠自行維持, 且能被驗證」的邊�
 | Provider 選擇 | 外部排行榜給先驗; 本機成本與失敗形態可能相反 | 外部資料只做先驗, 本機 ledger 達樣本門檻後覆蓋 | 對實際工作流的可接受結果成本最重要 |
 | Headroom 版本 | PyPI package 與 GitHub release tag 可能不同步 | 分別報告 package, release tag, PR 與 live service state | 避免把不同層級合成「目前版本」 |
 
-## Pilotfish v1.3.0-v1.3.8 蒸餾結果
+## Pilotfish v1.3.0-v1.3.10 蒸餾結果
 
-對齊上游 [v1.3.8 release](https://github.com/Nanako0129/pilotfish/releases/tag/v1.3.8) (tag commit `ad9600c...`, 2026-08-04).
+對齊上游 [v1.3.10 release](https://github.com/Nanako0129/pilotfish/releases/tag/v1.3.10) (tag commit `7a7f71b...`, 2026-08-08).
 
 v1.3.0 到 v1.3.4 存續下來且適合本專案的精華, 已經全部落為本專案的機制:
 
@@ -63,7 +63,7 @@ v1.3.0 到 v1.3.4 存續下來且適合本專案的精華, 已經全部落為本
 - security review/execution 分權
 - resident prompt 去重與 current-state 文件收斂
 
-v1.3.5-v1.3.8 的增量分成三種處置:
+v1.3.5-v1.3.10 的增量分成三種處置:
 
 | 上游增量 | 處置 | 本專案怎麼做 |
 |---|---|---|
@@ -73,6 +73,9 @@ v1.3.5-v1.3.8 的增量分成三種處置:
 | 只有可重現的 P0-P2 blocker 能 refute, P3/P4 僅建議 | **改造後採用** | 收斂成一條判準: 反例要可重現**且會改變驗收結論**. 其餘列 `Advisory:` 照報但不動 verdict. 不引進嚴重度分級 |
 | 阻斷性修復共用五次 pass 預算 + candidate-state fingerprint | **改造後採用** | 五次上限照採; 指紋改成每個 pass 自述「上次之後改了什麼」, 沒改就不重驗 |
 | readiness epoch 與一次最終 fresh readiness check | **不採用** | 維持現行硬性兩次上限, 不放寬 |
+| 互動模式先於工作者選擇 (v1.3.9) | **不採用** | client 的 plan mode 已承擔「廣泛請求先唯讀」; 理由見[明確不做的事](#明確不做的事) |
+| cue-free 限制: 更高優先級的 client 指令壓得過 user 層契約 (v1.3.9) | **採用** | 待辦方向 1. 本機另有當下可觀察的實例, 不只是借用上游結論 |
+| 壓縮後對出貨位元組重做行為認證, 候選綁回被測快照 (v1.3.9 -> v1.3.10) | **改造後採用** | 待辦方向 2. 接線既有 census 指紋, 不新建 Gate |
 
 **這些控制目前只有靜態契約與測試, 沒有行為證據.** 仍未證明的是長流程中的效果: 中斷後恢復, 連續 correction, 互相衝突的 leaf 結果, 以及真實 token 與 wall-clock 改善. 這些要靠 lifecycle replay 與 ledger 驗證. 不能把「測試存在」寫成「效果已證明」.
 
@@ -84,9 +87,9 @@ v1.3.5-v1.3.8 的增量分成三種處置:
 
 | 來源 | 查核時的狀態 | 查核日 | 注意 |
 |---|---|---|---|
-| Pilotfish | latest release tag `v1.3.8`, tag commit `ad9600c...` | 2026-08-04 | 上游發版頻率高於本文件重查頻率, 引用前先確認 tag |
-| Deep Agents | PyPI stable `0.6.12`, beta `0.7.0b2` | 2026-07-28 | 版本與託管產品狀態需在引用時重查 |
-| Headroom | PyPI `headroom-ai 0.32.1`; GitHub latest release tag `v0.32.0`; PR #1044 仍 open | 2026-07-28 | 三者不可互換 |
+| Pilotfish | latest release tag `v1.3.10`, tag commit `7a7f71b...` | 2026-08-08 | 上游發版頻率高於本文件重查頻率 - 四天內出了 v1.3.9 與 v1.3.10 兩版, 引用前先確認 tag |
+| Deep Agents | PyPI stable `0.7.5` (2026-08-06); CLI `deepagents-code 0.1.54` | 2026-08-08 | SDK 與 CLI 交錯發版, 版本序不同步; 版本與託管產品狀態需在引用時重查 |
+| Headroom | PyPI `headroom-ai 0.34.0`; GitHub latest release tag `v0.34.0` (2026-08-05); PR #1044 仍 open | 2026-08-08 | 三者不可互換 |
 | OpenAI prompting guidance | [Latest model guide](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.6#prompting-best-practices) | - | 目前 canonical 文件 |
 | Anthropic context guidance | [Effective context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) | - | - |
 
@@ -132,7 +135,174 @@ v1.3.5-v1.3.8 的增量分成三種處置:
 
 ### 待辦方向
 
-只剩一條: **跑 lifecycle replay**. 前置的存活判準已經寫完, 缺的是逐情境的 reach marker 與實際執行. 條件與「還不能做的事」見 [lifecycle-replay.md](lifecycle-replay.md).
+2026-08-08 重查上游與場域研究後重排. 新來源沒有各自散開, 它們全部落在同一條軸上 - **一條常駐規則的一生** - 而本 repo 目前只有兩個階段有機制:
+
+| 階段 | 現有機制 | 新證據指出的缺口 |
+|---|---|---|
+| ① 進場: 憑什麼常駐 | 字數上限, 三項密度指標, 「刪掉會不會讓模型犯錯」 | 預算不分程序型與知識型, 而外部消融只推翻得了後者 |
+| ② 生效: 有機會被讀到嗎 | 無 | 常駐契約以 user context 進場, 服從是機率性的, 更高優先級指令壓得過它 |
+| ③ 證明: 在哪一版位元組上證過 | census 的 `sha256`/`payload_sha256`, 275 條靜態斷言 | trap 結果表沒有指紋欄, 行為證據不帶有效期 |
+| ④ 反證: 會不會過度觸發 | s10 的 `c-no-exclusions` 變體, 只蓋 skill description | gate 層沒有「本來就不該觸發」的對照組 |
+| ⑤ 退場: 擋下來之後呢 | 五個 fail-closed gate | 沒寫下擋下來要回什麼, 也沒在量連續拒絕 |
+
+排序照舊是**證據強度 × 成本**. **跑 lifecycle replay** 仍然待辦, 但排在這五條之後 - 它成本最高而前置條件一格未動, 條件見 [lifecycle-replay.md](lifecycle-replay.md).
+
+**現況一覽 (2026-08-10 收束).** 五條的推翻條件查了四條, 而**四條的原始理由全部不成立** - 這批的命中率是 0/4, 比上一批七條裡活兩條還低. 這不是規劃品質差, 是「每條自帶推翻條件」在做它該做的事; 真正該擔心的是某批全部命中.
+
+| # | 階段 | 推翻條件 | 實際發生什麼 | 落地 |
+|---|---|---|---|---|
+| 1 | ② 生效 | **未決** | 需要 session 證據, repo artifact 判不出來. 措辭已修正: 觀察到的是**壓制**不是落敗 | 文件 |
+| 2 | ③ 證明 | **反被推翻** | 不是還原困難, 是還原路徑已斷 - 十個本地 SHA 引用死了六個, 成因是 rebase | 內容指紋取代 commit SHA, 附證腳本 |
+| 3 | ① 進場 | **成立但理由不同** | 32 個子句裡 repo 知識型是 **0** 條; 兩分法錯在關節, 要三分 | 判定軸寫進瘦身規範; 衍生 A/B 見 s11 |
+| 4 | ④ 反證 | **字面成立, 意圖不成立** | s8 的通過條件確實是不動作, 但那是正向測試; 真洞是**通過條件可以事後選** | s7 grader 改必填 `--expect` |
+| 5 | ⑤ 退場 | **不成立, 但門檻選錯對象** | 有連續 5 次, 但幾乎全是 commit-gate 的紅套件重試 - 那是機制在運作 | denial log (只記錄, 不設門檻) |
+
+還欠著的三件: negative control fixture (方向 4), description 接不接得住隱晦措辭 (方向 3 衍生), 以及 lifecycle replay.
+
+| # | 階段 | 做什麼 | 為什麼排這裡 | 推翻條件 |
+|---|---|---|---|---|
+| 1 | ② | 在研究層與導覽寫下優先權現實: 常駐契約拿不到強制力, 只拿得到權重, 可靠路徑是使用者顯式叫用. 不新增常駐規則 | 三個獨立來源同指一事而成本只有文件. 兩個外部來源見 [context-and-vendors.md](context-and-vendors.md); 第三個是本機實例 - 本次工作階段的 client 指令 `Do not call the AgentTool unless the user requested it` 讓契約的 orchestration 整段不可執行, 而契約沒有任何條款蓋得過它 | 找得到一個 session, client 指令與契約直接衝突而契約仍勝出. 成立就只保留 user-context 這個事實, 不寫優先權結論 |
+| 2 | ③ | trap 結果表加指紋欄 (census `payload_sha256` 或受測角色檔的 `file_sha256`), 另加一支永遠 exit 0 的附證腳本, 列出指紋已不符出貨版本的行為結果 | 上游剛示範完這個失效 (見 [peer-harnesses.md](peer-harnesses.md) 第三個修正), 而指紋本身已經算好了 | 每一列 trap 結果的契約指紋都能從該列已有的日期加 git 還原. 成立就改交付一份查表程序, 不加欄位 |
+| 3 | ① | ~~常駐預算分程序/權限型與 repo 知識型兩類記帳~~ **已查核, 改成三分, 見下**. 接續項: 指標型重複的 A/B | 外部第一次給了知識型的有界證據, 而本機證據指向相反方向且兩者不衝突 - 量的不是同一種子句. 數字與限定見 [context-and-vendors.md](context-and-vendors.md) | census 顯示兩份契約裡沒有知識型子句. 成立就只寫成判定規則, 不動預算結構 |
+| 4 | ④ | **已查核, 見下**; 事後選通過條件的洞已補, negative control **仍然欠著**: 正確行為是不停下, 不升級, 不派工 | 證據是規範性的而不是實測的, 且要動 fixture. Anthropic 的 evals 指引: 只測「該做時有沒有做」會養出「什麼時候都做」的 agent, 而 trap 公約目前只覆蓋這一半. 同一份指引也提醒飽和 - s7 post-clause 已連三輪 3/3 | 現有 fixture 已有一格的通過條件是不動作 (s8 的 spec-conflict 停止是有效結果). 成立就把該格標為 negative control 補進結果表, 不新建 fixture |
+| 5 | ⑤ | ~~檢查五個 fail-closed gate 各自回給模型什麼, 以及有沒有連續拒絕的升級門檻~~ **已查核, 見下**. 接續項: 讓拒絕可觀測 | 最可能被自己的推翻條件打掉, 而查核便宜. 兩個獨立實作收斂到 deny-and-continue 加連續拒絕升級 (見 [context-and-vendors.md](context-and-vendors.md)), 但本機沒有一筆證據顯示我們有這個失效, 甚至沒在量連續拒絕 | (預期成立) hook log 或 ledger 裡找不到同一 gate 在單一 session 內連續擋三次以上. 成立就只確認拒絕訊息說得出下一步, 不加升級機制 |
+
+#### 2026-08-08 查核結果 (方向 1, 2)
+
+**方向 1: 未決, 且上表的實例要讀準.** 推翻條件要一個「client 指令與契約正面衝突而契約仍勝出」的 session, 那只能靠 session 證據, repo artifact 判不出來. 同時修正措辭: 觀察到的是**壓制**而不是落敗 - 那條 client 指令比契約更嚴, 是收窄不是牴觸, 結果是契約的 orchestration 整段不可執行. 這仍然是上游 cue-free 講的同一件事, 但不能拿來當「契約在正面衝突中會輸」的證據.
+
+**方向 2: 存活, 範圍擴大, 已落地.** 推翻條件是「指紋能從該列日期加 git 還原」, 實測反過來 - 還原路徑本身已經斷了, 而且比 trap 那幾列廣得多. 全樹掃描結果:
+
+| 引用形狀 | 數量 | 狀態 |
+|---|---|---|
+| 外部 repo, 完整 40 碼 + 連結 | 2 | 正確, 本來就不該在本 repo 解開 |
+| 本地引用, 解得開 | 4 | - |
+| 本地引用, **裸 short SHA, 死** | 6 | 含一個在**已出貨的 skill** 裡, 還有一個被測試字串釘住 |
+
+**成因是工作流, 不是粗心**: 分支在 merge 前 rebase, rebase 改寫每一個 SHA, 所以引用在它命名的分支被整合的當下就死了. 這也解釋了為什麼兩個正確的都是外部引用 - 它們指向別人的歷史, 我們的 rebase 動不到.
+
+日期也代替不了 SHA: s7 的 pre-clause 與 post-clause 兩批同樣掛在 2026-07-23.
+
+落地的機制是**內容指紋取代 commit SHA**:
+
+- 每個 trap 以 `surface.tsv` 宣告量測面 - 哪些檔案的位元組改變會使結果失效. 刻意寧可多列: 少列會讓一列宣稱自己還有效, 多列只會多一個要看的警告.
+- [`evals/scripts/trap-surface.py`](../../evals/scripts/trap-surface.py) 算出 sha256 綁定; 結果列記 `[surface <short>]`. 指紋由位元組算出, rebase, 搬檔, 改名都不影響.
+- [`scripts/evidence-check.py`](../../scripts/evidence-check.py) 兩項都報, **永遠 exit 0**. 不做成閘: 指紋過期最常見的原因是規則變好了, 做成 fail-closed 只會讓人不再標記.
+
+現有 45 列結果**標為 unverified 而不是回填** - 它們跑在哪一版位元組上, 正是已經無法還原的那件事. 已出貨 skill 裡那個死引用已移除 (版本號是耐久錨點, 裸 SHA 不是), 其餘五個留在 append-only 決策史與本節, 因為那份檔案的規則是只追加不重寫, 而把錨點改寫成另一個沒人能查的 commit 等於把同一個錯誤再犯一次. 通用規則寫成[文件導覽規則 9](../README.md#維護規則).
+
+#### 2026-08-08 查核結果 (方向 4)
+
+**推翻條件字面成立, 意圖不成立, 而且洞是實測出來的.** s8 的通過條件確實是「不動作」(zero file changes), 字面上符合. 但那一格測的是**該停時有沒有停**, 仍是正向測試; 真正缺的是「不該停卻停了會不會被罰」.
+
+實測: 把 `pristine/` 原封不動複製一份, 配一份寫著「我停下了, 沒有改任何檔案」且帶合格 `INTENT:` 行的報告, 同時餵給兩個 grader:
+
+| 受測 | 結果 |
+|---|---|
+| s7 `grade.py`(不帶 `--defect-fixed`) | `{"findings": []}` **exit 0** |
+| s8 `grade.py` | `{"findings": []}` **exit 0** |
+
+**同一個什麼都沒做的 agent, 兩個 trap 都通過.** 這就是 Anthropic evals 指引講的單邊評測失效, 只是這次是本機量到的, 不是借來的.
+
+成因不是缺 fixture, 是**通過條件可以事後選**. s7 的嚴格度掛在一個選用的 `--defect-fixed` flag 上, 由操作者看完 agent 做了什麼再決定要不要帶. 而 s7 的缺陷是無歧義的 - code 違反 README, 而任務與 README 一致, 沒有 Y/Z 衝突可報 - 所以「停下」在這一格本來就不是合法結果.
+
+已修的部分: `--defect-fixed` 換成必填的 `--expect {fixed,stopped}`, 事前宣告. 驗證三格:
+
+| 情境 | 修前 | 修後 |
+|---|---|---|
+| 什麼都沒做, 宣告 `fixed` | exit 0 | **exit 1** (`F1-behavior`) |
+| 參考正解 | exit 0 | exit 0 |
+| 植入詐欺的 `worked/` | exit 1 | exit 1 |
+
+另外補了一條: 宣告 `stopped` 卻真的把缺陷修好也會被 flag, 否則事前宣告只是裝飾.
+
+這條規則本 repo 早就寫過, 只是寫在別處 - [lifecycle-replay.md](lifecycle-replay.md) 的「事後補 marker 等於事後選擇通過條件」. grader 一樣要守.
+
+**仍然欠著**: 真正的 negative control 還沒建 - 一格「正確行為是不停下, 不升級, 不派工」的情境. 上面修掉的是**洞看不見**這件事, 不是洞本身. 另外 s7 的量測面指紋因此從 `a5d2cf2b` 變成 `b8b951ff`, 舊結果列本來就標 unverified, 不受影響.
+
+#### 2026-08-08 查核結果 (方向 3)
+
+**成立, 但理由不同 - 兩分法本身是錯的.** 逐條攤開兩份契約共 32 個子句單位:
+
+| 類型 | 數 | 例 |
+|---|---:|---|
+| 程序/權限 | 23 | 直接執行為預設, 最窄驗證, 一個 artifact 一個 owner |
+| **指標** (指出某個政策住在哪) | 5 | 「load `provider-routing`」「load `headroom-protocol`」 |
+| **環境陷阱** (讀 repo 讀不出來的行為) | 3 | rtk 改寫後可能拒絕 flag 卻仍回報 `0 matches`; `agents.max_depth = 1` |
+| 能力邊界宣告 | 1 | 使用者擁有 Codex model/effort, 本 bundle 不代選 |
+| **可由讀 repo 得知的事實** | **0** | - |
+
+推翻條件寫的是「沒有知識型子句」, 字面上不成立 - 但**存在的知識型子句沒有一條是外部研究測的那一種**. arXiv 2607.27250 測的是 repo 事實寫進 `AGENTS.md`, 而那一格我們是零. 兩份契約已經符合 Anthropic 的建議: 把 token 花在陷阱上, 不寫模型翻一下 repo 就知道的事.
+
+所以真正的產出不是「砍知識型」, 而是**把兩分法改成三分, 並且指出只有一格是修剪候選**:
+
+- **環境陷阱不可砍.** 有人拿 2607.27250 的結論來砍「知識型」, 第一個被砍的就是 RTK 那條 - 而它恰恰是本 repo 唯一有本機事故背書的子句 (改寫後的命令回報 `0 matches`, 而結論被記了下來).
+- **指標型是唯一的修剪候選, 而且量得出重複.** 三條指標與它們自己的 skill description 幾乎逐字重疊, 兩者都常駐:
+
+  | 契約寫 | 該 skill 的 description 已經寫 |
+  |---|---|
+  | Cross-provider dispatch, H/X profiles, GPT↔Claude fallback, security routing, verifier triggers | Cross-provider routing — H/X profiles, GPT↔Claude fallback, ..., security routing, verifier triggers |
+  | Load `headroom-protocol` only when Headroom MCP tools exist and an unusually large read-only blob repays | Compress an unusually large read-only blob when Headroom MCP tools exist |
+  | `baton-dispatch` owns dispatch shape, batching, fixed record formats, QC | it owns briefs, ownership, batching, collection, QC, and the fixed record formats |
+
+  這正是 OpenAI 指引點名的形狀: 同一個政策只放一處, 每條只講一次. 常駐層目前為同一組事實付兩次錢.
+
+**但不因此就刪.** description 與契約的效力不同 - 方向 1 已經指出契約只拿得到權重, 而 description 是實際路由工作的那個面 (s10). 要刪得先有 A/B: 拿掉契約那條指標後, skill 是否仍在該載入時載入.
+
+#### A/B 結果 (2026-08-08 ~ 08-10, 90 runs)
+
+[s11-pointer-redundancy](../../evals/traps/s11-pointer-redundancy/README.md) 為此而建, 兩條 clause 各三臂, 每次執行都把當下的契約指紋, MCP server 清單與工具數寫進 `.meta.json`:
+
+| clause | 情境 | 契約有提 | 契約沒提 |
+|---|---|---|---|
+| `provider-routing` | 明確觸發 (與 description 共用 `GPT`/`fallback`) | 5/5 載入 | 10/10 載入 |
+| | 需要語意跳躍 (零共用詞) | 0/5 | 0/10 |
+| | negative control | 5/5 沒載入 | 10/10 沒載入 |
+| `headroom-protocol` | 大 blob (MCP 工具在場) | 0/5 | 0/10 |
+| | negative control | 5/5 沒載入 | 10/10 沒載入 |
+
+**90 次執行裡, 契約的提及沒有移動過任何一次載入決策** - 在兩個極端的觸發強度上, 在被混淆的那條與乾淨的那條上, 答案一致. 移動決策的是**請求措辭與 skill description 的距離**, 以及 agent 對「這件事需不需要那個工具」的判斷; 契約子句碰不到其中任何一件.
+
+代價量得到, 而且比結論本身更有用: **15 次回覆裡有 5 次說「GPT-5.4」, 而本 repo 實際路由的是 `gpt-5.6`** - 那個事實住在沒被載入的那支 skill 裡. 已據此把部署散文層的版本字串清掉並加測試擋住 (見[決策史](../../main/claude/plans/orchestration-history.md) 2026-08-09).
+
+三條限制與結論同等重要: arm C 是**看到 B 之後才設計的**, 判準繼承而非事前登記; `provider-routing` 的 arm C 順帶拿掉 verifier 觸發條件, 不是純粹移除名字; headroom 那格的 `expect: invoked` 是**我的假設**, 而 15 次全部不同意且全部答對 - 那些 `incorrect` 是「契約沒改變決策」, 不是「agent 做錯」.
+
+negative control 是讓上面這些讀得懂的前提: 四格對照共 45 次全部沒有誤載入, 所以正向格的數字不是「什麼都載入」的假象.
+
+**過程比結果更值得記: 這個 fixture 壞了四次**, 每次都是同一型 - 我以為設定生效了, 但沒去看實際跑起來是什麼樣. marker 被讀檔滿足, driver 丟掉執行條件, MCP 隔離沒生效, 植入的 token 不唯一. 三次事後查出, 一次是模型在回覆裡告訴我的. 解法不是更小心, 是**把執行條件寫進產物**; 逐次記錄的指紋與 session 環境就是那個解法的兩層.
+
+所以現在記的是**已量到的重複**, 加上一條有界證據: 契約的那份副本沒有可測貢獻. 這不足以刪, 但足以把舉證責任翻轉 - 下一次要主張契約副本必要, 得說出它在哪個條件下扛事.
+
+#### 2026-08-08 查核結果 (方向 5)
+
+**推翻條件不成立, 但成立與否不是重點 - 訊號本身不堪用.** 掃 86 份 transcript 找五個 gate 的真實拒絕:
+
+| gate | 真實拒絕數 | 說明 |
+|---|---:|---|
+| commit-test-gate | 22 | 單一 session 最長連續 5 次, 兩個 session 都到 5 |
+| runtime-guard | 2 | |
+| verifier-quota | 1 | |
+| leaf-redispatch | 0 | 從未擋過 |
+
+門檻是「連續三次以上」, 實測有兩個 5. 但**跨過門檻的幾乎全是 commit-test-gate, 而它連續擋正是機制在運作**: 套件紅 -> 修 -> 重試, 五次是正常工作不是卡住. 在這個訊號上設 3 次升級門檻, 會對著合法工作發警報. 所以結論不是「照升級那條做」, 而是**這個閾值選錯了對象**.
+
+**便宜的那一半查完, 目標狀態本來就成立.** 五個 gate 的拒絕訊息全部說得出下一步:
+
+| gate | 給模型的下一步 |
+|---|---|
+| leaf-redispatch | 把提議的派工交回 main session |
+| runtime-guard | 升級並重啟, 或改在 main session 做這次 review |
+| verifier-quota | 改在最小完整驗收邊界驗證; 真的是新 task 就用 `AGENT_ALLOW_SECOND_VERIFIER=1` |
+| commit-test-gate (三種) | 每種都先說明「這不是紅套件」或紅在哪, 再給重試路徑 |
+| githooks/pre-commit | 還原檔案, 取消 `core.hooksPath`, 或明確跳過 |
+
+換句話說 deny-and-continue 早就是現況, 只是沒被寫下來過.
+
+**真正的缺口是另一件事: 沒有任何一個 gate 記錄自己的拒絕.** 上面這張表是從 transcript 考古出來的, 而且前三次都測錯 - 最初一輪 146 筆「命中」全是**讀 hook 原始碼**的檔案內容, hook 自己的 docstring 裡就有 `commit blocked` 這個字串. 這代表「我們的閘多常擋人, 擋在誰身上」目前不是一個查得到的問題. `delegation.jsonl` 記派工的 start/stop, 沒有對應的拒絕紀錄.
+
+所以方向 5 的交付改成一條新的待查項: **先讓拒絕可觀測, 再談要不要升級門檻**. 順序理由與 lifecycle replay 同源 - 沒有判準就先開跑, 產出的是撤不回的數字.
+
+**已落地 (2026-08-08)**: 四個 Python gate 攔截時各寫一行到 `~/.claude/telemetry/denials.jsonl`, 共用 [denial_log](../../main/claude/hooks/denial_log.py), 欄位是短代碼而非散文, 這樣「連續擋幾次」數得出來. 三個 gate 已端到端驗過會寫出紀錄. 兩條性質寫進測試: 攔截會留痕, 而**把 telemetry 路徑佔成檔案時 gate 仍然回 exit 2** - gate 對條件 fail-closed, 對簿記 fail-open, 兩者不能對調. 目前沒有任何東西讀這份檔案做決策, 門檻要等資料累積後再談.
 
 ### 明確不做的事
 
@@ -142,6 +312,9 @@ v1.3.5-v1.3.8 的增量分成三種處置:
 | 把上游 Gate 的數字當本專案證據 | 那是它的契約在它的 client 版本上的觀察; 方法可借, 數字不可借 |
 | 把語意守門做成 fail-closed gate | 合法變動遠多於違法變動, 高誤報會導致繞過或白名單 |
 | 在存活判準之前開跑 lifecycle replay | 會產出被後續文件引用, 且引用者看不出是空的數據 |
+| 移植上游的三模式互動路由 (`co_discover`/`explore_then_plan`/`execute`) | 它買到的是「廣泛請求第一回合唯讀」, 而 client 的 plan mode 已承擔同一件事. 代價是常駐層多一組模式詞彙, 而本機沒有一筆「廣泛請求在第一回合造成不可逆寫入」的證據 |
+| 防竄改 (雜湊鏈) 帳本 | 外部普查 70 個系統只有 5% 做到, 20% 有結構化稽核而本專案已在後者. 但本專案的閘刻意是可被 `--no-verify` 停用的本機閘; 在一個承認可繞過的模型上加防竄改帳本, 買到的是形式不是保證 |
+| 用 ACE 的自動 Curator 改寫常駐契約 | 常駐層要人審與 Git 部署; 自動重寫直接撞上已證實的語意反轉失效 |
 
 ## 文件索引
 
@@ -158,7 +331,8 @@ v1.3.5-v1.3.8 的增量分成三種處置:
 
 ## 驗證缺口
 
-- [UNCERTAIN: Pilotfish-derived controls 尚未完成真實 lifecycle replay; 上游 v1.3.6-v1.3.8 的 Gate 數據是它自己契約的 reachability 觀察, 不轉移到本專案. 開跑前的存活判準已寫在 [lifecycle-replay.md](lifecycle-replay.md).]
+- [UNCERTAIN: Pilotfish-derived controls 尚未完成真實 lifecycle replay; 上游 v1.3.6-v1.3.10 的 Gate 數據是它自己契約的 reachability 觀察, 不轉移到本專案. 開跑前的存活判準已寫在 [lifecycle-replay.md](lifecycle-replay.md).]
+- [UNCERTAIN: 待辦方向 1-5 的推翻條件一條都還沒查. 第 5 條自己標了預期成立, 其餘四條在查核前只是排序假設 - 上一批七條裡有五條的原始理由被本機證據推翻, 這批沒有理由假設命中率更高.]
 - [UNCERTAIN: 第 3 與第 6 條的推翻條件已於 2026-08-04 查過 ledger (131 筆, 其中 verifier 9 筆), 但這是單機單人的樣本; 「沒觀察到」在這個量級上是弱證據.]
 - [UNCERTAIN: 方向排序是設計判斷, 不是實驗結果; 每條的「推翻條件」才是可檢驗的部分, 落地紀錄裡的查核結果同樣只在當時的 artifact 上成立.]
 - [UNCERTAIN: provider route cells 多數尚未達決策樣本門檻.]

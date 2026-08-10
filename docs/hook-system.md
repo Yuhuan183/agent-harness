@@ -69,6 +69,28 @@ gate 都用合成 stdin 做 pipe-test, 把正常, 該攔截, 防繞過三種輸�
 Hook 建置規範 (真實目錄先證明可跑 → 合成 pipe-test → `jq` 驗設定 → 失敗訊息回到模型 →
 保持秒級 → 新 session 驗載入) 與測試案例規範見 [playbook 第 5 節](harness-engineering.md#5-驗證迴路).
 
+## 攔截了就要留痕 (2026-08-08 起)
+
+四個 Python gate 攔截時各寫一行到 `~/.claude/telemetry/denials.jsonl`, 由共用的
+[denial_log](../main/claude/hooks/denial_log.py) 負責, 欄位含 `gate`, 短代碼 `reason`,
+時間與 session. 用代碼而不是散文, 是為了讓「連續擋幾次」數得出來而不必去 parse 給人看的訊息.
+
+會加這件事是因為 2026-08-08 想回答「我們的閘多常擋人」時, 只能去考古 transcript, 而且
+**前三次都測錯** - 最初的 146 筆「命中」全是讀 hook 原始碼的檔案內容, 因為 block 字串就寫在
+它們自己的 docstring 裡. `delegation.jsonl` 記派工的 start/stop, 先前沒有對應的拒絕紀錄.
+
+三件刻意不做的事:
+
+- **不是 gate, 也不是門檻.** 沒有任何東西讀這份檔案做決策. 先前查過「連續三次就升級」這個
+  想法, 實測發現跨過門檻的幾乎都是 commit-test-gate 的紅套件重試, 那是機制在運作;
+  要不要有門檻, 得先有這份資料才談得起 (見[研究摘要方向 5](research/README.md#待辦方向)).
+- **記錄失敗絕不影響攔截.** `record` 吞掉所有例外, 連 import 失敗也有 fallback; 測試直接
+  把 telemetry 路徑佔成檔案, 斷言 gate 仍然回 exit 2. gate 對它的條件 fail-closed,
+  對它的簿記 fail-open, 兩者不能對調.
+- **不記內容.** 只留 payload 的識別欄位 (session, agent_type, tool_name), 不留指令本身.
+
+`python3 ~/.claude/hooks/denial_log.py --tail 20` 印最近幾筆.
+
 ## 這套設計的邊界
 
 - Hook 只做**能機械判定**的事. 需要判斷的 (例如「這個平行派工是否踩到同一份可寫檔案」)

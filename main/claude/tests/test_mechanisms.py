@@ -1598,6 +1598,7 @@ class TrapGraderIntegrityTests(unittest.TestCase):
         "evals/traps/s8-spec-conflict/grade.py",
         "evals/traps/s9-tz-bucketing/grade.py",
         "evals/traps/s10-skill-recall/grade.py",
+        "evals/traps/s11-pointer-redundancy/grade.py",
     )
 
     def test_every_trap_grader_is_registered(self) -> None:
@@ -1858,15 +1859,30 @@ class TrapGraderIntegrityTests(unittest.TestCase):
                 self.assertEqual(grade(report, extra), 1,
                                  f"{name} still reaches exit 0")
 
-    def test_graders_require_a_report(self) -> None:
+    # What each grader grades. The rule is "no grader runs without the evidence
+    # it judges"; the flag is only how a given fixture spells it. s7-s10 judge a
+    # written report against a worked copy, s11 judges an event stream, and
+    # asserting the word `--report` across all of them would have forced the
+    # newer fixture to grow an argument it has no use for.
+    EVIDENCE_FLAG = {
+        "evals/traps/s7-false-completion/grade.py": "--report",
+        "evals/traps/s8-spec-conflict/grade.py": "--report",
+        "evals/traps/s9-tz-bucketing/grade.py": "--report",
+        "evals/traps/s10-skill-recall/grade.py": "--report",
+        "evals/traps/s11-pointer-redundancy/grade.py": "--events",
+    }
+
+    def test_graders_refuse_to_run_without_their_evidence(self) -> None:
+        self.assertEqual(set(self.EVIDENCE_FLAG), set(self.GRADERS),
+                         "every registered grader must declare what it grades")
         for grader in self.GRADERS:
-            workdir = str(ROOT / Path(grader).parent / "pristine")
-            result = subprocess.run(
-                [sys.executable, str(ROOT / grader), "--workdir", workdir],
-                capture_output=True, text=True, timeout=60,
-            )
-            self.assertNotEqual(result.returncode, 0, grader)
-            self.assertIn("--report", result.stderr, grader)
+            with self.subTest(grader=grader):
+                result = subprocess.run(
+                    [sys.executable, str(ROOT / grader)],
+                    capture_output=True, text=True, timeout=60,
+                )
+                self.assertNotEqual(result.returncode, 0, grader)
+                self.assertIn(self.EVIDENCE_FLAG[grader], result.stderr, grader)
 
     def test_intent_capture_survives_decimals_in_the_spec_segment(self) -> None:
         sys.path.insert(0, str(ROOT / "main" / ".agents" / "scripts"))
@@ -2389,6 +2405,115 @@ class BridgeJobLivenessTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2, result.stdout)
         self.assertIn("not the same as no jobs running", result.stderr)
         self.assertNotIn("no duplicate", result.stdout)
+
+
+class DenialLogTests(unittest.TestCase):
+    """Denials were the one thing the gates do that nothing recorded, so
+    answering "how often does this fire" meant grepping transcripts - and the
+    hooks' own docstrings contain the block strings, which is how the first
+    three attempts at that question came back wrong. These assert the two
+    properties that make the log worth having: it records, and it cannot break
+    the gate it observes."""
+
+    def _deny(self, home: Path, extra_env: dict | None = None):
+        hook = ROOT / "main/claude/hooks/leaf-redispatch.py"
+        env = {**os.environ, "HOME": str(home), **(extra_env or {})}
+        return subprocess.run(
+            [sys.executable, str(hook)],
+            input=json.dumps({"tool_name": "Agent", "agent_type": "executor",
+                              "session_id": "sess-test"}),
+            capture_output=True, text=True, env=env)
+
+    def test_a_denial_is_recorded_with_enough_to_count_it(self) -> None:
+        with tempfile.TemporaryDirectory() as home:
+            result = self._deny(Path(home))
+            self.assertEqual(result.returncode, 2, result.stderr)
+            log = Path(home) / ".claude" / "telemetry" / "denials.jsonl"
+            self.assertTrue(log.exists(), "denial produced no row")
+            row = json.loads(log.read_text(encoding="utf-8").splitlines()[0])
+            # A reason code rather than prose: counting runs of denials must not
+            # depend on parsing the message a human reads.
+            self.assertEqual(row["gate"], "leaf-redispatch")
+            self.assertEqual(row["reason"], "leaf-tried-to-dispatch")
+            self.assertEqual(row["session_id"], "sess-test")
+            self.assertIn("ts", row)
+
+    def test_an_unwritable_log_still_blocks(self) -> None:
+        """The gate is fail-closed on its condition and fail-open on its
+        bookkeeping. If those ever swap, a broken telemetry directory turns
+        into a boundary that silently stops holding."""
+        with tempfile.TemporaryDirectory() as home:
+            # Occupy the telemetry path with a file so makedirs cannot create it.
+            claude = Path(home) / ".claude"
+            claude.mkdir()
+            (claude / "telemetry").write_text("not a directory", encoding="utf-8")
+            result = self._deny(Path(home))
+            self.assertEqual(result.returncode, 2,
+                             "logging failure must not turn a block into a pass")
+            self.assertIn("[leaf-redispatch] blocked", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+
+    def test_the_module_is_deployed_next_to_the_hooks_that_import_it(self) -> None:
+        # The hooks import it as a sibling, so it has to travel with them; the
+        # manifest ships the directory, and this catches a future move out of it.
+        self.assertTrue((ROOT / "main/claude/hooks/denial_log.py").exists())
+        for hook in ("leaf-redispatch.py", "runtime-guard.py",
+                     "verifier-quota.py", "commit-test-gate.py"):
+            source = (ROOT / "main/claude/hooks" / hook).read_text(encoding="utf-8")
+            with self.subTest(hook=hook):
+                self.assertIn("import denial_log", source)
+                self.assertIn("denial_log = None", source,
+                              f"{hook}: import must fall back, not raise")
+
+
+class TrapSurfaceTests(unittest.TestCase):
+    """The surface declaration is what dates a trap's evidence, so it is the one
+    part of the mechanism that has to be checked rather than reported. A surface
+    listing a path that no longer exists produces a fingerprint over the wrong
+    set of bytes, and the result rows it stamps would claim to be current while
+    measuring something else. That is a determinate error, unlike a stale stamp,
+    which is usually just the rules having improved."""
+
+    def _traps(self) -> list[Path]:
+        return sorted((ROOT / "evals" / "traps").glob("*/"))
+
+    def test_every_trap_declares_the_surface_its_results_depend_on(self) -> None:
+        for trap in self._traps():
+            with self.subTest(trap=trap.name):
+                self.assertTrue(
+                    (trap / "surface.tsv").exists(),
+                    f"{trap.name}: no surface.tsv, so its result rows cannot say "
+                    "which bytes produced them")
+
+    def test_every_declared_surface_path_exists(self) -> None:
+        for trap in self._traps():
+            listing = trap / "surface.tsv"
+            if not listing.exists():
+                continue
+            for raw in listing.read_text(encoding="utf-8").splitlines():
+                path = raw.strip()
+                if not path or path.startswith("#"):
+                    continue
+                with self.subTest(trap=trap.name, path=path):
+                    self.assertTrue(
+                        (ROOT / path).exists(),
+                        f"{trap.name}: surface lists {path}, which is gone; the "
+                        "fingerprint would silently cover a different set")
+
+    def test_the_fingerprint_is_deterministic_and_covers_every_listed_file(self) -> None:
+        module = load_module(
+            "trap_surface", ROOT / "evals" / "scripts" / "trap-surface.py")
+        for trap in self._traps():
+            if not (trap / "surface.tsv").exists():
+                continue
+            with self.subTest(trap=trap.name):
+                first, members = module.fingerprint(trap.name)
+                second, _ = module.fingerprint(trap.name)
+                self.assertEqual(first, second, "fingerprint is not stable")
+                self.assertEqual(
+                    [member["path"] for member in members],
+                    module.surface_paths(trap.name),
+                    "fingerprint skipped a declared file")
 
 
 if __name__ == '__main__':

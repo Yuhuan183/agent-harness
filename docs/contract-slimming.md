@@ -44,6 +44,17 @@
 
 ## 預算與強制
 
+- **子句分三型** (2026-08-08 逐條盤點): **程序/權限** 23 條, **指標** 5 條, **環境陷阱**
+  3 條, 能力邊界宣告 1 條, 可由讀 repo 得知的事實 **0 條**. 判定順序是: 環境陷阱不可砍
+  (讀 repo 讀不出來, 且本 repo 唯一有事故背書的子句就在這格), 指標型是唯一的修剪候選
+  (已量到與 skill description 逐字重疊), repo 事實本來就不該進來. 外部消融
+  ([2607.27250](research/context-and-vendors.md)) 測的是最後那一格, 拿它的結論去砍
+  前兩格是誤用.
+- **預算只綁在出貨層** (2026-08-08 起): 判準是 `scripts/deployment-manifest.tsv`
+  有沒有部署它, 不是路徑長什麼樣. 理由是字數上限量的是 push 成本 — 每回合 (兩份
+  契約) 或每次派工 (skills) 都要付的位元組. 不部署的檔案沒有 session 在付,
+  `docs/**` 因此改由「只報不擋的體積報告 + 數量級鬆閘」看住, 見
+  [文件導覽規則 8](README.md#維護規則).
 - 預算以 `word_count` (CJK-aware, 每個 CJK 字元計一詞) 計, 行數不可作為預算單位
   (長行可規避). 現行數值的唯一真相源是
   [test_contracts.py](../main/claude/tests/test_contracts.py) 的 `DocumentationBudgetTests`;

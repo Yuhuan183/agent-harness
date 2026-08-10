@@ -18,6 +18,11 @@ import shutil
 import subprocess
 import sys
 
+try:  # Observability must never be able to break the boundary it observes.
+    import denial_log
+except Exception:  # noqa: BLE001
+    denial_log = None
+
 
 MINIMUM = (2, 1, 207)
 RESTRICTED_ROLES = ("plan-verifier", "security-reviewer", "verifier")
@@ -90,6 +95,9 @@ def gate(version):
         "Upgrade and restart, or run the review in the main session.",
         file=sys.stderr,
     )
+    if denial_log is not None:
+        denial_log.record("runtime-guard", "runtime-too-old-or-unknown", payload,
+                          subagent=subagent, runtime=current, required=required)
     return 2
 
 
