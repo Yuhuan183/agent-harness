@@ -335,8 +335,22 @@ class MachineStateHygieneTests(unittest.TestCase):
             self.assertIn("`OPENAI_BASE_URL`", text)
             self.assertIn("Codex App", text)
         self.assertIn("This contract owns RTK guidance", codex)
-        self.assertIn("headroom wrap claude --no-context-tool", runtime)
-        self.assertIn("headroom wrap codex --no-context-tool", runtime)
+        self.assertIn("headroom wrap claude", runtime)
+        self.assertIn("headroom wrap codex", runtime)
+        # v0.34 rejects the retired flag outright, so a doc that still spells it
+        # anywhere hands the reader a command that fails. Forbid the bare flag,
+        # not just the two full invocations it used to appear in.
+        for text in (runtime, codex, setup):
+            self.assertNotIn("--no-context-tool", text)
+            self.assertNotIn("--context-tool", text)
+        # The same release moved the injection entry point to --serena-instructions
+        # and made the code-memory MCP default to Serena. A runtime guide that
+        # names neither cannot tell a reader what a wrapped session installs.
+        self.assertIn("--serena-instructions", runtime)
+        self.assertIn("--code-memory", runtime)
+        # Upgrading Headroom leaves the ~/.zshrc block stale until the installer
+        # is re-run; the version-transition owner has to say so.
+        self.assertIn("install-zsh-functions", runtime)
         self.assertIn("headroom wrap agy", runtime)
         self.assertIn("`persistent-service`", runtime)
         self.assertIn("`persistent-task`", runtime)
