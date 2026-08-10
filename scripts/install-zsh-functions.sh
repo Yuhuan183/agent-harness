@@ -62,11 +62,11 @@ agy-auto() {
 }
 
 hclaude() {
-  _agent_harness_headroom_wrap claude --no-context-tool -- "$@"
+  _agent_harness_headroom_wrap claude -- "$@"
 }
 
 hcodex() {
-  _agent_harness_headroom_wrap codex --no-context-tool -- "$@"
+  _agent_harness_headroom_wrap codex -- "$@"
 }
 
 hagy() {

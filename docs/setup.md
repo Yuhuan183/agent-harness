@@ -60,6 +60,7 @@ brew install python@3.13
 
 # 1. 基礎 CLI
 brew install rtk                 # hook 依賴; 未裝時 fail-open, 可後補
+                                 # 裝完不要跑 `rtk init`: hook 由本 repo settings.json 管理
 curl -LsSf https://astral.sh/uv/install.sh | sh   # headroom CLI 由 uv tool 管理
 uv tool install headroom-ai      # 詳見 ~/.agents/docs/headroom-runtime.md
 # Claude Code 與 Codex CLI 依官方文件安裝 (本 repo 不管理其版本)
@@ -101,8 +102,10 @@ adapter 相容性查核集中在
 [`headroom-runtime.md`](../main/.agents/docs/headroom-runtime.md); 不可用無效的 base URL
 環境變數或靜默 fallback 冒充成功 routing.
 
-Claude/Codex 的 `--no-context-tool` 由本專案管理 RTK 指引, 避免 wrapper 重寫契約.
-Antigravity 上游 adapter 尚未提供同名選項, 不傳未知參數.
+Headroom v0.34 起已移除 CLI context tools; Claude/Codex wrapper 不再傳入舊版的
+context-tool 選項. RTK 指引仍由本專案契約管理, 不依賴 Headroom 注入或改寫 —
+v0.34 的注入入口 `--serena-instructions` 預設關閉, 本 repo 不啟用. 升級 Headroom 後
+若 `wrap` 的參數有變, 記得重跑 `scripts/install-zsh-functions.sh --apply`.
 完整 lifecycle, Remote Control 與版本轉換說明見
 [`headroom-runtime.md`](../main/.agents/docs/headroom-runtime.md).
 

@@ -93,6 +93,8 @@ fi
             self.assertIn(f"{function_name}() {{", block)
         self.assertEqual(block.count("# >>> agent-harness auto-mode functions >>>"), 1)
         self.assertEqual(block.count("# <<< agent-harness auto-mode functions <<<"), 1)
+        self.assertNotIn("--no-context-tool", block)
+        self.assertNotIn("--context-tool", block)
 
     def test_platform_commands_preserve_arguments_and_safety_modes(self) -> None:
         cases = {
@@ -122,7 +124,6 @@ fi
                 "headroom",
                 "wrap",
                 "claude",
-                "--no-context-tool",
                 "--",
                 "two words",
             ],
@@ -130,7 +131,6 @@ fi
                 "headroom",
                 "wrap",
                 "codex",
-                "--no-context-tool",
                 "--",
                 "two words",
             ],
@@ -145,7 +145,6 @@ fi
                 "headroom",
                 "wrap",
                 "claude",
-                "--no-context-tool",
                 "--",
                 "--permission-mode",
                 "auto",
@@ -155,7 +154,6 @@ fi
                 "headroom",
                 "wrap",
                 "codex",
-                "--no-context-tool",
                 "--",
                 "-a",
                 "on-request",
