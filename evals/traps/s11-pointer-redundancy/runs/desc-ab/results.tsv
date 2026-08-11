@@ -1,0 +1,16 @@
+scenario	seed	verdict	target_invoked	skill_sha
+p3-capability-choice	1	correct	True	c6dd80fa5cb7
+p3-capability-choice	2	incorrect	False	c6dd80fa5cb7
+p3-capability-choice	3	incorrect	False	c6dd80fa5cb7
+p3-capability-choice	4	incorrect	False	c6dd80fa5cb7
+p3-capability-choice	5	incorrect	False	c6dd80fa5cb7
+p3-capability-choice	6	correct	True	c6dd80fa5cb7
+p3-capability-choice	7	incorrect	False	c6dd80fa5cb7
+p3-capability-choice	8	incorrect	False	c6dd80fa5cb7
+p3-capability-choice	9	incorrect	False	c6dd80fa5cb7
+p3-capability-choice	10	incorrect	False	c6dd80fa5cb7
+p3-capability-choice	11	incorrect	False	c6dd80fa5cb7
+p3-capability-choice	12	incorrect	False	c6dd80fa5cb7
+p3-capability-choice	13	incorrect	False	c6dd80fa5cb7
+p3-capability-choice	14	incorrect	False	c6dd80fa5cb7
+p3-capability-choice	15	incorrect	False	c6dd80fa5cb7

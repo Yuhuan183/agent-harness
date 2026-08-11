@@ -291,10 +291,70 @@ of the description and not of the contract.
 
 That has a measurable cost, which is the more useful half of this result: **5 of
 the 15 replies named `GPT-5.4`, while the model this repo actually routes to is
-`gpt-5.6`.** The skill that did not load is where that fact lives. The lever this
-points at is therefore the description's coverage of oblique phrasing, not the
-contract clause — deleting or keeping the clause would not have moved any of
+`gpt-5.6`.** ~~The skill that did not load is where that fact lives.~~ The lever
+this points at is therefore the description's coverage of oblique phrasing, not
+the contract clause — deleting or keeping the clause would not have moved any of
 these 45 runs.
+
+> **Correction, 2026-08-12.** The struck sentence is wrong, and was wrong when
+> written. `provider-routing/SKILL.md` has never contained a GPT version string —
+> `git log -S "gpt-5.6"` on that path returns no commit, so this is not a later
+> removal. `gpt-5.6-sol` lives in `main/codex/model-routing.toml`, and the skill
+> only carries the instruction to resolve a route by running
+> `${CODEX_HOME}/scripts/model-routing resolve`. Loading the skill hands an agent
+> a command to run, not the model's name.
+>
+> The distinction matters because the sentence was load-bearing: it framed the
+> stale-model symptom as something better description coverage could fix. It
+> cannot. See the A/B below, which measured exactly that and came back null for
+> the reason this correction explains.
+
+#### Description coverage A/B — 15 runs, **inconclusive**, and the premise was wrong
+
+The one lever the 45-run result pointed at, tested directly. Arms A/B/C vary the
+*contract*; this varies the **description** instead, on the cell where no arm
+ever loads.
+
+**The gap was real and specific.** The description's trigger list is entirely
+about providers («派給 GPT/Codex», «換 provider», «fallback», «要不要 verifier»,
+«安全審查找誰»); `p3-capability-choice` asks «換一個能力更強的模型來做比較划算» —
+a *capability tier* question. In this repo that is a provider-routing decision,
+and the description never said so.
+
+**Treatment**, deployed only (repo source untouched, so the surface fingerprint
+does not capture it — the per-run rows carry the deployed skill's sha instead):
+
+```diff
+- 觸發：…「換 provider」…、跨 provider 交接。
++ 觸發：…「換 provider 或更強的模型」…。
+```
+
+Word-neutral by construction: 1298 -> 1300 against a 1300 budget, paid for by
+dropping «跨 provider 交接», which «換 provider» already covers. A fresh
+`claude --print` was probed first and quoted the new line back, so the
+manipulation landed — unlike two attempts that same week where it did not.
+
+| | loaded the skill | named the stale `GPT-5.4` | named the routed model |
+|---|---|---|---|
+| baseline (45-run p3, all arms) | 0/15 | 5/15 | — |
+| treatment | **2/15** | 4/15 | **0/15** |
+
+**Pre-declared before the run**: ≥5/15 adopt, 4/15 extend to n=30, 2–3/15
+inconclusive, 0–1/15 refuted. 2/15 gives Fisher p = 0.48 against the 0/15
+baseline, so this is **inconclusive and was not adopted**; the deployed skill was
+restored and verified byte-identical to source.
+
+The secondary column was not pre-declared and is exploratory, but it is the
+interesting one: the stale-model rate did not move, and **not one run named the
+routed model — including the two that did load the skill**. That is exactly what
+the correction above predicts. Better trigger coverage can make the skill load;
+it cannot make the skill contain a fact it has never contained.
+
+**What this retires**: "improve the description's oblique-phrasing coverage" as
+the answer to the stale-model symptom. Those are two problems, and the 45-run
+write-up merged them. Whether description coverage moves *loading* is still open
+— 2/15 is not evidence either way — but it is now a separate question from where
+the routed model's name is written down and how a run is supposed to reach it.
 
 ## `headroom-protocol` — 2026-08-10, `[surface ff1a1328]`
 
