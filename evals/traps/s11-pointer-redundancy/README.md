@@ -143,6 +143,57 @@ Four limits, none of them footnotes:
 The negative control is what makes the rest readable: p2 stayed away 15/15
 across all three arms, so the 5/5 on p1 is not an agent loading everything.
 
+### baton-dispatch, 2026-08-11 `[surface 0e3e246e]` — 30 runs, one cell valid
+
+3 arms × 2 cells × 5 seeds. Contract restored and hash-verified after every
+arm; sentinel clear; both manipulation checks landed before any measurement run
+(`arm B` -> `6f2adb886772`, 1 name left; `arm C` -> `0b355764e922`, **0 names
+left** — the only clean name-erasure of the three clauses).
+
+| cell | expectation | arm A | arm B | arm C |
+|---|---|---|---|---|
+| `b2-one-small-edit` (negative control) | not invoked | **5/5 correct** | **5/5 correct** | **5/5 correct** |
+| `b1-parallel-batch` (positive) | invoked | 0/5 | 0/5 | 0/5 — **all 15 invalid, see below** |
+
+**The negative control holds across every arm.** Removing the load instruction
+(B), and removing the skill's name from the contract entirely (C), produced no
+spurious loading on a one-line typo fix. Over-firing is not happening here.
+
+#### `b1-parallel-batch` is defective — the same defect as `p3`, found again
+
+The positive cell measures nothing, and the reason is not that the clause is
+inert. The clause reads "**Once a dispatch is going ahead**, load
+`baton-dispatch`". Reading every run's final message:
+
+| | decided to work directly | decided to dispatch | loaded the skill |
+|---|---|---|---|
+| 15 b1 runs, all arms | **13/15 said so explicitly** | **0/15** | 0/15 |
+
+No dispatch was ever going ahead, so the clause's precondition never obtained
+in any arm. **These runs are `invalid`, not `incorrect`** — they never reached
+the branch under test, and the grader's `incorrect` verdicts on them should be
+read as invalid rows.
+
+The agents were also right. The resident contract's own dispatch brake says
+work failing the cost test "stays in main, which is the answer without loading
+anything", and `b1`'s fixture is eight files totalling under 700 bytes. Four
+trivial edits in a 400-byte repo fail the cost test by construction, so
+*declining* to dispatch is the contract-compliant answer and not loading the
+skill follows from it.
+
+So the scenario promised "several independent bounded tasks **worth
+dispatching**" and built tasks that are not worth dispatching. The marker was
+fine — the runs did reach a decision about dispatching. The **expectation** was
+what assumed the decision would come out "yes".
+
+**What a rebuilt `b1` needs**, so the next attempt does not repeat this: work
+that genuinely passes the brake — two or more independent workstreams where
+wall-clock matters, or bulk that would pollute the main window, or a surface a
+cheaper pinned role covers. Small-and-independent is not enough; the fixture has
+to make dispatching the *cheaper* option, not merely a possible one. Until then
+this clause's positive direction is unmeasured, and the 90-run conclusion about
+contract mentions does not extend to the dispatch path.
+
 ### p3 oblique trigger — 15 runs, all **invalid**, scenario defect
 
 Added to attack the ceiling: p1 hands the agent `GPT`, `fallback` and `profile`,

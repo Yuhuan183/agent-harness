@@ -1,0 +1,11 @@
+{
+  "clause": "baton-dispatch",
+  "arm": "c",
+  "scenario": "b1-parallel-batch.md",
+  "contract_sha256_in_effect": "0b355764e922eeb5229d450757b9e1b73643066204a09114d25f0e30d4e8480f",
+  "clause_name_mentions_in_effect": 0,
+  "mcp_requested": false,
+  "mcp_servers_in_session": [],
+  "tool_count_in_session": 30,
+  "exit": 0
+}
