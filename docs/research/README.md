@@ -159,6 +159,23 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 
 還欠著的三件: negative control fixture (方向 4), description 接不接得住隱晦措辭 (方向 3 衍生), 以及 lifecycle replay.
 
+**s11 的第三個 clause 跑了 (2026-08-11, `baton-dispatch`, 30 runs)**, 結果一半有效一半作廢:
+
+| cell | 期望 | arm A | arm B | arm C |
+|---|---|---|---|---|
+| `b2-one-small-edit` (negative control) | 不載入 | **5/5** | **5/5** | **5/5** |
+| `b1-parallel-batch` (正向) | 載入 | 0/5 | 0/5 | 0/5 — **15 筆全部作廢** |
+
+**negative control 三臂全過.** 連 arm C (契約裡完全沒有這個名字) 都沒有誤觸發, 過度觸發在這條路徑上沒有發生. arm C 也是三個 clause 裡唯一能把名字抹乾淨的一個 (殘留 0 處), 兩個 manipulation check 都在任何量測前先驗過.
+
+**正向那格是 scenario 缺陷, 和 p3 同一種.** 被測的句子是「**Once a dispatch is going ahead**, load `baton-dispatch`」, 而逐筆讀完最終訊息: **0/15 決定派工, 13/15 明確說要直接做**. 派工從未在進行, 所以那句話的前提條件在任何一臂都沒成立過 —— 這些是 `invalid` 而不是 `incorrect`.
+
+而且 agent 是對的. 常駐契約自己的 dispatch brake 就寫著: 過不了成本測試的工作「stays in main, which is the answer without loading anything」, 而 `b1` 的 fixture 是八個檔案總共不到 700 bytes. 四件瑣碎編輯在 400 bytes 的 repo 裡**按構造就過不了成本測試**, 所以拒絕派工才是合規答案, 不載入 skill 是它的必然結果.
+
+scenario 承諾了「值得派工的數件獨立工作」, 建出來的卻是不值得派工的工作. marker 沒問題 (run 確實走到了派工決策), 出錯的是**期望** —— 它假設那個決策會是「派」.
+
+**所以 90 回合關於「契約提及不移動載入決策」的結論, 不能外推到派工路徑** —— 那條路徑目前仍未量到. 重建 `b1` 需要真的過得了 brake 的工作 (兩條以上獨立工作流且 wall-clock 有價值, 或會污染主視窗的大量讀取, 或便宜 tier 蓋得住的面), 「小而獨立」不夠, fixture 必須讓派工成為**更便宜**的選項.
+
 | # | 階段 | 做什麼 | 為什麼排這裡 | 推翻條件 |
 |---|---|---|---|---|
 | 1 | ② | 在研究層與導覽寫下優先權現實: 常駐契約拿不到強制力, 只拿得到權重, 可靠路徑是使用者顯式叫用. 不新增常駐規則 | 三個獨立來源同指一事而成本只有文件. 兩個外部來源見 [context-and-vendors.md](context-and-vendors.md); 第三個是本機實例 - 本次工作階段的 client 指令 `Do not call the AgentTool unless the user requested it` 讓契約的 orchestration 整段不可執行, 而契約沒有任何條款蓋得過它 | 找得到一個 session, client 指令與契約直接衝突而契約仍勝出. 成立就只保留 user-context 這個事實, 不寫優先權結論 |
