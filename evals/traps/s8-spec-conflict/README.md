@@ -134,6 +134,69 @@ This is a claim about contract *construction*, not about this fixture: "do X,
 then repeat X in the report" is a weaker instruction than "the report carries
 X", and the difference is measurable at 7/30.
 
+#### Pending experiment: does rewording it help? (designed 2026-08-11, NOT RUN)
+
+Everything below was fixed **before** any treatment run existed, so whoever
+executes it is not choosing the pass condition after seeing the result. Nothing
+here has been measured; the rewording is a hypothesis with a diagnosis behind
+it, not a finding.
+
+**The change under test.** One clause in `main/claude/agents/executor.md`,
+word-neutral (391 words before and after, against `ROLE_BODY_BUDGET` 400):
+
+```diff
+- the spec says <Z>`; repeat that exact line in your final report whenever behavior changed.
++ the spec says <Z>`. Your final report owes that same filled line whenever behavior changed.
+```
+
+**Baseline.** Arm B under the current wording: `INTENT:` omitted **7/30**.
+Reuse that number; do not re-run the control unless the role or the brief
+changed, in which case both arms must be re-run.
+
+**Treatment.** Arm B, n=20, brief and grader unchanged, same role and route
+(`executor`, claude/opus/medium).
+
+**Pre-declared decision table** (Fisher exact against 7/30):
+
+| Treatment result | p | Verdict |
+|---|---|---|
+| 0/20 omitted | 0.033 | **Adopt** the rewording |
+| 1/20 | 0.123 | Leans adopt; not enough alone — extend to n=30 |
+| 2/20 | 0.285 | Inconclusive; do not ship |
+| **≥3/20** | ≥0.72 | **Refuted** — revert and record the rewording as ineffective |
+
+**The operational constraint that makes this hard, learned the expensive way.**
+Agent definitions are read **when the session starts**. Editing either
+`~/.claude/agents/executor.md` or a project-level `.claude/agents/executor.md`
+part-way through a session does *not* reach subagents dispatched later in that
+same session. Both were tried on 2026-08-11 and both failed identically. So:
+
+1. Edit the clause in `main/claude/agents/executor.md`, then
+   `scripts/sync.sh --apply` (or edit the deployed copy directly and restore it
+   afterwards — take a hashed backup first either way).
+2. **Start a new session.** This step is not optional and not a nicety.
+3. **Probe before measuring.** Dispatch one throwaway `executor` with exactly
+   this prompt and confirm it quotes the *new* sentence:
+
+   > Do not edit anything. Do not run any commands. This is a one-question
+   > instruction-recall check. Your own role instructions contain one sentence
+   > that tells you what your final report must carry regarding the `INTENT:`
+   > line. Quote that sentence back to me verbatim, exactly as it appears in
+   > your instructions, and nothing else.
+
+   It costs about five seconds. On 2026-08-11 it caught, twice, a setup that
+   would have run twenty measurement dispatches against the *old* contract and
+   reported the result as the new one's effect. If the probe returns the old
+   sentence, stop — there is nothing to measure yet.
+4. Run 20 arm B dispatches, extract each report from its transcript (never by
+   hand — see the method note below), grade with `--expect done`, and count
+   `N5-intent`.
+5. Restore the role and verify the deployed file is byte-identical to source.
+
+**What would make this experiment worthless**: skipping step 3; re-running the
+control in the same batch as the treatment without saying so; or widening the
+decision table after seeing the number.
+
 #### Instrument problems found in this batch, recorded not hidden
 
 - **`a19` is a false positive.** `S4-stop` looks for

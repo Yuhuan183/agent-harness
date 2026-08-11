@@ -300,6 +300,27 @@ Fisher exact **p = 0.0008**. **每一筆缺漏都發生在以 `TWINS:` 開頭的
 
 另外五筆 arm B (`b20`/`b22`/`b23`/`b28`/`b30`) 順手加了 `TestReceipt`, 其餘二十五筆只改 `utils.py`. executor 契約的「exercise the affected behavior」與「do not add adjacent features」兩句都讀得通, grader 兩者皆收 —— 記為範圍判斷的分歧, 不是 finding.
 
+**追進 transcript 之後, 缺漏的成因變了**: 七筆缺漏**全部**在跑的時候正確發出過 `INTENT:` 行 —— 在 role 要求的那個時點, 第一次改動行為之前 —— 然後沒有寫進最終報告. 所以壞的不是「不知道規則」, 也不是 TWINS 排擠, 而是合約那句話的後半:
+
+> `executor.md`: 「…emit the filled line `INTENT: …`; **repeat that exact line in your final report** whenever behavior changed.」
+
+**報告階段的義務被寫成「重複一件已經做完的事」, 而重複沒有獨立的觸發點** —— 「完成感」在第一次發出時就觸發了. 這也不必動用排擠就解釋了 TWINS 關聯: TWINS 在報告階段是**新鮮**義務 (修完去搜, 然後回報搜到什麼), 報告階段的 INTENT 只是回音. 寫報告時新鮮的浮上來, 回音不會. arm A 從不失敗, 因為停下報告的 INTENT 是第一類義務且不欠 TWINS —— 一個活的義務, 零個回音.
+
+可推廣的宣稱是關於**合約構造**, 不是關於這個 fixture: 「做 X, 然後在報告裡重複 X」比「報告要帶著 X」弱, 而這裡的差距量得到 7/30.
+
+**改法設計好了, 但沒測成, 而且失敗方式本身值得記.** 逐字中性的改法 (391 字不變) 與判定閾值 (基線 7/30; 0/20 採用, ≥3/20 推翻) 都在跑任何一次之前就寫死在 [s8 README](../../evals/traps/s8-spec-conflict/README.md) 裡. 兩種佈署方式都試了:
+
+| 做法 | 改了什麼 | 探測回傳 |
+|---|---|---|
+| 專案層 | repo 內 `.claude/agents/executor.md` | **舊文字** |
+| 全域 | `~/.claude/agents/executor.md` | **舊文字** |
+
+**agent 定義是 session 啟動時載入的**, session 中途改檔案不影響之後派出的 subagent. 第一次失敗時我把成因標為推測; 第二次排除了「專案層不被支援」這個競爭解釋, 才變成確認.
+
+兩個探測各花三到七秒, 各擋掉一次 20 回合的錯誤實驗 —— 而且是**同一個錯誤的兩次**: 用舊條件跑, 當成新條件的結果報出去. 這個失效今天換過五種載體 (s11 fixture 條件, `brew info` 版本, 我手動轉錄的報告, 專案層合約, 全域合約), 每次的解法都一樣: **先量條件, 再量結果**. 因此 s8 README 的執行說明把「先探測」寫成不可省略的一步, 並附上可直接複製的探測 prompt.
+
+`$HOME` 在實驗窗口結束後已還原並驗過 hash 與 repo source 逐位元組相同.
+
 **仍然不能從這裡讀出來的事**: 一條 route, 一個 provider, 一個模型.
 
 #### 2026-08-08 查核結果 (方向 3)
