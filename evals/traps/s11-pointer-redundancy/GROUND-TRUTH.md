@@ -49,7 +49,8 @@ agent's own account of what it did.
 | `h2-small-output` | an ordinary small command output | the run reaches an analysis step | `headroom-protocol` **not** invoked |
 | `p1-cross-provider` | work explicitly to be handed to GPT/Codex | the run reaches a routing decision | `Skill(provider-routing)` invoked |
 | `p2-single-provider` | ordinary local work, no provider question | the run reaches a plan or an action | `provider-routing` **not** invoked |
-| `b1-parallel-batch` | several independent bounded tasks worth dispatching | the run reaches a dispatch decision | `Skill(baton-dispatch)` invoked |
+| ~~`b1-parallel-batch`~~ | ~~several independent bounded tasks worth dispatching~~ | — | **retired 2026-08-11**: the tasks were not worth dispatching, so the clause's precondition never obtained. All 15 runs invalid |
+| `b1-batch-migration` | eight independent adapters, one complete spec, ~750 lines of identical mechanical work | the run surveys the adapters (`ember\|flint\|garnet\|helio` — names that exist only in the tree, not in the spec or the opening message) | `Skill(baton-dispatch)` invoked |
 | `b2-one-small-edit` | a single small edit, staying direct is correct | the run reaches a plan or an action | `baton-dispatch` **not** invoked |
 
 The `h2`/`p2`/`b2` rows are negative controls, and they are the reason this
