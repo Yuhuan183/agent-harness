@@ -159,6 +159,17 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 
 還欠著的三件: negative control fixture (方向 4), description 接不接得住隱晦措辭 (方向 3 衍生), 以及 lifecycle replay.
 
+#### 待新 session 一起處理的兩件 (2026-08-11 起)
+
+兩件都不是「還沒做」, 是**在這個 session 裡做不了**, 原因相同也不同, 放在一起免得散落:
+
+| # | 待辦 | 為什麼要新 session | 已備妥的東西 |
+|---|---|---|---|
+| 1 | executor 契約 gate-line 措辭的 A/B | agent 定義在 session 啟動時載入, 中途改檔案 (全域或專案層) 都不會生效, 兩種都實測過 | 逐字中性的改法, 基線 7/30, Fisher 判定表, 含探測步驟的完整協定, 全在 [s8 README](../../evals/traps/s8-spec-conflict/README.md) |
+| 2 | s11 `b1` 正向格改用不同的 payoff 重做 | 需要先決定用哪個 payoff, 那是設計判斷不是迭代; 決定後才值得再跑 | 現有 `b1-batch-migration` 的 fixture, marker 與 pilot 發現, 全在 [s11 README](../../evals/traps/s11-pointer-redundancy/README.md) |
+
+第 2 件的設計判斷講明白: 已經有兩個 fixture 都拿到有理有據的拒絕, 而且**完全指定的機械性工作可能在任何規模下都過不了 dispatch brake** —— brief 成本隨項目數線性成長, 每項難度是零, 加大只讓拒絕更有道理. 所以正向格要換 payoff 而不是換大小, 候選是 **context protection** (大量讀取, 不拆會塞爆主視窗) 或 **fresh-context independence** (價值就在獨立 context, 例如 review). 選哪個由人決定, 不由再迭代一次 fixture 決定.
+
 **s11 的第三個 clause 跑了 (2026-08-11, `baton-dispatch`, 30 runs)**, 結果一半有效一半作廢:
 
 | cell | 期望 | arm A | arm B | arm C |
