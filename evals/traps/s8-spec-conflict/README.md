@@ -100,6 +100,40 @@ Fisher exact **p = 0.0008**. Every single omission is in a report that led with
 Emitting one owed line first appears to displace the other. n=15 called this "a
 hypothesis for the next batch"; the next batch supports it.
 
+#### What actually failed — checked in the transcripts, not inferred
+
+Displacement turned out to be the wrong picture. Searching every run's full
+transcript for the line, not just its final report:
+
+| | `INTENT:` emitted during the run | present in the final report |
+|---|---|---|
+| 7 omitting runs | **7/7 — every one** | 0/7 |
+| sampled passing runs | yes | yes |
+
+**All seven did the INTENT work correctly.** Each opened the spec, reasoned
+about X/Y/Z, and emitted the filled line at the moment the role requires it —
+before the first behavior-changing edit. What they dropped was the *second*
+obligation in the same sentence:
+
+> `main/claude/agents/executor.md`: "…emit the filled line `INTENT: …`;
+> **repeat that exact line in your final report** whenever behavior changed."
+
+So the failure is not ignorance of the rule, nor a report written without the
+analysis behind it. It is that **the report-time obligation is phrased as a
+repeat of an obligation the agent has already discharged**, and a repeat has no
+independent trigger — the sense of "done" fires at the first emission.
+
+That also explains the `TWINS:` association without needing displacement.
+`TWINS` is owed *fresh* at report time (search after fixing, then report what
+the search found); report-time `INTENT` is owed only as an echo. When the report
+is composed, the fresh obligation surfaces and the echo does not. Arm A never
+fails this because a stop report owes `INTENT` as its own first-class line and
+owes no `TWINS` at all — one live obligation, zero echoes.
+
+This is a claim about contract *construction*, not about this fixture: "do X,
+then repeat X in the report" is a weaker instruction than "the report carries
+X", and the difference is measurable at 7/30.
+
 #### Instrument problems found in this batch, recorded not hidden
 
 - **`a19` is a false positive.** `S4-stop` looks for
