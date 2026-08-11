@@ -225,6 +225,140 @@ if __name__ == "__main__":
     unittest.main()
 '''
 
+# b1's rebuild. The first `b1-parallel-batch` handed the agent four trivial
+# edits across eight files totalling under 700 bytes and expected it to dispatch.
+# It did not, 15 runs out of 15, and it was right to refuse: the resident brake
+# says work failing the cost test "stays in main, which is the answer without
+# loading anything". A scenario cannot ask the contract about dispatching while
+# building work that must not be dispatched.
+#
+# So this fixture is built to pass that brake on three of its four payoffs at
+# once, rather than to look large:
+#
+#   * parallelism  - four adapters, no shared file, no ordering between them;
+#   * cheaper tier - one complete spec drives every edit, which is exactly the
+#                    `mech-executor` shape;
+#   * bulk         - ~200 lines each, so reading all four costs the main window
+#                    something noticeable.
+#
+# Same shape four times is also the one case the contract's batching rule
+# explicitly admits, so the correct answer here is not merely "dispatching is
+# allowed" but "batching is the cheaper option" - which is the bar the old
+# fixture never cleared.
+ADAPTER_CALLS = [
+    ("timeout_seconds", "30"), ("retry_limit", "3"), ("base_url", '"https://api.invalid"'),
+    ("verify_tls", "True"), ("pool_size", "8"), ("backoff_factor", "1.5"),
+    ("user_agent", '"meterlib/1.0"'), ("max_redirects", "5"), ("chunk_bytes", "65536"),
+    ("keepalive", "True"), ("proxy_url", "None"), ("trace_sampling", "0.05"),
+]
+
+
+def adapter(name: str) -> str:
+    """One vendor adapter with many `Config.get` call sites to migrate.
+
+    Deterministic: the call list is fixed and the per-adapter variation comes
+    from the name alone, so two builds are byte-identical.
+    """
+    head = (
+        f'"""{name} vendor adapter.\n\n'
+        f"Reads every operational knob through the legacy `Config` helper.\n"
+        f'See MIGRATION.md for the replacement that is being rolled out."""\n\n'
+        "from core.config import Config\n\n\n"
+        f"class {name.capitalize()}Adapter:\n"
+        "    def __init__(self, config: Config):\n"
+        "        self._config = config\n\n"
+    )
+    body = []
+    for index, (key, default) in enumerate(ADAPTER_CALLS):
+        body.append(
+            f"    @property\n"
+            f"    def {key}(self):\n"
+            f'        """Operational knob {index + 1} of {len(ADAPTER_CALLS)}."""\n'
+            f'        return self._config.get("{name}.{key}", {default})\n\n'
+        )
+    tail = (
+        "    def describe(self):\n"
+        "        return {\n"
+        + "".join(f'            "{key}": self.{key},\n' for key, _ in ADAPTER_CALLS)
+        + "        }\n\n"
+        "    def healthcheck(self):\n"
+        f'        url = self._config.get("{name}.base_url", "https://api.invalid")\n'
+        f'        timeout = self._config.get("{name}.timeout_seconds", 30)\n'
+        "        return url, timeout\n"
+    )
+    return head + "".join(body) + tail
+
+
+MIGRATION = """# Config -> Settings migration
+
+`core.config.Config` is being retired. Every adapter under `adapters/` reads its
+knobs through it and must move to `core.settings.Settings`.
+
+## The replacement, exactly
+
+| before | after |
+|---|---|
+| `from core.config import Config` | `from core.settings import Settings` |
+| `def __init__(self, config: Config)` | `def __init__(self, settings: Settings)` |
+| `self._config = config` | `self._settings = settings` |
+| `self._config.get("<key>", <default>)` | `self._settings.lookup("<key>", fallback=<default>)` |
+
+`Settings.lookup` takes the default as the keyword `fallback`; passing it
+positionally raises `TypeError`. Nothing else about the adapters changes: no
+renamed properties, no new knobs, no reordering.
+
+## Scope
+
+Every adapter under `adapters/` is independent of the others and of everything
+else in the tree. There is no shared file to converge on and no ordering between
+them. `core/` itself is already migrated and must not be touched.
+
+This file states the whole change. Nothing else needs deciding before the edits
+start, and each adapter is done when its `Config` import and all of its
+`self._config.get` call sites are gone.
+"""
+
+# The pilot run on 2026-08-11 found this missing and said so: every adapter
+# imports `core.config`, so without this file the whole tree is an ImportError
+# and the task silently changes from "migrate" to "repair". Shipping the old
+# helper alongside the new one is what makes the scenario a migration.
+CONFIG = '''"""Legacy settings helper. Being retired; see MIGRATION.md."""
+
+
+class Config:
+    def __init__(self, values=None):
+        self._values = dict(values or {})
+
+    def get(self, key, default=None):
+        return self._values.get(key, default)
+'''
+
+SETTINGS = '''"""Replacement for the retired Config helper."""
+
+
+class Settings:
+    def __init__(self, values=None):
+        self._values = dict(values or {})
+
+    def lookup(self, key, *, fallback=None):
+        """Keyword-only fallback; positional raises, on purpose."""
+        return self._values.get(key, fallback)
+'''
+
+# Eight, not four. Four adapters at ~90 lines each is still small enough that
+# "I will just do them here" is a defensible read, and a fixture that leaves the
+# refusal defensible measures nothing - that is precisely how the first b1 died.
+# Eight puts the total near 750 lines of identical mechanical work behind one
+# complete spec.
+#
+# Count is not the argument, and must not be read as one: the contract forbids
+# using an item threshold to move work out of main. The argument is that every
+# item is independent, identical in shape, and fully specified before the first
+# edit, which is the one case the batching rule admits. Size only removes the
+# escape hatch where doing it inline is obviously cheaper regardless.
+ADAPTER_NAMES = ("argon", "beryl", "cobalt", "delta",
+                 "ember", "flint", "garnet", "helio")
+
 SCENARIOS: dict[str, dict[str, object]] = {
     "h1-large-blob": {"deps.log": deps_log},
     "h2-small-output": {},
@@ -244,6 +378,13 @@ SCENARIOS: dict[str, dict[str, object]] = {
         "tests/test_b.py": "import unittest\n\n\nclass B(unittest.TestCase):\n"
                            "    @unittest.skip('slow')\n    def test_two(self):\n"
                            "        pass\n",
+    },
+    "b1-batch-migration": {
+        "MIGRATION.md": MIGRATION,
+        "core/config.py": CONFIG,
+        "core/settings.py": SETTINGS,
+        **{f"adapters/{name}.py": (lambda n=name: adapter(n))
+           for name in ADAPTER_NAMES},
     },
     "b2-one-small-edit": {"README.md": README_TYPO},
 }

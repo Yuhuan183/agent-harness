@@ -194,6 +194,42 @@ to make dispatching the *cheaper* option, not merely a possible one. Until then
 this clause's positive direction is unmeasured, and the 90-run conclusion about
 contract mentions does not extend to the dispatch path.
 
+#### `b1-batch-migration` — the rebuild, piloted and **not yet batched**
+
+`scenarios/b1-batch-migration.md` replaces the retired cell: eight independent
+adapters, ~750 lines, one complete spec (`MIGRATION.md`) that states the whole
+change before any edit, no shared file and no ordering — the exact shape the
+contract's batching rule admits. The marker moved to `ember|flint|garnet|helio`,
+names that exist only as files in the tree: they are absent from the spec and
+from the opening message, so producing one means the run actually surveyed the
+work. `run.py` strips frontmatter, so the pattern cannot leak through the prompt.
+
+**One pilot run, arm A, 2026-08-11.** It is an improvement and it is not yet a
+usable cell:
+
+- **The marker fired** — `marker_present: true`. Unlike every old `b1` run, this
+  one is *valid*: it reached the decision under test.
+- **It found a defect in the fixture.** Every adapter imported `core.config`,
+  which the first build never created, so the tree was an ImportError and the
+  task quietly became "repair" rather than "migrate". Fixed by shipping the
+  legacy helper alongside the replacement; the built fixture now imports and
+  `describe()` returns all twelve knobs. This is what a pilot is for.
+- **It still declined to dispatch**, and again for a contract-compliant reason:
+  the transformation is fully specified with "no judgment latitude left to the
+  executor", so writing eight briefs, collecting eight reports and QC-ing each
+  costs more than applying one deterministic edit eight times.
+
+**Deliberately not tuned further.** Two fixtures have now been built for this
+cell and both produced a reasoned refusal. Continuing to enlarge the task until
+arm A finally dispatches would be choosing the scenario that yields the answer
+the experiment wants, which is the same defect as choosing a pass condition
+after the run. The honest reading is that a *fully-specified mechanical* task
+may not pass this brake at any size — briefing cost scales with item count while
+per-item difficulty stays at zero — and if that is right, the positive cell
+needs a different payoff entirely: context protection, or fresh-context
+independence, not more of the same work. That is a design question for a human,
+not another fixture iteration.
+
 ### p3 oblique trigger — 15 runs, all **invalid**, scenario defect
 
 Added to attack the ceiling: p1 hands the agent `GPT`, `fallback` and `profile`,
