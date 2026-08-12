@@ -89,6 +89,26 @@ def sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def surface_fingerprint() -> str | None:
+    """This suite's measured-surface fingerprint, recorded by the run itself.
+
+    Typed by hand three times on 2026-08-13 and wrong twice — once naming a
+    value computed before a later edit to `grade.py`, once naming one computed
+    before this scenario existed. Both were caught, which is luck rather than
+    method. A fingerprint that a run writes into its own `meta.json` at the
+    moment it runs cannot drift from what it describes, and `summarise.py`
+    reads it back rather than trusting a README.
+    """
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "trap_surface", ROOT / "evals" / "scripts" / "trap-surface.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.fingerprint("replay")[0][:module.SHORT]
+    except Exception:            # never let bookkeeping fail a paid run
+        return None
+
+
 def parse_scenario(path: Path) -> tuple[dict, list[str]]:
     """Frontmatter plus the turns, in order.
 
@@ -405,6 +425,7 @@ def main() -> int:
         "fixture_files": built,
         "turns": records,
         "interrupt": interrupt_state,
+        "surface": surface_fingerprint(),
         "deployed_contract_sha256": sha(DEPLOYED) if DEPLOYED.exists() else None,
         "matches_repo_source": not drift,
         "arm": arm_state,

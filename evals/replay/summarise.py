@@ -100,6 +100,11 @@ def load(runs: Path, everything: bool) -> list[dict]:
                 continue
         report = module.grade(meta.parent)
         report["_dir"] = name
+        try:
+            report["_surface"] = json.loads(
+                meta.read_text(encoding="utf-8")).get("surface")
+        except json.JSONDecodeError:
+            report["_surface"] = None
         reports.append(report)
     return reports
 
@@ -115,6 +120,7 @@ def summarise(reports: list[dict]) -> dict:
             "faults": 0, "unreconciled": 0,
             "bookkeeping_runs": 0, "bookkeeping_ok": 0})
         row["runs"].append(report["_dir"])
+        row.setdefault("surfaces", set()).add(report.get("_surface"))
         row[report["verdict"]] += 1
         row["faults"] += report.get("provider_faults", {}).get("seen", 0)
         third = report.get("criterion_3", {})
@@ -129,6 +135,7 @@ def summarise(reports: list[dict]) -> dict:
         row["valid"] = valid
         row["rate"] = (row["correct"] / valid) if valid else None
         row["ci95"] = [round(low, 3), round(high, 3)]
+        row["surfaces"] = sorted(x for x in row.get("surfaces", set()) if x)
 
     # r2 is scored per turn, and turns inside one run are not independent. The
     # pre-registered reading is the per-turn lapse rate plus where the first
@@ -179,13 +186,15 @@ def main() -> int:
         return 0
 
     print(f"{'scenario':<28} {'correct':>8} {'valid':>6} {'invalid':>8} "
-          f"{'rate':>6}  {'exact 95% CI':<16} {'529s':>5}  {'crit3 ok':<9}")
+          f"{'rate':>6}  {'exact 95% CI':<16} {'529s':>5}  {'crit3':<7} surface")
     for name, row in sorted(report["scenarios"].items()):
         rate = "—" if row["rate"] is None else f"{row['rate']:.0%}"
         span = f"[{row['ci95'][0]:.3f}, {row['ci95'][1]:.3f}]"
+        marks = sorted(x for x in row.get("surfaces", set()) if x)
+        stamp = ",".join(marks) if marks else "unrecorded"
         print(f"{name:<28} {row['correct']:>8} {row['valid']:>6} "
               f"{row['invalid']:>8} {rate:>6}  {span:<16} {row['faults']:>5} "
-              f"{row['bookkeeping_ok']}/{row['bookkeeping_runs']:<8}")
+              f"{row['bookkeeping_ok']}/{row['bookkeeping_runs']:<6} {stamp}")
 
     for name, row in report["per_turn"].items():
         print(f"\n{name}, per turn (unit is the turn; turns within a run are "
