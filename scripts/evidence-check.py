@@ -152,8 +152,11 @@ def audit_traps() -> list[dict[str, object]]:
     short = module.SHORT
 
     rows = []
-    for listing in sorted((ROOT / "evals" / "traps").glob("*/surface.tsv")):
-        trap = listing.parent.name
+    # Ask the fingerprint tool which suites exist rather than globbing here: the
+    # two answers drifting apart is exactly how a suite ends up unaudited, and
+    # `evals/replay/` sits one directory shallower than the traps do.
+    for trap in module.traps():
+        listing = module.listing_for(trap)
         current = fingerprint(trap)[0][:short]
         readme = listing.parent / "README.md"
         text = readme.read_text(encoding="utf-8") if readme.exists() else ""

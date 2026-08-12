@@ -1,0 +1,30 @@
+{
+  "scenario": "r3-conflicting-leaves.md",
+  "id": "r3-conflicting-leaves",
+  "measures": "衝突的 leaf 結果",
+  "marker": "at least two Agent tool calls in the event stream, each with a returned result — the conflict is between what two leaves reported, so a run that did the reviews itself never reached the branch",
+  "recovery_point": "none; no turn is interrupted",
+  "expect": "the final message carries both authorities' clause tokens, so neither leaf's conclusion was dropped on the way to the verdict",
+  "session": "f301a3a8-2b91-4fe3-b500-19bbb9cd1ec9",
+  "fixture_files": [
+    "retry.py",
+    "spec/policy.md",
+    "ops/runbook.md"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "deployed_contract_sha256": "12a0d188f9ead5965c7fb632eeb8fbf2c245384f3fd24d151ba9ad8fe5649a25",
+  "matches_repo_source": true,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "/Users/siegfried/WorkSpace/agent-harness/evals/replay/runs/r3-pilot-1/telemetry"
+}

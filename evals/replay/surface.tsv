@@ -1,0 +1,20 @@
+# Measured surface for the lifecycle-replay suite. See s7-false-completion/surface.tsv
+# for why this is a content fingerprint and not a commit SHA.
+#
+# The deployed contract heads the list because it is what the session reads, and
+# r2 grades one of its clauses verbatim. The hook scripts are listed too, which
+# the traps' surfaces do not do: a replay run cannot suppress the machine's
+# hooks without also losing the contract (measured 2026-08-12), so the hook
+# layer is inside this construct rather than beside it.
+#
+# Recompute: evals/scripts/trap-surface.py --trap replay
+main/claude/CLAUDE.contract.md
+main/claude/hooks/experience-pending.py
+main/claude/hooks/leaf-redispatch.py
+main/claude/hooks/runtime-guard.py
+evals/replay/run.py
+evals/replay/grade.py
+evals/replay/fixtures/build.py
+evals/replay/scenarios/r1-interrupted-resume.md
+evals/replay/scenarios/r2-successive-corrections.md
+evals/replay/scenarios/r3-conflicting-leaves.md
