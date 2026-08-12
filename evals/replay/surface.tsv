@@ -17,4 +17,5 @@ evals/replay/grade.py
 evals/replay/fixtures/build.py
 evals/replay/scenarios/r1-interrupted-resume.md
 evals/replay/scenarios/r2-successive-corrections.md
+evals/replay/scenarios/r2b-defused-cap.md
 evals/replay/scenarios/r3-conflicting-leaves.md
