@@ -1533,7 +1533,13 @@ class DocumentationBudgetTests(unittest.TestCase):
     def test_documented_baseline_matches_runtime_contract(self) -> None:
         plan = read(".claude/plans/orchestration-plan.md")
         readme = read("README.md")
-        self.assertIn("Current as of 2026-07-28", plan)
+        # The literal date is the point: it fails whenever the plan's substance
+        # is edited without the currency line being re-dated, which is the
+        # cheapest guard this repo has against a document that says "current as
+        # of" a date older than its own contents. Bump it deliberately, in the
+        # same commit as the edit that made it stale. Last bumped when the
+        # lifecycle-replay evidence gap stopped being a gap.
+        self.assertIn("Current as of 2026-08-13", plan)
         self.assertIn("MIT", readme)
         self.assertIn("Yuhuan", read("LICENSE"))
         self.assertIn("same-role, same-task-class", plan)

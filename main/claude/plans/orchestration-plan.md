@@ -1,6 +1,6 @@
 # Orchestration current state
 
-> Current as of 2026-07-28. Completed migrations and superseded decisions live in
+> Current as of 2026-08-13. Completed migrations and superseded decisions live in
 > [orchestration-history.md](orchestration-history.md); this file contains only the active contract.
 
 ## Direction
@@ -62,7 +62,7 @@ scripts/sync.sh
 
 ## Remaining evidence gaps
 
-- Pilotfish-derived controls are statically enforced by contracts and tests; lifecycle replay under interruption, repeated correction, and conflicting dispatch results remains an empirical gap.
+- Pilotfish-derived controls are statically enforced by contracts and tests. Lifecycle replay is no longer unmeasured — `evals/replay/` ran 15 pre-registered runs on 2026-08-12 — but one batch settles little: interruption and conflicting leaf results showed no failure at 5 of 5, with an exact 95% lower bound of 0.478, and repeated correction lapsed on the contract's own `DECISION:` obligation in 10 of 25 turns. Read the intervals, not the percentages.
 - Provider/model efficiency decisions stay exploratory until same-role, same-task-class route cells reach the configured sample floor.
 - Headroom behavior must be reported separately as repository policy, installed package version, GitHub release tag, and live service state.
 
