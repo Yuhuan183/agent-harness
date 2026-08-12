@@ -15,7 +15,7 @@ flowchart TB
         contracts["contracts + roles<br/>常駐規則, 七個 leaf 角色"]
         skills["skills<br/>按需工作流"]
         hooks["hooks + routing core<br/>確定性機制"]
-        evals["evals/traps<br/>行為證據"]
+        evals["evals/traps · evals/replay<br/>行為證據"]
         docs["docs<br/>方法與研究"]
     end
 

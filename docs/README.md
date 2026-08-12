@@ -20,6 +20,7 @@
 | 理解 QC 怎麼把關 | [QC 白話說明](qc-explainer.md) | [baton-dispatch](../main/claude/skills/baton-dispatch/SKILL.md) |
 | 理解 hook 系統怎麼運作 | [Hook 系統](hook-system.md) | [settings.json](../main/claude/settings.json) |
 | 跑行為 trap eval | [evals/traps/](../evals/traps/) 各 README | [QC 說明](qc-explainer.md) 取證段 |
+| 跑多回合 lifecycle replay | [evals/replay/](../evals/replay/) | [存活判準](research/lifecycle-replay.md) |
 | 深度審查本 repo 設計 | [harness-review](../.agents/skills/harness-review/SKILL.md) (dev-only) | [plan](../main/claude/plans/orchestration-plan.md) |
 | 決定下一步做什麼 | [待辦方向](research/README.md#待辦方向) | [plan](../main/claude/plans/orchestration-plan.md) |
 
@@ -59,7 +60,7 @@
 
    - 逐字引用的外部原文.
    - `speak-human-tw` 繁中素材.
-   - `evals/traps/**` 的 fixture 與結果表 (文字本身是被量的變數).
+   - `evals/traps/**` 與 `evals/replay/**` 的 fixture, 情境與結果表 (文字本身是被量的變數).
    - skill `description` 的觸發詞與對使用者輸出的模板. 前者被 s10 trap 以位元組釘住, 後者是給人看的成品.
    - 程式裡拿全形當資料比對的字面值 (regex class, 對前四類的逐字斷言).
 

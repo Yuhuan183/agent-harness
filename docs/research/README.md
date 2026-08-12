@@ -145,19 +145,19 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 | ④ 反證: 會不會過度觸發 | s10 的 `c-no-exclusions` 變體, 只蓋 skill description | gate 層沒有「本來就不該觸發」的對照組 |
 | ⑤ 退場: 擋下來之後呢 | 五個 fail-closed gate | 沒寫下擋下來要回什麼, 也沒在量連續拒絕 |
 
-排序照舊是**證據強度 × 成本**. **跑 lifecycle replay** 仍然待辦, 但排在這五條之後 - 它成本最高而前置條件一格未動, 條件見 [lifecycle-replay.md](lifecycle-replay.md).
+排序照舊是**證據強度 × 成本**. **lifecycle replay 2026-08-12 跑完第一批** (15 個 run), 所以它從待辦移出; 見下方 [2026-08-12 判準 2 與第一批](#2026-08-12-判準-2-備妥-replay-有了自己的-harness) 與 [lifecycle-replay.md](lifecycle-replay.md). 一批 n=5 的下界撐不起任何「控制成立」的結論, 下一批要問的是**第 3 回合那個排擠假說**, 而不是把同一批再跑一次.
 
 **現況一覽 (2026-08-10 收束).** 五條的推翻條件查了四條, 而**四條的原始理由全部不成立** - 這批的命中率是 0/4, 比上一批七條裡活兩條還低. 這不是規劃品質差, 是「每條自帶推翻條件」在做它該做的事; 真正該擔心的是某批全部命中.
 
 | # | 階段 | 推翻條件 | 實際發生什麼 | 落地 |
 |---|---|---|---|---|
-| 1 | ② 生效 | **未決** | 需要 session 證據, repo artifact 判不出來. 措辭已修正: 觀察到的是**壓制**不是落敗 | 文件 |
+| 1 | ② 生效 | **仍未決, 但不再只有外部證據** | 推翻條件 (client 指令與契約正面衝突而契約仍勝出) 要 session 證據, repo artifact 判不出來. 2026-08-12 的 replay `r2` 給了這個階段第一筆**本機**數字: 常駐契約自己的 `DECISION:` 義務在 25 個該觸發的回合裡漏了 10 次. 「服從是機率性的」原本只靠 arXiv 2604.14228, 現在本機量得到 | 文件 + [replay r2](../../evals/replay/README.md) |
 | 2 | ③ 證明 | **反被推翻** | 不是還原困難, 是還原路徑已斷 - 十個本地 SHA 引用死了六個, 成因是 rebase | 內容指紋取代 commit SHA, 附證腳本 |
 | 3 | ① 進場 | **成立但理由不同** | 32 個子句裡 repo 知識型是 **0** 條; 兩分法錯在關節, 要三分 | 判定軸寫進瘦身規範; 衍生 A/B 見 s11 |
 | 4 | ④ 反證 | **字面成立, 意圖不成立** | s8 的通過條件確實是不動作, 但那是正向測試; 真洞是**通過條件可以事後選** | s7 grader 改必填 `--expect` |
 | 5 | ⑤ 退場 | **不成立, 但門檻選錯對象** | 有連續 5 次, 但幾乎全是 commit-gate 的紅套件重試 - 那是機制在運作 | denial log (只記錄, 不設門檻) |
 
-還欠著的三件: negative control fixture (方向 4), description 接不接得住隱晦措辭 (方向 3 衍生), 以及 lifecycle replay.
+那時還欠著三件, 到 2026-08-12 收束成一件: negative control fixture (方向 4) 已落地為 s8 arm B 並跑過每臂 30 次; description 接不接得住隱晦措辭 (方向 3 衍生) 已測且**判定無定論, 退場**; **lifecycle replay 也在同日補齊並跑完第一批** — 四項判準, 三份事前登記情境, 15 個 run. 三件都收束了, 開著的換成新的三件 (見下).
 
 #### 2026-08-12: description 覆蓋度實測, 無定論 —— 但推翻了一條自己記過的結論
 
@@ -175,6 +175,22 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 所以「沒有一筆講出正確模型, 包含那兩筆真的載入了的」完全符合預期. 更好的觸發覆蓋能讓 skill 載入, 不能讓 skill 內含一個它從未內含的事實.
 
 **這件事退場了**: 「改善 description 的隱晦措辭覆蓋」不是 stale-model 症狀的答案. 那是兩個問題, 45 回合的寫法把它們併成一個. description 覆蓋度會不會移動**載入**仍然未決 (2/15 兩邊都不構成證據), 但它現在和「route 模型的名字寫在哪, 一次 run 該怎麼走到它」是分開的兩題.
+
+#### 2026-08-12: 判準 2 備妥, replay 有了自己的 harness
+
+三份情境 (中斷後恢復 / 連續 correction / 衝突的 leaf 結果) 連同各自的 reach marker 與恢復點寫在 [`evals/replay/`](../../evals/replay/README.md), marker 放在 frontmatter, grader 從那裡讀回來 — 事後補 marker 在機制上做不到. 四項判準因此全部備妥, 剩下的只有跑.
+
+**先解決的是 harness 而不是情境.** s11 的 runner 是一回合 `--print --permission-mode manual`, 而這三件事全是「跑起來, 被打斷, 被修正, 有派工」的 session 才有的性質; 沿用它等於把 `b1` 那個失效原封不動繼承過來. 新 runner 的每個設定都先探測再用: `--session-id`/`--resume` 撐得起多回合 (第二回合在無工具下答得出第一回合的內容), `acceptEdits` 寫得進去, 固定 wall clock 送 `SIGINT` 砍得在工作中間而且之後 resume 得回來, leaf 派得出去.
+
+**順帶推翻一條自己寫過的話**: `--settings '{"hooks":{}}'` 關不掉機器的 hook — 帶著那個旗標的 run 照樣把 `SubagentStart`/`SubagentStop` 寫進真實 pending 檔; 而唯一能靜音 user hook 的 `--setting-sources project,local` 會**連使用者契約一起關掉** (同一支探測: 對照組 `CONTRACT=YES`, 處理組 `CONTRACT=NO`). 契約與 hook 是同一個來源, 拆不開. 所以 replay 的構造是**契約加 hook 層**, trap 是契約單獨, 兩邊結果不互相轉移; s11 的註解與 README 已修正, 而它的臂間對比不受影響 (三臂條件相同).
+
+**試點三格分支都走得到**, 但依事前寫死的規則 n=1 只有 marker 欄可引用. 試點改了三件事, 沒有一件動到通過條件: 兩條窄的 `--allowedTools` (否則判準 3 量的是權限清單而不是 session 的記帳), 中斷時點 25 秒改 60 秒 (25 秒只寫了 2 筆, 截 2 筆後檔案變空, 恢復點退化成「從頭來」), 以及一條 grader regex.
+
+**第一批 15 個 run 當天跑完**, 結果與條件見 [`evals/replay/README.md`](../../evals/replay/README.md). 三句話: `r1` 與 `r3` 各 5/5 未觀察到失效而 CI 下界只有 0.478; `r2` 每個 run 都至少缺一次 `DECISION:` 標記, 但衰減檢定 p = 1.000, 而 run 層的 0/5 幾乎全由第 3 回合造成 — 那一輪五個 run 都在做實質選擇卻都沒標, **缺的是形式不是判斷**; 判準 3 在有帳要記的 5 個 run 裡只有 3 個對上.
+
+過程中儀器出錯的次數比 session 多. 一個被 provider 529 打斷, 中途被砍掉的 run 被判成 `incorrect` (criterion 1 算了卻沒拿來閘判決); fault 偵測器第一版比對裸的 `Overloaded` 與 `rate limit`, 在健康的 run 上報了假陽性 (那個詞在 agent 讀進來的 skill 參考裡); 判準 3 只數 pending, 而 `--from-pending` 記帳時會**消耗** stub, 於是「完整對帳」與「根本沒派工」被算成同一格 — 兩種相反狀態同一個數字, 而且兩次都讀起來像好消息, 這個錯誤已經先產出過一句錯的批次結論才被抓到. 全部修掉並鎖進測試, 而**修完不必重跑**: 重新評分是從留存 artifact 重算.
+
+**第三件是這次最該記的**: `DECISION:` 的比對第一版把 `r2` 判成 0/5, 乾淨好引用而且完全錯 — 五個回合有四個確實發過, 只是寫成 ``**`DECISION:` …**``. 儀器比 session 先錯, 而抓到它靠的是去讀原始回覆不是讀判決. 這是本 repo 第二次被「檢查盯著呈現方式而非實質」騙到 (第一次是 s8 的 `a19`), 所以修好後兩邊都驗並鎖進測試. **重新評分沒有重跑** — 修正後的判決從第一次 run 已留下的 artifact 重算得出, 判準 4 在運作而不是在被宣稱.
 
 #### 待新 session 一起處理的兩件 (2026-08-11 起)
 
@@ -514,12 +530,12 @@ s11 的 fixture 壞了四次, 成因每次都一樣 - **把「要求的條件」
 | [model-evidence.md](model-evidence.md) | route 與 effort 怎麼選, 成本口徑怎麼算, 外部先驗有多可信 |
 | [trap-experiments.md](trap-experiments.md) | 可重播的失敗情境與反證 |
 | [local-experiments.md](local-experiments.md) | 本機任務結果 |
-| [lifecycle-replay.md](lifecycle-replay.md) | replay 開跑前的存活判準; 尚無 replay 結果 |
+| [lifecycle-replay.md](lifecycle-replay.md) | replay 的四項存活判準, 三份事前登記情境, 與 2026-08-12 第一批的結論 |
 | [prompt-surface-census.json](prompt-surface-census.json) | deterministic resident/role surface 快照 |
 
 ## 驗證缺口
 
-- [UNCERTAIN: Pilotfish-derived controls 尚未完成真實 lifecycle replay; 上游 v1.3.6-v1.3.10 的 Gate 數據是它自己契約的 reachability 觀察, 不轉移到本專案. 開跑前的存活判準已寫在 [lifecycle-replay.md](lifecycle-replay.md).]
+- [UNCERTAIN: 上游 v1.3.6-v1.3.10 的 Gate 數據是它自己契約的 reachability 觀察, 不轉移到本專案. 本機 lifecycle replay 第一批已於 2026-08-12 跑完 (15 個 run, `[surface f7672aba]`, [lifecycle-replay.md](lifecycle-replay.md)): 中斷後恢復與衝突的 leaf 結果各 5/5 未觀察到失效, 但 exact 95% CI 下界只有 0.478 — 真實成功率五成也和這批相容, 所以這**不是**「控制成立」的證據. 連續 correction 每個 run 都至少缺一次標記, 而事前登記的衰減檢定 p = 1.000, 記為在此 n 下未觀察到衰減. 判準 3 在有帳要記的 5 個 run 裡只有 3 個對上. 另外 replay 的構造是契約加 hook 層, 與 trap 的契約單獨不同, 兩邊數字不互通.]
 - [UNCERTAIN: 待辦方向 2-5 的推翻條件已於 2026-08-08 ~ 08-10 查完, 四條的原始理由全部不成立 (見[現況一覽](#待辦方向)); 方向 1 (② 生效) 仍**未決** - 它要的是 session 證據, repo artifact 判不出來. 這一列在 2026-08-11 之前寫的是「一條都還沒查」, 查完後沒跟著更新: 一份宣告自身不確定性的清單過期, 比別處過期更傷, 因為它是別人用來判斷「哪些結論還不能引用」的那張表.]
 - [UNCERTAIN: s11 的 90 runs 是**零結果** - 契約提及沒有移動任何一次載入決策. 零結果比正結果更容易來自「測不到」而不是「沒有效果」: 這批只覆蓋兩個 clause, 一個模型與兩種觸發強度, 而且**每一格的通過條件都是「該載入時有沒有載入」**. 反向對照尚未建立, 所以目前無法區分「契約提及無效」與「這個量測對契約提及不敏感」.]
 - [UNCERTAIN: 第 3 與第 6 條的推翻條件已於 2026-08-04 查過 ledger (131 筆, 其中 verifier 9 筆), 但這是單機單人的樣本; 「沒觀察到」在這個量級上是弱證據.]
