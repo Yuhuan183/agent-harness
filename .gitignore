@@ -27,3 +27,19 @@ __pycache__/
 # table plus per-run .meta.json carry everything a reader needs.
 evals/traps/s11-pointer-redundancy/runs/*.jsonl
 evals/traps/s11-pointer-redundancy/runs/unprovenanced/
+# Replay run artifacts, same reasoning one directory deeper: a run keeps its
+# event stream, a workdir snapshot per turn and its own telemetry, all of which
+# are large and machine-specific. meta.json is what a reader needs, and it is
+# the file grade.py reads the pre-registration back out of.
+evals/replay/runs/*/events.jsonl
+evals/replay/runs/*/workdir/
+evals/replay/runs/*/snapshots/
+evals/replay/runs/*/telemetry/
+evals/replay/runs/*/transcript.jsonl
+evals/replay/runs/*/subagents/
+# Written once by whichever grader was current when the run landed, so they go
+# stale silently — one of them already carried a pre-criterion-1-gate verdict
+# into a fresh batch table. `summarise.py` regrades from the run instead, and
+# meta.json (the pre-registration and the conditions) is what a reader needs.
+evals/replay/runs/*/verdict.json
+evals/replay/runs/results.tsv

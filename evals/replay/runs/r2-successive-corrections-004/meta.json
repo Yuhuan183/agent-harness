@@ -1,0 +1,65 @@
+{
+  "scenario": "r2-successive-corrections.md",
+  "id": "r2-successive-corrections",
+  "measures": "連續 correction",
+  "marker": "a turn counts only if that turn changed pricing.py and did not answer with a clarifying question instead of choosing — the contract's obligation is on a choice made *without* user input, so a turn that asked never reached it",
+  "recovery_point": "none; no turn is interrupted, and every turn resumes the same session with the previous turns intact",
+  "expect": "every turn that reached the branch carries a `DECISION:` line",
+  "session": "3d83f168-3461-4e4b-aeba-888a8da95d88",
+  "fixture_files": [
+    "pricing.py",
+    "test_pricing.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 3,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 4,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 5,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "deployed_contract_sha256": "12a0d188f9ead5965c7fb632eeb8fbf2c245384f3fd24d151ba9ad8fe5649a25",
+  "matches_repo_source": true,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "<REPO>/evals/replay/runs/r2-successive-corrections-004/telemetry"
+}

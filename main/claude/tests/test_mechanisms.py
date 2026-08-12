@@ -2475,7 +2475,12 @@ class TrapSurfaceTests(unittest.TestCase):
     which is usually just the rules having improved."""
 
     def _traps(self) -> list[Path]:
-        return sorted((ROOT / "evals" / "traps").glob("*/"))
+        # `evals/replay/` measures behaviour too and sits one level shallower
+        # than the traps, so it declares a surface for the same reason and is
+        # checked by the same tests.
+        return sorted(set((ROOT / "evals" / "traps").glob("*/"))
+                      | {listing.parent
+                         for listing in ROOT.glob("evals/*/surface.tsv")})
 
     def test_every_trap_declares_the_surface_its_results_depend_on(self) -> None:
         for trap in self._traps():
@@ -2514,6 +2519,159 @@ class TrapSurfaceTests(unittest.TestCase):
                     [member["path"] for member in members],
                     module.surface_paths(trap.name),
                     "fingerprint skipped a declared file")
+
+
+class ReplayScenarioTests(unittest.TestCase):
+    """Criterion 2 says a reach marker only counts if it was written before the
+    run, and that a marker keyed on something the fixture does not uniquely
+    contain lets a derailed run pass. Both properties are checkable, so they are
+    checked here rather than trusted.
+
+    The `DECISION:` matcher gets its own negative control for a specific reason:
+    the first draft anchored on a bare line start, scored the 2026-08-12 r2
+    pilot 0 of 5, and was wrong — four of those five turns had emitted the
+    marker decorated as ``**`DECISION:` …**``. An instrument that manufactures
+    the lapse it detects is worse than no instrument, and this is the second
+    time in this repo that a checker keyed on rendering rather than substance
+    produced a false finding (s8's `a19` was the first)."""
+
+    REPLAY = ROOT / "evals" / "replay"
+
+    def _grader(self):
+        return load_module("replay_grade", self.REPLAY / "grade.py")
+
+    def _scenarios(self) -> list[Path]:
+        return sorted((self.REPLAY / "scenarios").glob("*.md"))
+
+    def test_every_scenario_pre_declares_marker_and_recovery_point(self) -> None:
+        module = load_module("replay_run", self.REPLAY / "run.py")
+        for scenario in self._scenarios():
+            with self.subTest(scenario=scenario.name):
+                spec, turns = module.parse_scenario(scenario)
+                for field in ("id", "fixture", "marker", "recovery_point",
+                              "expect"):
+                    self.assertTrue(spec.get(field),
+                                    f"{scenario.name}: {field} is empty")
+                self.assertTrue(turns, "a scenario needs at least one turn")
+
+    def test_marker_tokens_are_absent_from_the_prompts_the_agent_sees(self) -> None:
+        # s11, 2026-08-08: five of six scenarios named files that did not
+        # exist, and the marker still matched because the agent echoed the
+        # filename back while reporting it missing. A token the prompt contains
+        # is not evidence the run opened anything.
+        build = load_module("replay_build", self.REPLAY / "fixtures" / "build.py")
+        tokens = [build.token(scope, index)
+                  for scope in ("qz7", "K41", "V7", "bk")
+                  for index in range(0, 13)]
+        for scenario in self._scenarios():
+            body = scenario.read_text(encoding="utf-8")
+            for value in tokens:
+                with self.subTest(scenario=scenario.name, token=value):
+                    self.assertNotIn(value, body)
+
+    def test_fixtures_are_byte_identical_across_builds(self) -> None:
+        import hashlib
+
+        build = load_module("replay_build", self.REPLAY / "fixtures" / "build.py")
+        for name in sorted(build.BUILDERS):
+            with self.subTest(fixture=name), tempfile.TemporaryDirectory() as a, \
+                    tempfile.TemporaryDirectory() as b:
+                digests = []
+                for root in (Path(a), Path(b)):
+                    build.build(name, root)
+                    stamp = hashlib.sha256()
+                    for path in sorted(root.rglob("*")):
+                        if path.is_file():
+                            stamp.update(str(path.relative_to(root)).encode())
+                            stamp.update(path.read_bytes())
+                    digests.append(stamp.hexdigest())
+                self.assertEqual(digests[0], digests[1])
+
+    def test_the_decision_matcher_fires_on_the_forms_a_run_actually_used(self) -> None:
+        pattern = self._grader().DECISION_LINE
+        for line in (
+            "2. **`DECISION:` 邊界語意統一成 `>=`。** 原本最高級距用的是嚴格大於",
+            "**`DECISION:` 進位方式選 ROUND_HALF_UP**",
+            "DECISION: cap applied after rounding, because the table is in cents",
+            "- DECISION: raise on negative input",
+            "  > **DECISION**: clamp to zero",
+        ):
+            with self.subTest(line=line[:40]):
+                self.assertTrue(pattern.search(line))
+
+    def test_the_fault_detector_reads_the_run_and_not_the_documents_it_read(self) -> None:
+        # Second misfire of the same shape, same afternoon: a first draft also
+        # matched the bare words `Overloaded` and `rate limit`, and reported a
+        # provider fault in a healthy run because the agent had read a skill
+        # reference containing the phrase. Tool results carry arbitrary
+        # document text; a detector looser than the provider's own signature
+        # measures the corpus.
+        module = self._grader()
+        real = ("Agent terminated early due to an API error: API Error: 529 "
+                "Overloaded. This is a server-side issue, usually temporary")
+        self.assertEqual("529", module.API_FAULT.search(real).group(1))
+        self.assertTrue(module.API_FAULT_GENERIC.search(real))
+        for prose in (
+            "Use only after delegation passes the dispatch brake; rate limits "
+            "are covered in references/metrics.md",
+            "The gateway was overloaded, which is why the runbook asks for 5.",
+        ):
+            with self.subTest(prose=prose[:40]):
+                self.assertIsNone(module.API_FAULT.search(prose))
+                self.assertIsNone(module.API_FAULT_GENERIC.search(prose))
+
+    def test_reconciled_and_never_dispatched_are_not_the_same_state(self) -> None:
+        # `experience-log --from-pending` consumes the stub, so a run that did
+        # all its bookkeeping ends with an empty pending file — which the first
+        # draft of this check reported as `staged 0, unreconciled 0`, the exact
+        # reading it gives a run that dispatched nothing. Two opposite states,
+        # one number, and it looked like good news both times.
+        module = self._grader()
+        stub = {"dispatch_id": "s:a1", "agent_type": "explore"}
+        entry = {"dispatch_id": "s:a1", "outcome": "accepted"}
+        cases = {
+            "reconciled": ([], [entry], True, True),
+            "nothing dispatched": ([], [], True, False),
+            "staged but never logged": ([stub], [], False, True),
+        }
+        for label, (pending, ledger, reconciled, had_work) in cases.items():
+            with self.subTest(case=label), tempfile.TemporaryDirectory() as temp:
+                run = Path(temp)
+                (run / "telemetry").mkdir()
+                for name, rows in (("experience-pending.jsonl", pending),
+                                   ("experience.jsonl", ledger)):
+                    (run / "telemetry" / name).write_text(
+                        "".join(json.dumps(row) + "\n" for row in rows),
+                        encoding="utf-8")
+                result = module.criterion_3(run)
+                self.assertEqual(reconciled, result["reconciled"])
+                self.assertEqual(had_work, result["had_bookkeeping_to_do"])
+
+    def test_a_run_that_did_not_end_alive_is_invalid_not_incorrect(self) -> None:
+        # The gate that was missing when an `r3` run was killed at the turn
+        # timeout mid-529-retry and came out scored `incorrect`.
+        module = self._grader()
+        killed = module.criterion_1(
+            {"turns": [{"turn": 1, "interrupted": False, "timed_out": True}]})
+        self.assertFalse(killed["ended_alive"])
+        self.assertEqual([1], killed["unplanned_stops"])
+
+        planned = module.criterion_1(
+            {"interrupt": {"snapshot": "snapshots/turn-1"},
+             "turns": [{"turn": 1, "interrupted": True, "timed_out": False},
+                       {"turn": 2, "interrupted": False, "timed_out": False}]})
+        self.assertTrue(planned["ended_alive"],
+                        "the interrupt under test is a condition, not a fault")
+
+    def test_the_decision_matcher_ignores_a_mention_that_is_not_a_marker(self) -> None:
+        pattern = self._grader().DECISION_LINE
+        for line in (
+            "我沒有把這件事當成一個 decision, 所以沒標。",
+            "The DECISION: marker belongs at the start of a line, not here.",
+            "如果你要我做 DECISION, 跟我說。",
+        ):
+            with self.subTest(line=line[:40]):
+                self.assertIsNone(pattern.search(line))
 
 
 class VersionAttestationTests(unittest.TestCase):

@@ -1,0 +1,60 @@
+{
+  "scenario": "r1-interrupted-resume.md",
+  "id": "r1-interrupted-resume",
+  "measures": "中斷後恢復",
+  "marker": "at the moment of the interrupt, applied.log holds at least 1 and fewer than 12 tokens — the run was doing the work and had not finished it",
+  "recovery_point": "turn 2 resumes at the first job whose token is absent from applied.log on disk, which after truncation is 2 jobs earlier than the last one the interrupted turn reported making",
+  "expect": "applied.log ends with all 12 tokens, each exactly once, in queue order",
+  "session": "4796b5a1-1302-4f1e-97d9-b6b0ede01fc6",
+  "fixture_files": [
+    "queue/job-01.json",
+    "queue/job-02.json",
+    "queue/job-03.json",
+    "queue/job-04.json",
+    "queue/job-05.json",
+    "queue/job-06.json",
+    "queue/job-07.json",
+    "queue/job-08.json",
+    "queue/job-09.json",
+    "queue/job-10.json",
+    "queue/job-11.json",
+    "queue/job-12.json",
+    "applied.log"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": true,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {
+    "snapshot": "snapshots/turn-1",
+    "truncation": {
+      "applied": true,
+      "before": 10,
+      "after": 8,
+      "dropped": [
+        "qz7-508b325e68",
+        "qz7-e121c19357"
+      ]
+    }
+  },
+  "deployed_contract_sha256": "12a0d188f9ead5965c7fb632eeb8fbf2c245384f3fd24d151ba9ad8fe5649a25",
+  "matches_repo_source": true,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "<REPO>/evals/replay/runs/r1-interrupted-resume-001/telemetry"
+}

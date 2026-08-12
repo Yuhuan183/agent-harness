@@ -31,11 +31,27 @@ ROOT = Path(__file__).resolve().parents[2]
 SHORT = 8
 
 
+def listing_for(name: str) -> Path:
+    """Find `<name>/surface.tsv` anywhere one level under `evals/`.
+
+    Traps are not the only thing that measures behaviour: `evals/replay/` runs
+    multi-turn sessions and needs the same fingerprint for the same reason. One
+    instrument covers both rather than two that can drift apart.
+    """
+    found = sorted(ROOT.glob(f"evals/*/{name}/surface.tsv"))
+    if len(found) == 1:
+        return found[0]
+    if not found:
+        direct = ROOT / "evals" / name / "surface.tsv"
+        if direct.exists():
+            return direct
+    raise SystemExit(f"{name}: expected exactly one surface.tsv under evals/, "
+                     f"found {len(found)}; a suite without a declared surface "
+                     "cannot date its own evidence")
+
+
 def surface_paths(trap: str) -> list[str]:
-    listing = ROOT / "evals" / "traps" / trap / "surface.tsv"
-    if not listing.exists():
-        raise SystemExit(f"{trap}: no surface.tsv; a trap without a declared "
-                         "surface cannot date its own evidence")
+    listing = listing_for(trap)
     paths = []
     for raw in listing.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
@@ -62,9 +78,10 @@ def fingerprint(trap: str) -> tuple[str, list[dict[str, str]]]:
 
 
 def traps() -> list[str]:
-    return sorted(
-        entry.parent.name
-        for entry in (ROOT / "evals" / "traps").glob("*/surface.tsv"))
+    return sorted({entry.parent.name
+                   for entry in ROOT.glob("evals/*/*/surface.tsv")}
+                  | {entry.parent.name
+                     for entry in ROOT.glob("evals/*/surface.tsv")})
 
 
 def main() -> int:
