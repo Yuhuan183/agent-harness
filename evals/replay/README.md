@@ -271,32 +271,62 @@ Declared before the runs:
   hash actually in effect and how many times the clause name survives in it, so
   an arm that did not land is visible without anyone remembering to look.
 
-### Arm A only, 2026-08-13, `[surface 86491241]`
-
-Arm A writes nothing to `~/.claude` — the contract runs as shipped — so it ran
-first, on its own. Arms B and C are held pending an explicit go, because they
-rewrite the operator's deployed contract ten times.
+### Result, 2026-08-13 — 21 runs, three arms, `[surface f6a99ff0]`
 
 ```
-d1-two-reviews      5/5 correct   2 dispatches each, Skill(baton-dispatch) invoked every run
-d2-one-small-edit   2/2 correct   0 dispatches, the skill not invoked
+cell                      arm A       arm B       arm C     contract mentions
+d1-two-reviews          5/5 loaded  5/5 loaded  5/5 loaded      2 -> 1 -> 0
+d2-one-small-edit       0/2 loaded  0/2 loaded  0/2 loaded      2 -> 1 -> 0
 ```
 
-**This is the cell s11's `b1` could never fill.** Three fixtures there produced
-three correct refusals and a structural zero; the same clause, the same machine,
-a harness that permits the action — and the precondition obtains in 5 of 5, with
-the skill loading every time. `b1`'s fixtures were not the problem, which is
-what the trap concluded from the other side and what this confirms from this one.
+Every one of the fourteen swapped runs passed its manipulation check before it
+was paid for: the model answered `NO` to "does your contract contain an explicit
+instruction to load `baton-dispatch`" in all of them, against `YES` in arm A.
+No run was invalid — every `d1` run dispatched two leaves and got two back, so
+the clause's precondition obtained every time.
 
-**It is also not yet an answer to the question `b1` was asking.** Arm A has the
-contract clause *and* the skill description present; separating them is exactly
-what arms B and C are for. Until those run, all this establishes is that the
-positive cell is reachable and that the negative control does not over-fire here
-(2 of 2, consistent with s11's 5/5/5 in the single-turn harness).
+**The contract clause does not move the loading decision on the dispatch path
+either.** With every mention of `baton-dispatch` deleted from the contract, the
+skill loads on 5 of 5 runs where a dispatch is going ahead. By the separation
+rule filed in advance — arm A ≥4/5 against arm B ≤1/5, or the reverse — this is
+**no separation**, and it is the flat kind rather than the ambiguous kind: all
+three arms are identical at ceiling.
+
+This is the question `b1` was built to ask and could not. s11 measured 90 runs
+across two other clauses and wrote that its conclusion "does not extrapolate to
+the dispatch path, which remains unmeasured". It is measured now, and it agrees.
+
+Three things this does **not** say, each of which someone will be tempted to
+read into it:
+
+- **Not that the skill is unnecessary.** What loads it is the description plus
+  the shape of the request. Remove the description and this experiment says
+  nothing about what happens.
+- **Not that the contract clause is safe to delete.** It says the clause has no
+  measurable effect on *this* decision, on this path, at n=5 per arm. The burden
+  it shifts is the one s11 already shifted: whoever argues the copy is necessary
+  now has to name the condition where it carries something.
+- **Not a clean name removal in general** — though for this clause it is nearly
+  one. Arm C here deletes only the parenthetical `(formats and request sources
+  in baton-dispatch)` from the reporting rule; the reporting obligation itself
+  survives. That is cleaner than s11's `provider-routing` arm C, which had to
+  relax a verifier trigger to remove a name.
+
+The negative control held at 0 of 2 in every arm, including arm C: nothing
+over-fired when the contract stopped mentioning the skill at all.
 
 One observation recorded rather than graded: `d1` runs reconciled their
-dispatches in 4 of 5, and four of the five loaded `experience-ledger` on their
-own initiative to do it. That is the same criterion-3 unevenness `r3` showed.
+dispatches in 11 of 15 across the three arms, several by loading
+`experience-ledger` on their own initiative. That is the same criterion-3
+unevenness `r3` showed, and it does not track the arm.
+
+**The stamp above corrects an error.** The arm A rows were first published as
+`[surface 86491241]`, a value computed before a later edit to `grade.py`; all 21
+runs in fact ran under `f6a99ff0`. That was the third hand-typed fingerprint of
+the day and the second wrong one, so `run.py` now records the fingerprint into
+each run's `meta.json` at the moment it runs and `summarise.py` reads it back.
+Runs that predate that change report `unrecorded` rather than borrowing a value,
+which is the honest reading and also the reason this row still needs prose.
 
 This swaps the deployed `~/.claude/CLAUDE.md` for arms B and C, with the four
 guards in `arm.py` — refuse on pre-existing drift, snapshot and restore in
