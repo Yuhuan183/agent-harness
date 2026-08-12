@@ -291,10 +291,80 @@ def leaf_isolation(run: Path) -> dict:
             "isolated": not both}
 
 
+def skills_invoked(events: list[dict]) -> list[str]:
+    """Every skill the run actually loaded, by name, from tool-call events.
+
+    s11's function, unchanged in behaviour: a `Skill` call is a fact in the
+    stream, while the agent saying it consulted something is a claim, and the
+    graders here do not grade claims.
+    """
+    names = []
+    for call in tool_calls(events):
+        if str(call["name"]).lower() not in ("skill", "skilltool"):
+            continue
+        payload = call["input"]
+        name = payload.get("skill") or payload.get("name") or ""
+        # Plugin skills arrive as `plugin:skill`; the bare name is what the
+        # scenario declares, so compare on the last segment.
+        names.append(str(name).split(":")[-1])
+    return names
+
+
+def grade_dispatch_clause(run: Path, meta: dict,
+                          turns: dict[int, list[dict]]) -> dict:
+    """Did the contract clause move the load, on a path where dispatch is real?
+
+    The marker is the clause's own precondition rather than anything about the
+    skill: `baton-dispatch` says to load "once a dispatch is going ahead", so a
+    run that stayed direct is invalid, not incorrect. s11's `b1` scored three
+    such runs as failures before the harness was found to be the cause, and
+    writing that distinction into the grader is how it stops being a lesson
+    someone has to remember.
+    """
+    events = [event for index in sorted(turns) if index >= 1
+              for event in turns[index]]
+    calls = tool_calls(events)
+    dispatches = [call for call in calls
+                  if str(call["name"]).lower() in ("agent", "task")]
+    ids = {call["id"] for call in dispatches}
+    returned = 0
+    for event in events:
+        message = event.get("message")
+        if not isinstance(message, dict) or not isinstance(
+                message.get("content"), list):
+            continue
+        for part in message["content"]:
+            if (isinstance(part, dict) and part.get("type") == "tool_result"
+                    and part.get("tool_use_id") in ids):
+                returned += 1
+
+    target = meta.get("target") or "baton-dispatch"
+    wants = meta.get("expect_skill") == "invoked"
+    loaded = skills_invoked(events)
+    invoked = target in loaded
+
+    if wants:
+        reached = len(dispatches) >= 2 and returned >= 2
+    else:
+        # The negative cell's precondition is that the run acted at all. A
+        # do-nothing run passes any not-invoked cell, which is how a do-nothing
+        # agent passed both s7 and s8 on 2026-08-08.
+        changed = (run / "workdir" / "pricing.py").exists() and bool(
+            [call for call in calls
+             if call["name"] in ("Edit", "Write", "NotebookEdit")])
+        reached = changed
+
+    return {"marker_present": reached, "leaf_dispatches": len(dispatches),
+            "leaf_results_returned": returned, "skills_invoked": loaded,
+            "target_invoked": invoked, "correct": invoked == wants}
+
+
 GRADERS = {
     "r1-interrupted-resume": grade_r1,
     "r2-successive-corrections": grade_r2,
     "r2b-defused-cap": grade_r2,
+    "d1-two-reviews": grade_dispatch_clause,
+    "d2-one-small-edit": grade_dispatch_clause,
     "r3-conflicting-leaves": grade_r3,
 }
 
@@ -450,6 +520,8 @@ def grade(run: Path) -> dict:
         "provider_faults": faults,
         "outcome": outcome,
         "contract_matched_repo_source": meta.get("matches_repo_source"),
+        "arm": (meta.get("arm") or {}).get("arm", "a"),
+        "arm_state": meta.get("arm"),
     }
     return report
 

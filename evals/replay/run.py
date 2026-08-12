@@ -62,6 +62,9 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
+sys.path.insert(0, str(HERE))
+
+from arm import contract_arm  # noqa: E402  — needs the path set above
 DEPLOYED = Path.home() / ".claude" / "CLAUDE.md"
 SOURCE = ROOT / "main" / "claude" / "CLAUDE.contract.md"
 FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n", re.S)
@@ -73,6 +76,13 @@ TURN = re.compile(r"^##\s+turn\s+(\d+)\s*$", re.M)
 # so a wedged run cannot hang a batch, not to bound normal work, so it is set
 # well above what a healthy turn needs.
 TURN_TIMEOUT = 2400
+
+# Asked of the model itself, not of the file, because the question is whether
+# the manipulation reached the agent. s11's wording, unchanged: a differently
+# worded probe would not be comparable with the trap this borrows its arms from.
+PROBE = ("Answer with exactly one word, YES or NO, and nothing else. Does your "
+         "global working contract contain an explicit instruction to load a "
+         "skill named `{clause}`?")
 
 
 def sha(path: Path) -> str:
@@ -239,6 +249,26 @@ def truncate_apply_log(workdir: Path, lines: int) -> dict[str, object]:
             "dropped": dropped}
 
 
+def preflight(clause: str, arm: str, workdir: Path, env: dict[str, str]) -> dict:
+    """Ask the model whether the manipulation landed, before spending the run.
+
+    An arm is only meaningful if the clause really left the agent's context, and
+    the file having changed is not the same claim. s11 was confused four times
+    by asking for a condition and measuring a different one.
+    """
+    done = subprocess.run(
+        ["claude", "--print", PROBE.format(clause=clause),
+         "--output-format", "text", "--permission-mode", "manual",
+         "--strict-mcp-config"],
+        cwd=workdir, env=env, capture_output=True, text=True, timeout=300)
+    out = done.stdout
+    answer = ("YES" if re.search(r"\bYES\b", out, re.I)
+              else "NO" if re.search(r"\bNO\b", out, re.I) else "?")
+    expected = "YES" if arm == "a" else "NO"
+    return {"probe": "manipulation-check", "clause": clause, "arm": arm,
+            "answer": answer, "expected": expected, "landed": answer == expected}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scenario", required=True, type=Path)
@@ -246,6 +276,14 @@ def main() -> int:
                         help="directory for events, snapshots and meta.json")
     parser.add_argument("--dry-run", action="store_true",
                         help="print the plan and the conditions, run nothing")
+    parser.add_argument("--arm", choices=("a", "b", "c"), default="a",
+                        help="a: contract as shipped (no swap). b: the load "
+                             "instruction removed. c: every mention removed")
+    parser.add_argument("--clause", default="baton-dispatch",
+                        help="which contract clause the arm operates on")
+    parser.add_argument("--preflight", action="store_true",
+                        help="ask the model whether the manipulation landed, "
+                             "before spending the run")
     args = parser.parse_args()
 
     spec, turns = parse_scenario(args.scenario)
@@ -285,42 +323,55 @@ def main() -> int:
               "surface fingerprint will not describe what the agent read",
               file=sys.stderr)
 
-    events = run_dir / "events.jsonl"
-    events.write_text("", encoding="utf-8")
-    records: list[dict] = []
-    interrupt_state: dict[str, object] = {}
+    with contract_arm(args.clause, args.arm) as arm_state:
+        if args.preflight:
+            checked = preflight(args.clause, args.arm, work, env)
+            print(json.dumps(checked, indent=2), file=sys.stderr)
+            if not checked["landed"]:
+                shutil.rmtree(work, ignore_errors=True)
+                raise SystemExit(
+                    f"manipulation did not land: the model answered "
+                    f"{checked['answer']} where arm {args.arm} expects "
+                    f"{checked['expected']}. A run whose arm did not reach the "
+                    "agent is not a data point.")
+            arm_state["preflight"] = checked
 
-    for index, prompt in enumerate(turns, start=1):
-        cut = interrupt_after if index == interrupt_turn else None
-        result = run_turn(prompt, session, index == 1, work, env, cut)
-        with events.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps({"replay_turn": index,
-                                     "interrupted": result["interrupted"]}) + "\n")
-            handle.write(result["stdout"])
-            if not result["stdout"].endswith("\n"):
-                handle.write("\n")
-        records.append({"turn": index, "exit": result["exit"],
-                        "interrupted": result["interrupted"],
-                        "timed_out": result["timed_out"],
-                        "stderr_tail": result["stderr"][-400:],
-                        **session_environment(result["stdout"])})
-        print(f"turn {index}: exit {result['exit']}"
-              f"{' (interrupted)' if result['interrupted'] else ''}",
-              file=sys.stderr)
+        events = run_dir / "events.jsonl"
+        events.write_text("", encoding="utf-8")
+        records: list[dict] = []
+        interrupt_state: dict[str, object] = {}
 
-        # Snapshot every turn, not just the last. r2 asks when a per-turn
-        # obligation first lapses, and that question cannot be answered from a
-        # single final state. For the interrupted turn this snapshot is taken
-        # before the truncation below, so the grader can see what the run had
-        # actually written at the moment it was cut off.
-        snapshot = run_dir / "snapshots" / f"turn-{index}"
-        shutil.rmtree(snapshot, ignore_errors=True)
-        shutil.copytree(work, snapshot)
+        for index, prompt in enumerate(turns, start=1):
+            cut = interrupt_after if index == interrupt_turn else None
+            result = run_turn(prompt, session, index == 1, work, env, cut)
+            with events.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps({"replay_turn": index,
+                                         "interrupted": result["interrupted"]}) + "\n")
+                handle.write(result["stdout"])
+                if not result["stdout"].endswith("\n"):
+                    handle.write("\n")
+            records.append({"turn": index, "exit": result["exit"],
+                            "interrupted": result["interrupted"],
+                            "timed_out": result["timed_out"],
+                            "stderr_tail": result["stderr"][-400:],
+                            **session_environment(result["stdout"])})
+            print(f"turn {index}: exit {result['exit']}"
+                  f"{' (interrupted)' if result['interrupted'] else ''}",
+                  file=sys.stderr)
 
-        if index == interrupt_turn:
-            interrupt_state = {"snapshot": f"snapshots/turn-{index}"}
-            if truncate:
-                interrupt_state["truncation"] = truncate_apply_log(work, truncate)
+            # Snapshot every turn, not just the last. r2 asks when a per-turn
+            # obligation first lapses, and that question cannot be answered from a
+            # single final state. For the interrupted turn this snapshot is taken
+            # before the truncation below, so the grader can see what the run had
+            # actually written at the moment it was cut off.
+            snapshot = run_dir / "snapshots" / f"turn-{index}"
+            shutil.rmtree(snapshot, ignore_errors=True)
+            shutil.copytree(work, snapshot)
+
+            if index == interrupt_turn:
+                interrupt_state = {"snapshot": f"snapshots/turn-{index}"}
+                if truncate:
+                    interrupt_state["truncation"] = truncate_apply_log(work, truncate)
 
     final = run_dir / "workdir"
     shutil.rmtree(final, ignore_errors=True)
@@ -356,6 +407,9 @@ def main() -> int:
         "interrupt": interrupt_state,
         "deployed_contract_sha256": sha(DEPLOYED) if DEPLOYED.exists() else None,
         "matches_repo_source": not drift,
+        "arm": arm_state,
+        "target": spec.get("target"),
+        "expect_skill": spec.get("expect_skill"),
         "hooks": "live (user settings source; not suppressible without also "
                  "dropping the contract)",
         "telemetry_diverted_to": str(run_dir / "telemetry"),
