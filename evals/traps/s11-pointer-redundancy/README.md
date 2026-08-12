@@ -194,7 +194,51 @@ to make dispatching the *cheaper* option, not merely a possible one. Until then
 this clause's positive direction is unmeasured, and the 90-run conclusion about
 contract mentions does not extend to the dispatch path.
 
-#### `b1-batch-migration` — the rebuild, piloted and **not yet batched**
+#### Why b1's positive direction is not measurable in this harness (2026-08-12)
+
+Three fixtures, three reasoned refusals, and the third one located the cause.
+It is not the fixtures.
+
+`run.py` runs each cell as `claude --print … --permission-mode manual`. In a
+headless turn there is nobody to approve anything, so **no run can write a file
+or execute a command**. Every s11 cell therefore measures what an agent loads
+while *planning*, which is fine for the other two clauses and fatal for this one:
+
+| clause | what its trigger is conditioned on | reachable in a plan-only turn? |
+|---|---|---|
+| `headroom-protocol` | MCP tools exist **and** a large blob is present | yes — both are states |
+| `provider-routing` | a routing question is being decided | yes — it is a decision |
+| `baton-dispatch` | "**once a dispatch is going ahead**" | **no — it is an action** |
+
+The contract clause and the skill's own description gate on the same
+precondition, and it is the one thing the harness forbids. So the positive cell
+cannot come back anything but 0, and no fixture can change that: b1 was asking
+whether a clause fires under a condition its harness makes unreachable.
+
+The three attempts are worth keeping because each failed differently and the
+last one failed most usefully:
+
+| fixture | why it did not measure |
+|---|---|
+| `b1-parallel-batch` | four trivial edits; work not worth dispatching, so the brake correctly refused |
+| `b1-batch-migration` | eight adapters, one complete spec; briefing cost still exceeded the work |
+| `b1-competing-writes` | isolation *is* structurally required — but `mkdir` was blocked, and the run isolated by filename namespace instead |
+
+That last run is the one to read. It engaged fully, recognised the conflict
+("兩者 import 不同模組, 物理上疊不起來"), routed around the blocked `mkdir` with
+namespacing, and then found a flaw in the fixture's own comparison: candidate B
+changes `emit.py` to stream as well, so its peak-memory win would partly come
+from a change unrelated to the variable under test. It proposed a common-sink
+benchmark to isolate it. That is the same discipline this trap exists to
+enforce, arriving from the other direction.
+
+**What would make it measurable** — none of it a fixture change: a harness that
+permits writes and execution so a dispatch can actually go ahead, or a different
+clause to test on the dispatch path whose trigger is a decision rather than an
+action. Until one of those exists, this direction stays unmeasured and the
+90-run conclusion still does not extend to it.
+
+#### `b1-batch-migration` — the second attempt, piloted
 
 `scenarios/b1-batch-migration.md` replaces the retired cell: eight independent
 adapters, ~750 lines, one complete spec (`MIGRATION.md`) that states the whole

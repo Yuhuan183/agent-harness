@@ -359,6 +359,172 @@ class Settings:
 ADAPTER_NAMES = ("argon", "beryl", "cobalt", "delta",
                  "ember", "flint", "garnet", "helio")
 
+
+# b1's second rebuild, after the batch-migration one also drew a reasoned
+# refusal. Both earlier attempts argued from *size*: more items, more lines, a
+# fuller spec. An agent can always answer size with "then I will do it here",
+# and twice it did, correctly — briefing cost scales with item count while
+# per-item difficulty stays at zero.
+#
+# Competing writes is a different argument, and it is the one the contract makes
+# itself: "isolated workspaces for competing writes" is a dispatch shape
+# baton-dispatch owns outright, unlike parallelism (which the brake can refuse on
+# cost) or a cheaper tier (which it can refuse on overhead). Two candidate
+# changes to the *same file* cannot share a workspace at all. That is structural,
+# not a matter of how much work each one is.
+#
+# So this fixture is deliberately not large. `parse.py` is the contested file:
+# approach A rewrites how it consumes tokens, approach B rewrites how it hands
+# nodes on, and each also touches a different neighbour. Doing both in one
+# workspace means edit, measure, revert three files exactly, edit differently,
+# measure — which is the manoeuvre isolation exists to remove.
+TOKENIZE = '''"""Stage 1: source text -> tokens."""
+
+SEPARATORS = {" ", "\\t", "\\n", ",", ";"}
+
+
+def tokenize(text):
+    """Return every token in one list. Reads the whole input first."""
+    tokens, current = [], []
+    for char in text:
+        if char in SEPARATORS:
+            if current:
+                tokens.append("".join(current))
+                current = []
+        else:
+            current.append(char)
+    if current:
+        tokens.append("".join(current))
+    return tokens
+'''
+
+PARSE = '''"""Stage 2: tokens -> nodes. The contested module."""
+
+from tokenize_stage import tokenize
+
+
+def parse(text):
+    """Build every node before returning. Holds the whole token list."""
+    nodes = []
+    for index, token in enumerate(tokenize(text)):
+        nodes.append({
+            "index": index,
+            "value": token,
+            "kind": "number" if token.isdigit() else "word",
+            "width": len(token),
+        })
+    return nodes
+
+
+def summarise(nodes):
+    return {
+        "count": len(nodes),
+        "numbers": sum(1 for node in nodes if node["kind"] == "number"),
+        "widest": max((node["width"] for node in nodes), default=0),
+    }
+'''
+
+EMIT = '''"""Stage 3: nodes -> output lines. Writes one line per node."""
+
+
+def emit(nodes):
+    """Materialise every line before returning."""
+    lines = []
+    for node in nodes:
+        lines.append(f"{node['index']:>6} {node['kind']:<6} {node['value']}")
+    return lines
+
+
+def emit_to(stream, nodes):
+    for line in emit(nodes):
+        stream.write(line + "\\n")
+'''
+
+TEST_PIPELINE = '''import unittest
+
+from parse import parse, summarise
+from emit import emit
+
+
+SAMPLE = "alpha 12 beta, gamma; 7 delta"
+
+
+class PipelineTests(unittest.TestCase):
+    def test_parse_kinds(self):
+        nodes = parse(SAMPLE)
+        self.assertEqual([n["value"] for n in nodes],
+                         ["alpha", "12", "beta", "gamma", "7", "delta"])
+        self.assertEqual(nodes[1]["kind"], "number")
+
+    def test_summary(self):
+        summary = summarise(parse(SAMPLE))
+        self.assertEqual(summary["count"], 6)
+        self.assertEqual(summary["numbers"], 2)
+        self.assertEqual(summary["widest"], 5)
+
+    def test_emit_one_line_each(self):
+        lines = emit(parse(SAMPLE))
+        self.assertEqual(len(lines), 6)
+        self.assertIn("alpha", lines[0])
+
+
+if __name__ == "__main__":
+    unittest.main()
+'''
+
+BENCH = '''"""Peak-memory proxy for the pipeline: how many objects are held at once.
+
+Both candidate changes claim to lower this. Neither has been measured.
+"""
+import tracemalloc
+
+from parse import parse
+from emit import emit
+
+SOURCE = " ".join(str(index) if index % 3 else f"word{index}"
+                  for index in range(20000))
+
+
+def peak_kib():
+    tracemalloc.start()
+    emit(parse(SOURCE))
+    _, peak = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+    return peak / 1024
+
+
+if __name__ == "__main__":
+    print(f"peak {peak_kib():.1f} KiB")
+'''
+
+NOTES = """# Two candidates for the same bottleneck
+
+`bench.py` reports peak memory for a 20k-token document. Both stages
+materialise a full list, so peak scales with input. Two changes have been
+proposed. **Only one will ship**, and they are not compatible: both rewrite
+`parse.py`, in different directions.
+
+## Candidate A — pull from the tokenizer
+
+Make `tokenize` a generator and have `parse` yield nodes as tokens arrive.
+Touches `tokenize_stage.py` and `parse.py`. `emit` keeps its current shape.
+Introduces a `carry_over` for the partial token spanning a read boundary.
+
+## Candidate B — push to the emitter
+
+Leave tokenizing alone. Have `parse` hand nodes to `emit` in fixed-size
+batches, with `emit` flushing each batch as it arrives. Touches `parse.py` and
+`emit.py`. Needs a `flush_threshold` and a `_ring_buffer` to hold the batch.
+
+## What decides it
+
+`python3 bench.py` before and after, with `python3 test_pipeline.py` staying
+green. The lower peak wins; if they tie, the smaller diff wins. Neither
+candidate has been implemented, so there is no measurement yet — that is the
+whole question.
+"""
+
+
 SCENARIOS: dict[str, dict[str, object]] = {
     "h1-large-blob": {"deps.log": deps_log},
     "h2-small-output": {},
@@ -385,6 +551,14 @@ SCENARIOS: dict[str, dict[str, object]] = {
         "core/settings.py": SETTINGS,
         **{f"adapters/{name}.py": (lambda n=name: adapter(n))
            for name in ADAPTER_NAMES},
+    },
+    "b1-competing-writes": {
+        "NOTES.md": NOTES,
+        "tokenize_stage.py": TOKENIZE,
+        "parse.py": PARSE,
+        "emit.py": EMIT,
+        "test_pipeline.py": TEST_PIPELINE,
+        "bench.py": BENCH,
     },
     "b2-one-small-edit": {"README.md": README_TYPO},
 }
