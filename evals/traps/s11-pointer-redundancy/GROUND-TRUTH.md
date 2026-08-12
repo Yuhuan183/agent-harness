@@ -50,7 +50,8 @@ agent's own account of what it did.
 | `p1-cross-provider` | work explicitly to be handed to GPT/Codex | the run reaches a routing decision | `Skill(provider-routing)` invoked |
 | `p2-single-provider` | ordinary local work, no provider question | the run reaches a plan or an action | `provider-routing` **not** invoked |
 | ~~`b1-parallel-batch`~~ | ~~several independent bounded tasks worth dispatching~~ | — | **retired 2026-08-11**: the tasks were not worth dispatching, so the clause's precondition never obtained. All 15 runs invalid |
-| `b1-batch-migration` | eight independent adapters, one complete spec, ~750 lines of identical mechanical work | the run surveys the adapters (`ember\|flint\|garnet\|helio` — names that exist only in the tree, not in the spec or the opening message) | `Skill(baton-dispatch)` invoked |
+| ~~`b1-batch-migration`~~ | ~~eight adapters, one complete spec~~ | — | **retired 2026-08-12** after a pilot: the agent refused again, on the same cost grounds. Size is an argument an agent can always answer with "then I will do it here" |
+| `b1-competing-writes` | two candidate changes to the *same* file, only one ships, both must be measured | the run reads `NOTES.md` (`carry_over\|flush_threshold\|_ring_buffer` — symbols in that file only, absent from the opening message and from every `.py`) | `Skill(baton-dispatch)` invoked |
 | `b2-one-small-edit` | a single small edit, staying direct is correct | the run reaches a plan or an action | `baton-dispatch` **not** invoked |
 
 The `h2`/`p2`/`b2` rows are negative controls, and they are the reason this
