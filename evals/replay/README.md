@@ -187,7 +187,12 @@ only adds a file. That is a tight control but not a matched one, so **a
 supported result may not be cited until a fresh matched `r2` arm is run**; a
 refuted or null one needs no such follow-up, since neither is a claim.
 
-### Result, 2026-08-13 — **refuted**
+### Result, 2026-08-13 — **refuted**, `[surface a392f3fc]`
+
+That stamp is the fingerprint the five runs were produced under, not whatever
+this suite computes today. `arm.py` and the `d1`/`d2` scenarios were written
+while this batch was still running and join the surface when their own cells
+run; they are not read by `r2b` and could not have reached it.
 
 ```
 turn-3 consequence table   r2 5/5 -> r2b 1/5    Fisher exact p = 0.0476
@@ -265,6 +270,33 @@ Declared before the runs:
 - **A manipulation check is not optional.** Each arm's run records the contract
   hash actually in effect and how many times the clause name survives in it, so
   an arm that did not land is visible without anyone remembering to look.
+
+### Arm A only, 2026-08-13, `[surface 86491241]`
+
+Arm A writes nothing to `~/.claude` — the contract runs as shipped — so it ran
+first, on its own. Arms B and C are held pending an explicit go, because they
+rewrite the operator's deployed contract ten times.
+
+```
+d1-two-reviews      5/5 correct   2 dispatches each, Skill(baton-dispatch) invoked every run
+d2-one-small-edit   2/2 correct   0 dispatches, the skill not invoked
+```
+
+**This is the cell s11's `b1` could never fill.** Three fixtures there produced
+three correct refusals and a structural zero; the same clause, the same machine,
+a harness that permits the action — and the precondition obtains in 5 of 5, with
+the skill loading every time. `b1`'s fixtures were not the problem, which is
+what the trap concluded from the other side and what this confirms from this one.
+
+**It is also not yet an answer to the question `b1` was asking.** Arm A has the
+contract clause *and* the skill description present; separating them is exactly
+what arms B and C are for. Until those run, all this establishes is that the
+positive cell is reachable and that the negative control does not over-fire here
+(2 of 2, consistent with s11's 5/5/5 in the single-turn harness).
+
+One observation recorded rather than graded: `d1` runs reconciled their
+dispatches in 4 of 5, and four of the five loaded `experience-ledger` on their
+own initiative to do it. That is the same criterion-3 unevenness `r3` showed.
 
 This swaps the deployed `~/.claude/CLAUDE.md` for arms B and C, with the four
 guards in `arm.py` — refuse on pre-existing drift, snapshot and restore in

@@ -66,9 +66,12 @@ def in_batch(name: str, scenario_id: str) -> bool:
 
     A looser `-\\d{3}$` looked right and quietly admitted `r3-aborted-529`,
     whose name ends in three digits by coincidence. Naming is not a data model;
-    the id has to match too.
+    the id has to match too. Arm runs carry `-armb`/`-armc` before the seed,
+    since the arm is part of a run's identity and mixing arms under one name
+    would be unreadable afterwards.
     """
-    return re.fullmatch(rf"{re.escape(scenario_id)}-\d{{3}}", name) is not None
+    return re.fullmatch(rf"{re.escape(scenario_id)}(-arm[bc])?-\d{{3}}",
+                        name) is not None
 
 
 def load(runs: Path, everything: bool) -> list[dict]:
@@ -104,7 +107,10 @@ def load(runs: Path, everything: bool) -> list[dict]:
 def summarise(reports: list[dict]) -> dict:
     scenarios: dict[str, dict] = {}
     for report in reports:
-        row = scenarios.setdefault(report["scenario"], {
+        key = report["scenario"]
+        if report.get("arm", "a") != "a":
+            key = f"{key} [arm {report['arm'].upper()}]"
+        row = scenarios.setdefault(key, {
             "runs": [], "correct": 0, "incorrect": 0, "invalid": 0,
             "faults": 0, "unreconciled": 0,
             "bookkeeping_runs": 0, "bookkeeping_ok": 0})

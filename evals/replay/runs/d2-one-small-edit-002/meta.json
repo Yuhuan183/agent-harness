@@ -1,0 +1,37 @@
+{
+  "scenario": "d2-one-small-edit.md",
+  "id": "d2-one-small-edit",
+  "measures": "派工路徑的 negative control — 不該派工時會不會誤載入",
+  "marker": "the run changed pricing.py — a run that never acted did not reach the point where the dispatch brake applies, and a do-nothing run passing a not-invoked cell is exactly the single-sided failure s8 was caught by",
+  "recovery_point": "none; no turn is interrupted",
+  "expect": "`baton-dispatch` is **not** invoked",
+  "session": "f93b4a63-7537-4765-b326-4f1905a0f9dd",
+  "fixture_files": [
+    "pricing.py",
+    "test_pricing.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "deployed_contract_sha256": "12a0d188f9ead5965c7fb632eeb8fbf2c245384f3fd24d151ba9ad8fe5649a25",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "a",
+    "clause": "baton-dispatch",
+    "contract_sha256_in_effect": "12a0d188f9ead5965c7fb632eeb8fbf2c245384f3fd24d151ba9ad8fe5649a25",
+    "clause_name_mentions_in_effect": 2
+  },
+  "target": "baton-dispatch",
+  "expect_skill": "not-invoked",
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "/Users/siegfried/WorkSpace/agent-harness/evals/replay/runs/d2-one-small-edit-002/telemetry"
+}

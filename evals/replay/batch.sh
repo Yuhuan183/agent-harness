@@ -15,8 +15,13 @@
 #     ./batch.sh r1-interrupted-resume 5
 set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-scenario="${1:?usage: batch.sh <scenario-stem> [count]}"
+scenario="${1:?usage: batch.sh <scenario-stem> [count] [arm]}"
 count="${2:-5}"
+# Arm A writes nothing to ~/.claude; B and C swap the deployed contract and
+# restore it, with the guards in arm.py. The arm is part of the run's identity,
+# so it is part of the directory name — a batch that mixed arms under one name
+# would be unreadable afterwards, and unrecoverable.
+arm="${3:-a}"
 spec="$HERE/scenarios/$scenario.md"
 [ -f "$spec" ] || { echo "no such scenario: $spec" >&2; exit 1; }
 
@@ -24,7 +29,9 @@ results="$HERE/runs/results.tsv"
 [ -s "$results" ] || printf 'scenario\trun\tverdict\texit\tdetail\n' > "$results"
 
 for seed in $(seq 1 "$count"); do
-  out="$HERE/runs/$scenario-$(printf '%03d' "$seed")"
+  suffix=""
+  [ "$arm" = "a" ] || suffix="-arm$arm"
+  out="$HERE/runs/$scenario$suffix-$(printf '%03d' "$seed")"
   # Resumable without paying twice, and without silently shrinking n.
   #
   # The guard was "directory exists", and on 2026-08-12 that quietly took a
@@ -42,7 +49,10 @@ for seed in $(seq 1 "$count"); do
     rm -rf "$out"
   fi
   echo "=== $scenario seed $seed -> $out" >&2
-  "$HERE/run.py" --scenario "$spec" --out "$out" >&2
+  preflight=""
+  [ "$arm" = "a" ] || preflight="--preflight"
+  # shellcheck disable=SC2086
+  "$HERE/run.py" --scenario "$spec" --out "$out" --arm "$arm" $preflight >&2
   verdict=$("$HERE/grade.py" --run "$out" > "$out/verdict.json" 2>&1; echo $?)
   detail=$(python3 -c "
 import json, sys
@@ -63,7 +73,7 @@ print(' '.join(str(bit) for bit in bits))
 import json, sys
 print(json.load(open(sys.argv[1]))['verdict'])" "$out/verdict.json" 2>/dev/null || echo "?")
   printf '%s\t%s\t%s\t%s\t%s\n' \
-    "$scenario" "$(basename "$out")" "$name" "$verdict" "$detail" >> "$results"
+    "$scenario/$arm" "$(basename "$out")" "$name" "$verdict" "$detail" >> "$results"
   echo "    $name (exit $verdict) $detail" >&2
 done
 

@@ -19,3 +19,6 @@ evals/replay/scenarios/r1-interrupted-resume.md
 evals/replay/scenarios/r2-successive-corrections.md
 evals/replay/scenarios/r2b-defused-cap.md
 evals/replay/scenarios/r3-conflicting-leaves.md
+evals/replay/arm.py
+evals/replay/scenarios/d1-two-reviews.md
+evals/replay/scenarios/d2-one-small-edit.md
