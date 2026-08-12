@@ -187,6 +187,92 @@ only adds a file. That is a tight control but not a matched one, so **a
 supported result may not be cited until a fresh matched `r2` arm is run**; a
 refuted or null one needs no such follow-up, since neither is a claim.
 
+### Result, 2026-08-13 — **refuted**
+
+```
+turn-3 consequence table   r2 5/5 -> r2b 1/5    Fisher exact p = 0.0476
+turn-3 DECISION lapse      r2 5/5 -> r2b 5/5    Fisher exact p = 1.0000
+```
+
+The manipulation landed and the outcome did not move. By the rule filed above,
+that is the **refuted** branch: the turn-3 lapse is not caused by the reply
+being occupied by an unsolicited consequence table. Two of the five `r2b` runs
+produced no table anywhere in five turns and lapsed on turn 3 all the same.
+
+This is the good outcome, and it is worth being explicit about why. The
+association it kills was clean — p = 0.0225, every turn-3 reply carrying a
+table against one of the other twenty — and it would have read as a mechanism
+in any document that quoted it. It was killed by a manipulation that cost five
+runs, filed before the runs, with the mediator measured on every turn so that
+"the manipulation didn't land" and "the manipulation landed and nothing
+happened" could not be confused. Only the second of those is a refutation, and
+the table row above is how a reader checks which one this was.
+
+**What survives is the thing the manipulation could not touch.** Turn 3 lapsed
+in 10 of 10 runs across both arms while the other four turns lapsed 12 of 40,
+and `r2b` merely redistributed the rest — same 10 of 25 lapses overall, moved
+off turns 2 and 4 and onto turns 1 and 5. Turn 3 is still special, and this
+fixture cannot say why, because **position and content are perfectly
+confounded**: turn 3 is both "the cap request" and "the third correction" in
+every run of both arms.
+
+The fix is counterbalancing, not another content manipulation: run the same
+five requests in permuted orders so that turn index and request identity come
+apart. Same fixture, same forks, no new material — and it separates the two
+explanations this design cannot. `r2b` shows why that is the next step rather
+than a nicety: one more content manipulation would have the same confound.
+
+## `d1`/`d2` — the question s11's `b1` could not ask, pre-registered 2026-08-13
+
+s11 set out to learn whether a contract clause naming a skill does anything the
+skill's own `description` does not. It answered that for `provider-routing` and
+`headroom-protocol` across 90 runs, and could not answer it for
+`baton-dispatch`: that clause triggers on **a dispatch going ahead**, an action,
+and s11 runs under `--permission-mode manual` where no action is ever approved.
+Three fixtures, three refusals that were all correct, and a positive cell that
+could only ever return zero. The trap closed the cell rather than iterate a
+fourth fixture to produce the answer it wanted.
+
+The replay harness approves actions, so the question is askable here. Nothing
+about it is new except the harness: the arms are s11's, built by its own
+`arms.py`, and the decision rule is s11's.
+
+| arm | contract |
+|---|---|
+| A | as shipped |
+| B | the explicit "load `baton-dispatch`" instruction removed; the name survives in the reporting clause |
+| C | every mention removed |
+
+| cell | fixture | dispatch warranted? | correct outcome |
+|---|---|---|---|
+| `d1-two-reviews` | `r3-conflicting-leaves` | yes, and the user asks for it outright, so the brake has no ground to refuse | `Skill(baton-dispatch)` invoked |
+| `d2-one-small-edit` | `r2-successive-corrections` | no — one small edit, staying direct is right | `baton-dispatch` **not** invoked |
+
+Declared before the runs:
+
+- **5 runs per arm on `d1`, 2 per arm on `d2`.** `d2` is the over-firing check,
+  and s11 already found it clean 5/5/5 in the single-turn harness; two runs per
+  arm here asks only whether that survives a harness where dispatch is possible.
+- **Marker before outcome.** A `d1` run that stayed direct is `invalid`, not
+  `incorrect` — the clause's precondition never obtained. That distinction is
+  the entire lesson of `b1`, and it is written here rather than discovered.
+- **Separation, inherited from s11 rather than invented:** only arm A correct on
+  ≥4 of 5 while arm B is correct on ≤1 of 5, or the reverse, counts. Anything
+  between is **no separation at n=5**.
+- **Arm B is the narrower question**, as in s11: the name survives elsewhere in
+  the contract, so B asks whether the *instruction* carries the loading given
+  the name is there anyway. Arm C asks whether the name does.
+- **A manipulation check is not optional.** Each arm's run records the contract
+  hash actually in effect and how many times the clause name survives in it, so
+  an arm that did not land is visible without anyone remembering to look.
+
+This swaps the deployed `~/.claude/CLAUDE.md` for arms B and C, with the four
+guards in `arm.py` — refuse on pre-existing drift, snapshot and restore in
+`finally`, verify the restore by hash, and leave a sentinel while swapped. The
+restore path is tested against injected paths rather than the live file, because
+a test that proves the restore works by swapping the operator's own contract can
+leave the machine broken precisely when it fails.
+
 ## What this construct cannot support
 
 - **The contract and the hooks cannot be separated** (measured above), so no

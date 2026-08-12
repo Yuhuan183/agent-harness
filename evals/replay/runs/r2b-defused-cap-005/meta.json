@@ -1,0 +1,65 @@
+{
+  "scenario": "r2b-defused-cap.md",
+  "id": "r2b-defused-cap",
+  "measures": "連續 correction — 排擠假說的操弄臂",
+  "marker": "a turn counts only if that turn changed pricing.py and did not answer with a clarifying question instead of choosing — identical to r2, because the only manipulation is one numeral in turn 3",
+  "recovery_point": "none; no turn is interrupted",
+  "expect": "every turn that reached the branch carries a `DECISION:` line",
+  "session": "6081da24-7e7e-4958-9e7f-d11db0187ae7",
+  "fixture_files": [
+    "pricing.py",
+    "test_pricing.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 3,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 4,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 5,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "deployed_contract_sha256": "12a0d188f9ead5965c7fb632eeb8fbf2c245384f3fd24d151ba9ad8fe5649a25",
+  "matches_repo_source": true,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "/Users/siegfried/WorkSpace/agent-harness/evals/replay/runs/r2b-defused-cap-005/telemetry"
+}
