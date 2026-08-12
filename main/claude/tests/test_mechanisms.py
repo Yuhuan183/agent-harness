@@ -2620,6 +2620,70 @@ class ReplayScenarioTests(unittest.TestCase):
                 self.assertIsNone(module.API_FAULT.search(prose))
                 self.assertIsNone(module.API_FAULT_GENERIC.search(prose))
 
+    def test_the_arm_swap_restores_the_contract_including_after_a_crash(self) -> None:
+        """The one piece of this suite that writes to a live user contract.
+
+        Exercised against injected paths, never the real ones: a test that
+        proves the restore works by swapping the operator's own contract is a
+        test that can leave the machine broken exactly when it fails."""
+        module = load_module("replay_arm", self.REPLAY / "arm.py")
+        source = ROOT / "main" / "claude" / "CLAUDE.contract.md"
+        original = source.read_text(encoding="utf-8")
+
+        for arm, crash in (("b", False), ("c", False), ("b", True)):
+            with self.subTest(arm=arm, crash=crash), \
+                    tempfile.TemporaryDirectory() as temp:
+                home = Path(temp)
+                deployed = home / "CLAUDE.md"
+                deployed.write_text(original, encoding="utf-8")
+                paths = module.Paths(deployed=deployed, source=source,
+                                     sentinel=home / ".sentinel")
+                before = module.sha(deployed)
+
+                def run() -> dict:
+                    with module.contract_arm("baton-dispatch", arm, paths) as state:
+                        self.assertTrue(paths.sentinel.exists(),
+                                        "no breadcrumb while swapped")
+                        self.assertNotEqual(
+                            before, module.sha(deployed),
+                            f"arm {arm} did not change the contract")
+                        if crash:
+                            raise RuntimeError("simulated crash mid-run")
+                        return state
+
+                if crash:
+                    with self.assertRaises(RuntimeError):
+                        run()
+                else:
+                    state = run()
+                    self.assertEqual(
+                        0 if arm == "c" else 1,
+                        state["clause_name_mentions_in_effect"],
+                        "arm C must leave no mention; arm B keeps the name")
+
+                self.assertEqual(before, module.sha(deployed),
+                                 "contract not restored")
+                self.assertFalse(paths.sentinel.exists(),
+                                 "sentinel survived a verified restore")
+
+    def test_the_arm_swap_refuses_to_stack_on_an_unfinished_one(self) -> None:
+        module = load_module("replay_arm", self.REPLAY / "arm.py")
+        source = ROOT / "main" / "claude" / "CLAUDE.contract.md"
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            deployed = home / "CLAUDE.md"
+            deployed.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+            sentinel = home / ".sentinel"
+            sentinel.write_text("someone else is mid-swap\n", encoding="utf-8")
+            paths = module.Paths(deployed=deployed, source=source, sentinel=sentinel)
+            with self.assertRaises(SystemExit):
+                module.check_no_drift(paths)
+
+            sentinel.unlink()
+            deployed.write_text("drifted\n", encoding="utf-8")
+            with self.assertRaises(SystemExit):
+                module.check_no_drift(paths)
+
     def test_reconciled_and_never_dispatched_are_not_the_same_state(self) -> None:
         # `experience-log --from-pending` consumes the stub, so a run that did
         # all its bookkeeping ends with an empty pending file — which the first
