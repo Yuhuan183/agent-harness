@@ -54,6 +54,12 @@ API_FAULT = re.compile(r"API Error:\s*(\d{3})", re.IGNORECASE)
 API_FAULT_GENERIC = re.compile(r"terminated early due to an API error",
                                re.IGNORECASE)
 
+# A markdown table row. Structural rather than lexical on purpose: the thing
+# being measured is whether the reply spent itself laying out a consequence the
+# request did not ask for, and every attempt in this directory to detect that
+# by vocabulary has misfired.
+TABLE_ROW = re.compile(r"^\s*\|.*\|\s*$", re.M)
+
 
 def fixtures():
     spec = importlib.util.spec_from_file_location(
@@ -194,15 +200,23 @@ def grade_r2(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
         said = final_text(turns[index])
         rows.append({"turn": index, "changed_pricing_py": changed,
                      "decision_line": bool(marked.search(said)),
+                     # Pre-registered 2026-08-13 as the mediator for the
+                     # crowding-out manipulation, and measured for every turn
+                     # rather than only turn 3: a mediator that is only
+                     # recorded where the hypothesis expects it cannot
+                     # disconfirm the hypothesis.
+                     "consequence_table": len(TABLE_ROW.findall(said)) >= 3,
                      "reply_tail": said[-400:]})
 
     reached = [row for row in rows if row["changed_pricing_py"]]
+    tabled = [row["turn"] for row in reached if row["consequence_table"]]
     lapses = [row["turn"] for row in reached if not row["decision_line"]]
     return {
         "marker_present": bool(reached),
         "turns": rows,
         "turns_reached": [row["turn"] for row in reached],
         "turns_without_decision_line": lapses,
+        "turns_with_consequence_table": tabled,
         "first_lapse": lapses[0] if lapses else None,
         "correct": bool(reached) and not lapses,
     }
@@ -280,6 +294,7 @@ def leaf_isolation(run: Path) -> dict:
 GRADERS = {
     "r1-interrupted-resume": grade_r1,
     "r2-successive-corrections": grade_r2,
+    "r2b-defused-cap": grade_r2,
     "r3-conflicting-leaves": grade_r3,
 }
 

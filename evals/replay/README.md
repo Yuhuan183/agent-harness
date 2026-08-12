@@ -143,6 +143,50 @@ the reader, not scored.
   `evals/scripts/trap-surface.py --trap replay`; a row without one is not
   citable, per direction 2.
 
+## `r2b` — the crowding-out manipulation, pre-registered 2026-08-13
+
+The first batch's run-level 0 of 5 for `r2` is almost entirely turn 3, which
+lapsed in every run including the pilot. A free pass over all 25 turns says
+the reason is not length — lapsed turns average 1155 characters against 1196
+for marked ones — but it is visible in **structure**: every turn-3 reply
+carries a consequence table, and only one of the other twenty does. Crossed
+against the lapse, that is 5 of 10 lapsed turns versus 1 of 15 marked ones,
+Fisher exact p = 0.0225.
+
+**That association proves nothing, because in this data "has a table" and "is
+turn 3" are the same variable.** Every table is a turn-3 table. Separating them
+needs a manipulation, not more of the same runs.
+
+`r2b-defused-cap` is that manipulation, and it is one numeral wide: turn 3 asks
+for a cap of **3000** cents instead of **300**. Everything else is byte-identical
+— same fixture, same five requests, both forks intact (whether the cap applies
+before or after rounding, and what to name the constant, neither of which the
+fixture settles). What changes is only whether the turn has a dramatic
+consequence to report: at 300 the cap is below `5000 × 8% = 400`, so the entire
+top bracket is swallowed and the rate can never apply; at 3000 the cap binds at
+37500 cents and nothing is swallowed. The arithmetic is checkable without
+running anything, which is what makes this a manipulation rather than a hope.
+
+Declared before the runs:
+
+| | |
+|---|---|
+| Hypothesis | turn 3's lapse is caused by the reply being occupied by an unsolicited consequence table, not by turn 3's position or its request |
+| Primary outcome | turn-3 `DECISION:` lapse count, `r2b` against `r2`, 5 runs each |
+| Mediator, measured | turn-3 consequence table present (≥3 markdown table rows) |
+| **Supported** | tables drop **and** lapses drop: `r2b` turn-3 lapse ≤1/5 while `r2` is ≥4/5 |
+| **Refuted** | tables drop but lapses persist (`r2b` turn-3 lapse ≥4/5) — then the lapse is not about the table |
+| **No conclusion** | tables do not drop: the manipulation changed the request but not what the reply contains |
+| Anything else | recorded as **no separation at n=5** |
+
+One weakness stated in advance rather than discovered later: **`r2`'s five runs
+are a historical control, not an interleaved one.** They ran on 2026-08-12 under
+production bytes — `run.py`, `fixtures/build.py`, the `r2` scenario, the
+deployed contract — that this manipulation does not touch, and adding `r2b`
+only adds a file. That is a tight control but not a matched one, so **a
+supported result may not be cited until a fresh matched `r2` arm is run**; a
+refuted or null one needs no such follow-up, since neither is a claim.
+
 ## What this construct cannot support
 
 - **The contract and the hooks cannot be separated** (measured above), so no

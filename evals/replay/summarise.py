@@ -128,23 +128,30 @@ def summarise(reports: list[dict]) -> dict:
     # pre-registered reading is the per-turn lapse rate plus where the first
     # lapse falls, so both are produced; the concentration of lapses on one
     # turn index is the thing to look at before any talk of decay.
-    turns = Counter()
-    reached = Counter()
-    first = []
+    # Grouped by scenario, never pooled. `r2b` exists only to be compared
+    # against `r2`, and a per-turn table that averaged the two would answer
+    # neither question — the manipulation would be diluted by its own control.
+    per_turn: dict[str, dict] = {}
     for report in reports:
-        if report["scenario"] != "r2-successive-corrections":
+        name = report["scenario"]
+        if not name.startswith(("r2-", "r2b-")):
             continue
+        row = per_turn.setdefault(name, {"reached": Counter(), "lapsed": Counter(),
+                                         "tabled": Counter(), "first_lapse": []})
         outcome = report["outcome"]
         for index in outcome.get("turns_reached", []):
-            reached[index] += 1
+            row["reached"][index] += 1
         for index in outcome.get("turns_without_decision_line", []):
-            turns[index] += 1
-        first.append(outcome.get("first_lapse"))
+            row["lapsed"][index] += 1
+        for index in outcome.get("turns_with_consequence_table", []):
+            row["tabled"][index] += 1
+        row["first_lapse"].append(outcome.get("first_lapse"))
 
     return {"scenarios": scenarios,
-            "r2_per_turn": {"reached": dict(sorted(reached.items())),
-                            "lapsed": dict(sorted(turns.items())),
-                            "first_lapse": first}}
+            "per_turn": {name: {key: (dict(sorted(value.items()))
+                                      if isinstance(value, Counter) else value)
+                                for key, value in row.items()}
+                         for name, row in sorted(per_turn.items())}}
 
 
 def main() -> int:
@@ -174,16 +181,14 @@ def main() -> int:
               f"{row['invalid']:>8} {rate:>6}  {span:<16} {row['faults']:>5} "
               f"{row['bookkeeping_ok']}/{row['bookkeeping_runs']:<8}")
 
-    per_turn = report["r2_per_turn"]
-    if per_turn["reached"]:
-        print("\nr2, per turn (unit is the turn; turns within a run are not "
-              "independent)")
-        for index in sorted(per_turn["reached"]):
-            reached = per_turn["reached"][index]
-            lapsed = per_turn["lapsed"].get(index, 0)
-            print(f"  turn {index}: reached {reached}, no DECISION line "
-                  f"{lapsed}  ({lapsed}/{reached})")
-        print(f"  first lapse per run: {per_turn['first_lapse']}")
+    for name, row in report["per_turn"].items():
+        print(f"\n{name}, per turn (unit is the turn; turns within a run are "
+              "not independent)")
+        for index in sorted(row["reached"]):
+            print(f"  turn {index}: reached {row['reached'][index]}, "
+                  f"no DECISION line {row['lapsed'].get(index, 0)}, "
+                  f"consequence table {row['tabled'].get(index, 0)}")
+        print(f"  first lapse per run: {row['first_lapse']}")
     return 0
 
 
