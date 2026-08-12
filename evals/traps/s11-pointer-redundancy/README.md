@@ -80,6 +80,22 @@ breed an agent that loads everything.
   obvious than real work does.
 - A passing arm B is **weak** and authorises nothing. Only a failing arm B is
   strong, and it would argue against deletion, not for it.
+- **The machine's hooks were live in every run here**, which `run.py` claimed
+  otherwise until 2026-08-12. `--settings '{"hooks":{}}'` loads *additional*
+  settings and suppresses nothing: a run launched with that exact flag was
+  observed staging `SubagentStart`/`SubagentStop` records into the real pending
+  file. The only flag that does silence user hooks,
+  `--setting-sources project,local`, drops the user contract with them — the
+  surface under test — so nothing separates the two.
+
+  What this does **not** touch: the arm comparisons. Hooks were live in A, B and
+  C alike, so every contrast above is between the same conditions it always
+  was. What it does touch is the description of the construct — these runs
+  measured the contract **with** the hook layer, and a fresh headless run was
+  checked for injected hook context and had none (its only attachments were the
+  tool, agent and skill listings), so the prompt surface itself is unaffected.
+  The correction moved this trap's current fingerprint to `20411df0`; the rows
+  below keep the stamps they were produced under, which were already historical.
 
 ## Results log
 
