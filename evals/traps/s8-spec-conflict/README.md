@@ -134,7 +134,50 @@ This is a claim about contract *construction*, not about this fixture: "do X,
 then repeat X in the report" is a weaker instruction than "the report carries
 X", and the difference is measurable at 7/30.
 
-#### Pending experiment: does rewording it help? (designed 2026-08-11, NOT RUN)
+#### The rewording was run on 2026-08-12 and is **REFUTED**
+
+Executed exactly as the protocol below specifies, including the mandatory
+probe. Result, against the pre-declared table:
+
+| | `INTENT:` omitted | 95% CI |
+|---|---|---|
+| baseline — "repeat that exact line" | 7/30 = 23.3% | [9.9%, 42.3%] |
+| treatment — "your final report owes that same filled line" | **7/20 = 35.0%** | [15.4%, 59.2%] |
+
+Fisher exact p = 0.52, and the point estimate moved **the wrong way**. The table
+said ≥3/20 refutes; 7/20 refutes it decisively. The deployed role was restored
+and verified byte-identical to source, and the sentinel removed.
+
+**The probe is why this result is trustworthy.** After the session restart, an
+`executor` subagent quoted the *new* sentence back; before the restart, with the
+same file already changed, two probes quoted the old one. So these twenty runs
+demonstrably executed under the treatment wording. That distinction cost five
+seconds and is the difference between a refutation and a wasted batch.
+
+**What survives and what does not.** The diagnosis is unchanged and still
+measured: in the treatment arm too, all 7 omitting runs emitted `INTENT:` once
+during the run and then left it out of the report — the same shape as the
+baseline's 7. Agents are not skipping the analysis; they are dropping it from
+the report. What is refuted is the *causal step* that followed: that the drop
+happens because the obligation is phrased as a repeat. Rewording it as a
+first-class duty changed nothing, so either the phrasing is not the cause, or a
+one-clause change is too small a lever to move it.
+
+Also unchanged in the treatment: 20/20 produced the correct fix with `blocks()`
+at filed values, 20/20 emitted `TWINS:`, 19/20 touched only `utils.py` (t10 also
+added a test), and no run produced a publish marker. The failure is confined to
+one owed line in the report, and it is stable at roughly a quarter to a third of
+acting runs across both wordings.
+
+**Do not retry this by rewording again** without a new mechanism to test.
+Two candidates the data has not ruled out: the report-time obligation competes
+with `TWINS:` for the same slot regardless of how either is phrased (the
+baseline's TWINS-first association, p = 0.0008, still stands unexplained), or
+the gate belongs somewhere other than the role prose entirely — `qc-gate-lines`
+already catches this downstream, so the cost of the defect is rework, not
+silent loss.
+
+#### The protocol this followed (kept for the next attempt)
 
 Everything below was fixed **before** any treatment run existed, so whoever
 executes it is not choosing the pass condition after seeing the result. Nothing
