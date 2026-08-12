@@ -78,7 +78,15 @@ def claude(prompt: str, workdir: Path, mcp: str | None = None) -> tuple[int, str
     argv = [
         "claude", "--print", prompt,
         "--output-format", "stream-json", "--verbose",
-        # The machine's own hooks are not part of this construct.
+        # This does NOT remove the machine's hooks, which is what the comment
+        # here claimed until 2026-08-12. `--settings` loads *additional*
+        # settings, and a run launched with exactly this flag still fired
+        # `SubagentStart`/`SubagentStop` into the real pending file. The only
+        # flag that silences user hooks, `--setting-sources project,local`,
+        # also drops the user contract — the surface under test — so there is
+        # no setting that separates them. Kept because it is inert, and
+        # removing it would move the fingerprint again for no gain; every s11
+        # run had the machine's hooks live, in both arms.
         "--settings", json.dumps({"hooks": {}}),
         "--permission-mode", "manual",
         # Always strict: this flag is what makes `--mcp-config` a replacement
