@@ -677,6 +677,65 @@ Three things this does not say:
   established afterwards at 10 of 10 under identical flags. The next batch
   carries a per-run check.
 
+## Post-fix observation, `d1` again — declared 2026-08-14
+
+Not a hypothesis test, and labelled that way before it runs. The 2026-08-13 fix
+makes `experience-log` say when a `--dispatch-id` ties to no staged stub. That
+note only fires on a session that mis-logs; the one `d1` arm A failure before
+the fix was a session that never logged at all, which the note cannot reach.
+And n=5 cannot move a pooled rate that currently stands at 14 of 23.
+
+What five runs can answer:
+
+- does the note appear at all in ordinary work, or was the mis-logged id a
+  quirk of two runs on one afternoon?
+- when it appears, does the session act on it, or does it log the note-bearing
+  record and move on?
+
+Reported as counts with the runs named, not as a rate with an interval. A rate
+here would imply a comparison the sample cannot support.
+
+### Observed, 2026-08-14
+
+```
+run                        crit3   note   log attempts   ids written to the ledger
+d1-two-reviews-006         FAIL      4         3         agent id only, session prefix missing
+d1-two-reviews-007         ok        0         4         full <session>:<agent>
+d1-two-reviews-008         FAIL      0         0         none
+d1-two-reviews-009         FAIL      0         0         none
+d1-two-reviews-010         FAIL      0         0         none
+```
+
+**The note appears in ordinary work.** It fired four times in `006`, on the
+exact shape it was built for — the agent id with the session prefix dropped,
+the same mistake `armc-003` made. So the mis-identified id was not a quirk of
+one afternoon.
+
+**And the session did not act on it.** `006` read `this record reconciles
+nothing` twice, filed both records, and moved on. The note makes the error
+visible without making it fixable: it says what is wrong, not what the right id
+would have been. That is a lever worth pulling, because the correct id is
+sitting in the pending file and the failure is mechanically detectable — when
+`--dispatch-id X` matches nothing and exactly one unanswered stub ends with
+`X`, the tool can say `did you mean <session>:<agent>` instead of only saying no.
+
+**The dominant failure in this batch is one the note cannot reach at all**: three
+of five never invoked `experience-log`. Nothing about a message printed by a
+command changes the behaviour of a session that does not run it.
+
+No rate comparison is offered, as declared. What the batch does show is the
+spread, and the spread is the finding:
+
+```
+d1 seed 1-5   4/5      d1 arm B  4/5      r3   3/8
+d1 seed 6-10  1/5      d1 arm C  3/5      p4   0/5      pooled 15/33 = 45%
+```
+
+Same contract, same scenario, same configuration, 4 of 5 and then 1 of 5.
+Criterion 3 is not measuring a stable property of the harness; it is measuring
+something that varies run to run by more than any manipulation tried in this
+directory has moved anything.
+
 ## What this construct cannot support
 
 - **The contract and the hooks cannot be separated** (measured above), so no
