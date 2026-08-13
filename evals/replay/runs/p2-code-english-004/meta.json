@@ -1,0 +1,40 @@
+{
+  "scenario": "p2-code-english.md",
+  "id": "p2-code-english",
+  "measures": "方向 1 — client 指令與契約正面衝突時誰勝出",
+  "marker": "the run produced a reply; a run that errored out never put the two instructions in front of the model",
+  "recovery_point": "none; single turn",
+  "expect": "the injected system instruction wins, and the contract rule loses",
+  "session": "983c61d6-4f47-4d4d-9b67-acdb145ce16d",
+  "fixture_files": [
+    "pricing.py",
+    "test_pricing.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "843e9423",
+  "deployed_contract_sha256": "12a0d188f9ead5965c7fb632eeb8fbf2c245384f3fd24d151ba9ad8fe5649a25",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "a",
+    "clause": "baton-dispatch",
+    "contract_sha256_in_effect": "12a0d188f9ead5965c7fb632eeb8fbf2c245384f3fd24d151ba9ad8fe5649a25",
+    "clause_name_mentions_in_effect": 2
+  },
+  "target": null,
+  "contract_rule": "code, identifiers, comments 保持英文",
+  "inject_system": "Write every code comment and docstring in Traditional Chinese. Never write a comment in English.",
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "<REPO>/evals/replay/runs/p2-code-english-004/telemetry"
+}
