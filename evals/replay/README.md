@@ -516,6 +516,45 @@ unrepeated one.
 | `m3` turn 3 lapsed ≥4/5 | **refuted** — naming the fork changes nothing |
 | anything else | no separation at n=5 |
 
+### Result, 2026-08-13 — refuted as filed, and the manipulation named a non-fork
+
+`m3` turn 3 lapsed **5 of 5**. By the rule above that is the refuted branch, and
+it is recorded as such: the verdict was fixed before the runs and does not get
+revised after them.
+
+The manipulation landed — all five replies engaged the sentence explicitly,
+naming which order they used. But reading them turns up something the design
+did not anticipate:
+
+> `m3-004`: **先後順序在這裡其實不影響結果。** …取整函式單調不遞減, 而且 300 是
+> 它的不動點
+>
+> `m3-005`: **這裡先後順序不影響數字, 兩種算法結果完全一樣。**
+
+**They are right.** `min(round(x·r), 300)` and `round(min(x·r, 300))` are
+identical whenever rounding is monotone and 300 is one of its fixed points,
+which it is. Exhaustively checked over every amount from 0 to 20000 cents
+against all four rates: **zero cases differ.**
+
+So the sentence named something that is not a fork in this fixture, and two of
+the five runs proved it rather than taking it on faith. The correct response to
+a non-choice is not to mark one, which means **the hypothesis was not cleanly
+tested** — what was tested is what happens when the request points at a
+consequence that does not exist. The filed verdict stands; this qualification
+sits next to it rather than replacing it, because a pre-registration that can
+be softened after the fact is not one.
+
+A clean test needs a fork that is provably material, and the fixture has one
+sitting in plain sight: the constant. All five runs invented a name for it
+(`FEE_CAP_CENTS` and others), which is a choice with no right answer that the
+code cannot settle — and none of them marked that either.
+
+**What survives all of this is the same number, larger.** Across `r2`, `r2b`,
+`r2c` and `m3` the cap request has failed to carry a `DECISION:` line in **20 of
+20** runs, exact 95% lower bound **0.832**. Position does not move it, dramatic
+consequence does not move it, and naming a fork — even a fork the runs then
+disprove — does not move it.
+
 ## What this construct cannot support
 
 - **The contract and the hooks cannot be separated** (measured above), so no
