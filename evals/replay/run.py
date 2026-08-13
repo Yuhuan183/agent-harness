@@ -186,20 +186,28 @@ def allowed_tools() -> list[str]:
             f"Bash(~/{ledger}:*)"]
 
 
-def argv_for(prompt: str, session: str, first: bool) -> list[str]:
+def argv_for(prompt: str, session: str, first: bool,
+             inject: str | None = None) -> list[str]:
     argv = ["claude", "--print", prompt,
             "--output-format", "stream-json", "--verbose",
             "--permission-mode", "acceptEdits",
             "--allowedTools", *allowed_tools(),
             "--strict-mcp-config"]
+    if inject:
+        # The client's own instructions arrive in the system prompt, and the
+        # user contract arrives as user context. `--append-system-prompt` is the
+        # closest thing this harness has to the first position — an
+        # approximation, declared as one in the README, not an equivalence.
+        argv += ["--append-system-prompt", inject]
     argv += ["--session-id", session] if first else ["--resume", session]
     return argv
 
 
 def run_turn(prompt: str, session: str, first: bool, workdir: Path,
-             env: dict[str, str], interrupt_after: float | None) -> dict:
+             env: dict[str, str], interrupt_after: float | None,
+             inject: str | None = None) -> dict:
     """One turn. Returns what happened, including whether it was cut short."""
-    proc = subprocess.Popen(argv_for(prompt, session, first), cwd=workdir,
+    proc = subprocess.Popen(argv_for(prompt, session, first, inject), cwd=workdir,
                             env=env, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
     interrupted = False
@@ -363,7 +371,8 @@ def main() -> int:
 
         for index, prompt in enumerate(turns, start=1):
             cut = interrupt_after if index == interrupt_turn else None
-            result = run_turn(prompt, session, index == 1, work, env, cut)
+            result = run_turn(prompt, session, index == 1, work, env, cut,
+                          spec.get("inject_system"))
             with events.open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps({"replay_turn": index,
                                          "interrupted": result["interrupted"]}) + "\n")
@@ -430,6 +439,8 @@ def main() -> int:
         "matches_repo_source": not drift,
         "arm": arm_state,
         "target": spec.get("target"),
+        "contract_rule": spec.get("contract_rule"),
+        "inject_system": spec.get("inject_system"),
         "expect_skill": spec.get("expect_skill"),
         "hooks": "live (user settings source; not suppressible without also "
                  "dropping the contract)",
