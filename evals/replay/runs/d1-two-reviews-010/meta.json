@@ -1,0 +1,41 @@
+{
+  "scenario": "d1-two-reviews.md",
+  "id": "d1-two-reviews",
+  "measures": "派工路徑上, 契約子句比 skill description 多做了什麼",
+  "marker": "at least two Agent tool calls in the event stream, each with a returned result — the clause under test triggers on a dispatch *going ahead*, so a run that stayed direct never met its precondition and is invalid rather than incorrect",
+  "recovery_point": "none; no turn is interrupted",
+  "expect": "`Skill(baton-dispatch)` is invoked",
+  "session": "0f1be274-694d-4d78-81d5-6d96267e4685",
+  "fixture_files": [
+    "retry.py",
+    "spec/policy.md",
+    "ops/runbook.md"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "38e1cfc0",
+  "deployed_contract_sha256": "12a0d188f9ead5965c7fb632eeb8fbf2c245384f3fd24d151ba9ad8fe5649a25",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "a",
+    "clause": "baton-dispatch",
+    "contract_sha256_in_effect": "12a0d188f9ead5965c7fb632eeb8fbf2c245384f3fd24d151ba9ad8fe5649a25",
+    "clause_name_mentions_in_effect": 2
+  },
+  "target": "baton-dispatch",
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": "invoked",
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "<REPO>/evals/replay/runs/d1-two-reviews-010/telemetry"
+}
