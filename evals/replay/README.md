@@ -457,6 +457,35 @@ assuming.
 reproduce the 5/5 lapse, the single-turn form is not the same thing and neither
 arm means anything.
 
+### Partial, 2026-08-13 — `m1` only, and the reduction is in doubt
+
+Stopped after `m1` at the operator's request; `m2` has not run.
+
+```
+m1-cap-embedded   3/5 lapsed   (001 marked, 002-004 lapsed, 005 marked)
+five-turn context 5/5 lapsed   across r2, r2b and r2c
+```
+
+Fisher exact p = 0.444 — **n=5 cannot tell 3 of 5 from 5 of 5**, so this
+neither confirms the reduction nor refutes it. What it does do is remove the
+right to assume it: the pre-registration said `m1` had to reproduce the lapse,
+and 3 of 5 is not 5 of 5.
+
+That is a judgement to make before `m2` runs, not after seeing it, so it is
+written here first. Three options, and the cost of each:
+
+1. **Take 3/5 as close enough** and run `m2` as designed. Cheapest, and wrong
+   if the single-turn form really is a weaker effect: `m2` would then be
+   compared against a control that is not the phenomenon.
+2. **Raise `m1` to n=15** to separate 3/5 from 5/5, then decide. About an hour,
+   and it answers a question about the harness rather than about the contract.
+3. **Abandon the reduction** and run both arms as five-turn scenarios, with the
+   named fork added to the cap turn in place. Roughly 80 minutes, and it tests
+   the hypothesis in the context where the effect is known to be 15/15.
+
+Option 3 is the one that answers the original question; option 1 answers a
+cheaper question that may not be the same one. Not decided here.
+
 ## What this construct cannot support
 
 - **The contract and the hooks cannot be separated** (measured above), so no
