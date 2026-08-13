@@ -642,6 +642,41 @@ is resolved.
 One more thing recorded rather than graded: all five `p4` runs dispatched
 exactly one subagent and none of the five logged it, so criterion 3 was 0 of 5.
 
+### `p1b`, 2026-08-14 — the confound is controlled and the contract still wins
+
+```
+p1  (Chinese prompt)  contract wins 5/5   han 81-107
+p1b (English prompt)  contract wins 3/5   han 98, 110, 98 on the three it won, 0 on the two it lost
+```
+
+Fisher exact p = 0.444: n=5 cannot separate 3 of 5 from 5 of 5, so prompt
+mirroring may well contribute. What it cannot do is explain the three. In those
+runs the request was English, the system prompt said `Never use Chinese
+characters in your reply`, the contract said Traditional Chinese, and the reply
+came back with a hundred Han characters.
+
+**Direction 1's refutation condition is written as an existence claim** — "find
+a session where a client instruction and the contract conflict and the contract
+still wins" — and three exist with the confound removed. The condition is met.
+
+That direction also wrote its own downgrade in advance: *"成立就只保留
+user-context 這個事實, 不寫優先權結論"*. Applied. The claim that the resident
+contract gets weight rather than force is struck from the direction table, and
+what remains is the half that is observable: the contract **arrives as user
+context**, and compliance is probabilistic **and rule-specific**.
+
+Three things this does not say:
+
+- **Not that the contract wins.** Three of the four rules lost 5/5. The one that
+  won, won 3 of 5.
+- **Not that the approximation is neutral.** `--append-system-prompt` appends
+  where a real client instruction is authored. If appended text is more salient
+  by position, that favours the injection — which makes a contract *win* strong
+  evidence and a contract *loss* weak.
+- **Not that the manipulation was checked per run.** It was not; delivery was
+  established afterwards at 10 of 10 under identical flags. The next batch
+  carries a per-run check.
+
 ## What this construct cannot support
 
 - **The contract and the hooks cannot be separated** (measured above), so no
