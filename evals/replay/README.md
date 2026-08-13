@@ -335,6 +335,42 @@ restore path is tested against injected paths rather than the live file, because
 a test that proves the restore works by swapping the operator's own contract can
 leave the machine broken precisely when it fails.
 
+## `r2c` — position against content, pre-registered 2026-08-13
+
+Turn 3 lapsed in 10 of 10 runs across `r2` and `r2b` while the other four turns
+lapsed 12 of 40, and neither scenario can say why: turn 3 is both **the cap
+request** and **the third correction** in every run of both. `r2b` established
+that it is not about the consequence table; it could not touch this confound,
+because it changed content and left order alone.
+
+`r2c-cap-first` moves the cap request to turn 1 and keeps the other four in
+their relative order, so one scenario tests both directions at once:
+
+```
+r2    1 new bracket   2 integer cents   3 cap        4 negatives   5 config
+r2c   1 cap           2 new bracket     3 integer    4 negatives   5 config
+        ^                                 ^
+   content says the lapse follows here     position says it stays here
+```
+
+Declared before the runs, 5 runs:
+
+| outcome | reading |
+|---|---|
+| turn 1 lapses ≥4/5 **and** turn 3 ≤1/5 | the lapse follows the **cap request** |
+| turn 3 lapses ≥4/5 **and** turn 1 ≤1/5 | the lapse follows **position three** |
+| both lapse ≥4/5, or neither | **no separation at n=5** — and if both, something the two candidate explanations do not cover |
+
+Two requests are not byte-identical to their `r2` wording, and the difference is
+forced by the manipulation rather than chosen: whichever request comes first has
+to name the file, so `再加一條` becomes `` `pricing.py` 加一條 `` for the cap and
+the reverse for the bracket. Two leading tokens, on the two requests that
+swapped ends. Stated here because a reader comparing the files will find it, and
+a difference found rather than declared is worth less than one declared.
+
+The rest is unchanged — same fixture, same five requests, same forks, same
+marker, same grader.
+
 ## What this construct cannot support
 
 - **The contract and the hooks cannot be separated** (measured above), so no

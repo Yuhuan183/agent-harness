@@ -363,6 +363,7 @@ GRADERS = {
     "r1-interrupted-resume": grade_r1,
     "r2-successive-corrections": grade_r2,
     "r2b-defused-cap": grade_r2,
+    "r2c-cap-first": grade_r2,
     "d1-two-reviews": grade_dispatch_clause,
     "d2-one-small-edit": grade_dispatch_clause,
     "r3-conflicting-leaves": grade_r3,
