@@ -540,22 +540,23 @@ def main() -> int:
         if value is not None:
             record[key] = value
 
-    def reconcile_stub() -> None:
+    def reconcile_stub() -> bool | None:
         # A stub is staged per dispatch id, not per logging style. Logging with
         # explicit flags is equally valid and used to leave the stub behind, so
         # the pending file grew by one row per explicitly-logged dispatch
         # forever. Reconcile whenever the record names a dispatch;
         # `expected_stop` still pins --from-pending to the exact row it read.
         if not (args.dispatch_id or args.from_pending):
-            return
+            return None
         try:
-            consume_pending_locked(args.dispatch_id, remove=True,
-                                   expected_stop=stub)
+            return consume_pending_locked(args.dispatch_id, remove=True,
+                                          expected_stop=stub) is not None
         except (OSError, ValueError) as error:
             print(
                 f"WARN: pending cleanup failed: {error}",
                 file=sys.stderr,
             )
+            return False
 
     os.makedirs(os.path.dirname(LEDGER_PATH), exist_ok=True)
     # The whole dispatch lifecycle is decided under one lock, in one order.
@@ -598,7 +599,7 @@ def main() -> int:
             # Deliberately NOT run on the in-flight path: that carrier is the
             # only thing that will report the dispatch if its outcome is
             # forgotten, and this run is the mistake, not the carrier.
-            reconcile_stub()
+            matched = reconcile_stub()
     if live:
         # Deliberately not naming `experience-stage --stop` as the one answer:
         # it is the native-Codex carrier and stamps request_source=codex, so
@@ -622,6 +623,19 @@ def main() -> int:
             "correction"
         )
     print(f"logged: {args.role}/{args.provider} -> {args.outcome}")
+    # Say it when the record ties to nothing. `--dispatch-id` is free-form on
+    # the explicit-flags path, so a mistyped or invented id used to be logged
+    # with a plain success line and reconcile zero stubs — which is exactly
+    # what two replay runs did on 2026-08-13, one dropping the session prefix
+    # and one filing `rv-policy-01`. Both looked like clean successes. This is
+    # not an error: a Codex dispatch or a hook-less run legitimately has no
+    # stub. It is the difference between the two that was invisible.
+    if matched is False:
+        print(f"note: dispatch_id {args.dispatch_id!r} matched no staged stub, "
+              "so this record reconciles nothing. Expected when the dispatch "
+              "was never staged (another provider, hooks off); a typo or an "
+              "invented id otherwise — the stub id is "
+              "`<session_id>:<agent_id>`.")
     return 0
 
 

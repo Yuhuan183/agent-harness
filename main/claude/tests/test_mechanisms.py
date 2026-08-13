@@ -2521,6 +2521,55 @@ class TrapSurfaceTests(unittest.TestCase):
                     "fingerprint skipped a declared file")
 
 
+class UntiedDispatchIdTests(unittest.TestCase):
+    """The weekly half of the same check `experience-log` now makes at write
+    time. It has to fire on the two shapes that actually happened and stay
+    quiet on every id a hook or `experience-stage` produces, because both of
+    those build `<session>:<agent>` and a detector that flagged them would be
+    reporting normal operation."""
+
+    def _pattern(self):
+        """Read the pattern out of the source without running the hook.
+
+        `weekly-integrity.py` is a top-level script: importing it runs every
+        check and exits. Restructuring a deployed hook to make one regex
+        importable is not worth it, and copying the literal into the test would
+        let the two drift. Parsing the assignment tracks whatever the hook
+        actually uses."""
+        import ast
+        import re as regex
+
+        source = (ROOT / "main/claude/hooks/weekly-integrity.py").read_text(
+            encoding="utf-8")
+        for node in ast.walk(ast.parse(source)):
+            if (isinstance(node, ast.Assign)
+                    and any(getattr(t, "id", None) == "UNTIED_ID"
+                            for t in node.targets)):
+                return regex.compile(ast.literal_eval(node.value.args[0]))
+        self.fail("weekly-integrity.py no longer defines UNTIED_ID")
+
+    def test_it_accepts_every_id_a_carrier_actually_stages(self) -> None:
+        pattern = self._pattern()
+        for good in (
+            "3fcb0933-1e15-4036-a951-52945b395d0a:a4fc118c83bfa42ed",  # hook
+            "b73317aa-9fff-4f7a-84f4-d48c193f1965:a046384e7",          # stage
+            "62D8C5A2-8BA9-44A3-9B24-A6CF3C19EB5D:aBcD1234",           # upper
+        ):
+            with self.subTest(id=good):
+                self.assertIsNotNone(pattern.match(good))
+
+    def test_it_flags_the_two_shapes_that_reconciled_nothing(self) -> None:
+        pattern = self._pattern()
+        for bad in (
+            "a4fc118c83bfa42ed",   # agent id without its session prefix
+            "rv-policy-01",        # invented label
+            "s8a1",                # the operator's own, 2026-08-10
+            "",
+        ):
+            with self.subTest(id=bad):
+                self.assertIsNone(pattern.match(bad))
+
+
 class ReplayScenarioTests(unittest.TestCase):
     """Criterion 2 says a reach marker only counts if it was written before the
     run, and that a marker keyed on something the fixture does not uniquely

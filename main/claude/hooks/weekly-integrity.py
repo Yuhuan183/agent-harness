@@ -10,6 +10,7 @@ The hook is fail-open, but its throttle advances only after the checks complete.
 """
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -33,6 +34,9 @@ _deadline = time.monotonic() + BUDGET
 
 class DeadlineExhausted(Exception):
     """No time left inside BUDGET while checks are still pending."""
+
+
+UNTIED_ID = re.compile(r"^[0-9a-fA-F-]{36}:\S+$")
 
 
 def budget(cap):
@@ -570,7 +574,7 @@ try:
     #
     # Best-effort; never blocks the throttle.
     try:
-        from datetime import datetime, timezone
+        from datetime import datetime, timedelta, timezone
         # experience-log's ROLES: the set `--from-pending` will accept. Keying
         # the *report* on it was the defect, not the set itself. Enumerating
         # loggable roles here and skipping everything else meant an agent type
@@ -596,6 +600,8 @@ try:
             os.path.expanduser("~/.agents/telemetry/experience.jsonl"),
         )
         reconciled = set()
+        untied: list[str] = []
+        week_ago = datetime.now(timezone.utc) - timedelta(days=7)
         try:
             # errors="replace": decoding precedes json.loads, so a half-written
             # multi-byte character would otherwise abort the whole check rather
@@ -617,6 +623,27 @@ try:
                         continue
                     if logged.get("dispatch_id"):
                         reconciled.add(logged["dispatch_id"])
+                        # The other half of the same question. A stub the
+                        # ledger never answered is one failure; a ledger record
+                        # that ties to no stub is the other, and until
+                        # 2026-08-13 nothing looked for it. Two replay runs
+                        # that day filed outcomes under ids of their own -
+                        # one dropping the session prefix, one inventing
+                        # `rv-policy-01` - and both printed a clean success.
+                        #
+                        # A staged id is always `<session>:<agent>`, from the
+                        # hook and from `experience-stage` alike, so the shape
+                        # is the test. `experience-log` now says so at write
+                        # time; this is the weekly view for the case where
+                        # nobody read it.
+                        if not UNTIED_ID.match(logged["dispatch_id"]):
+                            try:
+                                when = datetime.fromisoformat(
+                                    logged.get("ts", ""))
+                            except (TypeError, ValueError):
+                                when = None
+                            if when is not None and when > week_ago:
+                                untied.append(logged["dispatch_id"])
         except OSError:
             pass
         pending_path = os.environ.get(
@@ -692,6 +719,21 @@ try:
                     "experience-stage --abandon --dispatch-id <id> --reason "
                     "<why>, which matches on the id alone"
                 )
+        if untied:
+            # Aggregated, and only three names. Sixty-one of these are one
+            # operator's own labels from a single day in August, already
+            # diagnosed and written up; reporting each of them weekly would
+            # teach the reader to skip the section that also carries the new
+            # one. The count is the signal, the examples are the handle.
+            findings.append(
+                f"{len(untied)} ledger record(s) in the last 7 days carry a "
+                "dispatch id that cannot tie to a staged stub (a staged id is "
+                "`<session>:<agent>`), so they reconcile nothing: "
+                + ", ".join(sorted(set(untied))[:3])
+                + ("..." if len(set(untied)) > 3 else "")
+                + ". Expected for a dispatch that was never staged (another "
+                "provider, hooks off); a typo or an invented id otherwise"
+            )
     except (OSError, ValueError):
         pass
 
