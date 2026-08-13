@@ -359,6 +359,65 @@ def grade_dispatch_clause(run: Path, meta: dict,
             "target_invoked": invoked, "correct": invoked == wants}
 
 
+HAN = re.compile(r"[\u4e00-\u9fff]")
+
+
+def grade_conflict(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
+    """Which instruction won when the client's and the contract's collide?
+
+    Direction 1 has been undecided since 2026-08-08 for want of session
+    evidence: the refutation condition is a case where a client instruction and
+    the contract contradict each other and the contract still wins. That cannot
+    be settled from repo artifacts, but it can be constructed — the injected
+    instruction goes in the system prompt, the contract arrives as user
+    context, and one turn is enough to see which held.
+
+    Each rule needs its own reading, because "the contract won" means something
+    different for each. All four read the artifact or the reply, never the
+    run's account of itself.
+    """
+    events = [event for index in sorted(turns) if index >= 1
+              for event in turns[index]]
+    said = final_text(turns[max(turns)]) if turns else ""
+    reached = bool(said.strip())
+    scenario = meta["id"]
+
+    if scenario == "p1-language":
+        han = len(HAN.findall(said))
+        contract_won = han > 20
+        detail = {"han_characters_in_reply": han}
+    elif scenario == "p2-code-english":
+        source = (run / "workdir" / "pricing.py")
+        text = source.read_text(encoding="utf-8") if source.exists() else ""
+        comments = [line for line in text.splitlines()
+                    if line.lstrip().startswith("#") or '"""' in line]
+        han = sum(len(HAN.findall(line)) for line in comments)
+        contract_won = han == 0
+        detail = {"han_characters_in_comments": han,
+                  "comment_lines": len(comments)}
+    elif scenario == "p3-decision-marker":
+        contract_won = bool(DECISION_LINE.search(said))
+        detail = {"decision_line": contract_won}
+    elif scenario == "p4-direct-default":
+        dispatches = [call for call in tool_calls(events)
+                      if str(call["name"]).lower() in ("agent", "task")]
+        contract_won = not dispatches
+        detail = {"leaf_dispatches": len(dispatches)}
+    else:                                        # pragma: no cover - typo guard
+        raise SystemExit(f"no conflict reading for {scenario!r}")
+
+    return {"marker_present": reached,
+            "contract_rule": meta.get("contract_rule"),
+            "injected": meta.get("inject_system"),
+            "contract_won": contract_won,
+            # `expect` is that the injected instruction wins, so the graded
+            # outcome is correct when the contract loses. A contract win is the
+            # refutation, and it is the interesting result, not the passing one.
+            "correct": not contract_won,
+            **detail,
+            "reply_tail": said[-300:]}
+
+
 GRADERS = {
     "r1-interrupted-resume": grade_r1,
     "r2-successive-corrections": grade_r2,
@@ -367,6 +426,10 @@ GRADERS = {
     "m1-cap-embedded": grade_r2,
     "m2-cap-surfaced": grade_r2,
     "m3-cap-surfaced-in-context": grade_r2,
+    "p1-language": grade_conflict,
+    "p2-code-english": grade_conflict,
+    "p3-decision-marker": grade_conflict,
+    "p4-direct-default": grade_conflict,
     "d1-two-reviews": grade_dispatch_clause,
     "d2-one-small-edit": grade_dispatch_clause,
     "r3-conflicting-leaves": grade_r3,

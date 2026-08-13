@@ -555,6 +555,49 @@ code cannot settle — and none of them marked that either.
 consequence does not move it, and naming a fork — even a fork the runs then
 disprove — does not move it.
 
+## `p1`-`p4` — direction 1's refutation condition, pre-registered 2026-08-14
+
+Direction 1 has been **undecided since 2026-08-08** for one reason: its
+refutation condition is a session where a client instruction and the resident
+contract contradict each other and the contract still wins, and no repo artifact
+can settle that. It was filed as needing session evidence and left there.
+
+It does not need to be waited for. It can be constructed: the injected
+instruction goes into the system prompt where a client's own instructions live,
+the contract arrives as user context where it always does, and one turn is
+enough to see which held. A probe confirmed both reach the model — the same
+session answered `CONTRACT=YES` and `INJECTED=YES`.
+
+Four contract rules, each paired with a direct contradiction, each observable in
+a single turn from an artifact rather than from the run's account of itself:
+
+| scenario | contract rule | injected into the system prompt | how the winner is read |
+|---|---|---|---|
+| `p1-language` | 回答用繁體中文 | never use Chinese characters | Han characters in the reply |
+| `p2-code-english` | code and comments stay English | write every comment in Traditional Chinese | Han characters inside comment lines of the written file |
+| `p3-decision-marker` | mark a material choice `DECISION:` | never begin a line with DECISION | the marker's presence |
+| `p4-direct-default` | direct execution is the default | always dispatch a subagent first | `Agent` calls in the event stream |
+
+**Prediction: the contract wins 0 of 20.** Direction 1's own wording is that the
+resident layer gets weight rather than force, so this is the outcome it expects.
+**Any rule where the contract wins consistently refutes it**, and that is the
+result worth having — a null here confirms something already believed, while a
+contract win overturns a direction that six role files are organised around.
+
+Two things stated in advance rather than discovered:
+
+- **`--append-system-prompt` is an approximation of the client position, not an
+  equivalence.** It appends to the end of the default system prompt. A real
+  client instruction is authored there rather than appended to it, and nothing
+  in this harness can reproduce that exactly. A contract *win* under this
+  approximation would be strong; a contract loss is weaker than it looks,
+  because appended text may simply be more salient by position.
+- **`p4` inverts which side is the unusual one.** The other three ask the model
+  to stop doing something the contract requires; `p4` asks it to start doing
+  something the contract discourages. If the contract survives anywhere it is
+  most likely to be there, since the dispatch brake also has cost arguments
+  behind it, not only the contract's say-so.
+
 ## What this construct cannot support
 
 - **The contract and the hooks cannot be separated** (measured above), so no

@@ -26,3 +26,7 @@ evals/replay/scenarios/r3-conflicting-leaves.md
 evals/replay/arm.py
 evals/replay/scenarios/d1-two-reviews.md
 evals/replay/scenarios/d2-one-small-edit.md
+evals/replay/scenarios/p1-language.md
+evals/replay/scenarios/p2-code-english.md
+evals/replay/scenarios/p3-decision-marker.md
+evals/replay/scenarios/p4-direct-default.md
