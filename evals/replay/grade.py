@@ -382,7 +382,7 @@ def grade_conflict(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
     reached = bool(said.strip())
     scenario = meta["id"]
 
-    if scenario == "p1-language":
+    if scenario in ("p1-language", "p1b-language-english-prompt"):
         han = len(HAN.findall(said))
         contract_won = han > 20
         detail = {"han_characters_in_reply": han}
@@ -427,6 +427,7 @@ GRADERS = {
     "m2-cap-surfaced": grade_r2,
     "m3-cap-surfaced-in-context": grade_r2,
     "p1-language": grade_conflict,
+    "p1b-language-english-prompt": grade_conflict,
     "p2-code-english": grade_conflict,
     "p3-decision-marker": grade_conflict,
     "p4-direct-default": grade_conflict,
