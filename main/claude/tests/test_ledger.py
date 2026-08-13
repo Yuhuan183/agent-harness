@@ -182,6 +182,56 @@ class SharedSkillTests(unittest.TestCase):
         aliases that may since have moved, so it is tagged `resolver-assumed`
         and stays out of the decision set (user-directed 2026-07-28).
         """
+    def test_a_dispatch_id_that_ties_to_nothing_says_so(self) -> None:
+        """An id the explicit-flags path invents is logged, and used to look
+        like a clean success.
+
+        Two replay runs did exactly that on 2026-08-13 — one filed the agent id
+        without its session prefix, one filed `rv-policy-01` — and both printed
+        `logged: ... -> accepted` with nothing else. The record reconciles no
+        stub, which criterion 3 then reports as an un-reconciled dispatch in a
+        session that believed it had logged. Not made an error: a Codex
+        dispatch or a hook-less run legitimately has no stub. It is the
+        silence about the difference that was the defect."""
+        base = ROOT / "main/.agents/skills/experience-ledger/scripts"
+        common = ["--role", "explore", "--provider", "claude",
+                  "--request-source", "claude-code", "--class", "recon",
+                  "--outcome", "accepted", "--task", "probe"]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            pending = Path(temp_dir) / "pending.jsonl"
+            session = "11111111-2222-3333-4444-555555555555"
+            agent = "a1234567890abcdef"
+            staged = f"{session}:{agent}"
+            pending.write_text("".join(json.dumps(row) + "\n" for row in (
+                {"ts": "2026-08-13T00:00:00+00:00", "event": "SubagentStart",
+                 "agent_type": "explore", "agent_id": agent,
+                 "session_id": session, "dispatch_id": staged,
+                 "request_source": "claude-code"},
+                {"ts": "2026-08-13T00:00:05+00:00", "event": "SubagentStop",
+                 "agent_type": "explore", "agent_id": agent,
+                 "session_id": session, "dispatch_id": staged,
+                 "request_source": "claude-code", "secs": 5.0},
+            )), encoding="utf-8")
+            env = {**os.environ,
+                   "AGENT_EXPERIENCE_LEDGER": os.path.join(temp_dir, "l.jsonl"),
+                   "AGENT_EXPERIENCE_PENDING": str(pending)}
+
+            invented = subprocess.run(
+                [sys.executable, str(base / "experience-log"),
+                 "--dispatch-id", "rv-policy-01", *common],
+                env=env, check=True, capture_output=True, text=True)
+            self.assertIn("matched no staged stub", invented.stdout)
+            self.assertIn("`<session_id>:<agent_id>`", invented.stdout)
+
+            real = subprocess.run(
+                [sys.executable, str(base / "experience-log"),
+                 "--from-pending", "--dispatch-id", staged,
+                 "--outcome", "accepted", "--class", "recon"],
+                env=env, check=True, capture_output=True, text=True)
+            self.assertNotIn("matched no staged stub", real.stdout,
+                             "a reconciled log must not carry the warning")
+
         base = ROOT / "main/.agents/skills/experience-ledger/scripts"
         with tempfile.TemporaryDirectory() as temp_dir:
             ledger = os.path.join(temp_dir, "experience.jsonl")
