@@ -257,8 +257,8 @@ scenario 承諾了「值得派工的數件獨立工作」, 建出來的卻是不
 |---|---|---|---|---|
 | 1 | ② | 在研究層與導覽寫下優先權現實: 常駐契約拿不到強制力, 只拿得到權重, 可靠路徑是使用者顯式叫用. 不新增常駐規則 | 三個獨立來源同指一事而成本只有文件. 兩個外部來源見 [context-and-vendors.md](context-and-vendors.md); 第三個是本機實例 - 本次工作階段的 client 指令 `Do not call the AgentTool unless the user requested it` 讓契約的 orchestration 整段不可執行, 而契約沒有任何條款蓋得過它 | 找得到一個 session, client 指令與契約直接衝突而契約仍勝出. 成立就只保留 user-context 這個事實, 不寫優先權結論 |
 | 2 | ③ | trap 結果表加指紋欄 (census `payload_sha256` 或受測角色檔的 `file_sha256`), 另加一支永遠 exit 0 的附證腳本, 列出指紋已不符出貨版本的行為結果 | 上游剛示範完這個失效 (見 [peer-harnesses.md](peer-harnesses.md) 第三個修正), 而指紋本身已經算好了 | 每一列 trap 結果的契約指紋都能從該列已有的日期加 git 還原. 成立就改交付一份查表程序, 不加欄位 |
-| 3 | ① | ~~常駐預算分程序/權限型與 repo 知識型兩類記帳~~ **已查核, 改成三分, 見下**. 接續項: 指標型重複的 A/B | 外部第一次給了知識型的有界證據, 而本機證據指向相反方向且兩者不衝突 - 量的不是同一種子句. 數字與限定見 [context-and-vendors.md](context-and-vendors.md) | census 顯示兩份契約裡沒有知識型子句. 成立就只寫成判定規則, 不動預算結構 |
-| 4 | ④ | **已查核, 見下**; 事後選通過條件的洞已補, negative control **仍然欠著**: 正確行為是不停下, 不升級, 不派工 | 證據是規範性的而不是實測的, 且要動 fixture. Anthropic 的 evals 指引: 只測「該做時有沒有做」會養出「什麼時候都做」的 agent, 而 trap 公約目前只覆蓋這一半. 同一份指引也提醒飽和 - s7 post-clause 已連三輪 3/3 | 現有 fixture 已有一格的通過條件是不動作 (s8 的 spec-conflict 停止是有效結果). 成立就把該格標為 negative control 補進結果表, 不新建 fixture |
+| 3 | ① | ~~常駐預算分程序/權限型與 repo 知識型兩類記帳~~ **已查核, 改成三分, 見下**. ~~接續項: 指標型重複的 A/B~~ **2026-08-13 三條指標子句全部量完** (s11 兩條 90 runs, replay `d1`/`d2` 第三條 21 runs), 結論一致: 契約的提及沒有移動過載入決策 | 外部第一次給了知識型的有界證據, 而本機證據指向相反方向且兩者不衝突 - 量的不是同一種子句. 數字與限定見 [context-and-vendors.md](context-and-vendors.md) | census 顯示兩份契約裡沒有知識型子句. 成立就只寫成判定規則, 不動預算結構 |
+| 4 | ④ | **已查核且已補齊**: 事後選通過條件的洞由必填 `--expect` 補上, negative control 於 2026-08-11 落地為 s8 arm B (每臂 30 runs, 過度拒絕 0/30), 2026-08-13 再由 replay 的 `d2` 在派工路徑上補一格 (三臂各 0/2 誤觸發) | 證據是規範性的而不是實測的, 且要動 fixture. Anthropic 的 evals 指引: 只測「該做時有沒有做」會養出「什麼時候都做」的 agent, 而 trap 公約目前只覆蓋這一半. 同一份指引也提醒飽和 - s7 post-clause 已連三輪 3/3 | 現有 fixture 已有一格的通過條件是不動作 (s8 的 spec-conflict 停止是有效結果). 成立就把該格標為 negative control 補進結果表, 不新建 fixture |
 | 5 | ⑤ | ~~檢查五個 fail-closed gate 各自回給模型什麼, 以及有沒有連續拒絕的升級門檻~~ **已查核, 見下**. 接續項: 讓拒絕可觀測 | 最可能被自己的推翻條件打掉, 而查核便宜. 兩個獨立實作收斂到 deny-and-continue 加連續拒絕升級 (見 [context-and-vendors.md](context-and-vendors.md)), 但本機沒有一筆證據顯示我們有這個失效, 甚至沒在量連續拒絕 | (預期成立) hook log 或 ledger 裡找不到同一 gate 在單一 session 內連續擋三次以上. 成立就只確認拒絕訊息說得出下一步, 不加升級機制 |
 
 #### 2026-08-08 查核結果 (方向 1, 2)
@@ -312,7 +312,7 @@ scenario 承諾了「值得派工的數件獨立工作」, 建出來的卻是不
 
 這條規則本 repo 早就寫過, 只是寫在別處 - [lifecycle-replay.md](lifecycle-replay.md) 的「事後補 marker 等於事後選擇通過條件」. grader 一樣要守.
 
-**仍然欠著**: 真正的 negative control 還沒建 - 一格「正確行為是不停下, 不升級, 不派工」的情境. 上面修掉的是**洞看不見**這件事, 不是洞本身. 另外 s7 的量測面指紋因此從 `a5d2cf2b` 變成 `b8b951ff`, 舊結果列本來就標 unverified, 不受影響.
+**當時仍然欠著**: 真正的 negative control 還沒建 - 一格「正確行為是不停下, 不升級, 不派工」的情境. 上面修掉的是**洞看不見**這件事, 不是洞本身. (2026-08-11 由 s8 arm B 補上, 2026-08-13 由 replay `d2` 在派工路徑上再補一格; 見下.) 另外 s7 的量測面指紋因此從 `a5d2cf2b` 變成 `b8b951ff`, 舊結果列本來就標 unverified, 不受影響.
 
 **已落地 (2026-08-11): s8 arm B.** 沒有新建 trap, 而是在 s8 加第二條 arm - 這正是該方向自己寫的降級方案 (「成立就把該格標為 negative control 補進結果表, 不新建 fixture」) 的精神, 只是 2026-08-08 查出來那一格不夠格當對照, 所以補的是缺的那一半而不是標籤.
 
