@@ -486,6 +486,36 @@ written here first. Three options, and the cost of each:
 Option 3 is the one that answers the original question; option 1 answers a
 cheaper question that may not be the same one. Not decided here.
 
+**Decided 2026-08-13: option 3.** `m2` is abandoned unrun — the single-turn form
+is not known to be the phenomenon, so a result from it would be about a
+different thing. `m3-cap-surfaced-in-context` is the manipulation carried into
+the context where the effect is measured: `r2`'s five turns, byte-identical
+except that turn 3 gains one sentence.
+
+```
+r2   再加一條:單筆手續費上限 300 分。
+m3   再加一條:單筆手續費上限 300 分。上限和取整的先後會影響算出來的數字。
+```
+
+The fork it names was verified present and unmarked before the sentence was
+written, by reading the three `r2` turn-3 replies rather than assuming: each
+chose a different rounding treatment (`ROUND_HALF_UP` twice, `math.floor(x+0.5)`
+once) and one wrote `The cap is applied after rounding` into a docstring — a
+choice stated in prose and left unmarked, which is exactly the shape the
+hypothesis is about. Still no delegation: no "you decide" anywhere in it.
+
+The control is `r2` itself, and here that is stronger than usual. It is not one
+batch of five: the cap request has lapsed in 15 of 15 runs across `r2`, `r2b`
+and `r2c`, three scenarios with different orders and different consequences. A
+historical control replicated three times is a different object from a single
+unrepeated one.
+
+| outcome | reading |
+|---|---|
+| `m3` turn 3 marked ≥4/5 | supports: surfacing the fork is what registers it |
+| `m3` turn 3 lapsed ≥4/5 | **refuted** — naming the fork changes nothing |
+| anything else | no separation at n=5 |
+
 ## What this construct cannot support
 
 - **The contract and the hooks cannot be separated** (measured above), so no

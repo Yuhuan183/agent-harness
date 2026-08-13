@@ -366,6 +366,7 @@ GRADERS = {
     "r2c-cap-first": grade_r2,
     "m1-cap-embedded": grade_r2,
     "m2-cap-surfaced": grade_r2,
+    "m3-cap-surfaced-in-context": grade_r2,
     "d1-two-reviews": grade_dispatch_clause,
     "d2-one-small-edit": grade_dispatch_clause,
     "r3-conflicting-leaves": grade_r3,
