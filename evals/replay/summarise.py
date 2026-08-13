@@ -147,7 +147,7 @@ def summarise(reports: list[dict]) -> dict:
     per_turn: dict[str, dict] = {}
     for report in reports:
         name = report["scenario"]
-        if not name.startswith(("r2-", "r2b-", "r2c-")):
+        if not name.startswith(("r2-", "r2b-", "r2c-", "m1-", "m2-")):
             continue
         row = per_turn.setdefault(name, {"reached": Counter(), "lapsed": Counter(),
                                          "tabled": Counter(), "first_lapse": []})
