@@ -1,0 +1,74 @@
+{
+  "scenario": "r2c-cap-first.md",
+  "id": "r2c-cap-first",
+  "measures": "連續 correction — 位置與內容的解耦",
+  "marker": "a turn counts only if that turn changed pricing.py and did not answer with a clarifying question instead of choosing — identical to r2 and r2b, because the only manipulation is the order of the five requests",
+  "recovery_point": "none; no turn is interrupted",
+  "expect": "every turn that reached the branch carries a `DECISION:` line",
+  "session": "7bbd62ab-8336-462a-825a-143e15969462",
+  "fixture_files": [
+    "pricing.py",
+    "test_pricing.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 3,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 4,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 5,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "d4db0e1c",
+  "deployed_contract_sha256": "12a0d188f9ead5965c7fb632eeb8fbf2c245384f3fd24d151ba9ad8fe5649a25",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "a",
+    "clause": "baton-dispatch",
+    "contract_sha256_in_effect": "12a0d188f9ead5965c7fb632eeb8fbf2c245384f3fd24d151ba9ad8fe5649a25",
+    "clause_name_mentions_in_effect": 2
+  },
+  "target": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "/Users/siegfried/WorkSpace/agent-harness/evals/replay/runs/r2c-cap-first-002/telemetry"
+}
