@@ -2928,6 +2928,61 @@ class ReplayScenarioTests(unittest.TestCase):
                          (report["document"], report["named"], report["of"]))
         self.assertEqual(sorted(policy[2:]), report["missed"])
 
+    def _q1_leaf(self, run: Path, name: str, brief: str, said: str) -> None:
+        rows = [{"type": "user", "message": {"content": [
+                    {"type": "text", "text": brief}]}},
+                {"type": "assistant", "message": {"content": [
+                    {"type": "text", "text": said}]}}]
+        (run / "subagents" / f"{name}.jsonl").write_text(
+            "\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
+
+    def test_a_document_pasted_into_the_brief_still_attributes_its_leaf(self) -> None:
+        # `armb-002`, 2026-08-15: the run inlined the whole document into the
+        # brief instead of passing a path, so no filename ever appeared in the
+        # leaf transcript. Attributing by filename dropped both leaves, took the
+        # coverage denominator from ten to eight, and printed "8 of 8 complete".
+        module = self._grader()
+        build, key = self._q1_key()
+        with tempfile.TemporaryDirectory() as temp:
+            run = Path(temp)
+            build.build("q1-clause-verdicts", run / "workdir")
+            (run / "subagents").mkdir()
+            pasted = (run / "workdir" / "spec" / "policy.md").read_text(
+                encoding="utf-8")
+            policy = [c for c in key if c.startswith("K90-")]
+            self._q1_leaf(run, "agent-a1",
+                          f"GOVERNING DOCUMENT\n{pasted}\nreview /tmp/x/retry.py",
+                          "\n".join(f"{c} — VIOLATION" for c in policy))
+            coverage = module.q1_leaf_coverage(run)
+        self.assertEqual([], coverage["unattributable"])
+        self.assertEqual(("policy.md", len(policy)),
+                         (coverage["reports"][0]["document"],
+                          coverage["reports"][0]["named"]))
+
+    def test_a_leaf_holding_both_documents_is_reported_not_called_isolated(self) -> None:
+        # The filename test answers "isolated" when it has seen nothing at all.
+        # Ids cannot be silent that way: a leaf carrying clauses from both
+        # documents carries them whether it opened a file or was handed the text.
+        module = self._grader()
+        build, key = self._q1_key()
+        with tempfile.TemporaryDirectory() as temp:
+            run = Path(temp)
+            build.build("q1-clause-verdicts", run / "workdir")
+            (run / "subagents").mkdir()
+            both = "\n".join((run / "workdir" / name).read_text(encoding="utf-8")
+                             for name in ("spec/policy.md", "ops/runbook.md"))
+            self._q1_leaf(run, "agent-a1", both, "everything looks fine")
+            coverage = module.q1_leaf_coverage(run)
+        self.assertEqual(["agent-a1"], coverage["saw_both"])
+        self.assertEqual(["agent-a1"], coverage["unattributable"])
+
+    def test_a_clause_id_is_not_found_inside_a_session_uuid(self) -> None:
+        module = self._grader()
+        self.assertEqual([], re.findall(module.CLAUSE_ID,
+                                        "896b43be-af6d-45df-b216-8a5f5c9fb67a"))
+        self.assertEqual(["K90-0123456789"],
+                         re.findall(module.CLAUSE_ID, "see K90-0123456789 now"))
+
     def test_the_answer_key_is_tied_to_the_documents_it_grades(self) -> None:
         # A key that drifted from the fixture would grade a document nobody
         # read. Both sides are checked here: every clause the key names is

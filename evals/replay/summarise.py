@@ -178,6 +178,8 @@ def summarise(reports: list[dict]) -> dict:
             name = f"{name} [arm {report['arm'].upper()}]"
         row = quality.setdefault(name, {"items": outcome["items"], "scores": [],
                                         "pairs": [], "leaves": [],
+                                        "leaves_unattributable": 0,
+                                        "leaves_saw_both": 0,
                                         "excluded_invalid": 0,
                                         "wrong_by_clause": Counter()})
         if report["verdict"] == "invalid":
@@ -189,6 +191,8 @@ def summarise(reports: list[dict]) -> dict:
         for leaf in coverage.get("reports", []):
             if leaf.get("document"):
                 row["leaves"].append(f"{leaf['named']}/{leaf['of']}")
+        row["leaves_unattributable"] += len(coverage.get("unattributable") or [])
+        row["leaves_saw_both"] += len(coverage.get("saw_both") or [])
         for clause, given in outcome["wrong_labels"].items():
             row["wrong_by_clause"][f"{clause} -> {given}"] += 1
     for row in quality.values():
@@ -246,6 +250,10 @@ def main() -> int:
                        if cell.split("/")[0] == cell.split("/")[1])
             print(f"  leaf reports naming their own document's clauses: "
                   f"{row['leaves']} — {full} of {len(row['leaves'])} complete")
+        # Printed even at zero. A denominator that shrinks in silence is the
+        # thing this line exists to prevent.
+        print(f"  leaves unattributable: {row['leaves_unattributable']}, "
+              f"holding both documents: {row['leaves_saw_both']}")
         for clause, count in row["wrong_by_clause"].items():
             print(f"  missed: {clause} ({count})")
 

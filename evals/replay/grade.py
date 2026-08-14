@@ -417,7 +417,14 @@ def grade_conflict(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
 
 
 # A clause id as the fixture writes it: a short scope, then ten hex digits.
-CLAUSE_ID = r"[A-Za-z0-9]+-[0-9a-f]{10}"
+#
+# Bounded at both ends, which is not decoration. Without the trailing boundary
+# this also matches inside a UUID — a session id's last group is twelve hex
+# digits, so `b216-8a5f5c9fb6` reads as a clause. Every use downstream happens
+# to intersect against real ids and so was never wrong, but a pattern that is
+# only safe because of what its callers do next is one refactor from being a
+# silent fault.
+CLAUSE_ID = r"\b[A-Za-z][A-Za-z0-9]{0,5}-[0-9a-f]{10}\b"
 
 # One line of the verdict sheet, however it is decorated. The scenario asks for
 # `<id>: LABEL` and this matches that, plus the renderings a reply reaches for
@@ -518,6 +525,21 @@ def q1_leaf_coverage(run: Path) -> dict:
     The ids come from the workdir this run retained rather than from the key, so
     a fixture that changed under a batch cannot silently be graded as if it had
     not.
+
+    Which document a leaf was given is decided by the clause ids in its
+    transcript, not by the filename `leaf_isolation` looks for. That function
+    reads paths, and on 2026-08-15 `armb-002` handed its leaves the document
+    *inlined in the brief* — a perfectly good dispatch in which the filename
+    never appears. Both leaves became unattributable, the coverage denominator
+    went from ten to eight, and the summary said "8 of 8 complete": a sample
+    shrinking without anyone declaring it, which is the failure this directory
+    keeps catching in its own instruments. Ids survive both ways of handing over
+    a document, so they attribute both.
+
+    That also makes isolation a check rather than an inference. A leaf holding
+    ids from both documents saw both, whether or not it opened a file — the
+    filename test would call that run isolated on the strength of having seen
+    nothing.
     """
     documents = {}
     for name in ("spec/policy.md", "ops/runbook.md"):
@@ -525,38 +547,52 @@ def q1_leaf_coverage(run: Path) -> dict:
         if path.exists():
             documents[Path(name).name] = set(
                 re.findall(CLAUSE_ID, path.read_text(encoding="utf-8")))
-    isolation = leaf_isolation(run)
-    if not documents or not isolation.get("observable"):
+    leaves = sorted((run / "subagents").glob("*.jsonl"))
+    if not documents or not leaves:
         return {"observable": False,
                 "why": "no retained workdir or no per-leaf transcript"}
 
     reports = []
-    for leaf in sorted((run / "subagents").glob("*.jsonl")):
-        saw = [name for name in isolation["leaves"].get(leaf.stem, [])
-               if name in documents]
-        if len(saw) != 1:
-            reports.append({"leaf": leaf.stem, "document": None,
-                            "why": "leaf did not read exactly one authority"})
-            continue
-        said = ""
+    for leaf in leaves:
+        # Decoded text, never the raw file. In JSONL a newline is the two
+        # characters `\` and `n`, so scanning the bytes reads the id after one
+        # as `nK90-b3e9fd5c03` — a token in no document, belonging to no leaf.
+        # The bounded pattern is what surfaced this; the unbounded one returned
+        # the id anyway and the fault would have kept its mouth shut.
+        held, said = set(), ""
         for line in leaf.read_text(encoding="utf-8",
                                    errors="replace").splitlines():
             try:
                 row = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            if row.get("type") != "assistant":
-                continue
             content = (row.get("message") or {}).get("content")
-            if isinstance(content, list):
-                said = "".join(part.get("text", "") for part in content
+            if isinstance(content, str):
+                text = content
+            elif isinstance(content, list):
+                text = "".join(part.get("text", "") for part in content
                                if isinstance(part, dict))
+            else:
+                continue
+            held |= set(re.findall(CLAUSE_ID, text))
+            if row.get("type") == "assistant":
+                said = text
+        saw = sorted(name for name, ids in documents.items() if ids & held)
+        if len(saw) != 1:
+            reports.append({"leaf": leaf.stem, "document": None,
+                            "saw": saw,
+                            "why": "no clauses from exactly one document"})
+            continue
         wanted = documents[saw[0]]
         named = wanted & set(re.findall(CLAUSE_ID, said))
         reports.append({"leaf": leaf.stem, "document": saw[0],
                         "named": len(named), "of": len(wanted),
                         "missed": sorted(wanted - named)})
-    return {"observable": True, "reports": reports}
+    return {"observable": True, "reports": reports,
+            "unattributable": [row["leaf"] for row in reports
+                               if row["document"] is None],
+            "saw_both": [row["leaf"] for row in reports
+                         if len(row.get("saw") or []) > 1]}
 
 
 def grade_q1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
