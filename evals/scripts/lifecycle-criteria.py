@@ -95,9 +95,23 @@ def criterion_1(path: Path) -> dict[str, object]:
 
 
 def criterion_3(session: str) -> dict[str, object]:
-    """Staged dispatches for this session that the ledger never answered."""
-    answered = {row.get("dispatch_id") for row in records(LEDGER)
-                if row.get("dispatch_id")} if LEDGER.exists() else set()
+    """Dispatches this session staged, and how the ledger answered them.
+
+    Since 2026-08-15 the session-end sweep files `unjudged` for anything nobody
+    judged, so "unanswered" and "unjudged" are different states and both are
+    reported. Criterion 3 is now *every dispatch has a record*; whether the
+    record carries a judgement is a second number, and the interesting one — it
+    is the manual step that failed in 18 of 33 sessions before the sweep.
+    """
+    judged: set[str] = set()
+    unjudged: set[str] = set()
+    if LEDGER.exists():
+        for row in records(LEDGER):
+            key = row.get("dispatch_id")
+            if not key:
+                continue
+            (unjudged if row.get("outcome") == "unjudged" else judged).add(key)
+    answered = judged | unjudged
     staged: dict[str, str] = {}
     if PENDING.exists():
         for row in records(PENDING):
@@ -109,6 +123,8 @@ def criterion_3(session: str) -> dict[str, object]:
     open_ids = sorted(key for key in staged if key not in answered)
     return {"staged": len(staged), "unreconciled": len(open_ids),
             "reconciled": all(key in answered for key in staged),
+            "judged": len([key for key in staged if key in judged]),
+            "swept_unjudged": len([key for key in staged if key in unjudged]),
             "open": [{"dispatch_id": key, "agent_type": staged[key]}
                      for key in open_ids]}
 
@@ -151,7 +167,8 @@ def main() -> int:
     third = report["criterion_3"]
     verdict = "reconciled" if third["reconciled"] else "NOT reconciled"
     print(f"  3 dispatches  : {verdict:<9} "
-          f"({third['staged']} staged, {third['unreconciled']} unanswered)")
+          f"({third['staged']} staged, {third['unreconciled']} unanswered, "
+          f"{third['judged']} judged, {third['swept_unjudged']} swept unjudged)")
     for entry in third["open"]:
         print(f"      open  {entry['dispatch_id']}  ({entry['agent_type']})")
     print("  2 reach marker: per-scenario; see the trap's grade.py")

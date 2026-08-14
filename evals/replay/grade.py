@@ -512,7 +512,7 @@ def criterion_3(run: Path) -> dict:
     pending = telemetry / "experience-pending.jsonl"
     ledger = telemetry / "experience.jsonl"
 
-    answered, logged = set(), 0
+    answered, logged, unjudged = set(), 0, 0
     for line in log_lines(ledger):
         try:
             row = json.loads(line)
@@ -521,6 +521,11 @@ def criterion_3(run: Path) -> dict:
         if row.get("dispatch_id"):
             answered.add(row["dispatch_id"])
             logged += 1
+            # Since 2026-08-15 a session-end sweep files these for dispatches
+            # nobody judged. They count as records and not as judgements, and
+            # keeping the two apart is the whole point of the value.
+            if row.get("outcome") == "unjudged":
+                unjudged += 1
 
     staged: dict[str, str] = {}
     for line in log_lines(pending):
@@ -533,6 +538,7 @@ def criterion_3(run: Path) -> dict:
 
     open_ids = sorted(key for key in staged if key not in answered)
     return {"still_staged": len(staged), "logged": logged,
+            "judged": logged - unjudged, "swept_unjudged": unjudged,
             "unreconciled": len(open_ids), "open": open_ids,
             "reconciled": not open_ids,
             "had_bookkeeping_to_do": bool(staged or logged)}

@@ -1,9 +1,36 @@
 #!/usr/bin/env python3
-"""Experience-ledger pending hook: on SubagentStart/SubagentStop, stage a
-pending dispatch stub (agent_type, wall-clock secs, token usage) so the
-main session can log an outcome with `experience-log --from-pending
---outcome <o>` instead of retyping role/tier/secs/tokens. Fail-open — any
-error exits 0."""
+"""Experience-ledger pending hook.
+
+On SubagentStart/SubagentStop, stage a pending dispatch stub (agent_type,
+wall-clock secs, token usage) so the main session can log an outcome with
+`experience-log --from-pending --outcome <o>` instead of retyping
+role/tier/secs/tokens.
+
+On Stop, sweep dispatches that nobody ever judged into the ledger as
+`outcome=unjudged`. Replay measured that step failing in 18 of 33 sessions on
+2026-08-14, in three shapes, of which only one was reachable by better tooling:
+three of five sessions never invoked `experience-log` at all, and no message
+printed by a command changes the behaviour of a session that does not run it.
+A manual step that fails more than half the time is a design problem rather
+than a discipline one, so the fact gets recorded instead of the row going
+missing.
+
+Two rules keep the sweep from doing harm, and the first is the important one:
+
+1. **Never sweep the current session.** `Stop` fires at the end of every
+   assistant turn, not only at session end, so a sweep of one's own stubs would
+   file `unjudged` for a dispatch about to be judged one turn later — and
+   `experience-log` refuses a second record for the same dispatch, which would
+   make things worse than the silence. Another session's `Stop` sweeps yours.
+2. **An age floor on top**, because sessions run concurrently and one may still
+   be working.
+
+`unjudged` is terminal by construction: the session that made the dispatch has
+ended. It is excluded from routing decisions for free — `decision_eligible`
+requires one of the four judged outcomes and skips otherwise, so the record
+lands in `ineligible_n` and touches no denominator.
+
+Fail-open throughout — any error exits 0."""
 import json
 import os
 import sys
@@ -14,6 +41,20 @@ PENDING = os.environ.get(
     "AGENT_EXPERIENCE_PENDING",
     os.path.expanduser("~/.agents/telemetry/experience-pending.jsonl"),
 )
+LEDGER = os.environ.get(
+    "AGENT_EXPERIENCE_LEDGER",
+    os.path.expanduser("~/.agents/telemetry/experience.jsonl"),
+)
+# Overridable so the sweep can be exercised against a temp ledger without the
+# test depending on what happens to be deployed.
+EXPERIENCE_LOG = os.environ.get(
+    "AGENT_EXPERIENCE_LOG_BIN",
+    os.path.expanduser("~/.agents/skills/experience-ledger/scripts/experience-log"))
+# Long enough that a concurrent session doing slow work is not pre-empted, short
+# enough that the record lands the same day. The rule that actually prevents
+# pre-emption is "never your own session"; this is the second guard, not the
+# first.
+SWEEP_MIN_AGE_SECS = 3600
 
 try:
     import fcntl
@@ -225,9 +266,76 @@ def latest_matching_start(agent_id, session_id, stop_time):
     return None
 
 
+
+def sweep_unjudged(current_session, now):
+    """File `unjudged` for other sessions' dispatches the ledger never answered.
+
+    Delegates the write to `experience-log` rather than appending here: that
+    script owns the schema, the route resolution, the one-record-per-dispatch
+    rule and the lock ordering, and a second writer that knew half of them is
+    how a ledger stops being readable. Returns the ids it swept, for the tests.
+    """
+    import subprocess
+
+    answered = set()
+    try:
+        with open(LEDGER, encoding="utf-8", errors="replace") as stream:
+            for raw in stream:
+                if not raw.strip():
+                    continue
+                try:
+                    row = json.loads(raw)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(row, dict) and row.get("dispatch_id"):
+                    answered.add(row["dispatch_id"])
+    except OSError:
+        pass
+
+    stale = {}
+    try:
+        with open(PENDING, encoding="utf-8", errors="replace") as stream:
+            for raw in stream:
+                if not raw.strip():
+                    continue
+                try:
+                    row = json.loads(raw)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(row, dict) or row.get("event") != "SubagentStop":
+                    continue
+                key = row.get("dispatch_id")
+                if not key or key in answered:
+                    continue
+                if row.get("session_id") == current_session:
+                    continue                      # never your own, see module docstring
+                try:
+                    when = datetime.fromisoformat(row.get("ts", ""))
+                except (TypeError, ValueError):
+                    continue
+                if (now - when).total_seconds() < SWEEP_MIN_AGE_SECS:
+                    continue
+                stale[key] = row
+    except OSError:
+        return []
+
+    swept = []
+    for key in sorted(stale):
+        done = subprocess.run(
+            [sys.executable, EXPERIENCE_LOG, "--from-pending",
+             "--dispatch-id", key, "--outcome", "unjudged",
+             "--note", "swept at session end; no outcome was ever logged"],
+            capture_output=True, text=True, timeout=30)
+        if done.returncode == 0:
+            swept.append(key)
+    return swept
+
 try:
     ev = json.load(sys.stdin)
     now = datetime.now(timezone.utc)
+    if ev.get("hook_event_name") == "Stop":
+        sweep_unjudged(ev.get("session_id"), now)
+        sys.exit(0)
     rec = {
         "ts": now.isoformat(timespec="seconds"),
         "event": ev.get("hook_event_name"),
