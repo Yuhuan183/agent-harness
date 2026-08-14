@@ -63,7 +63,8 @@ except Exception as error:
 outcome = report['outcome']
 bits = [f\"marker={outcome['marker_present']}\"]
 for key in ('turns_without_decision_line', 'duplicated', 'missing',
-            'leaf_dispatches', 'tokens_at_interrupt'):
+            'leaf_dispatches', 'tokens_at_interrupt', 'label_score',
+            'conflict_pairs_correct'):
     if key in outcome:
         bits.append(f'{key}={outcome[key]}')
 bits.append(f\"crit3_open={report['criterion_3']['unreconciled']}\")

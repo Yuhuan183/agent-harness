@@ -2610,7 +2610,7 @@ class ReplayScenarioTests(unittest.TestCase):
         # is not evidence the run opened anything.
         build = load_module("replay_build", self.REPLAY / "fixtures" / "build.py")
         tokens = [build.token(scope, index)
-                  for scope in ("qz7", "K41", "V7", "bk")
+                  for scope in ("qz7", "K41", "V7", "bk", "K90", "V3")
                   for index in range(0, 13)]
         for scenario in self._scenarios():
             body = scenario.read_text(encoding="utf-8")
@@ -2775,6 +2775,180 @@ class ReplayScenarioTests(unittest.TestCase):
                        {"turn": 2, "interrupted": False, "timed_out": False}]})
         self.assertTrue(planned["ended_alive"],
                         "the interrupt under test is a condition, not a fault")
+
+    def _q1_key(self):
+        build = load_module("replay_build", self.REPLAY / "fixtures" / "build.py")
+        return build, build.q1_key()
+
+    def _q1_reply(self, key, skip: str | None = None) -> str:
+        """A correct sheet, written in four renderings a reply might use."""
+        lines = []
+        for index, (clause, row) in enumerate(key.items()):
+            if clause == skip:
+                continue
+            tail = f" {row['partner']}" if row["partner"] else ""
+            lines.append([
+                f"{clause}: {row['label']}{tail}",
+                f"- **{clause}**: {row['label']}{tail}",
+                f"| `{clause}` | {row['label']}{tail} |",
+                f"{index + 1}. `{clause}` — {row['label']}{tail}",
+            ][index % 4])
+        return "\n".join(lines)
+
+    def _q1_turns(self, reply: str, extra: list | None = None) -> dict:
+        """Two turns: two answered dispatches, then the sheet."""
+        def call(name, ident, payload):
+            return {"message": {"content": [{"type": "tool_use", "name": name,
+                                             "id": ident, "input": payload}]}}
+        first = []
+        for ident in ("t1", "t2"):
+            first.append(call("Agent", ident, {"prompt": "review"}))
+            first.append({"message": {"content": [
+                {"type": "tool_result", "tool_use_id": ident}]}})
+        return {1: first,
+                2: (extra or []) + [{"type": "result", "result": reply}]}
+
+    def test_the_verdict_sheet_is_read_in_the_shapes_a_reply_writes_it(self) -> None:
+        # Same lesson as the `DECISION:` matcher above, applied before it can
+        # cost a batch: the scenario asks for `<id>: LABEL`, and a reply that
+        # complies while bolding, bulleting or tabulating it has complied.
+        module = self._grader()
+        _, key = self._q1_key()
+        with tempfile.TemporaryDirectory() as temp:
+            outcome = module.grade_q1(Path(temp), {"id": "q1-clause-verdicts"},
+                                      self._q1_turns(self._q1_reply(key)))
+        self.assertTrue(outcome["marker_present"])
+        self.assertEqual(11, outcome["label_score"], outcome["wrong_labels"])
+        self.assertEqual(2, outcome["conflict_pairs_correct"])
+        self.assertTrue(outcome["correct"])
+        self.assertEqual([], outcome["read_loosely"],
+                         "every line here is a verdict line, not prose")
+
+    def test_a_clause_nobody_labelled_is_missing_and_never_a_pass(self) -> None:
+        # The failure this whole directory is built against: an absence that
+        # scores like a success. Six of the eleven verdicts are `PASS`, so a
+        # sheet reader that defaulted to it would flatter a run that answered
+        # nothing at all.
+        module = self._grader()
+        _, key = self._q1_key()
+        dropped = next(clause for clause, row in key.items()
+                       if row["label"] == "PASS")
+        with tempfile.TemporaryDirectory() as temp:
+            outcome = module.grade_q1(
+                Path(temp), {"id": "q1-clause-verdicts"},
+                self._q1_turns(self._q1_reply(key, skip=dropped)))
+        self.assertEqual(10, outcome["label_score"])
+        self.assertEqual({dropped: "MISSING"}, outcome["wrong_labels"])
+        self.assertFalse(outcome["correct"])
+
+    def test_the_other_side_of_a_conflict_is_not_credited_for_free(self) -> None:
+        # `K90-1: CONFLICT V3-1` names two clauses and labels one. Reading it as
+        # a verdict for both would let ten written lines score eleven, which
+        # spends the headroom this scenario exists to keep.
+        module = self._grader()
+        _, key = self._q1_key()
+        other = next(clause for clause, row in key.items()
+                     if row["label"] == "CONFLICT")
+        with tempfile.TemporaryDirectory() as temp:
+            outcome = module.grade_q1(
+                Path(temp), {"id": "q1-clause-verdicts"},
+                self._q1_turns(self._q1_reply(key, skip=key[other]["partner"])))
+        self.assertEqual("MISSING",
+                         outcome["wrong_labels"][key[other]["partner"]])
+        self.assertEqual(10, outcome["label_score"])
+        self.assertEqual(1, outcome["conflict_pairs_correct"])
+
+    def test_two_different_labels_for_one_clause_are_not_resolved(self) -> None:
+        module = self._grader()
+        _, key = self._q1_key()
+        clause = next(c for c, row in key.items() if row["label"] == "VIOLATED")
+        reply = f"{self._q1_reply(key)}\n{clause}: PASS"
+        with tempfile.TemporaryDirectory() as temp:
+            outcome = module.grade_q1(Path(temp), {"id": "q1-clause-verdicts"},
+                                      self._q1_turns(reply))
+        self.assertEqual("AMBIGUOUS", outcome["wrong_labels"][clause],
+                         "picking one of two would be the grader inventing data")
+
+    def test_going_back_to_the_sources_is_invalid_and_not_wrong(self) -> None:
+        # The whole point of turn 2 is that it decides from what the leaves
+        # brought back. A run that reopened `spec/policy.md` answered a question
+        # about the model instead, and its sheet — however perfect — is not
+        # evidence about the dispatch.
+        module = self._grader()
+        _, key = self._q1_key()
+        reread = [{"message": {"content": [
+            {"type": "tool_use", "name": "Read", "id": "r1",
+             "input": {"file_path": "/tmp/replay-x/spec/policy.md"}}]}}]
+        with tempfile.TemporaryDirectory() as temp:
+            outcome = module.grade_q1(
+                Path(temp), {"id": "q1-clause-verdicts"},
+                self._q1_turns(self._q1_reply(key), extra=reread))
+        self.assertFalse(outcome["marker_present"])
+        self.assertEqual(["Read"], outcome["turn2_reread"])
+        self.assertTrue(outcome["correct"],
+                        "the sheet is still right; the run is still invalid")
+
+    def test_quoting_a_filename_is_not_going_back_to_the_source(self) -> None:
+        module = self._grader()
+        _, key = self._q1_key()
+        wrote = [{"message": {"content": [
+            {"type": "tool_use", "name": "Write", "id": "w1",
+             "input": {"file_path": "/tmp/replay-x/review.md",
+                       "content": "審過 spec/policy.md 與 ops/runbook.md"}}]}}]
+        with tempfile.TemporaryDirectory() as temp:
+            outcome = module.grade_q1(
+                Path(temp), {"id": "q1-clause-verdicts"},
+                self._q1_turns(self._q1_reply(key), extra=wrote))
+        self.assertEqual([], outcome["turn2_reread"])
+        self.assertTrue(outcome["marker_present"])
+
+    def test_a_leaf_report_is_scored_on_coverage_and_not_on_a_word_list(self) -> None:
+        # The orchestrator is handed `PASS`/`VIOLATED`/`CONFLICT` in turn 2; a
+        # leaf never is, and the pilot's leaf wrote `VIOLATION`. Scoring reports
+        # against that word list would mark a good report zero, so what counts
+        # is which of its own document's clauses the report names.
+        module = self._grader()
+        build, key = self._q1_key()
+        with tempfile.TemporaryDirectory() as temp:
+            run = Path(temp)
+            build.build("q1-clause-verdicts", run / "workdir")
+            (run / "subagents").mkdir()
+            policy = [clause for clause in key if clause.startswith("K90-")]
+            (run / "subagents" / "agent-a1.jsonl").write_text(
+                json.dumps({"type": "assistant", "message": {"content": [
+                    {"type": "text",
+                     "text": "read spec/policy.md\n"
+                             + "\n".join(f"{c} — VIOLATION" for c
+                                         in policy[:2])}]}}) + "\n",
+                encoding="utf-8")
+            coverage = module.q1_leaf_coverage(run)
+        self.assertTrue(coverage["observable"])
+        report = coverage["reports"][0]
+        self.assertEqual(("policy.md", 2, len(policy)),
+                         (report["document"], report["named"], report["of"]))
+        self.assertEqual(sorted(policy[2:]), report["missed"])
+
+    def test_the_answer_key_is_tied_to_the_documents_it_grades(self) -> None:
+        # A key that drifted from the fixture would grade a document nobody
+        # read. Both sides are checked here: every clause the key names is
+        # written by the builder, and no constant answer scores well.
+        build, key = self._q1_key()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            build.build("q1-clause-verdicts", root)
+            documents = "\n".join(
+                (root / name).read_text(encoding="utf-8")
+                for name in ("spec/policy.md", "ops/runbook.md"))
+        for clause, row in key.items():
+            with self.subTest(clause=clause):
+                self.assertIn(clause, documents)
+                if row["partner"]:
+                    self.assertEqual(clause, key[row["partner"]]["partner"],
+                                     "a conflict has two sides or it has none")
+        labels = [row["label"] for row in key.values()]
+        best = max(labels.count(name) for name in set(labels))
+        self.assertLess(best, len(labels) / 2,
+                        "answering the same word eleven times must not pass")
 
     def test_the_decision_matcher_ignores_a_mention_that_is_not_a_marker(self) -> None:
         pattern = self._grader().DECISION_LINE

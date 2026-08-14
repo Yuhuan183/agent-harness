@@ -146,10 +146,124 @@ Step {token("V7", 2)}: failover is manual and out of scope for the caller.
             _write(root, "ops/runbook.md", runbook)]
 
 
+def build_q1(root: Path) -> list[str]:
+    """r3's module, and two authorities whose every clause has a known verdict.
+
+    r3 asks whether both leaves' conclusions survived the trip to the verdict,
+    and its arm-A batch answered 5 of 5 on 2026-08-13. A criterion sitting on
+    its ceiling cannot show a contract clause being worth anything, because
+    there is no room left to lose — so this fixture keeps r3's artifact byte for
+    byte and thickens the authorities instead. What gets graded is *which*
+    verdict each clause draws, not whether two tokens appeared.
+
+    Every clause is decidable against the code as written, and each is decidable
+    from one document alone except the pair that contradicts each other: that
+    pair is the only one no isolated leaf can label, which is what makes the
+    score a reading of the dispatch rather than of the model.
+
+    `Q1_KEY` below is the pre-registration. It is committed before any run and
+    `grade.py` imports it from here, so the answer key and the artifact that
+    makes it true cannot drift apart.
+    """
+    module = '''"""Outbound delivery with retries."""
+
+MAX_ATTEMPTS = 5
+BACKOFF_MS = 250
+
+
+def deliver(send, payload):
+    """Try `send` until it succeeds or the attempt budget runs out."""
+    last = None
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            return send(payload)
+        except TimeoutError as failure:
+            last = failure
+    raise last
+'''
+    policy = f'''# Outbound policy (filed)
+
+Clause {token("K90", 1)}: an outbound delivery must not exceed **3** attempts
+before it is surrendered to the dead-letter queue. The attempt count is filed
+with the regulator and changing it is a filing amendment, not a code change.
+
+Clause {token("K90", 2)}: backoff between attempts is at the implementer's
+discretion. This policy neither requires a delay nor forbids one.
+
+Clause {token("K90", 3)}: when the attempt budget is exhausted, `deliver` must
+hand the payload to the dead-letter queue. Raising the last error to the caller
+is not a handoff.
+
+Clause {token("K90", 4)}: `deliver` must write an audit-log entry for every
+attempt before that attempt is made.
+
+Clause {token("K90", 5)}: `deliver` must not mutate the payload it is given.
+
+Clause {token("K90", 6)}: a `send` that fails with anything other than a
+timeout has hit a defect, not a transport fault. It must reach the caller
+immediately, without consuming any of the remaining attempt budget.
+'''
+    runbook = f'''# Gateway runbook
+
+Step {token("V3", 1)}: the upstream gateway drops the first connection of any
+idle pool. Delivery must therefore make **at least 5** attempts before failover
+is declared, or the on-call page fires on a healthy gateway.
+
+Step {token("V3", 2)}: failover is manual and out of scope for the caller.
+
+Step {token("V3", 3)}: consecutive attempts must be at least 200 ms apart. The
+gateway's rate limiter blackholes a pool that retries faster than that.
+
+Step {token("V3", 4)}: the record that reaches the on-call page when delivery
+gives up must carry the number of attempts that were made. Whether that record
+is an exception or a dead-letter entry is out of scope for this runbook.
+
+Step {token("V3", 5)}: a successful delivery must return the gateway's response
+to the caller unchanged.
+'''
+    return [_write(root, "retry.py", module),
+            _write(root, "spec/policy.md", policy),
+            _write(root, "ops/runbook.md", runbook)]
+
+
+# The answer key, in the order the documents present it. Each entry is a label
+# and, for a conflict, the clause on the other side of it.
+#
+# The two `CONFLICT` rows are the reason the sheet is worth grading: `3`
+# attempts and `at least 5` cannot both hold, and neither reviewer can see that,
+# because neither is allowed the other's document. Everything else is a reading
+# of one document against the code, and three of those are near misses on
+# purpose — `BACKOFF_MS = 250` is declared and never applied, which is a pass
+# under the policy's explicit discretion and a violation of the runbook's 200 ms
+# floor, and `except TimeoutError` is a smell that the policy nonetheless
+# permits by name.
+Q1_KEY = {
+    ("K90", 1): ("CONFLICT", ("V3", 1)),   # 3 attempts vs the runbook's 5
+    ("K90", 2): ("PASS", None),            # no delay, and none is required
+    ("K90", 3): ("VIOLATED", None),        # `raise last`, never a DLQ handoff
+    ("K90", 4): ("VIOLATED", None),        # no audit log anywhere in `deliver`
+    ("K90", 5): ("PASS", None),            # the payload is passed, not touched
+    ("K90", 6): ("PASS", None),            # a non-timeout escapes immediately
+    ("V3", 1): ("CONFLICT", ("K90", 1)),   # 5 attempts vs the policy's 3
+    ("V3", 2): ("PASS", None),             # nothing in the code declares failover
+    ("V3", 3): ("VIOLATED", None),         # no sleep: attempts are back to back
+    ("V3", 4): ("VIOLATED", None),         # `last` carries no attempt count
+    ("V3", 5): ("PASS", None),             # `return send(payload)`, unchanged
+}
+
+
+def q1_key() -> dict[str, dict]:
+    """The key, resolved to the tokens this fixture actually wrote."""
+    return {token(*clause): {"label": label,
+                             "partner": token(*partner) if partner else None}
+            for clause, (label, partner) in Q1_KEY.items()}
+
+
 BUILDERS = {
     "r1-interrupted-resume": build_r1,
     "r2-successive-corrections": build_r2,
     "r3-conflicting-leaves": build_r3,
+    "q1-clause-verdicts": build_q1,
 }
 
 
