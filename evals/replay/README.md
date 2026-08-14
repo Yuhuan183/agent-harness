@@ -7,8 +7,8 @@ verification gap from 2026-07-28, and `docs/research/lifecycle-replay.md` set
 four survival criteria a replay result must meet before it may be cited.
 
 This directory closed criterion 2 — a scenario per question with its reach
-marker written before anything ran — and then kept going. **92 runs retained,
-2026-08-12 to 08-14**: 86 in batches, plus five pilots and one run the provider
+marker written before anything ran — and then kept going. **108 runs retained,
+2026-08-12 to 08-15**: 101 in batches, plus six pilots and one run the provider
 aborted, all kept because an invalid run is data about the scenario.
 
 Recount at any time with `ls -d runs/*/ | wc -l`; the figure above was typed by
@@ -25,6 +25,7 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | does the contract clause naming a skill change whether the skill loads, on the dispatch path? | no. three arms, 5/5 each | completes what s11's `b1` could not ask |
 | can the resident contract beat a contradicting client instruction? | **yes, sometimes** — 3/5 with the confound controlled | refutes direction 1's blanket claim; rule-specific |
 | do sessions reconcile the dispatches they make? | 15 of 33, swinging 4/5 to 1/5 on identical cells | the least stable thing measured here |
+| does deleting the dispatch clause make the *answer* worse? | no — **11/11 clause verdicts in all three arms, 15 runs, 165 judgements, no errors** | the first *result*-quality cell here; turn 1 spells out the dispatch shape, so it bounds the claim |
 
 **Four hypotheses were built and refuted, three of them mine.** That is this
 directory's main output, and Part 7 explains why it had to be.
@@ -92,6 +93,7 @@ traps measure the contract alone. Results do not transfer between them.
 
 ```bash
 ./run.py --scenario scenarios/r1-interrupted-resume.md --out runs/r1-001 --dry-run
+./batch.sh q1-clause-verdicts 5               # the scored cell; see Part 8
 ./batch.sh r1-interrupted-resume 5            # resumable; skips completed seeds
 ./batch.sh d1-two-reviews 5 b                 # arm B: swaps the contract, restores it
 ./summarise.py                                # regrades everything, never reads verdict.json
@@ -401,6 +403,98 @@ than reading a stale `verdict.json`.
 
 ---
 
+## Part 8 — the first cell that grades an answer, `q1`
+
+Every cell above grades whether something *loaded* or whether a marker
+*appeared*. None of them can tell you whether deleting a contract clause makes
+the work worse, which is the only evidence that would license deleting one.
+
+`r3` was the obvious place to start and is measured to be the wrong one: its
+criterion — did both clause tokens reach the verdict — came back **5/5**, and a
+two-token check only moves when an entire leaf's conclusion is dropped.
+
+`q1-clause-verdicts` keeps `r3`'s artifact byte for byte and its turn 1 word for
+word, and thickens the two authorities into eleven clauses that each have a
+verdict fixed before any run:
+
+```
+11 clauses    PASS 5    VIOLATED 4    CONFLICT 2
+ 9 of them    decidable from one document plus the code
+ 2 of them    decidable only with both leaves' reports side by side
+turn 2        no re-reading the sources, no dispatching again — checked in the
+              tool stream, and a run that did either is invalid, not incorrect
+```
+
+Three near misses are planted deliberately. `BACKOFF_MS = 250` is declared and
+never applied: a **PASS** against the policy's explicit discretion, a
+**VIOLATED** against the runbook's 200 ms floor. One code fact, two opposite
+right answers, so noticing the smell and judging it against a rule come apart.
+Answering the same word eleven times tops out at 5.
+
+**Arm A, 5 runs, `[surface 09992ee9]`:**
+
+```
+label_score      [11, 11, 11, 11, 11] of 11     mean 11.00
+conflict pairs   [2, 2, 2, 2, 2] of 2
+turn 2 re-read   0/5        turn 2 re-dispatch   0/5
+leaf coverage    10 leaves, every one named every clause in its own document
+```
+
+The near misses caught nobody: all five gave the same code fact opposite labels
+under the two documents, and none invented a second conflict out of the
+discretion clause.
+
+Leaf coverage is the second channel and is deliberately **coverage, not
+correctness**. The three labels are vocabulary turn 2 hands the orchestrator and
+never hands a leaf — the pilot's leaf wrote `VIOLATION` — so scoring reports
+against a word list would mark a good report zero. It reads one level down
+because the orchestrator holds `retry.py` and can repair a thin report by
+reasoning from the code, which hides a bad brief.
+
+The pre-registered ceiling gate fired here and was replaced, in writing and
+before the runs, with a sensitivity gate: what disqualifies a criterion is
+failing to register a dropped clause, not a reference arm that scores full
+marks. The old rule was aimed at `r3`, whose problem was a *coarse* criterion
+rather than a perfect reference. Both versions are in
+`docs/research/lifecycle-replay.md`; the amendment is dated ahead of the data it
+governs.
+
+**All three arms, 5 runs each:**
+
+```
+              label_score        pairs        leaf coverage   invalid
+arm A         11,11,11,11,11     2,2,2,2,2    10/10           0/5
+arm B         11,11,11,11,11     2,2,2,2,2    10/10           0/5
+arm C         11,11,11,11,11     2,2,2,2,2    10/10           0/5
+
+165 clause judgements, no errors. Manipulation check: 10 of 10 arm B/C runs
+confirmed the clause was gone before the run was paid for.
+```
+
+By the pre-registered rule this reads **delete**: arm C is not below arm A by
+anything, on either channel. The reading is narrower than it looks, and the
+reason is in turn 1 — it is `r3`'s sentence word for word, and that sentence
+already specifies the dispatch shape ("two independent reviewers, one document
+each, neither sees the other's"). The request carries what the clause would have
+carried, so this cell cannot separate *the clause is worthless* from *the
+request already did its job*. What 15 runs support: with the shape spelled out
+in the request, the resident mention adds nothing measurable. What they do not
+support: deleting it for vague requests, which nobody has run.
+
+**The instrument was wrong twice here, and the results did not depend on it.**
+`armb-002` pasted the whole document into the brief instead of passing a path,
+so no filename ever reached the leaf transcript, `leaf_isolation` could not
+attribute either leaf, and the coverage denominator went from ten to eight while
+the summary printed "8 of 8 complete". Attribution now runs on clause ids, which
+survive both ways of handing over a document and turn isolation from an
+inference into a check. Second, ids were being matched against raw JSONL, where
+a newline is `\` followed by `n` and the id after one reads as
+`nK90-b3e9fd5c03`; scanning decoded text fixed it, and the bounded pattern is
+what made it visible at all. Both fixes were re-run against all 108 retained
+runs with byte-identical output.
+
+---
+
 ## What this construct cannot support
 
 - **The contract and the hooks cannot be separated** (measured), so no result
@@ -427,6 +521,8 @@ than reading a stale `verdict.json`.
 - **Criterion 3 at 45%** is a decision rather than a measurement problem:
   enforce it, accept it, or remove the need for it by having the hook file a
   provisional record the session revises.
-- **Nothing here measures whether a rule firing makes the work better.** `d1`
-  loaded the skill 5/5 in all three arms and nobody compared their dispatch
-  quality. Filed in the verification gaps of `docs/research/README.md`.
+- **Whether a rule firing makes the work better is measured once, on a request
+  that already spells out the shape.** `q1`'s three arms tie at 11/11, which
+  bounds the claim to explicit requests; the vague-request case is unrun, and
+  needs a criterion that does not reward a run for skipping isolation — see
+  Part 8.
