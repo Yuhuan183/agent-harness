@@ -56,7 +56,15 @@ ROLES = ROUTED_ROLES + DIAGNOSTIC_ROLES
 # exactly that false alarm.
 LEGACY_ROLE_ALIASES = {"Explore": "explore"}
 PROVIDERS = ("claude", "codex")
-OUTCOMES = ("accepted", "corrected", "rebriefed", "failed")
+# `unjudged` is written by the session-end sweep, never by a person, and it is
+# terminal: the session that made the dispatch has ended, so nobody will upgrade
+# it. It records that a dispatch happened and was never judged — the fact
+# criterion 3 was trying to surface by the *absence* of a row, which is a fact
+# that gets lost. It is excluded from routing decisions for free, because
+# `decision_eligible` in experience-report requires one of the other four and
+# `continue`s otherwise, so an unjudged record lands in `ineligible_n` and never
+# touches a denominator.
+OUTCOMES = ("accepted", "corrected", "rebriefed", "failed", "unjudged")
 TIERS = ("spot", "full")  # QC tier by task shape
 CLASSES = (
     "recon", "review", "plan", "impl", "verify", "security", "smoke", "other",

@@ -182,6 +182,105 @@ class SharedSkillTests(unittest.TestCase):
         aliases that may since have moved, so it is tagged `resolver-assumed`
         and stays out of the decision set (user-directed 2026-07-28).
         """
+    def _stub_pair(self, session: str, agent: str, ts: str) -> list[dict]:
+        return [{"ts": ts, "event": event, "agent_type": "explore",
+                 "agent_id": agent, "session_id": session,
+                 "dispatch_id": f"{session}:{agent}",
+                 "request_source": "claude-code",
+                 **({"secs": 5.0} if event == "SubagentStop" else {})}
+                for event in ("SubagentStart", "SubagentStop")]
+
+    def test_the_sweep_files_unjudged_only_for_other_sessions_and_old_stubs(self) -> None:
+        """A manual step that fails in more than half of sessions is a design
+        problem, so the session-end sweep records the fact instead of leaving
+        the row missing. Two guards, and the first is the load-bearing one:
+        `Stop` fires at the end of every assistant turn, so sweeping one's own
+        stubs would file `unjudged` for a dispatch about to be judged — and
+        `experience-log` refuses a second record for the same dispatch, which
+        is worse than the silence it replaced."""
+        import datetime
+
+        hook = ROOT / "main/claude/hooks/experience-pending.py"
+        log = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-log"
+        now = datetime.datetime.now(datetime.timezone.utc)
+        old = (now - datetime.timedelta(hours=3)).isoformat(timespec="seconds")
+        fresh = now.isoformat(timespec="seconds")
+        mine = "22222222-2222-2222-2222-222222222222"
+
+        with tempfile.TemporaryDirectory() as temp:
+            pending = Path(temp) / "pending.jsonl"
+            rows = (self._stub_pair("11111111-1111-1111-1111-111111111111",
+                                    "aoldother", old)
+                    + self._stub_pair(mine, "amine", old)
+                    + self._stub_pair("33333333-3333-3333-3333-333333333333",
+                                      "afresh", fresh))
+            pending.write_text("".join(json.dumps(r) + "\n" for r in rows),
+                               encoding="utf-8")
+            ledger = Path(temp) / "ledger.jsonl"
+            env = {**os.environ,
+                   "AGENT_EXPERIENCE_PENDING": str(pending),
+                   "AGENT_EXPERIENCE_LEDGER": str(ledger),
+                   "AGENT_EXPERIENCE_LOG_BIN": str(log)}
+            done = subprocess.run(
+                [sys.executable, str(hook)],
+                input=json.dumps({"hook_event_name": "Stop",
+                                  "session_id": mine}),
+                env=env, capture_output=True, text=True)
+            self.assertEqual(0, done.returncode, "the hook must fail open")
+
+            written = [json.loads(line) for line
+                       in ledger.read_text(encoding="utf-8").splitlines()
+                       if line.strip()] if ledger.exists() else []
+            self.assertEqual(1, len(written), "exactly one stub was sweepable")
+            self.assertEqual("unjudged", written[0]["outcome"])
+            self.assertIn("aoldother", written[0]["dispatch_id"])
+
+            left = {json.loads(line)["dispatch_id"] for line
+                    in pending.read_text(encoding="utf-8").splitlines()
+                    if line.strip()}
+            self.assertTrue(any("amine" in key for key in left),
+                            "never sweep the current session")
+            self.assertTrue(any("afresh" in key for key in left),
+                            "an age floor guards concurrent sessions")
+
+    def test_unjudged_records_never_enter_a_routing_cohort(self) -> None:
+        """The whole reason the sweep is safe. `decision_eligible` requires one
+        of the four judged outcomes and skips otherwise, so an unjudged record
+        lands in the observed count and touches no denominator — if it entered
+        `n`, every acceptance rate on the machine would quietly deflate."""
+        report = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-report"
+        import datetime
+
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat(
+            timespec="seconds")
+        base = {"schema": 3, "ts": now, "role": "explore", "provider": "claude",
+                "request_source": "claude-code", "task_class": "recon",
+                "profile": "balanced", "model": "claude-opus-5",
+                "effort": "medium", "route_source": "transcript-verified",
+                "token_scope": "full"}
+
+        def run(unjudged: int) -> str:
+            with tempfile.TemporaryDirectory() as temp:
+                ledger = Path(temp) / "l.jsonl"
+                rows = [{**base, "dispatch_id": f"s:a{i}", "outcome": "accepted"}
+                        for i in range(3)]
+                rows += [{**base, "dispatch_id": f"s:u{i}", "outcome": "unjudged"}
+                         for i in range(unjudged)]
+                ledger.write_text("".join(json.dumps(r) + "\n" for r in rows),
+                                  encoding="utf-8")
+                done = subprocess.run(
+                    [sys.executable, str(report)],
+                    env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger)},
+                    capture_output=True, text=True, check=True)
+                return next(line for line in done.stdout.splitlines()
+                            if line.startswith("explore"))
+
+        clean, polluted = run(0), run(7)
+        self.assertIn("100.0", clean)
+        self.assertIn("100.0", polluted)
+        self.assertEqual(clean.split()[4], polluted.split()[4],
+                         "n must not move when unjudged records are added")
+
     def test_a_dispatch_id_that_ties_to_nothing_says_so(self) -> None:
         """An id the explicit-flags path invents is logged, and used to look
         like a clean success.
