@@ -789,12 +789,12 @@ class CodexBundleTests(unittest.TestCase):
         self.assertAlmostEqual(
             routing["models"]["gpt-5.6-terra"]["efforts"]["max"]
             ["cost_usd_per_index_task"],
-            0.82461,
+            0.508,
         )
         self.assertAlmostEqual(
             routing["models"]["gpt-5.6-sol"]["efforts"]["high"]
             ["output_tokens_per_index_task"],
-            6690.3086,
+            7545.3,
         )
 
     def test_model_routing_cli_validates_and_resolves_quality_first_priority(self) -> None:
