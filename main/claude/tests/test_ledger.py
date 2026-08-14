@@ -224,6 +224,20 @@ class SharedSkillTests(unittest.TestCase):
             self.assertIn("matched no staged stub", invented.stdout)
             self.assertIn("`<session_id>:<agent_id>`", invented.stdout)
 
+            # The hint, added 2026-08-14. A replay run read the plain note
+            # twice, filed both records under the agent id with the session
+            # prefix dropped, and moved on: saying what is wrong is not saying
+            # what is right, and the right answer was in the pending file.
+            dropped = subprocess.run(
+                [sys.executable, str(base / "experience-log"),
+                 "--dispatch-id", agent, *common],
+                env=env, check=True, capture_output=True, text=True)
+            self.assertIn("did you mean", dropped.stdout)
+            self.assertIn(staged, dropped.stdout)
+            self.assertNotIn("did you mean", invented.stdout,
+                             "an unrelated id has no answer to offer, and a "
+                             "guess would be worse than the silence")
+
             real = subprocess.run(
                 [sys.executable, str(base / "experience-log"),
                  "--from-pending", "--dispatch-id", staged,
