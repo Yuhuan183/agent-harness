@@ -232,18 +232,17 @@ def _pristine_pricing() -> str:
         return (root / "pricing.py").read_text(encoding="utf-8")
 
 
-def grade_r3(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
-    """Did both leaves' conclusions survive the trip to the verdict?"""
-    build = fixtures()
-    policy, runbook = build.token("K41", 1), build.token("V7", 1)
+def returned_dispatches(events: list[dict]) -> tuple[list[dict], int]:
+    """Leaf dispatches, and how many of them came back with a result.
 
-    events = [event for index in sorted(turns) if index >= 1
-              for event in turns[index]]
-    calls = tool_calls(events)
-    dispatches = [call for call in calls
+    A dispatch that was made and a dispatch that was answered are different
+    facts, and every marker in this file that involves leaves needs both: a run
+    whose leaf never returned did not reach a branch about leaf results.
+    """
+    dispatches = [call for call in tool_calls(events)
                   if str(call["name"]).lower() in ("agent", "task")]
-    returned = 0
     ids = {call["id"] for call in dispatches}
+    returned = 0
     for event in events:
         message = event.get("message")
         if not isinstance(message, dict) or not isinstance(
@@ -253,6 +252,17 @@ def grade_r3(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
             if (isinstance(part, dict) and part.get("type") == "tool_result"
                     and part.get("tool_use_id") in ids):
                 returned += 1
+    return dispatches, returned
+
+
+def grade_r3(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
+    """Did both leaves' conclusions survive the trip to the verdict?"""
+    build = fixtures()
+    policy, runbook = build.token("K41", 1), build.token("V7", 1)
+
+    events = [event for index in sorted(turns) if index >= 1
+              for event in turns[index]]
+    dispatches, returned = returned_dispatches(events)
     reached = len(dispatches) >= 2 and returned >= 2
 
     said = final_text(turns[max(turns)]) if turns else ""
@@ -324,19 +334,7 @@ def grade_dispatch_clause(run: Path, meta: dict,
     events = [event for index in sorted(turns) if index >= 1
               for event in turns[index]]
     calls = tool_calls(events)
-    dispatches = [call for call in calls
-                  if str(call["name"]).lower() in ("agent", "task")]
-    ids = {call["id"] for call in dispatches}
-    returned = 0
-    for event in events:
-        message = event.get("message")
-        if not isinstance(message, dict) or not isinstance(
-                message.get("content"), list):
-            continue
-        for part in message["content"]:
-            if (isinstance(part, dict) and part.get("type") == "tool_result"
-                    and part.get("tool_use_id") in ids):
-                returned += 1
+    dispatches, returned = returned_dispatches(events)
 
     target = meta.get("target") or "baton-dispatch"
     wants = meta.get("expect_skill") == "invoked"
@@ -418,6 +416,212 @@ def grade_conflict(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
             "reply_tail": said[-300:]}
 
 
+# A clause id as the fixture writes it: a short scope, then ten hex digits.
+CLAUSE_ID = r"[A-Za-z0-9]+-[0-9a-f]{10}"
+
+# One line of the verdict sheet, however it is decorated. The scenario asks for
+# `<id>: LABEL` and this matches that, plus the renderings a reply reaches for
+# on its own — a bullet, a numbered item, bold, backticks, a table row. That
+# generosity is not politeness: the `DECISION:` matcher in this file was once
+# anchored so tightly to one rendering that it scored a clean pilot 0 of 5, and
+# an instrument that manufactures the failure it reports is worse than none.
+# Still anchored at the start of a line, so a clause named mid-sentence is not a
+# verdict.
+VERDICT_LINE = re.compile(
+    rf"^[\s>#*_`~|·-]*(?:\d+[.)][\s*_`~-]*)?[`*_]*(?P<id>{CLAUSE_ID})[`*_]*"
+    rf"\s*[:：|—–-]?\s*[`*_]*(?P<label>PASS|VIOLATED|CONFLICT)\b(?P<rest>.*)$",
+    re.M)
+Q1_LABELS = ("PASS", "VIOLATED", "CONFLICT")
+
+# What a turn-2 re-read looks like. Only tools that read, and only the fields
+# that name a target: a reply that merely quotes a filename into a file it
+# writes has not gone back to the source, and counting that as one would fail
+# runs for being thorough.
+READ_TOOLS = ("read", "grep", "glob", "bash", "notebookread")
+PATH_FIELDS = ("file_path", "path", "pattern", "glob", "command",
+               "notebook_path")
+AUTHORITIES = ("policy.md", "runbook.md")
+
+
+def q1_sheet(said: str, ids: set[str]) -> dict[str, dict]:
+    """The label the reply gives each clause, and what it paired a conflict to.
+
+    Two passes. The first reads verdict lines; the second picks up any clause
+    the first missed from a line that names it alongside exactly one label,
+    which catches a reply that answered in prose. A line naming two labels
+    claims neither — that is a legend, not a verdict — and a clause claimed
+    twice with different labels is `AMBIGUOUS` rather than quietly resolved,
+    because guessing which one the run meant is the grader inventing data.
+    """
+    lines = said.splitlines()
+    claims: dict[str, list[dict]] = {}
+    verdict_lines = set()
+    for number, line in enumerate(lines):
+        match = VERDICT_LINE.match(line)
+        if not match or match.group("id") not in ids:
+            continue
+        verdict_lines.add(number)
+        clause = match.group("id")
+        partner = next((other for other in re.findall(CLAUSE_ID,
+                                                      match.group("rest"))
+                        if other in ids and other != clause), None)
+        claims.setdefault(clause, []).append(
+            {"label": match.group("label"), "partner": partner, "strict": True})
+
+    # A line already read as one clause's verdict is not reused as another's.
+    # Without this, `K90-1: CONFLICT V3-1` would hand `V3-1` a label it was
+    # never given, and a reply that wrote ten of the eleven lines would score
+    # eleven — inflating exactly the headroom this scenario exists to preserve.
+    strict = set(claims)
+    for number, line in enumerate(lines):
+        if number in verdict_lines:
+            continue
+        present = [label for label in Q1_LABELS
+                   if re.search(rf"\b{label}\b", line)]
+        if len(present) != 1:
+            continue
+        named = [clause for clause in re.findall(CLAUSE_ID, line)
+                 if clause in ids]
+        for clause in named:
+            if clause in strict:
+                continue
+            partner = next((other for other in named if other != clause), None)
+            claims.setdefault(clause, []).append(
+                {"label": present[0], "partner": partner, "strict": False})
+
+    sheet = {}
+    for clause, rows in claims.items():
+        labels = {row["label"] for row in rows}
+        sheet[clause] = {
+            "label": rows[0]["label"] if len(labels) == 1 else "AMBIGUOUS",
+            "partner": next((row["partner"] for row in rows
+                             if row["partner"]), None),
+            "loose": not any(row["strict"] for row in rows)}
+    return sheet
+
+
+def q1_leaf_coverage(run: Path) -> dict:
+    """How much of its own document each leaf's report actually named.
+
+    The sheet in turn 2 is the orchestrator's answer, and the orchestrator holds
+    `retry.py` itself — so it can repair a thin leaf report by reasoning from
+    the code, and a thin report need not cost it a single label. This reads one
+    level down, where a bad brief shows up first and without being repaired.
+
+    Coverage, not correctness, on purpose. The three labels are vocabulary the
+    scenario hands the orchestrator in turn 2 and never hands a leaf: the pilot
+    leaf wrote `VIOLATION`, which is a perfectly good report and would score
+    zero against a word list. Which clause ids a report names is checkable
+    without deciding what its prose meant, and it is exactly the difference
+    between a report that enumerates and one that summarises.
+
+    The ids come from the workdir this run retained rather than from the key, so
+    a fixture that changed under a batch cannot silently be graded as if it had
+    not.
+    """
+    documents = {}
+    for name in ("spec/policy.md", "ops/runbook.md"):
+        path = run / "workdir" / name
+        if path.exists():
+            documents[Path(name).name] = set(
+                re.findall(CLAUSE_ID, path.read_text(encoding="utf-8")))
+    isolation = leaf_isolation(run)
+    if not documents or not isolation.get("observable"):
+        return {"observable": False,
+                "why": "no retained workdir or no per-leaf transcript"}
+
+    reports = []
+    for leaf in sorted((run / "subagents").glob("*.jsonl")):
+        saw = [name for name in isolation["leaves"].get(leaf.stem, [])
+               if name in documents]
+        if len(saw) != 1:
+            reports.append({"leaf": leaf.stem, "document": None,
+                            "why": "leaf did not read exactly one authority"})
+            continue
+        said = ""
+        for line in leaf.read_text(encoding="utf-8",
+                                   errors="replace").splitlines():
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if row.get("type") != "assistant":
+                continue
+            content = (row.get("message") or {}).get("content")
+            if isinstance(content, list):
+                said = "".join(part.get("text", "") for part in content
+                               if isinstance(part, dict))
+        wanted = documents[saw[0]]
+        named = wanted & set(re.findall(CLAUSE_ID, said))
+        reports.append({"leaf": leaf.stem, "document": saw[0],
+                        "named": len(named), "of": len(wanted),
+                        "missed": sorted(wanted - named)})
+    return {"observable": True, "reports": reports}
+
+
+def grade_q1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
+    """Was what the two isolated leaves brought back enough to decide with?
+
+    Every other cell in this directory grades whether something was *loaded* or
+    whether a marker *appeared*. This one grades the answer: eleven clauses,
+    each with a verdict fixed before any run, nine of them decidable from one
+    document and two decidable only by putting both leaves' reports side by
+    side. A run that briefed its leaves badly gets reports that cannot label the
+    nine; a run that dropped a report cannot label the two.
+
+    Turn 2 forbids re-reading the sources and forbids dispatching again, and
+    both are checked from the tool stream rather than taken on trust. A run that
+    went back to the files answered a different question — one about the model,
+    not about the dispatch — so it is invalid, not incorrect.
+    """
+    build = fixtures()
+    key = build.q1_key()
+    ids = list(key)
+
+    first, returned = returned_dispatches(turns.get(1, []))
+    later = tool_calls(turns.get(2, []))
+    reread = [str(call["name"]) for call in later
+              if str(call["name"]).lower() in READ_TOOLS
+              and any(name in " ".join(str(call["input"].get(field, ""))
+                                       for field in PATH_FIELDS)
+                      for name in AUTHORITIES)]
+    again = [call for call in later
+             if str(call["name"]).lower() in ("agent", "task")]
+
+    said = final_text(turns[max(turns)]) if turns else ""
+    sheet = q1_sheet(said, set(ids))
+
+    right = [clause for clause in ids
+             if sheet.get(clause, {}).get("label") == key[clause]["label"]]
+    wrong = {clause: sheet.get(clause, {}).get("label", "MISSING")
+             for clause in ids if clause not in right}
+    paired = [clause for clause in ids if key[clause]["partner"]
+              and sheet.get(clause, {}).get("label") == "CONFLICT"
+              and sheet[clause].get("partner") == key[clause]["partner"]]
+
+    return {"marker_present": (len(first) >= 2 and returned >= 2
+                               and not reread and not again
+                               and bool(said.strip())),
+            "leaf_dispatches": len(first),
+            "leaf_results_returned": returned,
+            "turn2_reread": reread,
+            "turn2_dispatches": len(again),
+            "items": len(ids),
+            "label_score": len(right),
+            "wrong_labels": wrong,
+            "conflict_pairs_correct": len(paired),
+            "read_loosely": sorted(clause for clause, row in sheet.items()
+                                   if row["loose"]),
+            # The pre-registered outcome is a flawless sheet. It is deliberately
+            # the hardest reading available, because the number the arms get
+            # compared on is `label_score`, and a binary that passed at eight of
+            # eleven would quietly become the ceiling that `r3` already is.
+            "correct": len(right) == len(ids) and len(paired) == 2,
+            "leaf_coverage": q1_leaf_coverage(run),
+            "observed_not_graded": {"leaf_isolation": leaf_isolation(run)},
+            "sheet_tail": said[-800:]}
+
+
 GRADERS = {
     "r1-interrupted-resume": grade_r1,
     "r2-successive-corrections": grade_r2,
@@ -434,6 +638,7 @@ GRADERS = {
     "d1-two-reviews": grade_dispatch_clause,
     "d2-one-small-edit": grade_dispatch_clause,
     "r3-conflicting-leaves": grade_r3,
+    "q1-clause-verdicts": grade_q1,
 }
 
 

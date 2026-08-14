@@ -160,7 +160,44 @@ def summarise(reports: list[dict]) -> dict:
             row["tabled"][index] += 1
         row["first_lapse"].append(outcome.get("first_lapse"))
 
+    # A scored scenario needs its distribution shown, not its pass rate. `q1`
+    # exists because `r3` came back 5 of 5 and a criterion on its ceiling cannot
+    # show a contract clause being worth anything; printing `0%` for four runs
+    # that each got ten of eleven right would repeat that mistake from the other
+    # end. The per-clause tally underneath is the instrument's own check: a
+    # clause that most runs of the *reference* arm get "wrong" is more likely a
+    # bad key than a bad run, and that has to be visible before any arm is
+    # compared against another.
+    quality: dict[str, dict] = {}
+    for report in reports:
+        outcome = report["outcome"]
+        if "label_score" not in outcome:
+            continue
+        name = report["scenario"]
+        if report.get("arm", "a") != "a":
+            name = f"{name} [arm {report['arm'].upper()}]"
+        row = quality.setdefault(name, {"items": outcome["items"], "scores": [],
+                                        "pairs": [], "leaves": [],
+                                        "excluded_invalid": 0,
+                                        "wrong_by_clause": Counter()})
+        if report["verdict"] == "invalid":
+            row["excluded_invalid"] += 1
+            continue
+        row["scores"].append(outcome["label_score"])
+        row["pairs"].append(outcome["conflict_pairs_correct"])
+        coverage = outcome.get("leaf_coverage") or {}
+        for leaf in coverage.get("reports", []):
+            if leaf.get("document"):
+                row["leaves"].append(f"{leaf['named']}/{leaf['of']}")
+        for clause, given in outcome["wrong_labels"].items():
+            row["wrong_by_clause"][f"{clause} -> {given}"] += 1
+    for row in quality.values():
+        row["mean"] = (sum(row["scores"]) / len(row["scores"])
+                       if row["scores"] else None)
+        row["wrong_by_clause"] = dict(row["wrong_by_clause"].most_common())
+
     return {"scenarios": scenarios,
+            "quality": quality,
             "per_turn": {name: {key: (dict(sorted(value.items()))
                                       if isinstance(value, Counter) else value)
                                 for key, value in row.items()}
@@ -195,6 +232,22 @@ def main() -> int:
         print(f"{name:<28} {row['correct']:>8} {row['valid']:>6} "
               f"{row['invalid']:>8} {rate:>6}  {span:<16} {row['faults']:>5} "
               f"{row['bookkeeping_ok']}/{row['bookkeeping_runs']:<6} {stamp}")
+
+    for name, row in sorted(report.get("quality", {}).items()):
+        mean = "—" if row["mean"] is None else f"{row['mean']:.2f}"
+        print(f"\n{name}, scored sheets (unit is the run; the number to compare "
+              "across arms is the mean, not the pass rate)")
+        print(f"  labels right: {row['scores']} of {row['items']}, "
+              f"mean {mean}")
+        print(f"  conflict pairs right: {row['pairs']} of 2 "
+              f"({row['excluded_invalid']} invalid run(s) excluded)")
+        if row["leaves"]:
+            full = sum(1 for cell in row["leaves"]
+                       if cell.split("/")[0] == cell.split("/")[1])
+            print(f"  leaf reports naming their own document's clauses: "
+                  f"{row['leaves']} — {full} of {len(row['leaves'])} complete")
+        for clause, count in row["wrong_by_clause"].items():
+            print(f"  missed: {clause} ({count})")
 
     for name, row in report["per_turn"].items():
         print(f"\n{name}, per turn (unit is the turn; turns within a run are "
