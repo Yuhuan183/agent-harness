@@ -636,6 +636,30 @@ def main() -> int:
               "was never staged (another provider, hooks off); a typo or an "
               "invented id otherwise — the stub id is "
               "`<session_id>:<agent_id>`.")
+        # Saying what is wrong is not the same as saying what is right, and a
+        # replay run on 2026-08-14 proved the difference: it read the note
+        # twice, filed both records under an agent id with the session prefix
+        # dropped, and moved on. That mistake is mechanically identifiable and
+        # its answer is sitting in the pending file, so offer it. Only when
+        # exactly one stub matches — a guess between two would be worse than
+        # the silence this replaced.
+        try:
+            rows, _ = scan_pending()
+            near = sorted({
+                row["dispatch_id"] for row in rows
+                if isinstance(row.get("dispatch_id"), str)
+                and row["dispatch_id"].rsplit(":", 1)[-1] == args.dispatch_id
+                and row["dispatch_id"] != args.dispatch_id
+            })
+            if len(near) == 1:
+                print(f"       did you mean {near[0]!r}? that stub is staged "
+                      "and unanswered, and its agent segment is the id you "
+                      "passed")
+            elif len(near) > 1:
+                print(f"       {len(near)} staged stubs share that agent "
+                      "segment; pass the full id to pick one")
+        except Exception:          # never let a hint fail a completed log
+            pass
     return 0
 
 
