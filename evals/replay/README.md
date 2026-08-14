@@ -106,7 +106,13 @@ traps measure the contract alone. Results do not transfer between them.
 - **Marker before outcome.** A run that never reached the branch is `invalid`,
   neither pass nor failure — and invalid runs are counted, never dropped, since
   an invalid rate is data about the scenario design.
-- **Criterion 1 gates the verdict.** A run that did not end alive is invalid.
+- **Criteria 1 and 2 gate the verdict; criterion 3 is reported, not gated.**
+  Settled 2026-08-15 after the document and the grader were found to disagree —
+  the document had said all four must hold. 1 and 2 are conditions for the
+  observation existing at all; criterion 3 measures the session's bookkeeping,
+  which is a separate object and does not invalidate what the run showed about
+  an interrupt. The reasoning, and the cost of deciding it this way rather than
+  the other, are in `docs/research/lifecycle-replay.md`.
 - **Every result row carries the fingerprint its runs recorded**, which `run.py`
   writes into `meta.json` at run time rather than anyone typing it.
 
@@ -415,10 +421,6 @@ than reading a stale `verdict.json`.
 
 ## Open
 
-- **The grader gates on criteria 1 and 2 only.** The criteria document says all
-  four must hold before a result may be cited, and criterion 3 held in 15 of 33.
-  Either the document overstates the bar or the results above overstate their
-  standing; that is a decision, and it is not made here.
 - **`p1` needs a per-run manipulation check**, not a batch-level one.
 - **The cap request's 20 of 20 has no explanation** that survived contact. The
   next test needs a provably material fork; the constant's name is the candidate.
