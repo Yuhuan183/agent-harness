@@ -307,7 +307,7 @@ def main() -> int:
                         help="directory for events, snapshots and meta.json")
     parser.add_argument("--dry-run", action="store_true",
                         help="print the plan and the conditions, run nothing")
-    parser.add_argument("--arm", choices=("a", "b", "c", "s"), default="a",
+    parser.add_argument("--arm", choices=("a", "b", "c", "s", "w"), default="a",
                         help="a: contract as shipped (no swap). b: the load "
                              "instruction removed. c: every mention removed")
     parser.add_argument("--clause", default="baton-dispatch",

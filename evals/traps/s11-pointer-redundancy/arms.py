@@ -154,10 +154,48 @@ def slim(contract: str) -> str:
     return slimmed
 
 
+# The same rule with the judgement call taken out of it.
+#
+# 2026-08-16: all thirty `m1` runs introduced a module-level constant the
+# request never asked for, and eight said so. Same model, same prompt, same
+# choice, marked a quarter of the time — which is not a coherent threshold for
+# the word "material", it is variance in whether the rule fires at all. The
+# eight that did mark it described a structural choice; not one of them marked
+# the constant's *name*, which split three ways across the thirty.
+#
+# So this arm changes exactly one thing: the qualifier the model has to judge
+# becomes a test it can apply. Everything else in the bullet is byte-identical,
+# because an arm that reworded two things would not say which one moved.
+DECISION_OPERATIONAL = (
+    "- Mark any choice the request did not specify as "
+    "`DECISION: <what and why>`; mark uncertainty only when it could change "
+    "the conclusion.\n"
+)
+
 # For the slim arm the manipulation check has to fail in both directions. One
 # question proves the removal landed; the other proves the rule under test
 # survived it, and without the second a drop in compliance is indistinguishable
 # from having deleted the rule by accident.
+def reworded(contract: str) -> str:
+    """The contract with the `DECISION:` rule's judgement call removed."""
+    if contract.count(DECISION_BULLET) != 1:
+        raise SystemExit("reword: the DECISION bullet is missing or duplicated; "
+                         "the contract was changed under this function")
+    return contract.replace(DECISION_BULLET, DECISION_OPERATIONAL)
+
+
+# A rewording arm cannot be checked by asking whether the rule is present — it
+# is present in both arms, which is the point. The question has to name the part
+# that changed.
+REWORD_PROBES = (
+    ("Answer with exactly one word, YES or NO, and nothing else. Does your "
+     "global working contract use the word \"material\" when it tells you "
+     "which choices to mark?", "NO"),
+    ("Answer with exactly one word, YES or NO, and nothing else. Does your "
+     "global working contract tell you to mark a choice you made that the "
+     "request did not specify?", "YES"),
+)
+
 SLIM_PROBES = (
     ("Answer with exactly one word, YES or NO, and nothing else. Does your "
      "global working contract give you any rule about when to delegate work "
@@ -176,6 +214,8 @@ def variant(contract: str, clause: str, arm: str) -> str:
         return contract
     if arm == "s":
         return slim(contract)
+    if arm == "w":
+        return reworded(contract)
     if arm not in ("b", "c"):
         raise SystemExit(f"unknown arm {arm!r}")
 

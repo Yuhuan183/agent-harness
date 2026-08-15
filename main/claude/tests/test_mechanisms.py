@@ -2841,6 +2841,33 @@ class ReplayScenarioTests(unittest.TestCase):
         self.assertEqual([("YES")], [e for _, e in module.probes("x", "a")])
         self.assertEqual([("NO")], [e for _, e in module.probes("x", "b")])
 
+    def test_the_reworded_arm_changes_one_bullet_and_nothing_else(self) -> None:
+        # An arm that reworded two things could not say which one moved.
+        arms = self._arms()
+        shipped = (self.REPLAY.parents[1] / "main" / "claude"
+                   / "CLAUDE.contract.md").read_text(encoding="utf-8")
+        reworded = arms.variant(shipped, "language", "w")
+        self.assertNotIn(arms.DECISION_BULLET, reworded)
+        self.assertIn(arms.DECISION_OPERATIONAL, reworded)
+        before = shipped.replace(arms.DECISION_BULLET, "")
+        after = reworded.replace(arms.DECISION_OPERATIONAL, "")
+        self.assertEqual(before, after, "only the one bullet may differ")
+
+    def test_the_reworded_arm_probes_name_the_part_that_changed(self) -> None:
+        # The rule is present in both arms, which is the point, so a probe
+        # asking whether it is there would pass while measuring nothing.
+        module = load_module("replay_arm", self.REPLAY / "arm.py")
+        asked = module.probes("language", "w")
+        self.assertEqual(2, len(asked))
+        self.assertEqual({"NO", "YES"}, {expected for _, expected in asked})
+        self.assertTrue(any("material" in question for question, _ in asked),
+                        "one probe has to name the word that was removed")
+
+    def test_a_reworded_contract_stops_the_reword_arm(self) -> None:
+        arms = self._arms()
+        with self.assertRaises(SystemExit):
+            arms.variant("# c\n- Mark things.\n", "language", "w")
+
     def test_the_arm_swap_refuses_to_stack_on_an_unfinished_one(self) -> None:
         module = load_module("replay_arm", self.REPLAY / "arm.py")
         source = ROOT / "main" / "claude" / "CLAUDE.contract.md"
