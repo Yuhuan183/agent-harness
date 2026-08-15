@@ -7,9 +7,9 @@ verification gap from 2026-07-28, and `docs/research/lifecycle-replay.md` set
 four survival criteria a replay result must meet before it may be cited.
 
 This directory closed criterion 2 — a scenario per question with its reach
-marker written before anything ran — and then kept going. **108 runs retained,
-2026-08-12 to 08-15**: 101 in batches, plus six pilots and one run the provider
-aborted, all kept because an invalid run is data about the scenario.
+marker written before anything ran — and then kept going. **114 runs retained,
+2026-08-12 to 08-15**: 106 in batches, plus seven pilots and one run the
+provider aborted, all kept because an invalid run is data about the scenario.
 
 Recount at any time with `ls -d runs/*/ | wc -l`; the figure above was typed by
 hand as 82 first, which is the seventh instance of the failure Part 7 is about.
@@ -26,6 +26,7 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | can the resident contract beat a contradicting client instruction? | **yes, sometimes** — 3/5 with the confound controlled | refutes direction 1's blanket claim; rule-specific |
 | do sessions reconcile the dispatches they make? | 15 of 33, swinging 4/5 to 1/5 on identical cells | the least stable thing measured here |
 | does deleting the dispatch clause make the *answer* worse? | no — **11/11 clause verdicts in all three arms, 15 runs, 165 judgements, no errors** | the first *result*-quality cell here; turn 1 spells out the dispatch shape, so it bounds the claim |
+| and when the request does not say how to work? | **it never dispatches at all — 0 of 5 — and answers correctly anyway** | so the clause has nothing to act on, and output correctness cannot price it |
 
 **Four hypotheses were built and refuted, three of them mine.** That is this
 directory's main output, and Part 7 explains why it had to be.
@@ -495,6 +496,94 @@ runs with byte-identical output.
 
 ---
 
+## Part 9 — the cell where the request does not say how, `q2`
+
+`q1` answered its question and could not ask the next one. Its turn 1 dictates
+the shape, so a resident clause about dispatch has nothing left to do. Leaving
+the shape to the session breaks `q1`'s scoring immediately: its two conflicts
+are the only items an isolated leaf cannot label, so a run that ignores
+isolation and reads both documents itself collects them for free. The criterion
+would be paying for the wrong behaviour.
+
+No amount of making the reasoning harder fixes that. **Isolation subtracts
+information and never adds any** — one reader holding everything can always
+simulate any split. So the thing to charge for cannot be difficulty.
+
+What isolation buys is independence, and `q2-unstated-shape` charges for that.
+Five contradictions were planted between the two authorities and one was retired
+on the evidence below, leaving four. One is visible at a glance and is the
+control. The others share a property: a coherent single
+reading dissolves them, because a reader holding both documents reconciles as it
+goes, and a reconciled reading has no contradiction to report.
+
+```
+audit written before the attempt   vs  no synchronous IO in the hot path
+  one reader: "audit can be batched"                    → nothing to report
+DLQ handoff is terminal, must not raise
+                                   vs  the caller must receive the exception
+  one reader: "hand off, then raise"                    → nothing to report
+stop the moment the deadline passes
+                                   vs  finish the budget even if it has passed
+  one reader: "deadlines are generous in practice"      → nothing to report
+```
+
+Two reviewers who cannot see each other state their own requirement flatly, and
+flat statements collide where harmonised ones do not. Three near misses charge
+for the opposite instinct — a permission is not a prohibition, a count is not
+content, a wait is not an obligation to attempt — so listing every tension in
+sight scores worse than reading carefully. Naming the whole cross product gets
+all five and pays for three near misses and forty-one inventions.
+
+**Nothing about dispatching is a marker here.** Whether the session split the
+work is the observation; a marker that required it would delete the comparison
+group. Shape is read from the leaf transcripts by clause id, never from what a
+brief claimed: two dispatches where one leaf ends up holding both documents is
+not two isolated reviewers.
+
+The internal validity check is pre-registered and runs before any arm is
+compared: within arm A, if runs that isolated and runs that did not both number
+three or more, the isolating group must score higher, or the criterion is not
+measuring what it claims and the comparison is not run.
+
+**Arm A, 5 runs — not one of them dispatched:**
+
+```
+recall       4, 4, 4, 4, 4 of 4      near miss claimed 0    invented 0
+dispatched   0, 0, 0, 0, 0           isolated 0 of 5
+```
+
+Told nothing about how to work, the session read both documents itself, found
+every flat contradiction, claimed none of the near misses and invented nothing.
+The zero is not noise; it is the finding.
+
+**Arms B and C are not run, and the reason is derived rather than guessed.**
+Arm A dispatches zero times, which is the floor. Deleting a clause about
+dispatch cannot take zero lower, so the shape column is guaranteed to tie, and
+the recall column measures one reader's review quality, which the clause has
+nothing to do with. Spending ten runs to confirm 0 = 0 would be treating
+pre-registration as a promise to run whatever was planned regardless of what
+the first arm said.
+
+**One pair was retired, before any arm comparison.** Encryption at rest against
+a drain reading plaintext: the pilot rejected it, the runbook step was rewritten
+to name the payload, and four of the five arm-A runs still left it off the list —
+three of them arguing the point, on a reading the first wording had not even
+offered: a drain holding the key reads plaintext, and neither document forbids
+that. One run did list it, which is what a genuinely contested item looks like,
+and contested items are what the retirement rule is for. Four independent
+readings converging on one argument is the key being wrong. The clauses stay in
+the documents, because removing them would change the corpus earlier runs faced;
+the pair simply scores in neither direction now.
+
+**The instrument was wrong once more, in the opposite direction from usual.**
+The pilot listed four pairs and explained underneath why a fifth did not belong,
+and the reader scored it 5 of 5 — it had read the run's own refusal as a claim.
+A pair line must now be a pair and nothing else, and a pair named in prose is
+recorded as discussed rather than scored. The `DECISION:` matcher once read
+something present as absent; this read something absent as present.
+
+---
+
 ## What this construct cannot support
 
 - **The contract and the hooks cannot be separated** (measured), so no result
@@ -521,8 +610,12 @@ runs with byte-identical output.
 - **Criterion 3 at 45%** is a decision rather than a measurement problem:
   enforce it, accept it, or remove the need for it by having the hook file a
   provisional record the session revises.
-- **Whether a rule firing makes the work better is measured once, on a request
-  that already spells out the shape.** `q1`'s three arms tie at 11/11, which
-  bounds the claim to explicit requests; the vague-request case is unrun, and
-  needs a criterion that does not reward a run for skipping isolation — see
-  Part 8.
+- **Output correctness cannot price a dispatch clause, and the reason is
+  structural.** `q1`'s three arms tie at 11/11 with the shape spelled out;
+  `q2`'s sessions never dispatch when it is not. Underneath both: isolation
+  subtracts information and never adds any, so a reader holding the union
+  computes whatever any split could. An answer-checkable task therefore cannot
+  reward isolation, and a task where isolation pays has no determinate answer to
+  check — which criterion 4 forbids. What is left measurable is cost, context
+  headroom, and work whose inputs genuinely do not fit; the last measures
+  capacity, not the clause.
