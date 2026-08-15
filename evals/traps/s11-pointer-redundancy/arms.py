@@ -111,12 +111,71 @@ def probe(clause: str) -> str:
     return PROBE.get(clause, PROBE[None]).format(clause=clause)
 
 
+# The bullet whose compliance a dilution test measures, kept verbatim.
+DECISION_BULLET = (
+    "- Mark a material choice made without user input as "
+    "`DECISION: <what and why>`; mark uncertainty only when it could change "
+    "the conclusion.\n"
+)
+
+
+def slim(contract: str) -> str:
+    """The contract reduced to the two bullets a dilution test needs.
+
+    Every clause-removal arm so far asks whether *that* clause did anything.
+    None of them asks the question underneath: whether a contract carrying
+    clauses that do nothing makes the ones that do work worse. That is the only
+    cost that could justify deleting a clause at all — 35 tokens out of a
+    million-token context is not a reason, and this repo has never measured
+    whether attention is the real currency.
+
+    So: keep the rule under test and the rule that holds the reply surface
+    fixed, drop the other eleven bullets and both other sections. The two arms
+    then differ only in clauses that are candidates for deletion, and any
+    difference in compliance with a *kept* rule is dilution.
+
+    Kept verbatim rather than paraphrased, and checked: a slim contract that
+    reworded the rule under test would measure the rewording.
+    """
+    keep = (POINTER["language"], DECISION_BULLET)
+    lines = contract.splitlines(keepends=True)
+    out = [line for line in lines
+           if line.startswith("# ") or line.startswith("## Working agreement")]
+    out.append("\n")
+    out.extend(keep)
+    slimmed = "".join(out)
+
+    for literal in keep:
+        if slimmed.count(literal) != 1:
+            raise SystemExit("slim: a kept bullet is missing or duplicated; "
+                             "the contract was reworded under this function")
+    if len(slimmed) >= len(contract):
+        raise SystemExit("slim: nothing was removed")
+    return slimmed
+
+
+# For the slim arm the manipulation check has to fail in both directions. One
+# question proves the removal landed; the other proves the rule under test
+# survived it, and without the second a drop in compliance is indistinguishable
+# from having deleted the rule by accident.
+SLIM_PROBES = (
+    ("Answer with exactly one word, YES or NO, and nothing else. Does your "
+     "global working contract give you any rule about when to delegate work "
+     "to a subagent?", "NO"),
+    ("Answer with exactly one word, YES or NO, and nothing else. Does your "
+     "global working contract tell you to mark a material choice you made "
+     "without user input?", "YES"),
+)
+
+
 def variant(contract: str, clause: str, arm: str) -> str:
     """The contract for one arm, or a hard failure naming what did not match."""
     if clause not in POINTER:
         raise SystemExit(f"unknown clause {clause!r}; try --list")
     if arm == "a":
         return contract
+    if arm == "s":
+        return slim(contract)
     if arm not in ("b", "c"):
         raise SystemExit(f"unknown arm {arm!r}")
 

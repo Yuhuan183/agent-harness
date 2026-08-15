@@ -64,7 +64,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path.insert(0, str(HERE))
 
-from arm import contract_arm, probe as contract_probe  # noqa: E402
+from arm import contract_arm, probes as contract_probes  # noqa: E402
 DEPLOYED = Path.home() / ".claude" / "CLAUDE.md"
 SOURCE = ROOT / "main" / "claude" / "CLAUDE.contract.md"
 FRONTMATTER = re.compile(r"\A---\n(.*?)\n---\n", re.S)
@@ -284,17 +284,20 @@ def preflight(clause: str, arm: str, workdir: Path, env: dict[str, str]) -> dict
     the file having changed is not the same claim. s11 was confused four times
     by asking for a condition and measuring a different one.
     """
-    done = subprocess.run(
-        ["claude", "--print", contract_probe(clause),
-         "--output-format", "text", "--permission-mode", "manual",
-         "--strict-mcp-config"],
-        cwd=workdir, env=env, capture_output=True, text=True, timeout=300)
-    out = done.stdout
-    answer = ("YES" if re.search(r"\bYES\b", out, re.I)
-              else "NO" if re.search(r"\bNO\b", out, re.I) else "?")
-    expected = "YES" if arm == "a" else "NO"
+    asked = []
+    for question, expected in contract_probes(clause, arm):
+        done = subprocess.run(
+            ["claude", "--print", question,
+             "--output-format", "text", "--permission-mode", "manual",
+             "--strict-mcp-config"],
+            cwd=workdir, env=env, capture_output=True, text=True, timeout=300)
+        out = done.stdout
+        answer = ("YES" if re.search(r"\bYES\b", out, re.I)
+                  else "NO" if re.search(r"\bNO\b", out, re.I) else "?")
+        asked.append({"expected": expected, "answer": answer,
+                      "landed": answer == expected})
     return {"probe": "manipulation-check", "clause": clause, "arm": arm,
-            "answer": answer, "expected": expected, "landed": answer == expected}
+            "asked": asked, "landed": all(row["landed"] for row in asked)}
 
 
 def main() -> int:
@@ -304,7 +307,7 @@ def main() -> int:
                         help="directory for events, snapshots and meta.json")
     parser.add_argument("--dry-run", action="store_true",
                         help="print the plan and the conditions, run nothing")
-    parser.add_argument("--arm", choices=("a", "b", "c"), default="a",
+    parser.add_argument("--arm", choices=("a", "b", "c", "s"), default="a",
                         help="a: contract as shipped (no swap). b: the load "
                              "instruction removed. c: every mention removed")
     parser.add_argument("--clause", default="baton-dispatch",

@@ -61,6 +61,21 @@ def probe(clause: str) -> str:
     return _arms().probe(clause)
 
 
+def probes(clause: str, arm: str) -> list[tuple[str, str]]:
+    """Every question this arm has to answer before the run is paid for.
+
+    One question is enough while an arm removes one thing: it either left or it
+    did not. The slim arm removes eleven bullets and keeps two, so it needs a
+    question that fails in the other direction as well — proof that the rule
+    under test survived the surgery. Without it, a drop in compliance cannot be
+    told apart from having deleted the rule by accident, which is the one
+    failure that would look exactly like the hypothesis being true.
+    """
+    if arm == "s":
+        return list(_arms().SLIM_PROBES)
+    return [(probe(clause), "YES" if arm == "a" else "NO")]
+
+
 def sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
