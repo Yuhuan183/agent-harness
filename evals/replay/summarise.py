@@ -114,7 +114,7 @@ def in_batch(name: str, scenario_id: str) -> bool:
     since the arm is part of a run's identity and mixing arms under one name
     would be unreadable afterwards.
     """
-    return re.fullmatch(rf"{re.escape(scenario_id)}(-arm[bcs])?-\d{{3}}",
+    return re.fullmatch(rf"{re.escape(scenario_id)}(-arm[bcsw])?-\d{{3}}",
                         name) is not None
 
 

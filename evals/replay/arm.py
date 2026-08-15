@@ -73,6 +73,8 @@ def probes(clause: str, arm: str) -> list[tuple[str, str]]:
     """
     if arm == "s":
         return list(_arms().SLIM_PROBES)
+    if arm == "w":
+        return list(_arms().REWORD_PROBES)
     return [(probe(clause), "YES" if arm == "a" else "NO")]
 
 

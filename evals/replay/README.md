@@ -7,8 +7,8 @@ verification gap from 2026-07-28, and `docs/research/lifecycle-replay.md` set
 four survival criteria a replay result must meet before it may be cited.
 
 This directory closed criterion 2 — a scenario per question with its reach
-marker written before anything ran — and then kept going. **150 runs retained,
-2026-08-12 to 08-16**: 141 in batches, plus eight pilots and one run the
+marker written before anything ran — and then kept going. **165 runs retained,
+2026-08-12 to 08-16**: 156 in batches, plus eight pilots and one run the
 provider aborted, all kept because an invalid run is data about the scenario.
 
 Recount at any time with `ls -d runs/*/ | wc -l`; the figure above was typed by
@@ -29,6 +29,8 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | and when the request does not say how to work? | **it never dispatches at all — 0 of 5 — and answers correctly anyway** | so the clause has nothing to act on, and output correctness cannot price it |
 | can this apparatus detect a contract clause being removed at all? | **yes — 5/5 Chinese with the clause, 0/5 without** | the reverse control every null above was waiting on; a floor, not a calibration |
 | does a contract full of clauses make its own rules obeyed less? | no difference found — 3/15 against 5/15 with 83% of the contract deleted | resolving the gap that remains would cost ~688 runs; and both arms are bad |
+| when a rule fires a fifth of the time, was there anything to mark? | **yes — 30 of 30 runs made the same unforced choice, 8 said so** | computed from retained workdirs, no runs spent |
+| does taking the judgement call out of that rule help? | 3/15 → 7/15, p = 0.245 — **not shown** at the pre-registered threshold | and the rewording did not widen what gets marked, which argues against the mechanism |
 
 **Four hypotheses were built and refuted, three of them mine.** That is this
 directory's main output, and Part 7 explains why it had to be.
@@ -702,6 +704,70 @@ row carries two surface fingerprints. Within arm A that split is 2/5 against
 1/10, Fisher p = 0.242: no evidence of drift, and a free internal control. The
 null between arms cannot be explained away as "run on different days", because
 arm A is itself run on different days and shows nothing either.
+
+---
+
+## Part 12 — why that rule fires a fifth of the time
+
+The dilution test left a better question than the one it answered: both arms
+were bad. Before asking why, ask whether there was anything to mark — the rule
+says *material* choice made without user input, and if these runs had no choice
+to make, silence is correct and there is nothing to explain.
+
+Computable from the retained workdirs, no runs needed:
+
+```
+30 runs, 22 distinct implementations
+the constant's name alone splits three ways   FEE_CAP 18   FEE_CAP_CENTS 6   MAX_FEE 6
+```
+
+And one layer down, the number that settles it:
+
+```
+30/30  introduced a module-level constant — which the request never asked for
+ 8/30  said so
+22/30  made the identical choice in silence
+```
+
+Same model, same prompt, same choice, marked a quarter of the time. A coherent
+threshold for the word "material" does not roll dice on one question, so this is
+the rule firing unreliably rather than a defensible judgement about materiality.
+
+What the eight marked is consistent — where the cap goes, `300.0` versus `300`
+to preserve the float return, module constant versus literal. **Not one marked
+the constant's name**, though that name split three ways across the thirty.
+
+**Arm W changes exactly one thing**: `a material choice made without user input`
+becomes `any choice the request did not specify`. Same word count, every other
+byte identical, because an arm that reworded two things could not say which one
+moved. Its manipulation check names the part that changed — asking whether the
+rule is present would pass in both arms, which is the point of the arm.
+
+```
+arm A   material, as shipped     3/15   20%   CI [0.043, 0.481]
+arm W   an applicable test       7/15   47%   CI [0.213, 0.734]
+                                 Fisher p = 0.2451, threshold was 10/15
+```
+
+**Not shown, by the rule written before the run.** The point estimate more than
+doubles and n=15 cannot separate that from noise.
+
+One piece of qualitative evidence cuts against the mechanism, though. The new
+wording explicitly covers naming — *any* choice the request did not specify —
+and arm W marks the same things arm A did, with **still not one run marking the
+constant's name**. If the qualifier were the blocker, removing it should have
+widened what gets marked. It did not. So even if the lift is real, "the model
+cannot tell what counts as material" is probably not why.
+
+Settling it costs about 92 runs per arm, 184 in total, roughly 4.6 hours. That
+is worth weighing where the dilution question was not: dilution would have been
+too small to act on even if real, while this one buys a one-sentence contract
+edit that doubles compliance with a rule currently firing a fifth of the time.
+
+**Two arms have now been compared against this baseline and both moved up
+without reaching significance.** Trying a third wording until one clears p < 0.05
+is fishing. Either arm W gets enlarged to a verdict, or the next wording is
+pre-registered with the multiplicity counted.
 
 ---
 
