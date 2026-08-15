@@ -26,6 +26,7 @@ import importlib.util
 import json
 import re
 from collections import Counter
+from itertools import combinations
 from math import comb
 from pathlib import Path
 
@@ -59,6 +60,49 @@ def clopper_pearson(hits: int, total: int, alpha: float = 0.05) -> tuple[float, 
             a, b = (mid, b) if at_most(mid) > alpha / 2 else (a, mid)
         high = (a + b) / 2
     return low, high
+
+
+def rank_separation(left: list[float], right: list[float]) -> dict:
+    """Exact two-sided Mann-Whitney, and whether the two ranges touch at all.
+
+    Computed here rather than imported, for the reason the interval above is:
+    a number a reader will cite has to come from something they can re-run.
+
+    Both figures are printed because at n=5 per arm they are nearly the same
+    fact — complete separation is the only configuration that reaches p < 0.05 —
+    and the overlap is the half a reader can check by eye against the values on
+    the line above. A p-value alone would ask them to trust the arithmetic.
+
+    Exact by enumeration, which is why it refuses rather than approximates past
+    a bounded size: a summary that silently switched to a normal approximation
+    at some batch size would change what its own numbers mean without saying so.
+    """
+    n_left, n_right = len(left), len(right)
+    if not n_left or not n_right:
+        return {"comparable": False, "why": "an arm has no runs"}
+    if n_left + n_right > 20:
+        return {"comparable": False,
+                "why": f"exact enumeration is bounded at 20 runs, got "
+                       f"{n_left + n_right}"}
+
+    def statistic(xs, ys):
+        return sum(1.0 if x > y else 0.5 if x == y else 0.0
+                   for x in xs for y in ys)
+
+    pooled = list(left) + list(right)
+    observed = statistic(left, right)
+    extreme = min(observed, n_left * n_right - observed)
+    hits = total = 0
+    for pick in combinations(range(len(pooled)), n_left):
+        chosen = set(pick)
+        one = [pooled[i] for i in pick]
+        two = [pooled[i] for i in range(len(pooled)) if i not in chosen]
+        value = statistic(one, two)
+        total += 1
+        if min(value, n_left * n_right - value) <= extreme:
+            hits += 1
+    return {"comparable": True, "p_two_sided": hits / total,
+            "ranges_disjoint": max(left) < min(right) or max(right) < min(left)}
 
 
 def in_batch(name: str, scenario_id: str) -> bool:
@@ -236,9 +280,39 @@ def summarise(reports: list[dict]) -> dict:
                               if row["recall"] else None)
         row["missed_by_pair"] = dict(row["missed_by_pair"].most_common())
 
+    # A scenario with a continuous compliance measure is compared on that
+    # measure, never on its pass rate. The threshold that turns 84 Han
+    # characters into `in_chinese: True` throws away precisely what a
+    # sensitivity question needs: a weakened clause that halves the Chinese in
+    # a reply still scores 5 of 5 on the binary and is invisible, while the
+    # counts separate cleanly. Same runs, same cost — at n=5 the binary
+    # resolves a shift of about 80%, the counts about 10%.
+    dose: dict[str, dict] = {}
+    for report in reports:
+        outcome = report["outcome"]
+        if "han_characters" not in outcome:
+            continue
+        row = dose.setdefault(report["scenario"], {})
+        arm = report.get("arm", "a").upper()
+        cell = row.setdefault(arm, {"han": [], "latin": [], "invalid": 0})
+        if report["verdict"] == "invalid":
+            cell["invalid"] += 1
+            continue
+        cell["han"].append(outcome["han_characters"])
+        cell["latin"].append(outcome["latin_letters"])
+    for row in dose.values():
+        reference = row.get("A", {}).get("han") or []
+        for arm, cell in row.items():
+            cell["mean"] = (sum(cell["han"]) / len(cell["han"])
+                            if cell["han"] else None)
+            cell["against_a"] = (
+                rank_separation(reference, cell["han"])
+                if arm != "A" and reference and cell["han"] else None)
+
     return {"scenarios": scenarios,
             "quality": quality,
             "unstated": unstated,
+            "dose": dose,
             "per_turn": {name: {key: (dict(sorted(value.items()))
                                       if isinstance(value, Counter) else value)
                                 for key, value in row.items()}
@@ -307,6 +381,27 @@ def main() -> int:
               f"({row['excluded_invalid']} invalid run(s) excluded)")
         for pair, count in row["missed_by_pair"].items():
             print(f"  missed: {pair} ({count})")
+
+    for name, row in sorted(report.get("dose", {}).items()):
+        print(f"\n{name}, compliance by count (compare these, not the pass "
+              "rate: the binary resolves ~80% at n=5, the counts ~10%)")
+        for arm in sorted(row):
+            cell = row[arm]
+            mean = "—" if cell["mean"] is None else f"{cell['mean']:.1f}"
+            span = (f"{min(cell['han'])}-{max(cell['han'])}" if cell["han"]
+                    else "—")
+            print(f"  arm {arm}  han {cell['han']}  mean {mean}  range {span}"
+                  f"  (latin {cell['latin']})")
+        for arm in sorted(row):
+            against = row[arm].get("against_a")
+            if not against:
+                continue
+            if not against["comparable"]:
+                print(f"  A vs {arm}: not compared — {against['why']}")
+            else:
+                print(f"  A vs {arm}: exact two-sided p = "
+                      f"{against['p_two_sided']:.4f}, ranges "
+                      f"{'disjoint' if against['ranges_disjoint'] else 'overlap'}")
 
     for name, row in report["per_turn"].items():
         print(f"\n{name}, per turn (unit is the turn; turns within a run are "

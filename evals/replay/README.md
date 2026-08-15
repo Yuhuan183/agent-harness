@@ -608,6 +608,20 @@ Complete separation. **The apparatus detects a contract clause being removed**,
 so the nulls elsewhere are about those clauses rather than about a blind
 instrument.
 
+**The number to compare is the Han count, not the pass rate.** The threshold
+that turns 84 characters into `in_chinese: True` discards exactly what a
+sensitivity question needs: a clause weakened until it halves the Chinese in a
+reply still scores 5 of 5 on the binary and is invisible, while the counts
+separate cleanly. Arm A's spread is tiny — 80 to 88, sd 3.1 — so at n=5 per arm
+the binary resolves a shift of about 80% and the counts about 10%, for the same
+runs and the same money. `summarise.py` prints the counts, an exact two-sided
+Mann-Whitney, and whether the ranges come apart, which is the half a reader can
+check by eye.
+
+The 10% is a floor under an optimistic assumption: a real weakened clause adds
+variance as well as shifting the mean — some runs complying fully, some not at
+all — and that variance is what destroys rank separation.
+
 **This is a floor, not a calibration**, and the difference decides how the other
 results may be read. It shows the apparatus is not blind; it says nothing about
 the smallest effect that would still be visible. The language clause's effect is

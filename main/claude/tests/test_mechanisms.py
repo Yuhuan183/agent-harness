@@ -2747,6 +2747,62 @@ class ReplayScenarioTests(unittest.TestCase):
         self.assertNotIn("skill", language)
         self.assertIn("language", language.lower())
 
+    def _summariser(self):
+        return load_module("replay_summarise", self.REPLAY / "summarise.py")
+
+    def test_the_reverse_control_keeps_the_count_not_only_the_verdict(self) -> None:
+        # The threshold that turns 84 Han characters into `in_chinese: True`
+        # discards exactly what a sensitivity question needs: a clause weakened
+        # until it halves the Chinese in a reply still scores 5 of 5 on the
+        # binary and is invisible, while the counts separate cleanly. If the
+        # count ever stops being reported, the next experiment runs on a ruler
+        # this one deliberately un-blunted.
+        module = self._grader()
+        reply = "這個函式回傳費率乘上金額。" * 4 + " See `fee()` in pricing.py."
+        with tempfile.TemporaryDirectory() as temp:
+            outcome = module.grade_x1(
+                Path(temp), {"id": "x1-language-floor"},
+                {1: [{"type": "result", "result": reply}]})
+        self.assertGreater(outcome["han_characters"], 20)
+        self.assertGreater(outcome["latin_letters"], 0)
+        self.assertTrue(outcome["in_chinese"])
+
+    def test_one_quoted_term_does_not_count_as_a_chinese_reply(self) -> None:
+        module = self._grader()
+        with tempfile.TemporaryDirectory() as temp:
+            outcome = module.grade_x1(
+                Path(temp), {"id": "x1-language-floor"},
+                {1: [{"type": "result",
+                      "result": "It returns the fee, i.e. the 費率 times the "
+                                "amount in cents."}]})
+        self.assertFalse(outcome["in_chinese"])
+        self.assertEqual(2, outcome["han_characters"])
+
+    def test_rank_separation_needs_the_ranges_to_come_apart(self) -> None:
+        # At n=5 per arm, complete separation is the only shape that reaches
+        # p < 0.05. A summary that reported the p-value alone would be asking a
+        # reader to trust arithmetic they cannot check against the numbers on
+        # the line above, so both are produced and both are checked here.
+        module = self._summariser()
+        shipped = [85, 80, 83, 88, 86]
+        for label, other, disjoint, significant in (
+            ("removed", [0, 0, 0, 0, 0], True, True),
+            ("dose 0.9", [76, 72, 75, 79, 77], True, True),
+            ("dose 0.95", [81, 76, 79, 84, 82], False, False),
+        ):
+            with self.subTest(case=label):
+                result = module.rank_separation(shipped, other)
+                self.assertTrue(result["comparable"])
+                self.assertEqual(disjoint, result["ranges_disjoint"])
+                self.assertEqual(significant, result["p_two_sided"] < 0.05)
+
+    def test_rank_separation_refuses_instead_of_approximating(self) -> None:
+        module = self._summariser()
+        refused = module.rank_separation(list(range(15)), list(range(15)))
+        self.assertFalse(refused["comparable"])
+        self.assertIn("20", refused["why"])
+        self.assertFalse(module.rank_separation([1, 2], [])["comparable"])
+
     def test_the_arm_swap_refuses_to_stack_on_an_unfinished_one(self) -> None:
         module = load_module("replay_arm", self.REPLAY / "arm.py")
         source = ROOT / "main" / "claude" / "CLAUDE.contract.md"
