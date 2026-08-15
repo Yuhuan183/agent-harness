@@ -22,6 +22,11 @@ count="${2:-5}"
 # so it is part of the directory name — a batch that mixed arms under one name
 # would be unreadable afterwards, and unrecoverable.
 arm="${3:-a}"
+# Which clause the arm removes. Recorded even for arm A, where nothing is
+# swapped: a `meta.json` naming the wrong clause would misfile the run for
+# whoever reads the batch later, and arm A is exactly where nobody would think
+# to check.
+clause="${4:-baton-dispatch}"
 spec="$HERE/scenarios/$scenario.md"
 [ -f "$spec" ] || { echo "no such scenario: $spec" >&2; exit 1; }
 
@@ -52,7 +57,8 @@ for seed in $(seq 1 "$count"); do
   preflight=""
   [ "$arm" = "a" ] || preflight="--preflight"
   # shellcheck disable=SC2086
-  "$HERE/run.py" --scenario "$spec" --out "$out" --arm "$arm" $preflight >&2
+  "$HERE/run.py" --scenario "$spec" --out "$out" --arm "$arm" \
+    --clause "$clause" $preflight >&2
   verdict=$("$HERE/grade.py" --run "$out" > "$out/verdict.json" 2>&1; echo $?)
   detail=$(python3 -c "
 import json, sys

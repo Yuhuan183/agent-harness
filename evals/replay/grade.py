@@ -791,6 +791,47 @@ def grade_q2(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
             "answer_tail": said[-800:]}
 
 
+def grade_x1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
+    """The reverse control: can this apparatus see a clause being removed at all?
+
+    Every arm ever run against this contract has come back null — s11's ninety,
+    `d1`/`d2`'s twenty-one, `q1`'s fifteen. Each of those is equally consistent
+    with "the clause does nothing" and with "this measurement cannot see a
+    clause". Nothing here has ever distinguished the two, and until something
+    does, none of those nulls can be cited for deleting anything.
+
+    So: a clause whose effect nobody doubts, removed through the same code, on
+    the same surface. The request is in English, so answering in the user's
+    language would produce English and only the contract asks otherwise. If the
+    shipped arm replies in Chinese and the stripped arm does not, the apparatus
+    detects clause removal, and the nulls elsewhere are about the clauses. If
+    both arms look the same, the nulls are about the instrument.
+
+    This is a floor, not a calibration. Detecting one large effect says nothing
+    about the smallest effect that would still be visible, and reading it as
+    "the instrument is calibrated" would be the mistake this scenario exists to
+    prevent.
+    """
+    events = [event for index in sorted(turns) if index >= 1
+              for event in turns[index]]
+    said = final_text(turns[max(turns)]) if turns else ""
+    han = len(HAN.findall(said))
+    letters = len(re.findall(r"[A-Za-z]", said))
+    return {"marker_present": bool(said.strip()),
+            "contract_rule": meta.get("contract_rule"),
+            "han_characters": han,
+            "latin_letters": letters,
+            # A reply is in Chinese when it actually is, not when a stray
+            # character survives: identifiers like `fee()` and `pricing.py` are
+            # required to stay English by the same bullet, so a Chinese reply
+            # always carries Latin letters too, and a threshold on Han alone
+            # would call an English reply with one quoted term a win.
+            "in_chinese": han >= 20,
+            "correct": han >= 20,
+            "reply_tail": said[-300:],
+            "observed_not_graded": {"tool_calls": len(tool_calls(events))}}
+
+
 GRADERS = {
     "r1-interrupted-resume": grade_r1,
     "r2-successive-corrections": grade_r2,
@@ -809,6 +850,7 @@ GRADERS = {
     "r3-conflicting-leaves": grade_r3,
     "q1-clause-verdicts": grade_q1,
     "q2-unstated-shape": grade_q2,
+    "x1-language-floor": grade_x1,
 }
 
 
