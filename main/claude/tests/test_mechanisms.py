@@ -2715,6 +2715,38 @@ class ReplayScenarioTests(unittest.TestCase):
                 self.assertFalse(paths.sentinel.exists(),
                                  "sentinel survived a verified restore")
 
+    def test_the_reverse_control_clause_is_removable_from_the_real_contract(self) -> None:
+        # The whole point of a reverse control is that it is the one arm
+        # expected to show an effect, so an arm that silently failed to apply
+        # would be the worst possible failure here: it would look like the
+        # instrument is blind. `variant` refuses a literal that is not present
+        # exactly once, and this checks that refusal never has to fire.
+        arms = load_module(
+            "s11_arms",
+            self.REPLAY.parent / "traps" / "s11-pointer-redundancy" / "arms.py")
+        shipped = (self.REPLAY.parents[1] / "main" / "claude"
+                   / "CLAUDE.contract.md").read_text(encoding="utf-8")
+        stripped = arms.variant(shipped, "language", "b")
+        self.assertLess(len(stripped), len(shipped))
+        self.assertIn("Traditional Chinese", shipped)
+        self.assertNotIn("Traditional Chinese", stripped)
+        self.assertEqual(arms.variant(shipped, "language", "c"), stripped,
+                         "the clause names no skill, so B and C coincide")
+
+    def test_the_manipulation_check_asks_something_that_can_fail(self) -> None:
+        # Asking whether a skill is named is the right question for a pointer
+        # and the wrong one for a rule that names none: `language` would answer
+        # NO in both arms, and a probe that cannot fail is not a probe.
+        arms = load_module(
+            "s11_arms",
+            self.REPLAY.parent / "traps" / "s11-pointer-redundancy" / "arms.py")
+        pointer = arms.probe("baton-dispatch")
+        self.assertIn("baton-dispatch", pointer)
+        self.assertIn("skill", pointer)
+        language = arms.probe("language")
+        self.assertNotIn("skill", language)
+        self.assertIn("language", language.lower())
+
     def test_the_arm_swap_refuses_to_stack_on_an_unfinished_one(self) -> None:
         module = load_module("replay_arm", self.REPLAY / "arm.py")
         source = ROOT / "main" / "claude" / "CLAUDE.contract.md"

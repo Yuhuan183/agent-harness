@@ -56,6 +56,11 @@ def _arms():
     return module
 
 
+def probe(clause: str) -> str:
+    """The manipulation check for this clause, from the module that removed it."""
+    return _arms().probe(clause)
+
+
 def sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 

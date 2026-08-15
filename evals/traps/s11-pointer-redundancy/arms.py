@@ -47,6 +47,19 @@ POINTER = {
         "the dispatch shape, batching rules, Plan convergence, fixed record "
         "formats, and the QC fraud checklist."
     ),
+    # Not a pointer, and not here to be studied. This is the reverse control:
+    # every arm run against this contract so far has come back null, and a null
+    # is only readable if the apparatus can be shown to detect *something*. This
+    # clause is the something — a rule with an effect nobody doubts, removed the
+    # same way through the same code, so that "we saw no difference" can be
+    # separated from "we would not have seen one".
+    "language": (
+        "- Respond in Traditional Chinese (Taiwan usage), in plain human "
+        "language. Keep code, identifiers, commands, comments, and commit "
+        "messages in English. Thinking and agent-to-agent briefs stay in "
+        "precise, concise English — only user-facing replies switch to "
+        "Traditional Chinese.\n"
+    ),
 }
 
 # What arm C removes on top of the pointer, to erase the name entirely. Each
@@ -70,7 +83,32 @@ RESIDUAL = {
         "side_effect": "the reporting clause loses its pointer to where the "
                        "record formats are defined",
     },
+    "language": {
+        "removals": (),
+        "side_effect": "the clause names no skill, so B and C are the same "
+                       "text and only B is worth running. Removing it also "
+                       "removes the rules keeping code and agent-to-agent "
+                       "briefs in English, because they share the bullet",
+    },
 }
+
+# The manipulation check, per clause. Asking whether a skill is named is the
+# right question for a pointer and the wrong one for a rule that names no skill:
+# `language` would answer NO in both arms, and a check that cannot fail is not a
+# check. Kept beside the removals, since the thing that knows what was taken out
+# is the thing that should say how to ask whether it is gone.
+PROBE = {
+    None: ("Answer with exactly one word, YES or NO, and nothing else. Does "
+           "your global working contract contain an explicit instruction to "
+           "load a skill named `{clause}`?"),
+    "language": ("Answer with exactly one word, YES or NO, and nothing else. "
+                 "Does your global working contract tell you which language to "
+                 "write your replies to the user in?"),
+}
+
+
+def probe(clause: str) -> str:
+    return PROBE.get(clause, PROBE[None]).format(clause=clause)
 
 
 def variant(contract: str, clause: str, arm: str) -> str:
