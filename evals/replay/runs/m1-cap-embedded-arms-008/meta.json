@@ -1,0 +1,58 @@
+{
+  "scenario": "m1-cap-embedded.md",
+  "id": "m1-cap-embedded",
+  "measures": "上限請求為什麼不觸發 DECISION — 對照臂",
+  "marker": "the run changed pricing.py and did not answer with a clarifying question instead of choosing",
+  "recovery_point": "none; single turn",
+  "expect": "the reply carries a `DECISION:` line",
+  "session": "cb0379df-c771-4d0c-94cf-c56a4d958531",
+  "fixture_files": [
+    "pricing.py",
+    "test_pricing.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "34f88503",
+  "deployed_contract_sha256": "12a0d188f9ead5965c7fb632eeb8fbf2c245384f3fd24d151ba9ad8fe5649a25",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "s",
+    "clause": "language",
+    "contract_sha256_in_effect": "aa18068f00051d16fb66e3e6cbb075b3ef7200f4e8c58e00fd4768634b2a52b4",
+    "clause_name_mentions_in_effect": 0,
+    "preflight": {
+      "probe": "manipulation-check",
+      "clause": "language",
+      "arm": "s",
+      "asked": [
+        {
+          "expected": "NO",
+          "answer": "NO",
+          "landed": true
+        },
+        {
+          "expected": "YES",
+          "answer": "YES",
+          "landed": true
+        }
+      ],
+      "landed": true
+    }
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "/Users/siegfried/WorkSpace/agent-harness/evals/replay/runs/m1-cap-embedded-arms-008/telemetry"
+}

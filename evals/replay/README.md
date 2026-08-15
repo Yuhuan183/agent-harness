@@ -7,8 +7,8 @@ verification gap from 2026-07-28, and `docs/research/lifecycle-replay.md` set
 four survival criteria a replay result must meet before it may be cited.
 
 This directory closed criterion 2 — a scenario per question with its reach
-marker written before anything ran — and then kept going. **124 runs retained,
-2026-08-12 to 08-15**: 116 in batches, plus seven pilots and one run the
+marker written before anything ran — and then kept going. **150 runs retained,
+2026-08-12 to 08-16**: 141 in batches, plus eight pilots and one run the
 provider aborted, all kept because an invalid run is data about the scenario.
 
 Recount at any time with `ls -d runs/*/ | wc -l`; the figure above was typed by
@@ -28,6 +28,7 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | does deleting the dispatch clause make the *answer* worse? | no — **11/11 clause verdicts in all three arms, 15 runs, 165 judgements, no errors** | the first *result*-quality cell here; turn 1 spells out the dispatch shape, so it bounds the claim |
 | and when the request does not say how to work? | **it never dispatches at all — 0 of 5 — and answers correctly anyway** | so the clause has nothing to act on, and output correctness cannot price it |
 | can this apparatus detect a contract clause being removed at all? | **yes — 5/5 Chinese with the clause, 0/5 without** | the reverse control every null above was waiting on; a floor, not a calibration |
+| does a contract full of clauses make its own rules obeyed less? | no difference found — 3/15 against 5/15 with 83% of the contract deleted | resolving the gap that remains would cost ~688 runs; and both arms are bad |
 
 **Four hypotheses were built and refuted, three of them mine.** That is this
 directory's main output, and Part 7 explains why it had to be.
@@ -641,6 +642,66 @@ Read the `side_effect` field with the result: the language bullet also carries
 the rules keeping code identifiers and agent-to-agent briefs in English, so arm
 B is not "the contract minus one language rule". That is recorded in the table
 rather than left for a reader to reconstruct.
+
+---
+
+## Part 11 — the dilution test, and the only cost that could justify deleting
+
+There are two reasons to delete a resident clause: it is wrong, or the space it
+occupies costs something. The first is a review question. The second has an
+arithmetic answer, and the arithmetic is nearly empty — the contract is 549
+tokens and a pointer clause is 35, which is 0.0035% of a million-token context.
+If tokens are the only cost, the rational threshold is near zero and every
+clause with any effect at all should stay.
+
+The cost that could still justify deletion is attention: eleven clauses that do
+nothing might dilute the two that do. **That had never been measured here.**
+(`r2b` refuted a crowding hypothesis, but a different one — a consequence table
+crowding out the `DECISION:` marker inside a single reply, not contract clauses
+competing with each other. It reads like the same result and is not.)
+
+One experiment answers it for every clause at once, so nobody has to climb a
+dose ladder per clause: does a contract stuffed with rules get its *own* rules
+obeyed less?
+
+```
+arm A   549 tokens, 13 bullets     3/15 complied   20%   CI [0.043, 0.481]
+arm S    93 tokens,  2 bullets     5/15 complied   33%   CI [0.118, 0.616]
+                                   Fisher two-sided p = 0.6817
+pre-registered threshold 10/15; observed 5/15
+30 manipulation checks, all landed
+```
+
+The rule under test is the `DECISION:` marker, chosen because it is *not* at
+ceiling — the language rule is obeyed 100% of the time and has no room to
+improve. Arm S keeps that rule verbatim plus the language rule, which holds the
+reply surface fixed, and drops the other eleven bullets.
+
+**No difference found.** The point estimate does move the way dilution predicts,
+and the intervals overlap almost entirely; two runs in fifteen is not a signal.
+Resolving a gap that size would take **about 344 runs per arm, 688 in total,
+some 17 hours of continuous running** — and a significant result would buy the
+conclusion that deleting 83% of the contract raises one rule's compliance from
+20% to 33%, which per clause is far too small to act on.
+
+**The finding worth having is that both arms are bad.** A 93-token contract
+whose entire content is two bullets, one of them the rule being measured, still
+fails to produce a `DECISION:` line in two runs out of three. The dilution
+hypothesis assumed the rule works and is being crowded out. It is not being
+crowded out; it is not working. That is worth chasing on its own, and it has
+nothing to do with whether any clause gets deleted — a rule that lands a third
+of the time lands a third of the time in a two-line contract.
+
+The manipulation check is two-sided here, and had to be: one question proves the
+eleven bullets left, the other proves the rule under test survived. Without the
+second, deleting the measured rule by accident would look exactly like the
+hypothesis being true.
+
+Arm A spans two dates — seeds 1–5 from 08-13, 6–15 from 08-16, which is why its
+row carries two surface fingerprints. Within arm A that split is 2/5 against
+1/10, Fisher p = 0.242: no evidence of drift, and a free internal control. The
+null between arms cannot be explained away as "run on different days", because
+arm A is itself run on different days and shows nothing either.
 
 ---
 
