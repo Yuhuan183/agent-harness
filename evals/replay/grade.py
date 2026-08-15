@@ -507,6 +507,35 @@ def q1_sheet(said: str, ids: set[str]) -> dict[str, dict]:
     return sheet
 
 
+def leaf_clauses(leaf: Path) -> tuple[set[str], str]:
+    """Every clause id a leaf transcript holds, and the last thing it said.
+
+    Decoded text, never the raw file. In JSONL a newline is the two characters
+    `\\` and `n`, so scanning the bytes reads the id after one as
+    `nK90-b3e9fd5c03` — a token in no document, belonging to no leaf. The bounded
+    id pattern is what surfaced this; the unbounded one returned the id anyway
+    and the fault would have kept its mouth shut.
+    """
+    held, said = set(), ""
+    for line in leaf.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        content = (row.get("message") or {}).get("content")
+        if isinstance(content, str):
+            text = content
+        elif isinstance(content, list):
+            text = "".join(part.get("text", "") for part in content
+                           if isinstance(part, dict))
+        else:
+            continue
+        held |= set(re.findall(CLAUSE_ID, text))
+        if row.get("type") == "assistant":
+            said = text
+    return held, said
+
+
 def q1_leaf_coverage(run: Path) -> dict:
     """How much of its own document each leaf's report actually named.
 
@@ -554,29 +583,7 @@ def q1_leaf_coverage(run: Path) -> dict:
 
     reports = []
     for leaf in leaves:
-        # Decoded text, never the raw file. In JSONL a newline is the two
-        # characters `\` and `n`, so scanning the bytes reads the id after one
-        # as `nK90-b3e9fd5c03` — a token in no document, belonging to no leaf.
-        # The bounded pattern is what surfaced this; the unbounded one returned
-        # the id anyway and the fault would have kept its mouth shut.
-        held, said = set(), ""
-        for line in leaf.read_text(encoding="utf-8",
-                                   errors="replace").splitlines():
-            try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            content = (row.get("message") or {}).get("content")
-            if isinstance(content, str):
-                text = content
-            elif isinstance(content, list):
-                text = "".join(part.get("text", "") for part in content
-                               if isinstance(part, dict))
-            else:
-                continue
-            held |= set(re.findall(CLAUSE_ID, text))
-            if row.get("type") == "assistant":
-                said = text
+        held, said = leaf_clauses(leaf)
         saw = sorted(name for name, ids in documents.items() if ids & held)
         if len(saw) != 1:
             reports.append({"leaf": leaf.stem, "document": None,
@@ -658,6 +665,132 @@ def grade_q1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
             "sheet_tail": said[-800:]}
 
 
+# A line that is a pair and nothing else.
+#
+# The trailing anchor is the whole point. Without it the 2026-08-15 pilot scored
+# 5 of 5 while its answer listed four: the fifth appeared in the prose
+# underneath, in a sentence explaining why it had been left out, and the reader
+# counted the run's own rejection as a claim. The scenario asks for explanations
+# outside the lines, so a line carrying anything past the second id is prose —
+# and what prose says about a pair is recorded separately rather than scored,
+# because an instrument that reads a refusal as an assertion is worse than one
+# that reads nothing.
+PAIR_LINE = re.compile(
+    rf"^[\s>#*_`~|·-]*(?:\d+[.)][\s*_`~-]*)?[`*_]*(?P<left>{CLAUSE_ID})[`*_]*"
+    rf"[\s|]*(?:x|X|×|vs\.?|✕|↔|<->|&|/)[\s|]*[`*_]*(?P<right>{CLAUSE_ID})"
+    rf"[\s`*_|~.,;:·-]*$", re.M)
+PAIR_ANYWHERE = re.compile(
+    rf"(?P<left>{CLAUSE_ID})[\s|]*(?:x|X|×|vs\.?|✕|↔|<->|&|/)[\s|]*"
+    rf"[`*_]*(?P<right>{CLAUSE_ID})")
+
+
+def q2_documents(run: Path) -> dict[str, set[str]]:
+    """Which clause ids each retained authority holds."""
+    found = {}
+    for name in ("spec/policy.md", "ops/runbook.md"):
+        path = run / "workdir" / name
+        if path.exists():
+            found[Path(name).name] = set(
+                re.findall(CLAUSE_ID, path.read_text(encoding="utf-8")))
+    return found
+
+
+def q2_shape(run: Path, turns: dict[int, list[dict]]) -> dict:
+    """What shape the session chose, given a request that did not say.
+
+    Three facts, all from artifacts: did it split the work, did the halves stay
+    apart, and did any one worker end up holding both authorities. The last is
+    the one that matters — a leaf carrying clause ids from both documents was
+    never isolated, whatever the brief claimed, and a session that read both
+    itself has one worker and no isolation at all.
+    """
+    documents = q2_documents(run)
+    dispatches, returned = returned_dispatches(turns.get(1, []))
+    leaves = sorted((run / "subagents").glob("*.jsonl"))
+    holding = []
+    for leaf in leaves:
+        held, _ = leaf_clauses(leaf)
+        saw = sorted(name for name, ids in documents.items() if ids & held)
+        holding.append({"leaf": leaf.stem, "saw": saw})
+    both = [row["leaf"] for row in holding if len(row["saw"]) > 1]
+    apart = [row["leaf"] for row in holding if len(row["saw"]) == 1]
+    return {"dispatched": len(dispatches), "returned": returned,
+            "leaves_seen": len(leaves), "leaves_one_document": len(apart),
+            "leaves_both_documents": len(both),
+            # Isolation as a fact about the transcripts, not about the brief:
+            # at least two workers, each holding one authority, none holding two.
+            "isolated": len(apart) >= 2 and not both,
+            "detail": holding}
+
+
+def grade_q2(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
+    """Does a session that was not told the shape still find the collisions?
+
+    `q1` settled that the resident dispatch clause adds nothing when the request
+    spells the shape out, and could not ask the next question, because its own
+    scoring paid a run for ignoring isolation: its two conflicts are the only
+    items an isolated leaf cannot see, so one reader holding both documents got
+    them for free.
+
+    Here the request says nothing about how, and the five planted contradictions
+    are the kind a coherent single reading dissolves — a reader holding both
+    documents reconciles as it goes, and a reconciled reading has nothing to
+    report. Two reviewers who cannot see each other state their own requirement
+    flatly, and flat statements collide. Three near misses charge for the
+    opposite instinct, so naming every tension in sight scores worse than
+    reading carefully.
+
+    Nothing about dispatching is a marker. Whether the session split the work is
+    the observation, and a marker that demanded it would delete the comparison
+    group.
+    """
+    build = fixtures()
+    key = build.q2_key()
+    conflicts = {tuple(pair) for pair in key["conflicts"]}
+    near = {tuple(pair) for pair in key["near_misses"]}
+    retired = {tuple(pair) for pair in key.get("retired", [])}
+    documents = q2_documents(run)
+    known = set().union(*documents.values()) if documents else set()
+
+    said = final_text(turns[max(turns)]) if turns else ""
+
+    def pairs(pattern) -> set:
+        seen = set()
+        for match in pattern.finditer(said):
+            left, right = match.group("left"), match.group("right")
+            if left in known and right in known and left != right:
+                seen.add(tuple(sorted((left, right))))
+        return seen
+
+    claimed = pairs(PAIR_LINE)
+    discussed = pairs(PAIR_ANYWHERE) - claimed
+
+    found = sorted(claimed & conflicts)
+    false_pairs = sorted(claimed & near)
+    # A retired pair costs nothing either way. Leaving it in `invented` would
+    # keep charging runs for an item the key already conceded.
+    invented = sorted(claimed - conflicts - near - retired)
+    return {"marker_present": bool(said.strip()),
+            "planted": len(conflicts),
+            "recall": len(found),
+            "missed": sorted(conflicts - claimed),
+            "false_pairs": len(false_pairs),
+            "invented": len(invented),
+            "claimed": len(claimed),
+            "retired_claimed": len(claimed & retired),
+            # Named in the prose and kept off the list. Recorded, never scored:
+            # most of these are a run saying why a pair does not belong, which
+            # is the opposite of claiming it.
+            "discussed_not_listed": sorted(discussed),
+            "shape": q2_shape(run, turns),
+            # Everything, and nothing that is not there. Recall is the number
+            # the arms are compared on; this stays the hardest reading, for the
+            # reason the same field carries in `q1`.
+            "correct": (len(found) == len(conflicts) and not false_pairs
+                        and not invented),
+            "answer_tail": said[-800:]}
+
+
 GRADERS = {
     "r1-interrupted-resume": grade_r1,
     "r2-successive-corrections": grade_r2,
@@ -675,6 +808,7 @@ GRADERS = {
     "d2-one-small-edit": grade_dispatch_clause,
     "r3-conflicting-leaves": grade_r3,
     "q1-clause-verdicts": grade_q1,
+    "q2-unstated-shape": grade_q2,
 }
 
 
