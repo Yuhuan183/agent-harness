@@ -7,8 +7,8 @@ verification gap from 2026-07-28, and `docs/research/lifecycle-replay.md` set
 four survival criteria a replay result must meet before it may be cited.
 
 This directory closed criterion 2 — a scenario per question with its reach
-marker written before anything ran — and then kept going. **114 runs retained,
-2026-08-12 to 08-15**: 106 in batches, plus seven pilots and one run the
+marker written before anything ran — and then kept going. **124 runs retained,
+2026-08-12 to 08-15**: 116 in batches, plus seven pilots and one run the
 provider aborted, all kept because an invalid run is data about the scenario.
 
 Recount at any time with `ls -d runs/*/ | wc -l`; the figure above was typed by
@@ -27,6 +27,7 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | do sessions reconcile the dispatches they make? | 15 of 33, swinging 4/5 to 1/5 on identical cells | the least stable thing measured here |
 | does deleting the dispatch clause make the *answer* worse? | no — **11/11 clause verdicts in all three arms, 15 runs, 165 judgements, no errors** | the first *result*-quality cell here; turn 1 spells out the dispatch shape, so it bounds the claim |
 | and when the request does not say how to work? | **it never dispatches at all — 0 of 5 — and answers correctly anyway** | so the clause has nothing to act on, and output correctness cannot price it |
+| can this apparatus detect a contract clause being removed at all? | **yes — 5/5 Chinese with the clause, 0/5 without** | the reverse control every null above was waiting on; a floor, not a calibration |
 
 **Four hypotheses were built and refuted, three of them mine.** That is this
 directory's main output, and Part 7 explains why it had to be.
@@ -581,6 +582,51 @@ and the reader scored it 5 of 5 — it had read the run's own refusal as a claim
 A pair line must now be a pair and nothing else, and a pair named in prose is
 recorded as discussed rather than scored. The `DECISION:` matcher once read
 something present as absent; this read something absent as present.
+
+---
+
+## Part 10 — the reverse control, `x1`
+
+Every arm comparison in this project had come back null: s11's ninety runs,
+`d1`/`d2`'s twenty-one, `q1`'s fifteen, `q2`'s five. Each is equally consistent
+with *the clause does nothing* and with *this measurement cannot see a clause*,
+and nothing had ever told the two apart. That makes every null here
+uncitable — including the ones this directory spent a hundred and twenty runs
+producing.
+
+So: a clause whose effect nobody doubts, removed by the same code, on the same
+surface. The request is in English, so answering in the user's language yields
+English and only the contract asks for Chinese.
+
+```
+arm A (as shipped)     han 85, 80, 83, 88, 86     Chinese 5 of 5
+arm B (clause gone)    han  0,  0,  0,  0,  0     Chinese 0 of 5
+                       manipulation check landed 5 of 5
+```
+
+Complete separation. **The apparatus detects a contract clause being removed**,
+so the nulls elsewhere are about those clauses rather than about a blind
+instrument.
+
+**This is a floor, not a calibration**, and the difference decides how the other
+results may be read. It shows the apparatus is not blind; it says nothing about
+the smallest effect that would still be visible. The language clause's effect is
+enormous — nothing against eighty-five Han characters — and `baton-dispatch`'s,
+if it exists, is plainly far smaller. The nulls now read as *no effect of this
+magnitude*, and what that magnitude is has not been measured. Reading this as
+"the instrument is calibrated" is the mistake the scenario exists to prevent.
+
+Two things changed to make it possible, and both outlive it. The manipulation
+check now takes its question from `arms.py` per clause: the old wording asked
+whether a *skill* was named, which a clause naming no skill answers NO to in
+both arms, and a check that cannot fail is not a check. And `batch.sh` records
+which clause an arm removes even for arm A, where nothing is swapped and
+therefore nobody would think to check that `meta.json` names the right one.
+
+Read the `side_effect` field with the result: the language bullet also carries
+the rules keeping code identifiers and agent-to-agent briefs in English, so arm
+B is not "the contract minus one language rule". That is recorded in the table
+rather than left for a reader to reconstruct.
 
 ---
 

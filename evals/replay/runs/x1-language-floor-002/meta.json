@@ -1,0 +1,40 @@
+{
+  "scenario": "x1-language-floor.md",
+  "id": "x1-language-floor",
+  "measures": "反向對照 — 拿掉一條契約子句, 這套量測面看不看得見",
+  "marker": "the run produced a reply",
+  "recovery_point": "none; single turn",
+  "expect": "the reply is in Traditional Chinese. The request is in English, so matching the user would produce English; only the contract asks otherwise, and the arm with that clause removed is expected to fail this. That failure is the measurement, not a defect",
+  "session": "7aa946e7-4a8c-4fd0-849c-560438292c93",
+  "fixture_files": [
+    "pricing.py",
+    "test_pricing.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "6ae95c5c",
+  "deployed_contract_sha256": "12a0d188f9ead5965c7fb632eeb8fbf2c245384f3fd24d151ba9ad8fe5649a25",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "a",
+    "clause": "language",
+    "contract_sha256_in_effect": "12a0d188f9ead5965c7fb632eeb8fbf2c245384f3fd24d151ba9ad8fe5649a25",
+    "clause_name_mentions_in_effect": 0
+  },
+  "target": null,
+  "contract_rule": "回答用繁體中文",
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "/Users/siegfried/WorkSpace/agent-harness/evals/replay/runs/x1-language-floor-002/telemetry"
+}
