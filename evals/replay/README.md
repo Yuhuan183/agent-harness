@@ -7,8 +7,8 @@ verification gap from 2026-07-28, and `docs/research/lifecycle-replay.md` set
 four survival criteria a replay result must meet before it may be cited.
 
 This directory closed criterion 2 — a scenario per question with its reach
-marker written before anything ran — and then kept going. **165 runs retained,
-2026-08-12 to 08-16**: 156 in batches, plus eight pilots and one run the
+marker written before anything ran — and then kept going. **319 runs retained,
+2026-08-12 to 08-16**: 310 in batches, plus eight pilots and one run the
 provider aborted, all kept because an invalid run is data about the scenario.
 
 Recount at any time with `ls -d runs/*/ | wc -l`; the figure above was typed by
@@ -30,7 +30,7 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | can this apparatus detect a contract clause being removed at all? | **yes — 5/5 Chinese with the clause, 0/5 without** | the reverse control every null above was waiting on; a floor, not a calibration |
 | does a contract full of clauses make its own rules obeyed less? | no difference found — 3/15 against 5/15 with 83% of the contract deleted | resolving the gap that remains would cost ~688 runs; and both arms are bad |
 | when a rule fires a fifth of the time, was there anything to mark? | **yes — 30 of 30 runs made the same unforced choice, 8 said so** | computed from retained workdirs, no runs spent |
-| does taking the judgement call out of that rule help? | 3/15 → 7/15, p = 0.245 — **not shown** at the pre-registered threshold | and the rewording did not widen what gets marked, which argues against the mechanism |
+| does taking the judgement call out of that rule help? | **yes — 14/92 against 44/91, p = 0.0000014** | the one result here big enough to act on; scope is a single scenario |
 
 **Four hypotheses were built and refuted, three of them mine.** That is this
 directory's main output, and Part 7 explains why it had to be.
@@ -749,25 +749,56 @@ arm W   an applicable test       7/15   47%   CI [0.213, 0.734]
                                  Fisher p = 0.2451, threshold was 10/15
 ```
 
-**Not shown, by the rule written before the run.** The point estimate more than
-doubles and n=15 cannot separate that from noise.
+Not shown at n=15, so the arm was enlarged to a verdict rather than a third
+wording being tried — with the bias that creates written down first: the
+decision to continue came *after* seeing 3/15 against 7/15, which is optional
+continuation and inflates type-I error. It cannot be undone, so n was fixed at
+92 per arm from the observed effect, with no interim look and one analysis.
 
-One piece of qualitative evidence cuts against the mechanism, though. The new
-wording explicitly covers naming — *any* choice the request did not specify —
-and arm W marks the same things arm A did, with **still not one run marking the
-constant's name**. If the qualifier were the blocker, removing it should have
-widened what gets marked. It did not. So even if the lift is real, "the model
-cannot tell what counts as material" is probably not why.
+```
+primary     arm A 14/92 (15%)   arm W 44/91 (48%)   Fisher p = 0.0000014
+secondary   new runs only, 11/77 (14%) against 37/76 (49%)   p = 0.0000050
+the first 15                     3/15 (20%) against 7/15 (47%)   p = 0.245
+95% intervals   A [0.086, 0.242]   W [0.377, 0.591]   disjoint
+```
 
-Settling it costs about 92 runs per arm, 184 in total, roughly 4.6 hours. That
-is worth weighing where the dilution question was not: dilution would have been
-too small to act on even if real, while this one buys a one-sentence contract
-edit that doubles compliance with a rule currently firing a fifth of the time.
+**The secondary analysis says the same thing as the primary**, which is exactly
+what the optional-continuation caveat needed: the effect is just as strong in
+the runs collected after the decision to continue. What was seen at n=15 was not
+a flattering slice of noise.
 
-**Two arms have now been compared against this baseline and both moved up
-without reaching significance.** Trying a third wording until one clears p < 0.05
-is fishing. Either arm W gets enlarged to a verdict, or the next wording is
-pre-registered with the multiplicity counted.
+**One run was refused, not lost.** Seed 35's second probe answered NO where YES
+was expected, so `run.py` aborted before paying for it — the two-sided check
+doing its job. But that mechanism could preferentially drop arm-W runs that
+would have failed to mark, so the worst case is computed rather than waved at:
+counting it as a failure gives 44/92 and **p = 0.0000029**. 91 contract swaps,
+91 hash-verified restores, no failures.
+
+**What changed is the firing rate, not the rule's reach.**
+
+```
+what the marks talk about        arm A (14)     arm W (44)
+  module constant                    10             34
+  float / return type                 9             30
+  where the cap goes                  5             20
+  the constant's NAME                 1  (7%)        3  (7%)
+```
+
+Identical composition, down to the awkward cell: the new wording explicitly
+covers naming and naming is marked in 7% of marks either way. So the mechanism
+is not "the model cannot tell what counts as material" — its boundary is the
+same in both arms. A rule you must first make a judgement to apply is easier to
+skip than one you can simply apply, and when it gets skipped the boundary never
+comes up.
+
+That corrects what this section said at n=15. "The reach did not widen" holds at
+n=91; "so the qualifier is probably not the cause" does not. The qualifier is
+the cause, and it acts on whether the rule is reached rather than on whether it
+is understood.
+
+**Scope**: one scenario, a small feature request. Whether it holds for other
+request shapes is unmeasured, and `r2` — where the lapse was first found, across
+five turns — is the obvious place to check next.
 
 ---
 
