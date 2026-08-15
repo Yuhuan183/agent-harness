@@ -2803,6 +2803,44 @@ class ReplayScenarioTests(unittest.TestCase):
         self.assertIn("20", refused["why"])
         self.assertFalse(module.rank_separation([1, 2], [])["comparable"])
 
+    def _arms(self):
+        return load_module(
+            "s11_arms",
+            self.REPLAY.parent / "traps" / "s11-pointer-redundancy" / "arms.py")
+
+    def test_the_slim_contract_keeps_the_rule_under_test_verbatim(self) -> None:
+        # The failure that would look exactly like the hypothesis being true:
+        # deleting the rule whose compliance is being measured, and reading the
+        # resulting collapse as dilution.
+        arms = self._arms()
+        shipped = (self.REPLAY.parents[1] / "main" / "claude"
+                   / "CLAUDE.contract.md").read_text(encoding="utf-8")
+        slim = arms.variant(shipped, "language", "s")
+        self.assertIn(arms.DECISION_BULLET, slim)
+        self.assertIn(arms.POINTER["language"], slim)
+        self.assertNotIn("baton-dispatch", slim)
+        self.assertNotIn("provider-routing", slim)
+        self.assertLess(len(slim.split()), len(shipped.split()) / 4,
+                        "the manipulation is supposed to be most of the file")
+
+    def test_a_reworded_contract_stops_the_slim_arm_rather_than_guessing(self) -> None:
+        arms = self._arms()
+        reworded = ("# Claude Code — Global Contract\n## Working agreement\n\n"
+                    "- Mark material choices somehow.\n")
+        with self.assertRaises(SystemExit):
+            arms.variant(reworded, "language", "s")
+
+    def test_the_slim_arm_probes_can_fail_in_both_directions(self) -> None:
+        # One question proves the removal landed; the other proves the rule
+        # under test survived it. A single-question check here would pass while
+        # measuring nothing.
+        module = load_module("replay_arm", self.REPLAY / "arm.py")
+        asked = module.probes("language", "s")
+        self.assertEqual(2, len(asked))
+        self.assertEqual({"NO", "YES"}, {expected for _, expected in asked})
+        self.assertEqual([("YES")], [e for _, e in module.probes("x", "a")])
+        self.assertEqual([("NO")], [e for _, e in module.probes("x", "b")])
+
     def test_the_arm_swap_refuses_to_stack_on_an_unfinished_one(self) -> None:
         module = load_module("replay_arm", self.REPLAY / "arm.py")
         source = ROOT / "main" / "claude" / "CLAUDE.contract.md"
