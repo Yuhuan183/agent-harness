@@ -200,8 +200,45 @@ def summarise(reports: list[dict]) -> dict:
                        if row["scores"] else None)
         row["wrong_by_clause"] = dict(row["wrong_by_clause"].most_common())
 
+    # `q2` is scored on recall of planted contradictions, and its shape columns
+    # are half the point: the request does not say how to work, so how the
+    # session chose to work is data. Shape and score are printed together
+    # because the pre-registered reading needs both — a difference in recall
+    # with no difference in shape means something other than the dispatch moved.
+    unstated: dict[str, dict] = {}
+    for report in reports:
+        outcome = report["outcome"]
+        if "recall" not in outcome:
+            continue
+        name = report["scenario"]
+        if report.get("arm", "a") != "a":
+            name = f"{name} [arm {report['arm'].upper()}]"
+        row = unstated.setdefault(name, {"planted": outcome["planted"],
+                                         "recall": [], "false_pairs": [],
+                                         "invented": [], "dispatched": [],
+                                         "isolated": 0, "held_both": 0,
+                                         "excluded_invalid": 0,
+                                         "missed_by_pair": Counter()})
+        if report["verdict"] == "invalid":
+            row["excluded_invalid"] += 1
+            continue
+        shape = outcome["shape"]
+        row["recall"].append(outcome["recall"])
+        row["false_pairs"].append(outcome["false_pairs"])
+        row["invented"].append(outcome["invented"])
+        row["dispatched"].append(shape["dispatched"])
+        row["isolated"] += 1 if shape["isolated"] else 0
+        row["held_both"] += shape["leaves_both_documents"]
+        for pair in outcome["missed"]:
+            row["missed_by_pair"][" x ".join(pair)] += 1
+    for row in unstated.values():
+        row["mean_recall"] = (sum(row["recall"]) / len(row["recall"])
+                              if row["recall"] else None)
+        row["missed_by_pair"] = dict(row["missed_by_pair"].most_common())
+
     return {"scenarios": scenarios,
             "quality": quality,
+            "unstated": unstated,
             "per_turn": {name: {key: (dict(sorted(value.items()))
                                       if isinstance(value, Counter) else value)
                                 for key, value in row.items()}
@@ -256,6 +293,20 @@ def main() -> int:
               f"holding both documents: {row['leaves_saw_both']}")
         for clause, count in row["wrong_by_clause"].items():
             print(f"  missed: {clause} ({count})")
+
+    for name, row in sorted(report.get("unstated", {}).items()):
+        mean = "—" if row["mean_recall"] is None else f"{row['mean_recall']:.2f}"
+        runs = len(row["recall"])
+        print(f"\n{name}, planted contradictions found (the request never said "
+              "how to work, so the shape below is data, not a marker)")
+        print(f"  recall: {row['recall']} of {row['planted']}, mean {mean}")
+        print(f"  claimed a near miss: {row['false_pairs']}, "
+              f"invented a pair: {row['invented']}")
+        print(f"  dispatched: {row['dispatched']} — isolated {row['isolated']} "
+              f"of {runs}, leaves holding both documents {row['held_both']} "
+              f"({row['excluded_invalid']} invalid run(s) excluded)")
+        for pair, count in row["missed_by_pair"].items():
+            print(f"  missed: {pair} ({count})")
 
     for name, row in report["per_turn"].items():
         print(f"\n{name}, per turn (unit is the turn; turns within a run are "

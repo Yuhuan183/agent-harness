@@ -2983,6 +2983,140 @@ class ReplayScenarioTests(unittest.TestCase):
         self.assertEqual(["K90-0123456789"],
                          re.findall(module.CLAUSE_ID, "see K90-0123456789 now"))
 
+    def _q2_run(self, temp: str, answer: str, leaves: dict | None = None,
+                dispatches: int = 0) -> tuple:
+        build = load_module("replay_build", self.REPLAY / "fixtures" / "build.py")
+        run = Path(temp)
+        build.build("q2-unstated-shape", run / "workdir")
+        (run / "subagents").mkdir(exist_ok=True)
+        for name, text in (leaves or {}).items():
+            (run / "subagents" / f"{name}.jsonl").write_text(
+                json.dumps({"type": "assistant", "message": {"content": [
+                    {"type": "text", "text": text}]}}) + "\n", encoding="utf-8")
+        first = []
+        for index in range(dispatches):
+            ident = f"t{index}"
+            first.append({"message": {"content": [
+                {"type": "tool_use", "name": "Agent", "id": ident,
+                 "input": {"prompt": "review"}}]}})
+            first.append({"message": {"content": [
+                {"type": "tool_result", "tool_use_id": ident}]}})
+        return run, build.q2_key(), {1: first,
+                                     2: [{"type": "result", "result": answer}]}
+
+    def test_the_pair_reader_takes_the_separators_a_reply_writes(self) -> None:
+        module = self._grader()
+        with tempfile.TemporaryDirectory() as temp:
+            run, key, _ = self._q2_run(temp, "")
+            forms = ["{} x {}", "- **{}** vs {}", "| `{}` | ↔ | {} |",
+                     "3. {} × {}", "{} & {}"]
+            answer = "\n".join(forms[index % len(forms)].format(*pair)
+                               for index, pair in enumerate(key["conflicts"]))
+            outcome = module.grade_q2(run, {"id": "q2-unstated-shape"},
+                                      {1: [], 2: [{"type": "result",
+                                                   "result": answer}]})
+        self.assertEqual(len(key["conflicts"]), outcome["recall"],
+                         outcome["missed"])
+        self.assertEqual((0, 0), (outcome["false_pairs"], outcome["invented"]))
+        self.assertTrue(outcome["correct"])
+
+    def test_a_pair_a_reply_argues_against_is_not_a_claim(self) -> None:
+        # The 2026-08-15 pilot listed four pairs and explained underneath why a
+        # fifth did not belong. The reader counted that explanation as the fifth
+        # claim and scored the run 5 of 5. An instrument that reads a refusal as
+        # an assertion is worse than one that reads nothing.
+        module = self._grader()
+        with tempfile.TemporaryDirectory() as temp:
+            run, key, _ = self._q2_run(temp, "")
+            listed = key["conflicts"][:-1]
+            rejected = key["conflicts"][-1]
+            answer = ("\n".join(f"{left} x {right}" for left, right in listed)
+                      + f"\n\n`{rejected[0]} x {rejected[1]}` 沒有列進去, "
+                        "它只在某個讀法下才互斥, 不是真互斥。")
+            outcome = module.grade_q2(run, {"id": "q2-unstated-shape"},
+                                      {1: [], 2: [{"type": "result",
+                                                   "result": answer}]})
+        self.assertEqual(len(listed), outcome["recall"])
+        self.assertEqual([tuple(rejected)], outcome["missed"])
+        self.assertEqual([tuple(rejected)], outcome["discussed_not_listed"],
+                         "recorded as discussed, never scored as claimed")
+
+    def test_naming_every_pair_in_sight_does_not_score_well(self) -> None:
+        # The failure mode this fixture's near misses exist for. Recall alone
+        # would hand full marks to a reply that listed the whole cross product.
+        module = self._grader()
+        with tempfile.TemporaryDirectory() as temp:
+            run, key, _ = self._q2_run(temp, "")
+            documents = module.q2_documents(run)
+            everything = "\n".join(
+                f"{left} x {right}"
+                for left in sorted(documents["policy.md"])
+                for right in sorted(documents["runbook.md"]))
+            outcome = module.grade_q2(run, {"id": "q2-unstated-shape"},
+                                      {1: [], 2: [{"type": "result",
+                                                   "result": everything}]})
+        self.assertEqual(len(key["conflicts"]), outcome["recall"])
+        self.assertEqual(len(key["near_misses"]), outcome["false_pairs"])
+        self.assertEqual(49 - len(key["conflicts"]) - len(key["near_misses"])
+                         - len(key["retired"]), outcome["invented"])
+        self.assertEqual(len(key["retired"]), outcome["retired_claimed"],
+                         "a retired pair is charged for in neither direction")
+        self.assertFalse(outcome["correct"])
+
+    def test_isolation_is_read_from_the_transcripts_not_from_the_brief(self) -> None:
+        module = self._grader()
+        with tempfile.TemporaryDirectory() as temp:
+            run, key, _ = self._q2_run(temp, "")
+            both = "\n".join(
+                (run / "workdir" / name).read_text(encoding="utf-8")
+                for name in ("spec/policy.md", "ops/runbook.md"))
+            one = (run / "workdir" / "spec" / "policy.md").read_text(
+                encoding="utf-8")
+            run, key, turns = self._q2_run(
+                temp, "", leaves={"agent-a1": both, "agent-a2": one},
+                dispatches=2)
+            shape = module.q2_shape(run, turns)
+        self.assertEqual(2, shape["dispatched"])
+        self.assertEqual(1, shape["leaves_both_documents"])
+        self.assertFalse(shape["isolated"],
+                         "two dispatches are not two isolated reviewers")
+
+    def test_a_run_that_never_dispatched_is_still_valid(self) -> None:
+        # Requiring a dispatch would delete the comparison group: whether the
+        # session split the work is the observation here, not the marker.
+        module = self._grader()
+        with tempfile.TemporaryDirectory() as temp:
+            run, key, _ = self._q2_run(temp, "")
+            answer = "\n".join(" x ".join(pair) for pair in key["conflicts"])
+            outcome = module.grade_q2(run, {"id": "q2-unstated-shape"},
+                                      {1: [], 2: [{"type": "result",
+                                                   "result": answer}]})
+        self.assertTrue(outcome["marker_present"])
+        self.assertEqual(0, outcome["shape"]["dispatched"])
+        self.assertFalse(outcome["shape"]["isolated"])
+        self.assertTrue(outcome["correct"])
+
+    def test_the_q2_key_pairs_one_authority_against_the_other(self) -> None:
+        build = load_module("replay_build", self.REPLAY / "fixtures" / "build.py")
+        key = build.q2_key()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            build.build("q2-unstated-shape", root)
+            documents = {
+                name: (root / path).read_text(encoding="utf-8")
+                for name, path in (("policy", "spec/policy.md"),
+                                   ("runbook", "ops/runbook.md"))}
+        conflicts = {tuple(pair) for pair in key["conflicts"]}
+        near = {tuple(pair) for pair in key["near_misses"]}
+        self.assertEqual(set(), conflicts & near,
+                         "a pair cannot be both a collision and a near miss")
+        for pair in conflicts | near:
+            with self.subTest(pair=pair):
+                sides = sorted(name for name, text in documents.items()
+                               for clause in pair if clause in text)
+                self.assertEqual(["policy", "runbook"], sorted(set(sides)),
+                                 "every pair crosses the two authorities")
+
     def test_the_answer_key_is_tied_to_the_documents_it_grades(self) -> None:
         # A key that drifted from the fixture would grade a document nobody
         # read. Both sides are checked here: every clause the key names is

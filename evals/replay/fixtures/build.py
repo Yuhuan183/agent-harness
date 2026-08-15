@@ -259,11 +259,177 @@ def q1_key() -> dict[str, dict]:
             for clause, (label, partner) in Q1_KEY.items()}
 
 
+def build_q2(root: Path) -> list[str]:
+    """Two authorities that contradict each other five times, and never say so.
+
+    `q1` answered its question and could not answer the next one: its turn 1
+    dictates the dispatch shape — two reviewers, one document each, isolated —
+    so a resident clause about dispatch has nothing left to contribute, and the
+    three arms tied at 11 of 11. Asking whether the clause matters needs a
+    request that leaves the shape to the session.
+
+    That immediately breaks `q1`'s way of scoring. Its two conflicts are the
+    only items an isolated leaf cannot label, so a run that ignores isolation
+    and reads both documents itself finds them trivially: the criterion pays for
+    the wrong behaviour. Nothing fixes that by making the reasoning harder,
+    because isolation subtracts information and never adds any — one reader with
+    everything can always simulate any split.
+
+    What isolation actually buys is independence, so that is what this fixture
+    charges for. Five contradictions are planted, one blatant and four that a
+    single reader smooths over precisely by being coherent: reading both
+    documents at once, the natural act is to reconcile as you go, and a
+    reconciled reading reports no contradiction. Two reviewers who cannot see
+    each other each state their own requirement flatly, and flat statements
+    collide where harmonised ones do not.
+
+    Three near misses are planted against the same instinct in the other
+    direction — pairs that look mutually exclusive and are not — so that
+    reporting every tension scores badly.
+    """
+    module = '''"""Outbound delivery for settled payments."""
+
+MAX_ATTEMPTS = 5
+BACKOFF_MS = 250
+
+
+def deliver(send, payload, deadline, dead_letter):
+    """Try `send` until it succeeds, the budget runs out, or `deadline` passes."""
+    last = None
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            return send(payload)
+        except TimeoutError as failure:
+            last = failure
+    dead_letter(payload)
+    raise last
+'''
+    policy = f'''# Settled payments: filed compliance policy
+
+Clause {token("PL", 1)}: an outbound delivery must not exceed **3** attempts
+before the payload is surrendered to the dead-letter queue. The attempt count is
+filed with the regulator; changing it is a filing amendment.
+
+Clause {token("PL", 2)}: `deliver` must write an audit-log entry for an attempt
+**before** that attempt is made. An entry written afterwards does not evidence
+the attempt it describes.
+
+Clause {token("PL", 3)}: once the payload has been surrendered to the
+dead-letter queue, that handoff is the terminal event. The failure **must not**
+propagate to the caller.
+
+Clause {token("PL", 4)}: a payload written to the dead-letter queue must be
+encrypted at rest before the write returns.
+
+Clause {token("PL", 5)}: retries must stop the moment the caller's deadline has
+passed. A delivery attempt begun after the deadline is an unauthorised charge.
+
+Clause {token("PL", 6)}: backoff between attempts is at the implementer's
+discretion. This policy neither requires a delay nor forbids one.
+
+Clause {token("PL", 7)}: `deliver` must never write payload contents to any log.
+'''
+    runbook = f'''# Gateway runbook: settled payments
+
+Step {token("RB", 1)}: the upstream gateway drops the first connection of any
+idle pool. Delivery must therefore make **at least 5** attempts before failover
+is declared, or the on-call page fires on a healthy gateway.
+
+Step {token("RB", 2)}: the delivery hot path performs no synchronous IO other
+than the send itself. Audit and metrics are batched and flushed after the call
+returns; anything else adds latency the gateway reads as backpressure.
+
+Step {token("RB", 3)}: the caller must receive the raised exception when a
+delivery gives up. That exception is what pages on-call; a delivery that returns
+quietly is a silent failure and the page never fires.
+
+Step {token("RB", 4)}: the dead-letter drain reads each entry's payload in
+plaintext to classify it. An entry whose payload it cannot parse is dropped on
+the floor.
+
+Step {token("RB", 5)}: every delivery completes its full attempt budget before
+failover is declared, **even if the caller's deadline has already passed**. A
+partial budget makes the gateway's health metric unreadable.
+
+Step {token("RB", 6)}: consecutive attempts must be at least 200 ms apart. The
+gateway's rate limiter blackholes a pool that retries faster than that.
+
+Step {token("RB", 7)}: the record that reaches the on-call page must carry the
+number of attempts that were made.
+'''
+    return [_write(root, "payments/deliver.py", module),
+            _write(root, "spec/policy.md", policy),
+            _write(root, "ops/runbook.md", runbook)]
+
+
+# The five contradictions, and what each one costs a reader who reconciles.
+#
+# Only the first is visible at a glance, and it is the control: everything that
+# reads both documents at all should find `3` against `at least 5`. The other
+# four are the measurement. Each one has a reading that dissolves it, and a
+# single agent holding both documents is the reader most likely to take it —
+# "audit can be batched", "the DLQ handoff can still raise", "encrypt after the
+# drain reads it", "the deadline is generous in practice". None of those
+# readings survive the two clauses being stated flatly and put side by side.
+Q2_CONFLICTS = [
+    (("PL", 1), ("RB", 1)),   # at most 3 attempts / at least 5 attempts
+    (("PL", 2), ("RB", 2)),   # audit before the attempt / no IO in the hot path
+    (("PL", 3), ("RB", 3)),   # must not reach the caller / must reach it
+    (("PL", 5), ("RB", 5)),   # stop at the deadline / finish the budget anyway
+]
+
+# Planted, contested, retired — 2026-08-15, before any arm was compared.
+#
+# Encryption at rest against a drain that reads plaintext. The pilot rejected it
+# and was right the first time: the step said the drain routed "by header", and
+# a plaintext header over an encrypted payload satisfies both. The step was
+# rewritten to name the payload, and four of the five arm-A runs rejected it
+# again, on a reading the first wording had not even offered — a drain holding
+# the key reads plaintext, and nothing in either document forbids that.
+#
+# Five independent readings converging on the same argument is the answer key
+# being wrong, not five runs being wrong. Retired rather than deleted, and
+# retired before any arm comparison, which is the only time retirement is
+# honest. Chasing a third wording would be contriving a contradiction until the
+# model stops finding the way out.
+Q2_RETIRED = [
+    (("PL", 4), ("RB", 4)),   # encrypted at rest / drained as plaintext
+]
+
+# Pairs that look mutually exclusive and are not. They exist so that reporting
+# every tension in sight scores worse than reading carefully: a permission is
+# not a prohibition, a count is not content, and two clauses about two different
+# objects do not meet.
+Q2_NEAR_MISSES = [
+    (("PL", 6), ("RB", 6)),   # discretion over backoff / a 200 ms floor
+    (("PL", 7), ("RB", 7)),   # no payload contents logged / log the count
+    (("PL", 5), ("RB", 6)),   # stop at the deadline / wait 200 ms first
+]
+
+
+def _pairs(rows) -> list[list[str]]:
+    return [sorted((token(*left), token(*right))) for left, right in rows]
+
+
+def q2_key() -> dict[str, list[list[str]]]:
+    """The key, resolved to the tokens this fixture actually wrote.
+
+    A retired pair scores nothing in either direction: it is not a collision a
+    run can be credited for, and not a near miss it can be charged for. The
+    clauses stay in the documents, because removing them would change the
+    corpus every earlier run was measured against.
+    """
+    return {"conflicts": _pairs(Q2_CONFLICTS),
+            "near_misses": _pairs(Q2_NEAR_MISSES),
+            "retired": _pairs(Q2_RETIRED)}
+
+
 BUILDERS = {
     "r1-interrupted-resume": build_r1,
     "r2-successive-corrections": build_r2,
     "r3-conflicting-leaves": build_r3,
     "q1-clause-verdicts": build_q1,
+    "q2-unstated-shape": build_q2,
 }
 
 
