@@ -32,6 +32,12 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
+# `r2`'s pre-registered primary endpoint. A constant rather than a literal
+# because the one thing that must not happen to a pre-registered endpoint is
+# for it to move quietly once the counts are visible: named here, a change to
+# it shows up in a diff.
+PRIMARY_TURN = 3
+
 
 def clopper_pearson(hits: int, total: int, alpha: float = 0.05) -> tuple[float, float]:
     """Exact binomial interval, by bisection on the tail sums."""
@@ -60,6 +66,40 @@ def clopper_pearson(hits: int, total: int, alpha: float = 0.05) -> tuple[float, 
             a, b = (mid, b) if at_most(mid) > alpha / 2 else (a, mid)
         high = (a + b) / 2
     return low, high
+
+
+def fisher_exact(a: int, b: int, c: int, d: int) -> float:
+    """Two-sided Fisher exact on a 2x2, by summing the tables no likelier.
+
+    Every Fisher p-value this project has published was worked out off to the
+    side and typed in, which is exactly the hand-transcription this module's
+    docstring exists to forbid. It is here now because `r2`'s pre-registered
+    primary is a Fisher test, and a pre-registered test that only exists in
+    prose can be quietly reinterpreted once the counts are in.
+
+    Two-sided in the conventional sense — the sum of every table whose
+    hypergeometric probability does not exceed the observed one, not twice the
+    smaller tail. The four numbers this repo already published are the
+    regression test: 5/5 vs 1/5 gives 0.0476, 5/5 vs 0/5 gives 0.0079, 3/15 vs
+    5/15 gives 0.6817, and the `r2` pre-registration's 0/10 vs 5/10 gives
+    0.0325 (written there, before any data, as 0.033).
+    """
+    n = a + b + c + d
+    if n == 0:
+        return 1.0
+    row, col = a + b, a + c
+
+    def probability(hits: int) -> float:
+        return comb(row, hits) * comb(n - row, col - hits) / comb(n, col)
+
+    observed = probability(a)
+    # A floating-point tie is a tie: without the slack, the mirror image of the
+    # observed table drops out of the sum and a symmetric 2x2 stops being
+    # symmetric.
+    return sum(p for p in (probability(hits)
+                           for hits in range(max(0, col - (n - row)),
+                                             min(row, col) + 1))
+               if p <= observed * (1 + 1e-9))
 
 
 def rank_separation(left: list[float], right: list[float]) -> dict:
@@ -193,6 +233,13 @@ def summarise(reports: list[dict]) -> dict:
         name = report["scenario"]
         if not name.startswith(("r2-", "r2b-", "r2c-", "m1-", "m2-", "m3-")):
             continue
+        # Arms are separated here for the same reason `r2b` is: an arm exists to
+        # be compared against its control, and averaging the two into one column
+        # would dilute the manipulation with itself. Every other block below
+        # already split on arm; this one did not, and got away with it only
+        # while no arm had ever been run on a per-turn scenario.
+        if report.get("arm", "a") != "a":
+            name = f"{name} [arm {report['arm'].upper()}]"
         row = per_turn.setdefault(name, {"reached": Counter(), "lapsed": Counter(),
                                          "tabled": Counter(), "first_lapse": []})
         outcome = report["outcome"]
@@ -203,6 +250,59 @@ def summarise(reports: list[dict]) -> dict:
         for index in outcome.get("turns_with_consequence_table", []):
             row["tabled"][index] += 1
         row["first_lapse"].append(outcome.get("first_lapse"))
+
+    # `r2`'s reword check, in the shape it was pre-registered in on 2026-08-16
+    # and written down before the batch had finished landing — the point of a
+    # pre-registered test is lost if the code for it is authored while looking
+    # at the counts it will produce.
+    #
+    # Primary is turn 3 alone, at run level: it is this directory's most durable
+    # failure (20 of 20 across four scenarios), it is a per-run binary and so
+    # sidesteps the dependence between turns of one run, and it has room to move
+    # that the 60% overall rate does not.
+    #
+    # A run that never reached turn 3 is not in the denominator. That is not a
+    # fresh choice — `docs/research/lifecycle-replay.md` already forbids reading
+    # an unreached run as evidence in either direction — but it is counted and
+    # named, because a denominator that shrinks silently is the failure the rule
+    # is there to prevent.
+    reword: dict[str, dict] = {}
+    for report in reports:
+        if not report["scenario"].startswith("r2-successive-corrections"):
+            continue
+        outcome = report["outcome"]
+        if "turns_reached" not in outcome:
+            continue
+        arms = reword.setdefault(report["scenario"], {"arms": {}})
+        cell = arms["arms"].setdefault(report.get("arm", "a"), {
+            "runs": 0, "reached_primary": 0, "marked_primary": 0,
+            "never_reached_primary": [], "fractions": []})
+        reached = outcome.get("turns_reached", [])
+        lapsed = outcome.get("turns_without_decision_line", [])
+        cell["runs"] += 1
+        if PRIMARY_TURN in reached:
+            cell["reached_primary"] += 1
+            cell["marked_primary"] += 0 if PRIMARY_TURN in lapsed else 1
+        else:
+            cell["never_reached_primary"].append(report["_dir"])
+        if reached:
+            cell["fractions"].append(
+                round((len(reached) - len(lapsed)) / len(reached), 4))
+
+    for row in reword.values():
+        base, arm = row["arms"].get("a"), row["arms"].get("w")
+        if not (base and arm):
+            continue
+        row["primary"] = {
+            "turn": PRIMARY_TURN,
+            "a": [base["marked_primary"], base["reached_primary"]],
+            "w": [arm["marked_primary"], arm["reached_primary"]],
+            "p_two_sided": round(fisher_exact(
+                base["marked_primary"],
+                base["reached_primary"] - base["marked_primary"],
+                arm["marked_primary"],
+                arm["reached_primary"] - arm["marked_primary"]), 4)}
+        row["secondary"] = rank_separation(base["fractions"], arm["fractions"])
 
     # A scored scenario needs its distribution shown, not its pass rate. `q1`
     # exists because `r3` came back 5 of 5 and a criterion on its ceiling cannot
@@ -313,6 +413,7 @@ def summarise(reports: list[dict]) -> dict:
             "quality": quality,
             "unstated": unstated,
             "dose": dose,
+            "reword": reword,
             "per_turn": {name: {key: (dict(sorted(value.items()))
                                       if isinstance(value, Counter) else value)
                                 for key, value in row.items()}
@@ -411,6 +512,31 @@ def main() -> int:
                   f"no DECISION line {row['lapsed'].get(index, 0)}, "
                   f"consequence table {row['tabled'].get(index, 0)}")
         print(f"  first lapse per run: {row['first_lapse']}")
+
+    for name, row in report.get("reword", {}).items():
+        print(f"\n{name}, reword check (pre-registered 2026-08-16; unit is the "
+              "run)")
+        for arm in sorted(row["arms"]):
+            cell = row["arms"][arm]
+            missed = len(cell["never_reached_primary"])
+            print(f"  arm {arm.upper()}: {cell['marked_primary']}/"
+                  f"{cell['reached_primary']} marked at turn {PRIMARY_TURN}"
+                  f" ({cell['runs']} runs"
+                  f"{f', {missed} never reached it' if missed else ''})")
+            print(f"    per-run compliance: {cell['fractions']}")
+        primary = row.get("primary")
+        if not primary:
+            print("  not compared — one arm is missing")
+            continue
+        print(f"  primary   turn {primary['turn']}, Fisher exact two-sided "
+              f"p = {primary['p_two_sided']:.4f}")
+        second = row["secondary"]
+        if not second.get("comparable"):
+            print(f"  secondary not compared — {second['why']}")
+        else:
+            print(f"  secondary compliance fraction, exact two-sided "
+                  f"p = {second['p_two_sided']:.4f}, ranges "
+                  f"{'disjoint' if second['ranges_disjoint'] else 'overlap'}")
     return 0
 
 

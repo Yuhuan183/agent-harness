@@ -2803,6 +2803,44 @@ class ReplayScenarioTests(unittest.TestCase):
         self.assertIn("20", refused["why"])
         self.assertFalse(module.rank_separation([1, 2], [])["comparable"])
 
+    def test_fisher_exact_reproduces_the_numbers_already_published(self) -> None:
+        # Every Fisher p-value in docs/ and the replay README was computed by
+        # hand before this function existed. Those four numbers are therefore
+        # the only regression test worth having: if the implementation cannot
+        # reproduce what the project has already told a reader, one of the two
+        # is wrong and it matters which.
+        module = self._summariser()
+        for case, cells, published in (
+            ("r2 5/5 vs r2b 1/5", (5, 0, 1, 4), 0.0476),
+            ("r2 5/5 vs r2c 0/5", (5, 0, 0, 5), 0.0079),
+            ("slim 3/15 vs full 5/15", (3, 12, 5, 10), 0.6817),
+            # Written into the r2 pre-registration as 0.033, before any data.
+            ("pre-registered 0/10 vs 5/10", (0, 10, 5, 5), 0.0325),
+        ):
+            with self.subTest(case=case):
+                self.assertAlmostEqual(
+                    published, module.fisher_exact(*cells), places=4)
+
+    def test_fisher_exact_stays_symmetric_and_bounded(self) -> None:
+        module = self._summariser()
+        # Swapping the arms is the same question asked backwards.
+        self.assertAlmostEqual(module.fisher_exact(0, 10, 5, 5),
+                               module.fisher_exact(5, 5, 0, 10), places=12)
+        # No difference at all is p = 1, and a p-value never exceeds it: the
+        # tie tolerance in the sum is the part that could silently break this.
+        self.assertAlmostEqual(1.0, module.fisher_exact(5, 5, 5, 5), places=12)
+        self.assertAlmostEqual(1.0, module.fisher_exact(0, 4, 0, 4), places=12)
+        self.assertEqual(1.0, module.fisher_exact(0, 0, 0, 0))
+
+    def test_reword_primary_turn_is_named_not_typed_in(self) -> None:
+        # A pre-registered endpoint that lives as a literal inside a loop can
+        # move without showing up as a change to the endpoint. This is the
+        # cheapest thing that makes moving it visible in a diff.
+        module = self._summariser()
+        self.assertEqual(3, module.PRIMARY_TURN)
+        source = (self.REPLAY / "summarise.py").read_text(encoding="utf-8")
+        self.assertIn("PRIMARY_TURN in reached", source)
+
     def _arms(self):
         return load_module(
             "s11_arms",
