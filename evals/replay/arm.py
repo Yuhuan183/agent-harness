@@ -24,7 +24,13 @@ the code that puts it back, in exchange for nothing measurable.
 2. **Snapshot, then restore in `finally`.** Interrupts and crashes included.
 3. **Verify the restore by hash**, not by having written it.
 4. **Leave a sentinel while swapped**, so an interrupted run cannot be papered
-   over by the next one.
+   over by the next one. It names its owner, because on 2026-08-16 the missing
+   half of that guard cost a run: the sentinel said which clause and arm were
+   swapped and where the snapshot lived, but not *who held it*, so a live swap
+   and an abandoned one were indistinguishable on disk. An operator read a
+   sentinel belonging to a run still in flight, deleted its snapshot, and
+   restored the contract underneath it. Guard 4 protected the next run and had
+   nothing to say about the current one.
 
     with contract_arm("baton-dispatch", "b") as state:
         ...                       # the contract is swapped for this block only
@@ -33,10 +39,12 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import os
 import shutil
 import sys
 import tempfile
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -82,16 +90,58 @@ def sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def sentinel_owner(sentinel: Path) -> dict:
+    """Who holds this swap, and is that process still alive?
+
+    The answer decides which of two opposite actions is correct — wait, or
+    clean up — and getting it backwards costs the run that is still going.
+
+    `os.kill(pid, 0)` is the liveness test: it signals nothing and raises
+    `ProcessLookupError` when the pid is gone. A live pid is not proof the
+    *same* process holds the swap, since pids are reused, which is why the
+    start time is recorded next to it and reported rather than compared. A
+    sentinel written by the older format has no owner line at all; it is
+    reported as unknown, never as dead, because "unknown" leads to looking and
+    "dead" leads to deleting.
+    """
+    try:
+        lines = sentinel.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return {"pid": None, "alive": None, "since": None}
+    if len(lines) < 4 or not lines[3].strip().isdigit():
+        return {"pid": None, "alive": None, "since": None}
+    pid = int(lines[3].strip())
+    try:
+        os.kill(pid, 0)
+        alive = True
+    except ProcessLookupError:
+        alive = False
+    except PermissionError:
+        # Alive, and owned by somebody else. Still alive.
+        alive = True
+    return {"pid": pid, "alive": alive,
+            "since": lines[4].strip() if len(lines) > 4 else None}
+
+
 def check_no_drift(paths: "Paths | None" = None) -> None:
     paths = paths or Paths()
     DEPLOYED, SOURCE, SENTINEL = paths.deployed, paths.source, paths.sentinel
     if not DEPLOYED.exists():
         raise SystemExit(f"{DEPLOYED} does not exist; deploy before running")
     if SENTINEL.exists():
+        owner = sentinel_owner(SENTINEL)
+        if owner["alive"]:
+            raise SystemExit(
+                f"{SENTINEL} is held by a live run (pid {owner['pid']}, since "
+                f"{owner['since']}). Wait for it. Deleting this sentinel or "
+                "restoring the contract now would change the contract "
+                "underneath a run that is still being paid for.")
+        who = ("an arm that did not restore" if owner["pid"] is None else
+               f"pid {owner['pid']}, which is gone")
         raise SystemExit(
-            f"{SENTINEL} exists: a previous arm did not restore. Run "
+            f"{SENTINEL} exists: {who}. Check `ps` first, then run "
             "`scripts/sync.sh --apply`, confirm the contract matches source, "
-            "then delete the sentinel. Refusing to stack a second swap.")
+            "and delete the sentinel. Refusing to stack a second swap.")
     if DEPLOYED.read_text(encoding="utf-8") != SOURCE.read_text(encoding="utf-8"):
         raise SystemExit(
             "deployed contract differs from repo source. Reconcile first "
@@ -133,7 +183,12 @@ def contract_arm(clause: str, arm: str, paths: "Paths | None" = None):
         if arm != "a":
             snapshot = Path(tempfile.mkdtemp(prefix="replay-arm-")) / "CLAUDE.md"
             shutil.copy2(DEPLOYED, snapshot)
-            SENTINEL.write_text(f"{clause}\n{arm}\n{snapshot}\n", encoding="utf-8")
+            # The first three lines are the original format and stay put; the
+            # owner is appended so an older reader still finds what it expects.
+            SENTINEL.write_text(
+                f"{clause}\n{arm}\n{snapshot}\n{os.getpid()}\n"
+                f"{datetime.now(timezone.utc).isoformat(timespec='seconds')}\n",
+                encoding="utf-8")
             DEPLOYED.write_text(
                 arms.variant(DEPLOYED.read_text(encoding="utf-8"), clause, arm),
                 encoding="utf-8")
