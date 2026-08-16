@@ -2967,6 +2967,58 @@ class ReplayScenarioTests(unittest.TestCase):
         self.assertEqual("YES", kept[arms.UNSPECIFIED_QUESTION])
         self.assertEqual("NO", kept[arms.DELEGATE_QUESTION])
 
+    def test_the_verify_block_reproduces_its_own_registered_threshold(self) -> None:
+        # The registration says n=20 per arm separates 20/20 from 14/20 at
+        # p = 0.0202 and cannot separate 18/20 from 12/20. Both claims were
+        # written before the batch, so both are checked here rather than
+        # trusted — a threshold that only exists in prose can drift.
+        module = self._summariser()
+
+        def batch(a_correct, b_correct, a_beyond=20, b_beyond=20, n=20):
+            out = []
+            for index in range(n):
+                out.append({"scenario": "v2-green-test-misses-it", "arm": "a",
+                            "_dir": f"a{index}", "verdict": "correct",
+                            "criterion_3": {}, "provider_faults": {},
+                            "outcome": {"marker_present": True,
+                                        "correct": index < a_correct,
+                                        "probed_beyond_suite": index < a_beyond,
+                                        "ran_shipped_tests": True}})
+                out.append({"scenario": "v2-green-test-misses-it", "arm": "b",
+                            "_dir": f"b{index}", "verdict": "correct",
+                            "criterion_3": {}, "provider_faults": {},
+                            "outcome": {"marker_present": True,
+                                        "correct": index < b_correct,
+                                        "probed_beyond_suite": index < b_beyond,
+                                        "ran_shipped_tests": True}})
+            return module.summarise(out)["verify"]["v2-green-test-misses-it"]
+
+        self.assertAlmostEqual(0.0202, batch(20, 14)["primary"]["p_two_sided"],
+                               places=4)
+        self.assertAlmostEqual(0.0648, batch(18, 12)["primary"]["p_two_sided"],
+                               places=4)
+        # A null at the ceiling still has to publish the bound on harm, since
+        # that bound is the only thing such a result licenses.
+        self.assertEqual([0.832, 1.0], batch(20, 20)["arm_b_ci95"])
+
+    def test_a_run_that_never_reached_the_branch_leaves_the_verify_denominator(self) -> None:
+        module = self._summariser()
+        reports = []
+        for index in range(5):
+            reports.append({"scenario": "v2-green-test-misses-it", "arm": "a",
+                            "_dir": f"a{index}", "verdict": "correct",
+                            "criterion_3": {}, "provider_faults": {},
+                            "outcome": {"marker_present": index > 0,
+                                        "correct": True,
+                                        "probed_beyond_suite": True,
+                                        "ran_shipped_tests": True}})
+        cell = module.summarise(reports)["verify"][
+            "v2-green-test-misses-it"]["arms"]["a"]
+        self.assertEqual(5, cell["runs"])
+        self.assertEqual(4, cell["reached"])
+        self.assertEqual(4, cell["correct"])
+        self.assertEqual(["a0"], cell["never_reached"])
+
     def test_a_batch_missing_fingerprints_does_not_report_as_homogeneous(self) -> None:
         # r2's arm A mixes five runs from before surface.tsv existed with five
         # from after. The row used to print the one fingerprint it had and say
