@@ -2808,6 +2808,65 @@ class ReplayScenarioTests(unittest.TestCase):
         self.assertIn("20", refused["why"])
         self.assertFalse(module.rank_separation([1, 2], [])["comparable"])
 
+    def test_the_sandboxed_interpreter_refuses_rather_than_running_unconfined(self) -> None:
+        # Fail closed is the whole design. A shim that silently stopped
+        # confining would be worse than no shim, because `commands_run` would
+        # still record a command that looks sandboxed.
+        shim = self.REPLAY / "sandbox" / "python3"
+        self.assertTrue(shim.exists() and os.access(shim, os.X_OK))
+        env = {k: v for k, v in os.environ.items() if k != "REPLAY_WORKDIR"}
+        done = subprocess.run([str(shim), "-c", "print('UNCONFINED')"],
+                              capture_output=True, text=True, timeout=60, env=env)
+        self.assertNotEqual(0, done.returncode)
+        self.assertNotIn("UNCONFINED", done.stdout)
+        self.assertIn("REPLAY_WORKDIR", done.stderr)
+
+    def test_the_sandboxed_interpreter_writes_only_inside_the_workdir(self) -> None:
+        # Measured 2026-08-17: a bare `Bash(python3:*)` grant let a session
+        # write outside its workdir in 3 probes of 3. No permission string
+        # fixes that, so this asserts the containment that does.
+        shim = self.REPLAY / "sandbox" / "python3"
+        if not Path("/usr/bin/sandbox-exec").exists():
+            self.skipTest("sandbox-exec is macOS-only; containment unverifiable here")
+        with tempfile.TemporaryDirectory() as work, \
+                tempfile.TemporaryDirectory() as outside:
+            env = dict(os.environ, REPLAY_WORKDIR=work)
+            inside = subprocess.run(
+                [str(shim), "-c", f"open({str(Path(work) / 'ok')!r},'w').write('x')"],
+                capture_output=True, text=True, timeout=60, env=env, cwd=work)
+            self.assertEqual(0, inside.returncode, inside.stderr)
+            self.assertTrue((Path(work) / "ok").exists())
+
+            escape = Path(outside) / "escaped"
+            out = subprocess.run(
+                [str(shim), "-c", f"open({str(escape)!r},'w').write('x')"],
+                capture_output=True, text=True, timeout=60, env=env, cwd=work)
+            self.assertNotEqual(0, out.returncode, "a write outside the workdir landed")
+            self.assertFalse(escape.exists())
+
+            # And a child process of the interpreter is inside the fence too,
+            # which is the half a wrapper around python alone would miss.
+            decoy = Path(outside) / "decoy"
+            decoy.write_text("keep", encoding="utf-8")
+            subprocess.run(
+                [str(shim), "-c",
+                 f"import subprocess; subprocess.run(['/bin/rm','-f',{str(decoy)!r}])"],
+                capture_output=True, text=True, timeout=60, env=env, cwd=work)
+            self.assertTrue(decoy.exists(), "a child process deleted a file outside")
+
+    def test_execution_scenarios_get_the_shim_and_others_do_not(self) -> None:
+        module = load_module("replay_run", self.REPLAY / "run.py")
+        with tempfile.TemporaryDirectory() as temp:
+            run_dir, work = Path(temp) / "run", Path(temp) / "work"
+            work.mkdir(parents=True)
+            plain = module.child_env(run_dir)
+            self.assertNotIn("REPLAY_WORKDIR", plain)
+            self.assertNotIn("replay/sandbox", plain.get("PATH", ""))
+            sandboxed = module.child_env(run_dir, work)
+            self.assertEqual(str(work), sandboxed["REPLAY_WORKDIR"])
+            self.assertTrue(sandboxed["PATH"].startswith(
+                str(self.REPLAY / "sandbox")))
+
     def test_the_execution_grant_is_opt_in_and_changes_nothing_by_default(self) -> None:
         # Every batch before 2026-08-16 was measured with four grants. If the
         # default widened, new runs of the old scenarios would silently stop

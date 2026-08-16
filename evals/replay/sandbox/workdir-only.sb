@@ -1,0 +1,23 @@
+;; Writes confined to one run's workdir. Reads left alone.
+;;
+;; A grant of `Bash(python3:*)` bounds which *command* may run and says nothing
+;; about what it may do, because python is a general interpreter: measured on
+;; 2026-08-17, a granted `python3` wrote a file outside its workdir in 3 probes
+;; of 3. No permission string fixes that — the containment has to be under the
+;; interpreter rather than in front of it.
+;;
+;; Reads stay open on purpose. The session needs the standard library, and the
+;; thing being contained is damage to the machine, not curiosity. A profile that
+;; also denied reads would break python before it broke anything else.
+;;
+;; `sandbox-exec` is deprecated by Apple and still the only thing on a stock
+;; macOS that does this. If it is ever removed, the fallback is not a narrower
+;; permission string — it is a container, or dropping execution from the suite.
+(version 1)
+(allow default)
+(deny file-write*)
+(allow file-write* (subpath (param "WORKDIR")))
+(allow file-write* (literal "/dev/null")
+                   (literal "/dev/stdout")
+                   (literal "/dev/stderr")
+                   (literal "/dev/dtracehelper"))
