@@ -7,9 +7,10 @@ verification gap from 2026-07-28, and `docs/research/lifecycle-replay.md` set
 four survival criteria a replay result must meet before it may be cited.
 
 This directory closed criterion 2 — a scenario per question with its reach
-marker written before anything ran — and then kept going. **319 runs retained,
-2026-08-12 to 08-16**: 310 in batches, plus eight pilots and one run the
-provider aborted, all kept because an invalid run is data about the scenario.
+marker written before anything ran — and then kept going. **336 runs retained,
+2026-08-12 to 08-16**: 325 in batches, plus nine pilots, one run the provider
+aborted, and one voided by an operator mistake — all kept, because an invalid
+run is data about the scenario and a voided one is data about the operator.
 
 Recount at any time with `ls -d runs/*/ | wc -l`; the figure above was typed by
 hand as 82 first, which is the seventh instance of the failure Part 7 is about.
@@ -30,7 +31,8 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | can this apparatus detect a contract clause being removed at all? | **yes — 5/5 Chinese with the clause, 0/5 without** | the reverse control every null above was waiting on; a floor, not a calibration |
 | does a contract full of clauses make its own rules obeyed less? | no difference found — 3/15 against 5/15 with 83% of the contract deleted | resolving the gap that remains would cost ~688 runs; and both arms are bad |
 | when a rule fires a fifth of the time, was there anything to mark? | **yes — 30 of 30 runs made the same unforced choice, 8 said so** | computed from retained workdirs, no runs spent |
-| does taking the judgement call out of that rule help? | **yes — 14/92 against 44/91, p = 0.0000014** | the one result here big enough to act on; scope is a single scenario |
+| does taking the judgement call out of that rule help? | **yes on `m1` — 14/92 against 44/91, p = 0.0000014** | the one result here big enough to act on |
+| does that carry to a second scenario? | no — `r2` turn 3, 0/10 against 2/10, p = 0.47 | but `r2` has no headroom outside turn 3, which the pre-registration said first |
 
 **Four hypotheses were built and refuted, three of them mine.** That is this
 directory's main output, and Part 7 explains why it had to be.
@@ -796,9 +798,51 @@ n=91; "so the qualifier is probably not the cause" does not. The qualifier is
 the cause, and it acts on whether the rule is reached rather than on whether it
 is understood.
 
-**Scope**: one scenario, a small feature request. Whether it holds for other
-request shapes is unmeasured, and `r2` — where the lapse was first found, across
-five turns — is the obvious place to check next.
+**Scope, checked rather than assumed.** `r2` was run *before* editing the
+contract on the strength of this, and the contract is still unedited — the
+result below is why that order mattered. Turn 3 was the pre-registered primary: the
+most robust failure here, a run-level binary immune to the non-independence of
+turns within a run, and the only cell with room, since `r2`'s other turns sit at
+70–90% under arm A.
+
+```
+          turn 1   turn 2   turn 3   turn 4   turn 5
+arm A       70%      90%       0%      90%      90%
+arm W       90%     100%      20%     100%      70%
+p          0.582    1.000    0.474    1.000    0.582
+
+primary     turn 3, 0/10 against 2/10, Fisher p = 0.4737, threshold was 5/10
+secondary   per-run marked fraction, Mann-Whitney p = 0.7785, ranges overlap
+```
+
+**Not shown on `r2`.** Turn 5 moved *down*, 9/10 to 7/10 — reported because
+listing only the columns that rose is how you pick numbers.
+
+The two scenarios do not contradict each other; they bound the claim. What the
+rewording buys is a rule that is easier to reach, and where compliance already
+sits at 70–90% there is nothing left to reach for. `m1`'s baseline was 15%,
+which is the condition the effect needs. Neither scenario shows any sign of harm.
+
+Wording is the fourth explanation to die on turn 3, after crowding out (`r2b`),
+position (`r2c`), and the choice never surfacing (`m1`, `m3`). It did come off
+zero for the first time, 2 of 10, which at n=10 is not a signal.
+
+**n was not enlarged, and that is a decision.** 0 of 10 against 2 of 10 reads
+like the start of something, which is exactly the trap Part 12 already paid for:
+choosing to continue after seeing the counts is optional continuation and
+inflates type-I error. The registration fixed n at 10 per arm and it closes
+there. A verdict on `r2` needs its own registration, opening with the fact that
+it was written after seeing 0 of 10 against 2 of 10.
+
+**Apparatus**: 20 runs, 20 hash-verified contract states, 10 two-sided
+manipulation checks, all landed. One run was voided *before any outcome was
+read* — seed 005 of arm W saw two different contracts, because the operator
+deleted its restore snapshot mid-flight after reading a live sentinel as an
+abandoned one. It is kept at
+`runs/r2-successive-corrections-armw-005-void-operator`, outside the batch name
+pattern so no tally can pick it up, and the seed was re-run. Dropping a run
+after reading its outcome would be picking data; the timing is the whole
+defence, which is why it is written down here rather than in a commit message.
 
 ---
 
