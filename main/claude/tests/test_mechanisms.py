@@ -2924,6 +2924,70 @@ class ReplayScenarioTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 module.check_no_drift(paths)
 
+    def test_a_held_sentinel_reads_differently_from_an_abandoned_one(self) -> None:
+        # The failure this guards is not hypothetical: on 2026-08-16 a sentinel
+        # belonging to a run still in flight was read as leftover, its snapshot
+        # deleted and the contract restored underneath it, and the run had to be
+        # voided. "Wait" and "clean up" are opposite actions, so the sentinel has
+        # to say which one it is asking for.
+        module = load_module("replay_arm", self.REPLAY / "arm.py")
+        source = ROOT / "main" / "claude" / "CLAUDE.contract.md"
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            deployed = home / "CLAUDE.md"
+            deployed.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+            sentinel = home / ".sentinel"
+            paths = module.Paths(deployed=deployed, source=source, sentinel=sentinel)
+
+            # This process is unambiguously alive.
+            sentinel.write_text(f"language\nw\n/tmp/snap\n{os.getpid()}\n"
+                                "2026-08-16T09:00:00+00:00\n", encoding="utf-8")
+            owner = module.sentinel_owner(sentinel)
+            self.assertTrue(owner["alive"])
+            self.assertEqual(os.getpid(), owner["pid"])
+            with self.assertRaises(SystemExit) as held:
+                module.check_no_drift(paths)
+            self.assertIn("live run", str(held.exception))
+            self.assertIn("Wait for it", str(held.exception))
+
+            # A pid that cannot exist reads as gone, and the message flips to
+            # cleanup without ever claiming the swap finished.
+            sentinel.write_text("language\nw\n/tmp/snap\n999999999\n",
+                                encoding="utf-8")
+            self.assertFalse(module.sentinel_owner(sentinel)["alive"])
+            with self.assertRaises(SystemExit) as gone:
+                module.check_no_drift(paths)
+            self.assertIn("is gone", str(gone.exception))
+            self.assertNotIn("Wait for it", str(gone.exception))
+
+            # The format that predates the owner line must not be read as dead:
+            # unknown leads to looking, dead leads to deleting.
+            sentinel.write_text("language\nw\n/tmp/snap\n", encoding="utf-8")
+            self.assertIsNone(module.sentinel_owner(sentinel)["alive"])
+            with self.assertRaises(SystemExit) as old:
+                module.check_no_drift(paths)
+            self.assertIn("did not restore", str(old.exception))
+
+    def test_the_swap_records_who_holds_it(self) -> None:
+        module = load_module("replay_arm", self.REPLAY / "arm.py")
+        source = ROOT / "main" / "claude" / "CLAUDE.contract.md"
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            deployed = home / "CLAUDE.md"
+            deployed.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+            sentinel = home / ".sentinel"
+            paths = module.Paths(deployed=deployed, source=source, sentinel=sentinel)
+            with module.contract_arm("language", "w", paths):
+                lines = sentinel.read_text(encoding="utf-8").splitlines()
+                # First three lines are the original format, unmoved.
+                self.assertEqual(["language", "w"], lines[:2])
+                self.assertTrue(lines[2].endswith("CLAUDE.md"))
+                self.assertEqual(os.getpid(), int(lines[3]))
+                self.assertTrue(module.sentinel_owner(sentinel)["alive"])
+            self.assertFalse(sentinel.exists())
+            self.assertEqual(source.read_text(encoding="utf-8"),
+                             deployed.read_text(encoding="utf-8"))
+
     def test_reconciled_and_never_dispatched_are_not_the_same_state(self) -> None:
         # `experience-log --from-pending` consumes the stub, so a run that did
         # all its bookkeeping ends with an empty pending file — which the first
