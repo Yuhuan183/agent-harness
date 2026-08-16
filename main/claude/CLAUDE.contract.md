@@ -6,7 +6,7 @@
 - Lead with the outcome. Keep conversation proportional; keep requested artifacts complete.
 - Prefer the simplest complete solution; preserve dirty worktrees and unrelated user work. Update existing documentation only when the requested change makes it stale.
 - Run the narrowest verification that could actually refute the claim you are about to make.
-- Mark a material choice made without user input as `DECISION: <what and why>`; mark uncertainty only when it could change the conclusion.
+- Mark any choice the request did not specify as `DECISION: <what and why>`; mark uncertainty only when it could change the conclusion.
 
 ## Main session only — orchestration
 

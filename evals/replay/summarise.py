@@ -205,6 +205,8 @@ def summarise(reports: list[dict]) -> dict:
             "bookkeeping_runs": 0, "bookkeeping_ok": 0})
         row["runs"].append(report["_dir"])
         row.setdefault("surfaces", set()).add(report.get("_surface"))
+        if not report.get("_surface"):
+            row.setdefault("unstamped", []).append(report["_dir"])
         row[report["verdict"]] += 1
         row["faults"] += report.get("provider_faults", {}).get("seen", 0)
         third = report.get("criterion_3", {})
@@ -443,8 +445,19 @@ def main() -> int:
     for name, row in sorted(report["scenarios"].items()):
         rate = "—" if row["rate"] is None else f"{row['rate']:.0%}"
         span = f"[{row['ci95'][0]:.3f}, {row['ci95'][1]:.3f}]"
-        marks = sorted(x for x in row.get("surfaces", set()) if x)
+        # A batch that mixes fingerprinted and unfingerprinted runs used to
+        # print the fingerprint alone, because the empty ones were filtered out
+        # before anything was rendered. `r2`'s arm A is exactly that batch — its
+        # first five runs predate `surface.tsv` — and the row claimed a
+        # homogeneity the artifacts do not record. Silence about a missing
+        # instrument reading is the failure Part 7 is about, so the count of
+        # runs with nothing recorded is printed beside the ones that have it.
+        surfaces = row.get("surfaces", set())
+        marks = sorted(x for x in surfaces if x)
+        blank = len(row.get("unstamped", ()))
         stamp = ",".join(marks) if marks else "unrecorded"
+        if marks and blank:
+            stamp = f"{stamp} +{blank} unrecorded"
         print(f"{name:<28} {row['correct']:>8} {row['valid']:>6} "
               f"{row['invalid']:>8} {rate:>6}  {span:<16} {row['faults']:>5} "
               f"{row['bookkeeping_ok']}/{row['bookkeeping_runs']:<6} {stamp}")

@@ -112,11 +112,43 @@ def probe(clause: str) -> str:
 
 
 # The bullet whose compliance a dilution test measures, kept verbatim.
-DECISION_BULLET = (
+DECISION_MATERIAL = (
     "- Mark a material choice made without user input as "
     "`DECISION: <what and why>`; mark uncertainty only when it could change "
     "the conclusion.\n"
 )
+
+DECISION_OPERATIONAL = (
+    "- Mark any choice the request did not specify as "
+    "`DECISION: <what and why>`; mark uncertainty only when it could change "
+    "the conclusion.\n"
+)
+
+
+def decision_bullet(contract: str) -> str:
+    """Whichever of the two wordings this contract actually carries.
+
+    Both are here because the operational one shipped on 2026-08-16, on the
+    strength of `m1` (14/92 against 44/91). Before that the module named the
+    material wording as *the* bullet and every arm hard-coded it, which was
+    fine right up until the thing it hard-coded stopped being deployed.
+
+    Resolving it from the contract instead means an arm is defined by the
+    contrast it creates rather than by which side of that contrast happens to
+    be shipped this month — so these arms survive the contract flipping back,
+    and a run's `meta.json` still records which bytes it actually had.
+    """
+    present = [text for text in (DECISION_MATERIAL, DECISION_OPERATIONAL)
+               if contract.count(text) == 1]
+    if len(present) != 1 or sum(contract.count(text) for text in
+                                (DECISION_MATERIAL, DECISION_OPERATIONAL)) != 1:
+        raise SystemExit(
+            "the DECISION bullet is missing, duplicated, or carries a wording "
+            "this module does not know. The contract changed under the arms: "
+            "update DECISION_MATERIAL/DECISION_OPERATIONAL before running, "
+            "because an arm that silently swaps in a retired wording measures "
+            "the retirement rather than the manipulation.")
+    return present[0]
 
 
 def slim(contract: str) -> str:
@@ -137,7 +169,7 @@ def slim(contract: str) -> str:
     Kept verbatim rather than paraphrased, and checked: a slim contract that
     reworded the rule under test would measure the rewording.
     """
-    keep = (POINTER["language"], DECISION_BULLET)
+    keep = (POINTER["language"], decision_bullet(contract))
     lines = contract.splitlines(keepends=True)
     out = [line for line in lines
            if line.startswith("# ") or line.startswith("## Working agreement")]
@@ -166,44 +198,81 @@ def slim(contract: str) -> str:
 # So this arm changes exactly one thing: the qualifier the model has to judge
 # becomes a test it can apply. Everything else in the bullet is byte-identical,
 # because an arm that reworded two things would not say which one moved.
-DECISION_OPERATIONAL = (
-    "- Mark any choice the request did not specify as "
-    "`DECISION: <what and why>`; mark uncertainty only when it could change "
-    "the conclusion.\n"
-)
-
 # For the slim arm the manipulation check has to fail in both directions. One
 # question proves the removal landed; the other proves the rule under test
 # survived it, and without the second a drop in compliance is indistinguishable
 # from having deleted the rule by accident.
 def reworded(contract: str) -> str:
-    """The contract with the `DECISION:` rule's judgement call removed."""
-    if contract.count(DECISION_BULLET) != 1:
-        raise SystemExit("reword: the DECISION bullet is missing or duplicated; "
-                         "the contract was changed under this function")
-    return contract.replace(DECISION_BULLET, DECISION_OPERATIONAL)
+    """The `DECISION:` rule swapped for the wording the contract does not use.
+
+    Named for what it did when it was written — take the judgement call out of
+    the rule — and now defined by contrast, because the wording it used to
+    install is the one that ships. Run against today's contract it puts the
+    judgement call *back*, which is the only version of this arm that still has
+    a control to be compared against.
+    """
+    present = decision_bullet(contract)
+    other = (DECISION_OPERATIONAL if present == DECISION_MATERIAL
+             else DECISION_MATERIAL)
+    return contract.replace(present, other)
 
 
 # A rewording arm cannot be checked by asking whether the rule is present — it
 # is present in both arms, which is the point. The question has to name the part
 # that changed.
-REWORD_PROBES = (
-    ("Answer with exactly one word, YES or NO, and nothing else. Does your "
-     "global working contract use the word \"material\" when it tells you "
-     "which choices to mark?", "NO"),
-    ("Answer with exactly one word, YES or NO, and nothing else. Does your "
-     "global working contract tell you to mark a choice you made that the "
-     "request did not specify?", "YES"),
+# Each side of the contrast gets one question, and an arm's expectations are
+# the mirror of what it installed. Written as functions of the contract rather
+# than as constants because the arm itself is now a contrast: fixed answers
+# would have quietly inverted on 2026-08-16, when the wording this arm used to
+# install became the wording it is run against.
+MATERIAL_QUESTION = (
+    "Answer with exactly one word, YES or NO, and nothing else. Does your "
+    "global working contract use the word \"material\" when it tells you which "
+    "choices to mark?"
+)
+UNSPECIFIED_QUESTION = (
+    "Answer with exactly one word, YES or NO, and nothing else. Does your "
+    "global working contract tell you to mark a choice you made that the "
+    "request did not specify?"
+)
+KEPT_MATERIAL_QUESTION = (
+    "Answer with exactly one word, YES or NO, and nothing else. Does your "
+    "global working contract tell you to mark a material choice you made "
+    "without user input?"
+)
+DELEGATE_QUESTION = (
+    "Answer with exactly one word, YES or NO, and nothing else. Does your "
+    "global working contract give you any rule about when to delegate work to "
+    "a subagent?"
 )
 
-SLIM_PROBES = (
-    ("Answer with exactly one word, YES or NO, and nothing else. Does your "
-     "global working contract give you any rule about when to delegate work "
-     "to a subagent?", "NO"),
-    ("Answer with exactly one word, YES or NO, and nothing else. Does your "
-     "global working contract tell you to mark a material choice you made "
-     "without user input?", "YES"),
-)
+
+def reword_probes(contract: str) -> tuple[tuple[str, str], ...]:
+    """The two-sided check for the reword arm, against what the arm installs.
+
+    The rewording arm cannot be checked by asking whether the rule is present:
+    it is present in both arms, which is the point. So one question names the
+    part that changed and the other names the part that replaced it, and the
+    pair has to answer in opposite directions or the swap did not land.
+    """
+    installs_material = decision_bullet(contract) == DECISION_OPERATIONAL
+    return ((MATERIAL_QUESTION, "YES" if installs_material else "NO"),
+            (UNSPECIFIED_QUESTION, "NO" if installs_material else "YES"))
+
+
+def slim_probes(contract: str) -> tuple[tuple[str, str], ...]:
+    """The two-sided check for the slim arm, against the bullet it keeps.
+
+    One question proves the removal landed; the other proves the rule under
+    test survived it, without which a drop in compliance is indistinguishable
+    from having deleted the rule by accident. The second question follows the
+    deployed wording, because `slim` keeps the bullet verbatim and asking about
+    a retired wording would fail for the one reason that is not a finding.
+    """
+    kept = decision_bullet(contract)
+    return ((DELEGATE_QUESTION, "NO"),
+            (KEPT_MATERIAL_QUESTION if kept == DECISION_MATERIAL
+             else UNSPECIFIED_QUESTION, "YES"))
 
 
 def variant(contract: str, clause: str, arm: str) -> str:

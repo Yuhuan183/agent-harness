@@ -2585,6 +2585,11 @@ class ReplayScenarioTests(unittest.TestCase):
     produced a false finding (s8's `a19` was the first)."""
 
     REPLAY = ROOT / "evals" / "replay"
+    # The repo's copy, never `~/.claude/CLAUDE.md`. The probe builders read a
+    # contract to decide which way their two-sided check points, and a test that
+    # let them read the deployed file would pass or fail on what the operator
+    # happened to have installed that afternoon.
+    CONTRACT = ROOT / "main" / "claude" / "CLAUDE.contract.md"
 
     def _grader(self):
         return load_module("replay_grade", self.REPLAY / "grade.py")
@@ -2803,6 +2808,58 @@ class ReplayScenarioTests(unittest.TestCase):
         self.assertIn("20", refused["why"])
         self.assertFalse(module.rank_separation([1, 2], [])["comparable"])
 
+    def test_the_reword_arm_survives_the_contract_flipping(self) -> None:
+        # The arm shipped its own treatment on 2026-08-16. If it still named a
+        # fixed side, it would now install the wording already deployed — an arm
+        # identical to its control, which is the failure that looks like a
+        # perfect null. Both directions are exercised because only one of them
+        # is reachable from today's checkout.
+        arms = self._arms()
+        head = "# Claude Code — Global Contract\n\n## Working agreement\n\n"
+        for start, expected in ((arms.DECISION_MATERIAL, arms.DECISION_OPERATIONAL),
+                                (arms.DECISION_OPERATIONAL, arms.DECISION_MATERIAL)):
+            with self.subTest(start=start[:24]):
+                swapped = arms.reworded(head + start)
+                self.assertIn(expected, swapped)
+                self.assertNotIn(start, swapped)
+                # And back again, byte for byte.
+                self.assertEqual(head + start, arms.reworded(swapped))
+
+    def test_the_reword_probes_point_at_whatever_the_arm_installs(self) -> None:
+        arms = self._arms()
+        head = "# Claude Code — Global Contract\n\n## Working agreement\n\n"
+        material = dict(arms.reword_probes(head + arms.DECISION_MATERIAL))
+        operational = dict(arms.reword_probes(head + arms.DECISION_OPERATIONAL))
+        # Against a material contract the arm installs the operational wording,
+        # so "does it say material" must answer NO — and the mirror against an
+        # operational one. A pair that answered the same way in both directions
+        # would pass while measuring nothing.
+        self.assertEqual("NO", material[arms.MATERIAL_QUESTION])
+        self.assertEqual("YES", material[arms.UNSPECIFIED_QUESTION])
+        self.assertEqual("YES", operational[arms.MATERIAL_QUESTION])
+        self.assertEqual("NO", operational[arms.UNSPECIFIED_QUESTION])
+        # The slim arm keeps what is deployed, so its second question follows
+        # the deployed wording rather than flipping.
+        kept = dict(arms.slim_probes(head + arms.DECISION_OPERATIONAL))
+        self.assertEqual("YES", kept[arms.UNSPECIFIED_QUESTION])
+        self.assertEqual("NO", kept[arms.DELEGATE_QUESTION])
+
+    def test_a_batch_missing_fingerprints_does_not_report_as_homogeneous(self) -> None:
+        # r2's arm A mixes five runs from before surface.tsv existed with five
+        # from after. The row used to print the one fingerprint it had and say
+        # nothing about the five it did not, which claims a homogeneity the
+        # artifacts do not record.
+        module = self._summariser()
+        reports = []
+        for index, surface in enumerate(["157679f4"] * 5 + [None] * 5):
+            reports.append({"scenario": "r2-successive-corrections", "arm": "a",
+                            "_dir": f"run-{index}", "_surface": surface,
+                            "verdict": "correct", "criterion_3": {},
+                            "provider_faults": {}, "outcome": {}})
+        row = module.summarise(reports)["scenarios"]["r2-successive-corrections"]
+        self.assertEqual(["157679f4"], row["surfaces"])
+        self.assertEqual(5, len(row["unstamped"]))
+
     def test_fisher_exact_reproduces_the_numbers_already_published(self) -> None:
         # Every Fisher p-value in docs/ and the replay README was computed by
         # hand before this function existed. Those four numbers are therefore
@@ -2854,7 +2911,7 @@ class ReplayScenarioTests(unittest.TestCase):
         shipped = (self.REPLAY.parents[1] / "main" / "claude"
                    / "CLAUDE.contract.md").read_text(encoding="utf-8")
         slim = arms.variant(shipped, "language", "s")
-        self.assertIn(arms.DECISION_BULLET, slim)
+        self.assertIn(arms.decision_bullet(shipped), slim)
         self.assertIn(arms.POINTER["language"], slim)
         self.assertNotIn("baton-dispatch", slim)
         self.assertNotIn("provider-routing", slim)
@@ -2873,7 +2930,8 @@ class ReplayScenarioTests(unittest.TestCase):
         # under test survived it. A single-question check here would pass while
         # measuring nothing.
         module = load_module("replay_arm", self.REPLAY / "arm.py")
-        asked = module.probes("language", "s")
+        asked = module.probes("language", "s",
+                              module.Paths(deployed=self.CONTRACT))
         self.assertEqual(2, len(asked))
         self.assertEqual({"NO", "YES"}, {expected for _, expected in asked})
         self.assertEqual([("YES")], [e for _, e in module.probes("x", "a")])
@@ -2885,17 +2943,26 @@ class ReplayScenarioTests(unittest.TestCase):
         shipped = (self.REPLAY.parents[1] / "main" / "claude"
                    / "CLAUDE.contract.md").read_text(encoding="utf-8")
         reworded = arms.variant(shipped, "language", "w")
-        self.assertNotIn(arms.DECISION_BULLET, reworded)
-        self.assertIn(arms.DECISION_OPERATIONAL, reworded)
-        before = shipped.replace(arms.DECISION_BULLET, "")
-        after = reworded.replace(arms.DECISION_OPERATIONAL, "")
+        # The arm is a contrast, not a fixed side: it installs whichever of the
+        # two wordings the contract does not currently carry. Written this way
+        # because the operational wording shipped on 2026-08-16, and a test
+        # that named one side would have gone green while measuring the swap
+        # backwards.
+        present = arms.decision_bullet(shipped)
+        other = (arms.DECISION_OPERATIONAL if present == arms.DECISION_MATERIAL
+                 else arms.DECISION_MATERIAL)
+        self.assertNotIn(present, reworded)
+        self.assertIn(other, reworded)
+        before = shipped.replace(present, "")
+        after = reworded.replace(other, "")
         self.assertEqual(before, after, "only the one bullet may differ")
 
     def test_the_reworded_arm_probes_name_the_part_that_changed(self) -> None:
         # The rule is present in both arms, which is the point, so a probe
         # asking whether it is there would pass while measuring nothing.
         module = load_module("replay_arm", self.REPLAY / "arm.py")
-        asked = module.probes("language", "w")
+        asked = module.probes("language", "w",
+                              module.Paths(deployed=self.CONTRACT))
         self.assertEqual(2, len(asked))
         self.assertEqual({"NO", "YES"}, {expected for _, expected in asked})
         self.assertTrue(any("material" in question for question, _ in asked),
