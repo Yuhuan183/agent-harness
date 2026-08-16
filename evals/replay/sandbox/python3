@@ -1,0 +1,46 @@
+#!/bin/bash
+# `python3` for a replay run: the real interpreter, unable to write outside the
+# run's own workdir.
+#
+# Named `python3` and placed first on the child's PATH so that the session types
+# what it would have typed anyway. That matters more than it looks: the grant
+# string, the command in the transcript and the `commands_run` audit all stay
+# byte-identical to the runs already in `runs/`, so confining the interpreter
+# does not quietly become a second change to what the scenario measures.
+#
+# Fail closed. If the workdir is not declared, or the sandbox is missing, this
+# refuses rather than falling through to an unconfined interpreter — a wrapper
+# that silently stops confining is worse than no wrapper, because the audit
+# would still say the command ran under one.
+set -u
+
+if [ -z "${REPLAY_WORKDIR:-}" ]; then
+  echo "sandboxed python3: REPLAY_WORKDIR is unset; refusing to run unconfined" >&2
+  exit 70
+fi
+if [ ! -d "$REPLAY_WORKDIR" ]; then
+  echo "sandboxed python3: REPLAY_WORKDIR=$REPLAY_WORKDIR is not a directory" >&2
+  exit 70
+fi
+if [ ! -x /usr/bin/sandbox-exec ]; then
+  echo "sandboxed python3: /usr/bin/sandbox-exec is missing; refusing to run" >&2
+  exit 70
+fi
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# The profile matches on the real path, and on macOS /tmp is a symlink into
+# /private/tmp — an unresolved path silently matches nothing, which reads
+# exactly like a working sandbox until something escapes it.
+REAL_WORKDIR="$(cd "$REPLAY_WORKDIR" && pwd -P)"
+
+# The real interpreter, found without consulting the PATH this script sits on.
+for candidate in /opt/homebrew/bin/python3 /usr/local/bin/python3 /usr/bin/python3; do
+  [ -x "$candidate" ] && INTERPRETER="$candidate" && break
+done
+if [ -z "${INTERPRETER:-}" ]; then
+  echo "sandboxed python3: no interpreter found outside the shim" >&2
+  exit 70
+fi
+
+exec /usr/bin/sandbox-exec -f "$HERE/workdir-only.sb" \
+     -D WORKDIR="$REAL_WORKDIR" "$INTERPRETER" "$@"

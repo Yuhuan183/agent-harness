@@ -278,6 +278,20 @@ rm /private/tmp/replay-ni7o2cy1/check_total_due.py          <- 單獨的 rm 也�
 
 `rm` 不在任何一條許可裡. **`Bash(python3:*)` 加上複合指令, 實際上約等於任意 shell.** 這兩個 run 的指令全都待在自己的 workdir 裡, 但那是 session 守規矩, 不是許可清單擋住的. 要把這一格開成正式批次, 這件事得先解決.
 
+**2026-08-17 量過了, 而上面那句話的成因講錯了.** `permission-probe.sh` 用真實 run 的旗標跑五條指令, 判決從檔案系統讀, 不從模型的自述讀:
+
+```text
+完全不給 Bash 許可   touch 與 rm 在 workdir 內照樣過   ← acceptEdits 自己就批准
+                     python3 被擋下                    ← 所以 opt-in 是真的有效
+給了 Bash(python3:*)  python3 寫到 workdir 之外  3/3 成功  ← 真正的洞在這
+```
+
+所以複合指令不是機制, `acceptEdits` 本來就批准 workdir 內的檔案變更 (那是它該做的), `v1` 試點那句 `rm -rf __pycache__` 是這個, 不是 matcher 的漏洞. **真正的洞大得多: 被授權的 `python3` 寫得到機器上任何地方**, 而這件事**沒有任何許可字串修得掉** —— 許可管的是哪個指令跑得起來, 而 python 是通用直譯器.
+
+修法因此放在**直譯器底下**而不是前面: `sandbox/python3` 用 `sandbox-exec` 跑真正的直譯器, 寫入限制在該 run 的 workdir. 它取名 `python3` 並排在子行程 PATH 最前面, 所以 session 打的指令, 許可字串, `commands_run` 稽核, 全部與既有的 run 逐位元組相同 —— 收緊器材不能順便變成第二個沒被記錄的改動.
+
+重新量過: 寫到外面被擋, 子行程一起被關住, workdir 沒宣告時**拒絕執行而不是退回不受限模式**, 而且一個真實的 `v2` run 照樣交付 10/10.
+
 ### 要讓這一格有空間, 得改的是 fixture 不是子句
 
 天花板的成因是「這個任務一眼就看得出該驗什麼」. 有空間的方向, 由便宜到貴:

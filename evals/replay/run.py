@@ -154,7 +154,7 @@ def build_fixture(name: str, workdir: Path) -> list[str]:
     return module.build(name, workdir)
 
 
-def child_env(run_dir: Path) -> dict[str, str]:
+def child_env(run_dir: Path, workdir: Path | None = None) -> dict[str, str]:
     """The child's environment: no proxy, telemetry diverted into the run."""
     env = {key: value for key, value in os.environ.items()
            if key not in ("ANTHROPIC_BASE_URL", "ANTHROPIC_CUSTOM_HEADERS",
@@ -163,6 +163,20 @@ def child_env(run_dir: Path) -> dict[str, str]:
     telemetry.mkdir(parents=True, exist_ok=True)
     env["AGENT_EXPERIENCE_PENDING"] = str(telemetry / "experience-pending.jsonl")
     env["AGENT_EXPERIENCE_LEDGER"] = str(telemetry / "experience.jsonl")
+    if workdir is not None:
+        # Execution scenarios only, and the confinement goes *under* the
+        # interpreter rather than in front of it. Measured 2026-08-17: a granted
+        # `Bash(python3:*)` wrote outside its workdir in 3 probes of 3, which no
+        # permission string can prevent, because python is a general
+        # interpreter and a grant bounds the command rather than what it does.
+        #
+        # The shim is named `python3` and goes first on PATH so the session
+        # types what it would have typed anyway — the grant string, the
+        # transcript and the `commands_run` audit all stay byte-identical to
+        # the runs already in `runs/`. Confining the interpreter must not turn
+        # into a second, unrecorded change to what the scenario measures.
+        env["PATH"] = f"{HERE / 'sandbox'}:{env.get('PATH', '')}"
+        env["REPLAY_WORKDIR"] = str(workdir)
     return env
 
 
@@ -188,15 +202,24 @@ def allowed_tools(execute: bool = False) -> list[str]:
         # Opt-in, per scenario, and never on by default. Every batch run before
         # 2026-08-16 was measured with the four grants above, and a harness that
         # quietly widened them would make new runs incomparable to old ones
-        # without anything in a `meta.json` saying so — the drift this suite
-        # keeps a content fingerprint to catch.
+        # without anything in a `meta.json` saying so.
         #
-        # `v1` is the first cell where the outcome is whether delivered code
-        # works, and a session that cannot execute anything cannot be asked
-        # whether it verified. So the grant is exactly one interpreter, the
-        # workdir is the cwd, and `commands_run` below records every shell line
-        # the session actually issued: a widening nobody can audit afterwards is
-        # not a widening this suite is allowed to make.
+        # What this grant is worth was measured on 2026-08-17 with
+        # `permission-probe.sh`, and the first answer was wrong. The claim in
+        # this file's history was that a compound command smuggles its tail past
+        # the matcher. It does not: with *no* Bash grant at all, `acceptEdits`
+        # already approves `touch` and `rm` inside the workdir on its own, so
+        # the `rm -rf __pycache__` seen riding a `v1` pilot's `python3 ...;` was
+        # that, not a matcher bug. Withhold this grant and `python3` is blocked
+        # outright, so the opt-in is real.
+        #
+        # The hole was elsewhere and larger: a granted `python3` wrote a file
+        # outside its workdir in 3 probes of 3. No permission string fixes that,
+        # because a grant bounds which command runs and python is a general
+        # interpreter. So the containment sits *under* the interpreter — see
+        # `child_env`, which puts a sandboxed `python3` first on the child's
+        # PATH. Re-measured after: writing outside is denied, child processes
+        # included, and a real `v2` run still delivers 10/10.
         grants.append("Bash(python3:*)")
     return grants
 
@@ -392,6 +415,8 @@ def main() -> int:
     # assumed to be.
     work = Path(tempfile.mkdtemp(prefix="replay-", dir="/tmp"))
     built = build_fixture(spec["fixture"], work)
+    if str(spec.get("allow_execution", "")).lower() == "true":
+        env = child_env(run_dir, work)
 
     drift = DEPLOYED.exists() and sha(DEPLOYED) != sha(SOURCE)
     if drift:

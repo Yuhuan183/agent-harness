@@ -970,11 +970,19 @@ this line. The cell works. The fixture was too easy.
   invalid, the grader running the delivered code. What is still open is a
   fixture whose trap is **outside reading distance**, since `v2`'s was not and
   every run that skipped the check simply read the table instead.
-- **The execution grant is wider than it reads.** `allow_execution` is opt-in
-  per scenario and adds one grant, `Bash(python3:*)`, but a compound command
-  gets the rest for free: both `v1` pilots ran `python3 _check.py; rm -f
-  _check.py; rm -rf __pycache__`, and `rm` is in no grant. Every `v2` run
-  stayed inside its workdir, and that was the sessions' good behaviour rather
-  than the allowlist holding. `commands_run` in each `meta.json` is the audit
-  that makes this visible; narrowing the grant is unfinished, and no scenario
-  outside `v1`/`v2` should opt in until it is.
+- ~~**The execution grant is wider than it reads**, because a compound command
+  gets the rest for free.~~ **Measured 2026-08-17, and the mechanism was not
+  that.** `permission-probe.sh` runs five commands under a real run's flags and
+  reads the verdict off the filesystem. With *no* Bash grant at all,
+  `acceptEdits` already approves `touch` and `rm` inside the workdir, so the
+  `rm -rf __pycache__` riding a `v1` pilot's `python3 ...;` was that rather than
+  a matcher bug — and withholding the grant does block `python3`, so the opt-in
+  is real. The actual hole was bigger: **a granted `python3` wrote outside its
+  workdir in 3 probes of 3**, which no permission string can prevent, since a
+  grant bounds the command and python is a general interpreter. Closed by
+  putting the containment underneath it — `sandbox/python3` runs the real
+  interpreter under `sandbox-exec` with writes confined to the run's workdir,
+  named `python3` and first on the child's PATH so the session types what it
+  would have typed anyway. Re-measured: writing outside denied, child processes
+  included, fail-closed when the workdir is undeclared, and a real `v2` run
+  still delivers 10/10.

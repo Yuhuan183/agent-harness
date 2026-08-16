@@ -13,6 +13,8 @@ main/claude/hooks/experience-pending.py
 main/claude/hooks/leaf-redispatch.py
 main/claude/hooks/runtime-guard.py
 evals/replay/run.py
+evals/replay/sandbox/python3
+evals/replay/sandbox/workdir-only.sb
 evals/replay/grade.py
 evals/replay/fixtures/build.py
 evals/replay/scenarios/r1-interrupted-resume.md
