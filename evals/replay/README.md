@@ -964,3 +964,17 @@ this line. The cell works. The fixture was too easy.
   check — which criterion 4 forbids. What is left measurable is cost, context
   headroom, and work whose inputs genuinely do not fit; the last measures
   capacity, not the clause.
+- **That argument is narrower than the conclusion drawn from it**, and Part 14
+  is the half that reopened. It bounds clauses that *subtract*; a clause that
+  adds an observation is priceable, and `v1`/`v2` priced one — 40 runs, zero
+  invalid, the grader running the delivered code. What is still open is a
+  fixture whose trap is **outside reading distance**, since `v2`'s was not and
+  every run that skipped the check simply read the table instead.
+- **The execution grant is wider than it reads.** `allow_execution` is opt-in
+  per scenario and adds one grant, `Bash(python3:*)`, but a compound command
+  gets the rest for free: both `v1` pilots ran `python3 _check.py; rm -f
+  _check.py; rm -rf __pycache__`, and `rm` is in no grant. Every `v2` run
+  stayed inside its workdir, and that was the sessions' good behaviour rather
+  than the allowlist holding. `commands_run` in each `meta.json` is the audit
+  that makes this visible; narrowing the grant is unfinished, and no scenario
+  outside `v1`/`v2` should opt in until it is.
