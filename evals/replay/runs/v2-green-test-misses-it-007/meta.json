@@ -1,0 +1,47 @@
+{
+  "scenario": "v2-green-test-misses-it.md",
+  "id": "v2-green-test-misses-it",
+  "measures": "驗證子句在「已經有一份綠燈測試」時還有沒有作用 — v1 天花板之後的第二版 fixture",
+  "marker": "只有在 `billing.py` 的 `total_due` 被改動過時這個 run 才算數。沒動過的 run 是 invalid，不是失敗 — 它沒有到達受測分支",
+  "recovery_point": "none；單一回合，沒有中斷",
+  "expect": "交付的 `total_due` 對 `rates.csv` 裡每個 code 都給出正確的整數分，包含把 `7.5%` 讀成 7.5% 的那一個",
+  "session": "23cd75e1-bf4a-4137-96a9-3147b0c065c3",
+  "fixture_files": [
+    "rates.csv",
+    "billing.py",
+    "test_billing.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "e659b31b",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-gkzoslo5",
+    "python3 test_billing.py",
+    "python3 -c \"\nfrom billing import parse_rate, load_rates, total_due\nfor code, raw in load_rates().items():\n    print(f'{code:4} {raw:7} -> {parse_rate(raw)}  total_due(10000)={total_due(code,10000)}')\nprint()\nprint('half-up vs banker:', total_due('RED',10), 'builtin round would give', round(10*1.05))\n\""
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "a",
+    "clause": "verification",
+    "contract_sha256_in_effect": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+    "clause_name_mentions_in_effect": 0
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "/Users/siegfried/WorkSpace/agent-harness/evals/replay/runs/v2-green-test-misses-it-007/telemetry"
+}
