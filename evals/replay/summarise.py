@@ -306,6 +306,48 @@ def summarise(reports: list[dict]) -> dict:
                 arm["reached_primary"] - arm["marked_primary"]), 4)}
         row["secondary"] = rank_separation(base["fractions"], arm["fractions"])
 
+    # `v2`'s check, in the shape registered on 2026-08-16 and written before the
+    # batch landed. The primary is the artifact: the grader ran what the session
+    # delivered and it was right on every case, or it was not. The secondary is
+    # the behaviour the clause actually names — whether anything ran that the
+    # already-green suite did not already cover — and it is here because four
+    # pilots delivered 10/10 and an outcome at the ceiling has no room to move
+    # while the behaviour underneath it still does.
+    verify: dict[str, dict] = {}
+    for report in reports:
+        outcome = report["outcome"]
+        if "probed_beyond_suite" not in outcome:
+            continue
+        row = verify.setdefault(report["scenario"], {"arms": {}})
+        cell = row["arms"].setdefault(report.get("arm", "a"), {
+            "runs": 0, "reached": 0, "correct": 0,
+            "probed_beyond": 0, "ran_suite": 0, "never_reached": []})
+        cell["runs"] += 1
+        if not outcome["marker_present"]:
+            cell["never_reached"].append(report["_dir"])
+            continue
+        cell["reached"] += 1
+        cell["correct"] += 1 if outcome["correct"] else 0
+        cell["probed_beyond"] += 1 if outcome["probed_beyond_suite"] else 0
+        cell["ran_suite"] += 1 if outcome["ran_shipped_tests"] else 0
+
+    for row in verify.values():
+        base, arm = row["arms"].get("a"), row["arms"].get("b")
+        if not (base and arm):
+            continue
+        for name, key in (("primary", "correct"), ("secondary", "probed_beyond")):
+            row[name] = {
+                "measure": key,
+                "a": [base[key], base["reached"]],
+                "b": [arm[key], arm["reached"]],
+                "p_two_sided": round(fisher_exact(
+                    base[key], base["reached"] - base[key],
+                    arm[key], arm["reached"] - arm[key]), 4)}
+        # The bound on harm, which is the whole point of a null here: what the
+        # arm without the clause could still be, given what it did.
+        low, high = clopper_pearson(arm["correct"], arm["reached"])
+        row["arm_b_ci95"] = [round(low, 3), round(high, 3)]
+
     # A scored scenario needs its distribution shown, not its pass rate. `q1`
     # exists because `r3` came back 5 of 5 and a criterion on its ceiling cannot
     # show a contract clause being worth anything; printing `0%` for four runs
@@ -416,6 +458,7 @@ def summarise(reports: list[dict]) -> dict:
             "unstated": unstated,
             "dose": dose,
             "reword": reword,
+            "verify": verify,
             "per_turn": {name: {key: (dict(sorted(value.items()))
                                       if isinstance(value, Counter) else value)
                                 for key, value in row.items()}
@@ -525,6 +568,26 @@ def main() -> int:
                   f"no DECISION line {row['lapsed'].get(index, 0)}, "
                   f"consequence table {row['tabled'].get(index, 0)}")
         print(f"  first lapse per run: {row['first_lapse']}")
+
+    for name, row in report.get("verify", {}).items():
+        print(f"\n{name}, verification clause (pre-registered 2026-08-16; "
+              "unit is the run)")
+        for arm in sorted(row["arms"]):
+            cell = row["arms"][arm]
+            missed = len(cell["never_reached"])
+            print(f"  arm {arm.upper()}: {cell['correct']}/{cell['reached']} "
+                  f"delivered correct, {cell['probed_beyond']}/{cell['reached']} "
+                  f"went past the green suite ({cell['runs']} runs"
+                  f"{f', {missed} never reached it' if missed else ''})")
+        if "primary" not in row:
+            print("  not compared - one arm is missing")
+            continue
+        print(f"  primary   delivered correct, Fisher exact two-sided "
+              f"p = {row['primary']['p_two_sided']:.4f}")
+        print(f"  secondary probed beyond the suite, p = "
+              f"{row['secondary']['p_two_sided']:.4f}")
+        print(f"  arm B exact 95% interval on delivered correctness: "
+              f"{row['arm_b_ci95']}")
 
     for name, row in report.get("reword", {}).items():
         print(f"\n{name}, reword check (pre-registered 2026-08-16; unit is the "
