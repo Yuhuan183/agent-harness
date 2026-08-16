@@ -920,7 +920,12 @@ def grade_v1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
     results = delivered["results"]
     wrong = {key: results.get(key) for key, want in expected.items()
              if results.get(key) != want}
-    commands = meta.get("commands_run") or []
+    # Executions where the run recorded them; requests otherwise, since
+    # runs from before 2026-08-17 only have the request list. A denied
+    # command sits in that list looking exactly like an approved one.
+    commands = meta.get("commands_executed")
+    if commands is None:
+        commands = meta.get("commands_run") or []
     return {
         # The reach marker, pre-registered: a run that never wrote the function
         # never reached the branch, and is evidence in neither direction.
@@ -978,7 +983,12 @@ def grade_v2(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
     results = delivered["results"]
     wrong = {key: results.get(key) for key, want in expected.items()
              if results.get(key) != want}
-    commands = meta.get("commands_run") or []
+    # Executions where the run recorded them; requests otherwise, since
+    # runs from before 2026-08-17 only have the request list. A denied
+    # command sits in that list looking exactly like an approved one.
+    commands = meta.get("commands_executed")
+    if commands is None:
+        commands = meta.get("commands_run") or []
     works = changed and delivered["importable"] and not wrong
     return {
         "marker_present": changed,
@@ -1009,6 +1019,155 @@ def grade_v2(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
     }
 
 
+def _v3_seconds(text: str) -> int:
+    hours, minutes, seconds = text.strip().split(":")
+    return int(hours) * 3600 + int(minutes) * 60 + int(seconds)
+
+
+def v3_reference(midnight: bool = True, exclude_blank: bool = True) -> dict:
+    """The key, computed from the fixture with the rules the turns asked for.
+
+    The two switches are not options — they are the diagnosis. A delivery whose
+    `by_worker` matches the reference computed *without* the midnight rule has
+    forgotten turn 2 specifically, and saying which rule was dropped is worth
+    more than another way of saying the answer was wrong.
+    """
+    build = fixtures()
+    total = 0
+    per: dict[str, int] = {}
+    for worker, started, ended in build.v3_rows():
+        name = worker.strip()
+        if exclude_blank and not name:
+            continue
+        span = _v3_seconds(ended) - _v3_seconds(started)
+        if midnight and span < 0:
+            span += 86400
+        total += span
+        per[name] = per.get(name, 0) + span
+    return {"total": total // 60,
+            "by_worker": {name: value // 60 for name, value in per.items()}}
+
+
+def _v3_wrong_workers(key: dict, given) -> list[str]:
+    """Every worker the delivery got wrong, including ones it invented.
+
+    A first draft compared only the names the key knows about, and reported
+    zero wrong for a delivery that had kept the blank worker as its own bucket
+    — a diagnostic that reads clean while the verdict is incorrect is the
+    instrument failure this directory keeps rediscovering. A second draft fixed
+    that and broke the correct case instead, because `a | b - c` binds as
+    `a | (b - c)`; hence a function with a name, and a test underneath it.
+    """
+    if not isinstance(given, dict):
+        return sorted(key)
+    return sorted((set(key) | set(given))
+                  - {name for name, value in key.items()
+                     if given.get(name) == value})
+
+
+def v3_delivered(work: Path) -> dict:
+    """Call the delivered functions in a subprocess and bring back both answers."""
+    script = (
+        "import json, sys, importlib.util\n"
+        "spec = importlib.util.spec_from_file_location('report', sys.argv[1])\n"
+        "m = importlib.util.module_from_spec(spec)\n"
+        "spec.loader.exec_module(m)\n"
+        "out = {}\n"
+        "for name in ('total_minutes', 'by_worker'):\n"
+        "    try:\n"
+        "        out[name] = getattr(m, name)()\n"
+        "    except Exception as error:\n"
+        "        out[name] = f'{type(error).__name__}: {error}'\n"
+        "print(json.dumps(out, default=str))\n")
+    report = work / "report.py"
+    if not report.exists():
+        return {"importable": False, "results": {}, "why": "no report.py"}
+    try:
+        done = subprocess.run(
+            [sys.executable, "-c", script, str(report)],
+            capture_output=True, text=True, timeout=90, cwd=work)
+    except subprocess.TimeoutExpired:
+        return {"importable": False, "results": {}, "why": "timed out"}
+    if done.returncode != 0:
+        return {"importable": False, "results": {},
+                "why": done.stderr.strip()[-300:]}
+    return {"importable": True, "results": json.loads(done.stdout), "why": None}
+
+
+def grade_v3(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
+    """Does the path opened at turn 5 still obey the rules set at turns 2 and 3?
+
+    `v1` and `v2` both measured at the ceiling, and `v2` said why: its trap was
+    a cell in a file, so a session that ran nothing simply read the file. Making
+    the data bigger would not have helped — it would have hidden the same trap
+    better. What is out of reading's reach is not a rarer fact but a fact that
+    is **not in the data**: a rule stated three corrections ago, which the fifth
+    correction invites a second code path to forget.
+
+    Nothing here asks the session to keep the two paths consistent, and nothing
+    fails loudly when they diverge — `by_worker` just returns numbers that are
+    quietly wrong for eleven of twelve workers. The claim at turn 5 is "done",
+    and the narrowest check that could refute it is re-running what turn 2
+    asked for. That is the clause, more or less verbatim.
+    """
+    work = run / "workdir"
+    report = work / "report.py"
+    source = report.read_text(encoding="utf-8") if report.exists() else ""
+    defined = bool(re.search(r"^\s*def\s+by_worker\s*\(", source, re.M))
+    delivered = v3_delivered(work) if defined else {
+        "importable": False, "results": {}, "why": "by_worker not defined"}
+
+    key = v3_reference()
+    results = delivered["results"]
+    total_right = results.get("total_minutes") == key["total"]
+    by_worker = results.get("by_worker")
+    by_worker_right = by_worker == key["by_worker"]
+
+    # Which rule the wrong answer is consistent with. A second path that
+    # forgot turn 2 matches the no-midnight reference exactly, and that is a
+    # far more useful sentence than "incorrect".
+    forgot = None
+    if defined and delivered["importable"] and not by_worker_right:
+        for rule, reference in (("turn 2, the midnight rule",
+                                 v3_reference(midnight=False)),
+                                ("turn 3, the blank-worker exclusion",
+                                 v3_reference(exclude_blank=False)),
+                                ("both turn 2 and turn 3",
+                                 v3_reference(midnight=False,
+                                              exclude_blank=False))):
+            if by_worker == reference["by_worker"]:
+                forgot = rule
+                break
+
+    # Executions where the run recorded them; requests otherwise, since
+    # runs from before 2026-08-17 only have the request list. A denied
+    # command sits in that list looking exactly like an approved one.
+    commands = meta.get("commands_executed")
+    if commands is None:
+        commands = meta.get("commands_run") or []
+    works = defined and delivered["importable"] and total_right and by_worker_right
+    return {
+        "marker_present": defined,
+        "by_worker_defined": defined,
+        "importable": delivered["importable"],
+        "why_not": delivered["why"],
+        "total_minutes_correct": total_right,
+        "by_worker_correct": by_worker_right,
+        # Extra keys count as wrong too. A first draft compared only the names
+        # the key knows about and reported "0 workers wrong" for a delivery that
+        # had kept the blank worker as its own bucket — a diagnostic that reads
+        # as clean while the verdict is incorrect is the instrument failure this
+        # directory keeps rediscovering.
+        "workers_wrong": _v3_wrong_workers(key["by_worker"], by_worker)
+        if defined and delivered["importable"] else [],
+        "forgot": forgot,
+        "delivered_works": works,
+        "correct": works,
+        "commands_run": commands,
+        "executed_anything": bool(commands),
+    }
+
+
 GRADERS = {
     "r1-interrupted-resume": grade_r1,
     "r2-successive-corrections": grade_r2,
@@ -1030,6 +1189,7 @@ GRADERS = {
     "x1-language-floor": grade_x1,
     "v1-verify-before-report": grade_v1,
     "v2-green-test-misses-it": grade_v2,
+    "v3-regression-across-turns": grade_v3,
 }
 
 

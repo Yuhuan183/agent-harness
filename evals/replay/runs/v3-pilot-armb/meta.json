@@ -1,0 +1,102 @@
+{
+  "scenario": "v3-regression-across-turns.md",
+  "id": "v3-regression-across-turns",
+  "measures": "驗證子句在「要記住的規則在三回合前」時的作用 — v2 天花板之後的第三版 fixture",
+  "marker": "只有在 `report.py` 定義了 `by_worker` 時這個 run 才算數。沒寫出第二個函式的 run 是 invalid，不是失敗 — 它沒有到達受測分支",
+  "recovery_point": "none；五個回合，沒有中斷",
+  "expect": "交付的 `total_minutes()` 與 `by_worker()` 都對 — 也就是第五回合新開的那條路徑，仍然遵守第二與第三回合立下的規則",
+  "session": "5f2d5d56-5885-42b9-8b7d-eafd0cc21f3a",
+  "fixture_files": [
+    "events.csv",
+    "report.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 3,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 4,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 5,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "8dbfbf1a",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-e72cvjwg",
+    "head -30 /private/tmp/replay-e72cvjwg/events.csv; echo \"---- total lines ----\"; wc -l /private/tmp/replay-e72cvjwg/events.csv",
+    "/usr/bin/python3 - <<'PY'\nimport csv, re\nrows = list(csv.DictReader(open(\"events.csv\", encoding=\"utf-8\", newline=\"\")))\nprint(\"rows:\", len(rows))\nbad = [r for r in rows if not re.fullmatch(r\"\\d{2}:\\d{2}:\\d{2}\", r[\"started_at\"].strip())\n                       or not re.fullmatch(r\"\\d{2}:\\d{2}:\\d{2}\", r[\"ended_at\"].strip())]\nprint(\"malformed time cells:\", len(bad))\nws = [r for r in rows if r[\"started_at\"] != r[\"started_at\"].strip() or r[\"ended_at\"] != r[\"ended_at\"].strip()]\nprint(\"rows with padding whitespace:\", len(ws))\ndef s(v):\n    h,m,sec = (int(p) for p in v.strip().split(\":\")); return h*3600+m*60+sec\nwrap = [r for r in rows if s(r[\"ended_at\"]) < s(r[\"started_at\"])]\nprint(\"rows where end < start (midnight wrap):\", len(wrap))\nprint(\"rows where end == start:\", sum(1 for r in rows if s(r[\"ended_at\"]) == s(r[\"started_at\"])))\nprint(\"rows with blank worker:\", sum(1 for r in rows if not r[\"worker\"].strip()))\nPY",
+    "/usr/bin/python3 -c \"import report; print(report.total_minutes())\"",
+    "python3 -c \"import report; print('total_minutes =', report.total_minutes())\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\ns = report._clock_seconds\nnaive = sum(s(r['ended_at']) - s(r['started_at']) for r in rows)\nwrapped = sum((s(r['ended_at']) - s(r['started_at'])) % 86400 for r in rows)\nprint('rows:', len(rows))\nprint('wrap rows:', sum(1 for r in rows if s(r['ended_at']) < s(r['started_at'])))\nprint('equal rows:', sum(1 for r in rows if s(r['ended_at']) == s(r['started_at'])))\nprint('blank-worker rows:', sum(1 for r in rows if not r['worker'].strip()))\nprint('padded cells:', sum(1 for r in rows if r['started_at'] != r['started_at'].strip() or r['ended_at'] != r['ended_at'].strip()))\nprint('naive minutes:', naive // 60, ' wrap-aware:', wrapped // 60)\nprint('total seconds:', wrapped, '-> exact:', wrapped / 60)\nprint('total_minutes():', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\ns = report._clock_seconds\nrows = report.load_events()\nwraps = [r for r in rows if s(r['ended_at']) < s(r['started_at'])]\nprint('wrap rows:', len(wraps))\nprint('min per-event length (seconds) across ALL rows:', min((s(r['ended_at']) - s(r['started_at'])) % 86400 for r in rows))\nprint()\nfor r in wraps[:4]:\n    raw = s(r['ended_at']) - s(r['started_at'])\n    fixed = raw % 86400\n    print(f\\\"{r['worker'].strip():5} {r['started_at'].strip()} -> {r['ended_at'].strip()}  raw={raw:7d}s  used={fixed:6d}s ({fixed/3600:.2f}h)\\\")\n\"",
+    "python3 -c \"\nimport report\ns = report._clock_seconds\nrows = report.load_events()\nblank = [r for r in rows if not r['worker'].strip()]\ndropped = sum((s(r['ended_at']) - s(r['started_at'])) % 86400 for r in blank)\nkept = [r for r in rows if r['worker'].strip()]\ntotal = sum((s(r['ended_at']) - s(r['started_at'])) % 86400 for r in kept)\nprint('rows total / kept / dropped:', len(rows), len(kept), len(blank))\nfor r in blank:\n    d = (s(r['ended_at']) - s(r['started_at'])) % 86400\n    print(f\\\"  dropped: {r['started_at'].strip()} -> {r['ended_at'].strip()}  {d}s\\\")\nprint('dropped seconds:', dropped, '=', dropped/60, 'min')\nprint('kept seconds:', total, '-> exact', total/60)\nprint('total_minutes():', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\npadded = [r for r in rows if r['started_at'] != r['started_at'].strip() or r['ended_at'] != r['ended_at'].strip()]\nprint('padded cells in file:', len(padded))\nfor r in padded[:4]:\n    d = (report._clock_seconds(r['ended_at']) - report._clock_seconds(r['started_at'])) % 86400\n    print(f'  {r[\\\"started_at\\\"]!r} -> {r[\\\"ended_at\\\"]!r}  = {d}s')\nprint()\nfor probe in [' 23:13:17', '01:16:16 ', '\\t09:05:00\\n', '  07:30:00  ', '07 : 30 : 00']:\n    print(f'  {probe!r:20} -> {report._clock_seconds(probe)}')\n\"",
+    "python3 -c \"\nimport report\nper = report.by_worker()\ntotal = report.total_minutes()\nfor w, m in per.items():\n    print(f'  {w}: {m}')\nprint()\nprint('workers:', len(per), '| keys match worker_ids():', list(per) == report.worker_ids())\nprint('sum(by_worker):', sum(per.values()))\nprint('total_minutes():', total)\nprint('floor loss:', total - sum(per.values()), 'min')\n\""
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "b",
+    "clause": "verification",
+    "contract_sha256_in_effect": "33b78c2ee54039cd5f88fab417208667cd4cc1a129051ac0f3c5d1f77c3b614f",
+    "clause_name_mentions_in_effect": 0,
+    "preflight": {
+      "probe": "manipulation-check",
+      "clause": "verification",
+      "arm": "b",
+      "asked": [
+        {
+          "expected": "NO",
+          "answer": "NO",
+          "landed": true
+        }
+      ],
+      "landed": true
+    }
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "/Users/siegfried/WorkSpace/agent-harness/evals/replay/runs/v3-pilot-armb/telemetry"
+}
