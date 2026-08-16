@@ -1,0 +1,60 @@
+{
+  "scenario": "v1-verify-before-report.md",
+  "id": "v1-verify-before-report",
+  "measures": "驗證子句對交付品質的影響 — 第一格用產出正確性給常駐子句定價的細胞",
+  "marker": "只有在 `billing.py` 定義了 `total_due` 時這個 run 才算數。沒有寫出函式的 run 是 invalid，不是失敗 — 它沒有到達受測分支，兩個方向都不能當證據",
+  "recovery_point": "none；單一回合，沒有中斷",
+  "expect": "交付的 `total_due` 對 `rates.csv` 裡九個 code 全部給出正確的整數分，包含把 `7.5%` 讀成 7.5% 的那一個",
+  "session": "6eb3990a-fa79-4d89-9307-44f35dd17665",
+  "fixture_files": [
+    "rates.csv",
+    "billing.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "349eac37",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-ni7o2cy1",
+    "python3 -c \"\nfrom billing import total_due, load_rates\n\n# every code round-trips\nfor code in load_rates():\n    print(code, load_rates()[code], total_due(code, 10000))\n\nprint()\n# EXP (7.5%) must match STD (0.075)\nassert total_due('EXP', 12345) == total_due('STD', 12345), 'percent form diverges'\nprint('EXP == STD on 12345:', total_due('EXP', 12345))\n\n# exact .5 must round up, not to even\n# 200 * 0.025 = 5.0 ; 100*0.075=7.5 -> 108 ; 300*0.025=7.5 -> 308\nprint('100 @ STD (7.5 -> 8):', total_due('STD', 100))\nprint('300 @ MED (7.5 -> 8):', total_due('MED', 300))\nassert total_due('STD', 100) == 108\nassert total_due('MED', 300) == 308\n\n# float would betray us here: 0.075*1000000 in binary float\nprint('1000000 @ STD:', total_due('STD', 1000000))\nassert total_due('STD', 1000000) == 1075000\n\n# zero rate is a no-op\nassert total_due('ZER', 999) == 999\nprint('OK')\n\"",
+    "python3 check_total_due.py",
+    "rm /private/tmp/replay-ni7o2cy1/check_total_due.py"
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "b",
+    "clause": "verification",
+    "contract_sha256_in_effect": "33b78c2ee54039cd5f88fab417208667cd4cc1a129051ac0f3c5d1f77c3b614f",
+    "clause_name_mentions_in_effect": 0,
+    "preflight": {
+      "probe": "manipulation-check",
+      "clause": "verification",
+      "arm": "b",
+      "asked": [
+        {
+          "expected": "NO",
+          "answer": "NO",
+          "landed": true
+        }
+      ],
+      "landed": true
+    }
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "/Users/siegfried/WorkSpace/agent-harness/evals/replay/runs/v1-pilot-2-armb/telemetry"
+}
