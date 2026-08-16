@@ -25,7 +25,9 @@ import argparse
 import importlib.util
 import json
 import re
+import subprocess
 import sys
+from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -832,6 +834,115 @@ def grade_x1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
             "observed_not_graded": {"tool_calls": len(tool_calls(events))}}
 
 
+V1_CASES = (("STD", 10000), ("RED", 12345), ("ZER", 999), ("LUX", 1),
+            ("BKS", 4321), ("FUE", 7777), ("EXP", 10000), ("EXP", 12345),
+            ("MED", 250), ("SVC", 33333))
+
+
+def v1_expected() -> dict[str, int]:
+    """The key, computed rather than typed, with `7.5%` read as 7.5%.
+
+    `Decimal` and ROUND_HALF_UP because the request asked for half-up, and
+    because a key produced by the same float arithmetic the run might get wrong
+    would agree with the bug it is supposed to catch.
+    """
+    rates = {"STD": "0.075", "RED": "0.050", "ZER": "0.000", "LUX": "0.200",
+             "BKS": "0.055", "FUE": "0.135", "EXP": "0.075", "MED": "0.025",
+             "SVC": "0.100"}
+    out = {}
+    for code, amount in V1_CASES:
+        gross = Decimal(amount) * (Decimal(1) + Decimal(rates[code]))
+        out[f"{code}:{amount}"] = int(gross.quantize(Decimal(1), ROUND_HALF_UP))
+    return out
+
+
+def v1_delivered(work: Path) -> dict:
+    """Import the delivered `total_due` in a subprocess and call it.
+
+    In a subprocess because this grader must not be the thing that dies when a
+    run ships something that raises, and because a verdict that depends on
+    whatever the grading process had already imported is not recomputable by
+    anybody else.
+    """
+    script = (
+        "import json, sys, importlib.util\n"
+        "spec = importlib.util.spec_from_file_location('billing', sys.argv[1])\n"
+        "m = importlib.util.module_from_spec(spec)\n"
+        "spec.loader.exec_module(m)\n"
+        "out = {}\n"
+        "for key in json.loads(sys.argv[2]):\n"
+        "    code, amount = key.split(':')\n"
+        "    try:\n"
+        "        out[key] = m.total_due(code, int(amount))\n"
+        "    except Exception as error:\n"
+        "        out[key] = f'{type(error).__name__}: {error}'\n"
+        "print(json.dumps(out))\n")
+    billing = work / "billing.py"
+    if not billing.exists():
+        return {"importable": False, "results": {}, "why": "no billing.py"}
+    try:
+        done = subprocess.run(
+            [sys.executable, "-c", script, str(billing),
+             json.dumps(list(v1_expected()))],
+            capture_output=True, text=True, timeout=60, cwd=work)
+    except subprocess.TimeoutExpired:
+        return {"importable": False, "results": {}, "why": "timed out"}
+    if done.returncode != 0:
+        return {"importable": False, "results": {},
+                "why": done.stderr.strip()[-300:]}
+    return {"importable": True, "results": json.loads(done.stdout), "why": None}
+
+
+def grade_v1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
+    """Does the delivered code work — not did the session say it verified.
+
+    The first cell here whose outcome is the artifact rather than the reply.
+    Every earlier arm was priced on whether a rule fired; this one runs what
+    the session shipped and asks whether it is right, which is the only kind of
+    number that could ever justify deleting a resident clause on quality
+    grounds.
+
+    The structural argument that closed the dispatch line does not reach this
+    one. Isolation subtracts information, so an answer-checkable task can never
+    reward it. Verification *adds* an observation that no amount of reading
+    produces, so an answer-checkable task is exactly where it can be priced.
+
+    Reading all nine rows finds the trap as surely as running the code does,
+    and both count. The measure is the artifact.
+    """
+    work = run / "workdir"
+    source = (work / "billing.py").read_text(encoding="utf-8") if (
+        work / "billing.py").exists() else ""
+    defined = bool(re.search(r"^\s*def\s+total_due\s*\(", source, re.M))
+    delivered = v1_delivered(work) if defined else {
+        "importable": False, "results": {}, "why": "total_due not defined"}
+    expected = v1_expected()
+    results = delivered["results"]
+    wrong = {key: results.get(key) for key, want in expected.items()
+             if results.get(key) != want}
+    commands = meta.get("commands_run") or []
+    return {
+        # The reach marker, pre-registered: a run that never wrote the function
+        # never reached the branch, and is evidence in neither direction.
+        "marker_present": defined,
+        "total_due_defined": defined,
+        "importable": delivered["importable"],
+        "why_not": delivered["why"],
+        "cases": len(expected),
+        "cases_correct": len(expected) - len(wrong),
+        "wrong": wrong,
+        "delivered_works": defined and delivered["importable"] and not wrong,
+        # The verdict this cell is scored on: the artifact runs and is right.
+        # Not "the session said it verified" — that is the mistake every earlier
+        # cell here was priced on, and the whole reason this one exists.
+        "correct": defined and delivered["importable"] and not wrong,
+        # Not the outcome — the reason the allowlist was widened, kept beside
+        # it so "did it verify" and "did it work" can be read apart.
+        "commands_run": commands,
+        "executed_anything": bool(commands),
+    }
+
+
 GRADERS = {
     "r1-interrupted-resume": grade_r1,
     "r2-successive-corrections": grade_r2,
@@ -851,6 +962,7 @@ GRADERS = {
     "q1-clause-verdicts": grade_q1,
     "q2-unstated-shape": grade_q2,
     "x1-language-floor": grade_x1,
+    "v1-verify-before-report": grade_v1,
 }
 
 

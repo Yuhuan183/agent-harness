@@ -166,7 +166,7 @@ def child_env(run_dir: Path) -> dict[str, str]:
     return env
 
 
-def allowed_tools() -> list[str]:
+def allowed_tools(execute: bool = False) -> list[str]:
     """Two grants, each one closing a hole the first pilot opened up.
 
     `acceptEdits` approves edits in the workdir and the simplest shell reads,
@@ -180,18 +180,62 @@ def allowed_tools() -> list[str]:
     """
     home = Path.home()
     ledger = ".agents/skills/experience-ledger/scripts/experience-log"
-    return [f"Read(//{home}/.claude/skills/**)",
-            f"Read(//{home}/.agents/skills/**)",
-            f"Bash({home}/{ledger}:*)",
-            f"Bash(~/{ledger}:*)"]
+    grants = [f"Read(//{home}/.claude/skills/**)",
+              f"Read(//{home}/.agents/skills/**)",
+              f"Bash({home}/{ledger}:*)",
+              f"Bash(~/{ledger}:*)"]
+    if execute:
+        # Opt-in, per scenario, and never on by default. Every batch run before
+        # 2026-08-16 was measured with the four grants above, and a harness that
+        # quietly widened them would make new runs incomparable to old ones
+        # without anything in a `meta.json` saying so — the drift this suite
+        # keeps a content fingerprint to catch.
+        #
+        # `v1` is the first cell where the outcome is whether delivered code
+        # works, and a session that cannot execute anything cannot be asked
+        # whether it verified. So the grant is exactly one interpreter, the
+        # workdir is the cwd, and `commands_run` below records every shell line
+        # the session actually issued: a widening nobody can audit afterwards is
+        # not a widening this suite is allowed to make.
+        grants.append("Bash(python3:*)")
+    return grants
+
+
+def commands_run(events: Path) -> list[str]:
+    """Every shell line the session issued, read back out of its own stream.
+
+    The execution grant is opt-in and narrow, but "narrow" is a claim about the
+    allowlist and this is the observation. A reader who wants to know whether a
+    `v1` run stayed inside its workdir does not have to trust the permission
+    string — the commands are here, in the order they were approved.
+    """
+    seen: list[str] = []
+    for line in events.read_text(encoding="utf-8").splitlines():
+        if '"Bash"' not in line:
+            continue
+        try:
+            record = json.loads(line)
+        except ValueError:
+            continue
+        message = record.get("message")
+        if not isinstance(message, dict):
+            continue
+        content = message.get("content")
+        for block in content if isinstance(content, list) else []:
+            if (isinstance(block, dict) and block.get("type") == "tool_use"
+                    and block.get("name") == "Bash"):
+                command = (block.get("input") or {}).get("command")
+                if command:
+                    seen.append(command)
+    return seen
 
 
 def argv_for(prompt: str, session: str, first: bool,
-             inject: str | None = None) -> list[str]:
+             inject: str | None = None, execute: bool = False) -> list[str]:
     argv = ["claude", "--print", prompt,
             "--output-format", "stream-json", "--verbose",
             "--permission-mode", "acceptEdits",
-            "--allowedTools", *allowed_tools(),
+            "--allowedTools", *allowed_tools(execute),
             "--strict-mcp-config"]
     if inject:
         # The client's own instructions arrive in the system prompt, and the
@@ -205,9 +249,10 @@ def argv_for(prompt: str, session: str, first: bool,
 
 def run_turn(prompt: str, session: str, first: bool, workdir: Path,
              env: dict[str, str], interrupt_after: float | None,
-             inject: str | None = None) -> dict:
+             inject: str | None = None, execute: bool = False) -> dict:
     """One turn. Returns what happened, including whether it was cut short."""
-    proc = subprocess.Popen(argv_for(prompt, session, first, inject), cwd=workdir,
+    proc = subprocess.Popen(argv_for(prompt, session, first, inject, execute),
+                            cwd=workdir,
                             env=env, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
     interrupted = False
@@ -375,7 +420,8 @@ def main() -> int:
         for index, prompt in enumerate(turns, start=1):
             cut = interrupt_after if index == interrupt_turn else None
             result = run_turn(prompt, session, index == 1, work, env, cut,
-                          spec.get("inject_system"))
+                          spec.get("inject_system"),
+                          str(spec.get("allow_execution", "")).lower() == "true")
             with events.open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps({"replay_turn": index,
                                          "interrupted": result["interrupted"]}) + "\n")
@@ -438,6 +484,8 @@ def main() -> int:
         "turns": records,
         "interrupt": interrupt_state,
         "surface": surface_fingerprint(),
+        "allow_execution": str(spec.get("allow_execution", "")).lower() == "true",
+        "commands_run": commands_run(events),
         "deployed_contract_sha256": sha(DEPLOYED) if DEPLOYED.exists() else None,
         "matches_repo_source": not drift,
         "arm": arm_state,

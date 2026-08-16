@@ -60,6 +60,17 @@ POINTER = {
         "precise, concise English — only user-facing replies switch to "
         "Traditional Chinese.\n"
     ),
+    # Also not a pointer. This one is here because it is the only resident
+    # clause found so far whose value can be priced on the quality of what gets
+    # delivered rather than on whether a marker appeared. The dispatch line
+    # closed on a structural argument — isolation subtracts information, so an
+    # answer-checkable task cannot reward it — and that argument does not reach
+    # this clause: running the code *adds* an observation no amount of reading
+    # produces, so an answer-checkable task is exactly where it can be measured.
+    "verification": (
+        "- Run the narrowest verification that could actually refute the claim "
+        "you are about to make.\n"
+    ),
 }
 
 # What arm C removes on top of the pointer, to erase the name entirely. Each
@@ -90,6 +101,13 @@ RESIDUAL = {
                        "removes the rules keeping code and agent-to-agent "
                        "briefs in English, because they share the bullet",
     },
+    "verification": {
+        "removals": (),
+        "side_effect": "the clause names no skill, so B and C are the same "
+                       "text and only B is worth running. It is one sentence "
+                       "carrying one rule, so removing it removes nothing "
+                       "else — the cleanest removal in this table",
+    },
 }
 
 # The manipulation check, per clause. Asking whether a skill is named is the
@@ -104,6 +122,9 @@ PROBE = {
     "language": ("Answer with exactly one word, YES or NO, and nothing else. "
                  "Does your global working contract tell you which language to "
                  "write your replies to the user in?"),
+    "verification": ("Answer with exactly one word, YES or NO, and nothing "
+                     "else. Does your global working contract tell you to run "
+                     "a check that could refute a claim before you make it?"),
 }
 
 
