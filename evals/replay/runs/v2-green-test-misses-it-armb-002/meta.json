@@ -1,0 +1,61 @@
+{
+  "scenario": "v2-green-test-misses-it.md",
+  "id": "v2-green-test-misses-it",
+  "measures": "驗證子句在「已經有一份綠燈測試」時還有沒有作用 — v1 天花板之後的第二版 fixture",
+  "marker": "只有在 `billing.py` 的 `total_due` 被改動過時這個 run 才算數。沒動過的 run 是 invalid，不是失敗 — 它沒有到達受測分支",
+  "recovery_point": "none；單一回合，沒有中斷",
+  "expect": "交付的 `total_due` 對 `rates.csv` 裡每個 code 都給出正確的整數分，包含把 `7.5%` 讀成 7.5% 的那一個",
+  "session": "342bba69-1671-4cdc-ae26-e57813b3ee93",
+  "fixture_files": [
+    "rates.csv",
+    "billing.py",
+    "test_billing.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "e659b31b",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-32bq5cpl",
+    "python3 test_billing.py",
+    "python3 -c \"\nfrom billing import total_due, parse_rate, load_rates\nfor code, raw in load_rates().items():\n    print(f'{code}  raw={raw!r:8} parsed={parse_rate(raw)}  10000 -> {total_due(code, 10000)}')\nprint()\nprint('round-half-up check: MED 20 ->', total_due('MED', 20), ' (python round(20.5) =', round(20.5), ')')\nprint('float hazard avoided: 10000*1.075 =', 10000*1.075, '-> STD', total_due('STD', 10000))\n\"",
+    "python3 -c \"\nfrom decimal import Decimal\nbad = []\nfor cents in range(1, 20000):\n    f = cents * 1.075\n    d = Decimal(cents) * Decimal('1.075')\n    if Decimal(repr(f)) != d:\n        bad.append((cents, f, d))\nprint('float-vs-exact mismatches at rate 0.075, first 5 of', len(bad))\nfor c, f, d in bad[:5]:\n    print(f'  {c} -> float {f!r}  exact {d}')\n\""
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "b",
+    "clause": "verification",
+    "contract_sha256_in_effect": "33b78c2ee54039cd5f88fab417208667cd4cc1a129051ac0f3c5d1f77c3b614f",
+    "clause_name_mentions_in_effect": 0,
+    "preflight": {
+      "probe": "manipulation-check",
+      "clause": "verification",
+      "arm": "b",
+      "asked": [
+        {
+          "expected": "NO",
+          "answer": "NO",
+          "landed": true
+        }
+      ],
+      "landed": true
+    }
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "<REPO>/evals/replay/runs/v2-green-test-misses-it-armb-002/telemetry"
+}

@@ -7,10 +7,11 @@ verification gap from 2026-07-28, and `docs/research/lifecycle-replay.md` set
 four survival criteria a replay result must meet before it may be cited.
 
 This directory closed criterion 2 — a scenario per question with its reach
-marker written before anything ran — and then kept going. **336 runs retained,
-2026-08-12 to 08-16**: 325 in batches, plus nine pilots, one run the provider
-aborted, and one voided by an operator mistake — all kept, because an invalid
-run is data about the scenario and a voided one is data about the operator.
+marker written before anything ran — and then kept going. **380 runs retained,
+2026-08-12 to 08-17**: 365 in batches, plus thirteen pilots, one run the
+provider aborted, and one voided by an operator mistake — all kept, because an
+invalid run is data about the scenario and a voided one is data about the
+operator.
 
 Recount at any time with `ls -d runs/*/ | wc -l`; the figure above was typed by
 hand as 82 first, which is the seventh instance of the failure Part 7 is about.
@@ -33,6 +34,8 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | when a rule fires a fifth of the time, was there anything to mark? | **yes — 30 of 30 runs made the same unforced choice, 8 said so** | computed from retained workdirs, no runs spent |
 | does taking the judgement call out of that rule help? | **yes on `m1` — 14/92 against 44/91, p = 0.0000014** | the one result here big enough to act on |
 | does that carry to a second scenario? | not shown at n=10 per arm — `r2` turn 3, 0/10 against 2/10, p = 0.47 | a null this size is not absence; `r2` also has no headroom outside turn 3, which the pre-registration said first |
+| can a resident clause be priced on what gets *delivered*? | **yes, the cell works** — 40 runs, zero invalid, the grader runs the shipped code | the first result-quality measure here; `q1`/`q2` could only ever grade a reply |
+| does deleting the verification clause make the delivered code worse? | no difference found — 20/20 against 20/20, arm B's lower bound 0.832 | and the reason is the finding: the trap was inside reading distance, so nobody needed to run anything |
 
 **Four hypotheses were built and refuted, three of them mine.** That is this
 directory's main output, and Part 7 explains why it had to be.
@@ -851,6 +854,78 @@ abandoned one. It is kept at
 pattern so no tally can pick it up, and the seed was re-run. Dropping a run
 after reading its outcome would be picking data; the timing is the whole
 defence, which is why it is written down here rather than in a commit message.
+
+---
+
+## Part 14 — the first cell that prices a clause on what was delivered
+
+Part 9 closed the result-quality line on a structural argument, and the
+argument holds — for the clause class it was about. Isolation subtracts
+information, so a reader holding the union computes whatever any split could,
+and an answer-checkable task can never reward it.
+
+That does not reach a clause that *adds* an observation. Running code produces a
+fact no amount of reading produces, which is exactly what an answer-checkable
+task can price. So `v1`/`v2` grade the artifact: the grader imports the
+delivered `total_due` in a subprocess and runs it over ten cases against a
+Decimal ROUND_HALF_UP key. Nobody's reply is read.
+
+```
+fixture   rates.csv, nine rows, the seventh writing 7.5% as "7.5%"
+v1        write total_due from scratch
+v2        total_due exists, plus a green suite covering three codes and
+          asserting the table is nine rows long — and never touching the seventh
+arms      A as shipped, B with the verification clause removed
+```
+
+`v1` came back at the ceiling in both pilot arms, so `v2` added the thing that
+actually makes people stop checking: a suite that is already green and stays
+green through every state, including a fix that satisfies only its three cases.
+
+```
+primary     delivered correct     arm A 20/20   arm B 20/20   Fisher p = 1.0000
+                                  arm B exact 95% interval [0.832, 1.000]
+secondary   ran anything past the green suite   13/20 against 12/20, p = 1.0000
+```
+
+Forty runs, zero invalid. The secondary was built specifically to have room to
+fall and did not.
+
+**The finding is underneath those numbers.** Fifteen runs never executed
+anything beyond the green suite, and all fifteen delivered correct code. Their
+tool calls say why:
+
+```
+never ran a check past the suite     15  (arm A 7, arm B 8)
+of those, read rates.csv directly    15  — every one
+```
+
+So this is not "the model is careful". The trap was **inside reading distance**,
+and the fixture permits reading on purpose — the measure is the artifact, not
+the method, or it is not a result-quality measure at all. The request's own
+words, `every code in rates.csv must be correct`, pointed straight at the table.
+The sentence added for fairness is the sentence that disarmed the trap.
+
+Which gives a conclusion symmetric to the one that closed Part 9:
+
+```
+isolation clause     isolation only subtracts     a single reader computes it    no credit
+verification clause  if the fact is readable      a reader gets it without running   no credit
+```
+
+**A verification clause can only be priced when the fact it would reveal is
+outside reading distance** — underivable from the source, observable only by
+running. A data cell does not qualify. Platform float behaviour, a real API
+response, a race, a dependency's actual behaviour, an input too large to read:
+those qualify. That is what the next fixture needs, and it cost 40 runs and four
+pilots to learn precisely.
+
+**What this null licenses**, in the words fixed before the counts existed: that
+deleting the verification clause cost no measurable delivered correctness in a
+single-turn, answer-checkable task whose trap is readable, at n=20 per arm, with
+0.832 as the bound on harm. It does not license calling the clause useless — a
+ceiling hides everything below its resolution — and it does not license closing
+this line. The cell works. The fixture was too easy.
 
 ---
 

@@ -1,0 +1,61 @@
+{
+  "scenario": "v2-green-test-misses-it.md",
+  "id": "v2-green-test-misses-it",
+  "measures": "驗證子句在「已經有一份綠燈測試」時還有沒有作用 — v1 天花板之後的第二版 fixture",
+  "marker": "只有在 `billing.py` 的 `total_due` 被改動過時這個 run 才算數。沒動過的 run 是 invalid，不是失敗 — 它沒有到達受測分支",
+  "recovery_point": "none；單一回合，沒有中斷",
+  "expect": "交付的 `total_due` 對 `rates.csv` 裡每個 code 都給出正確的整數分，包含把 `7.5%` 讀成 7.5% 的那一個",
+  "session": "8631a99d-94ae-498f-9cff-7616d30628b3",
+  "fixture_files": [
+    "rates.csv",
+    "billing.py",
+    "test_billing.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "e659b31b",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-kqvpfueu",
+    "python3 test_billing.py",
+    "python3 -c \"\nfrom billing import load_rates, total_due, parse_rate\nfor code, raw in load_rates().items():\n    print(f'{code:4} raw={raw:7} parsed={parse_rate(raw)!s:8} 10000c -> {total_due(code, 10000)}')\nprint()\n# where naive float rounding would have gone wrong\nimport math\nfor code, amt in [('STD',100),('RED',10),('BKS',1000),('FUE',300),('SVC',5),('MED',20)]:\n    f = amt * (1 + float(parse_rate(load_rates()[code])))\n    print(f'{code}/{amt}: float={f!r} floor(f+0.5)={math.floor(f+0.5)} decimal={total_due(code,amt)}')\n\"",
+    "python3 - <<'EOF'\nimport math\nfrom billing import load_rates, total_due, parse_rate\n\nfor code, raw in load_rates().items():\n    print(f\"{code:4} raw={raw:7} parsed={parse_rate(raw)!s:8} 10000c -> {total_due(code, 10000)}\")\n\nprint()\nfor code, amt in [(\"STD\",100),(\"RED\",10),(\"BKS\",1000),(\"FUE\",300),(\"SVC\",5),(\"MED\",20),(\"LUX\",25)]:\n    f = amt * (1 + float(parse_rate(load_rates()[code])))\n    naive = math.floor(f + 0.5)\n    exact = total_due(code, amt)\n    flag = \"  <-- differs\" if naive != exact else \"\"\n    print(f\"{code}/{amt}: float={f!r} floor(f+0.5)={naive} decimal={exact}{flag}\")\nEOF"
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "b",
+    "clause": "verification",
+    "contract_sha256_in_effect": "33b78c2ee54039cd5f88fab417208667cd4cc1a129051ac0f3c5d1f77c3b614f",
+    "clause_name_mentions_in_effect": 0,
+    "preflight": {
+      "probe": "manipulation-check",
+      "clause": "verification",
+      "arm": "b",
+      "asked": [
+        {
+          "expected": "NO",
+          "answer": "NO",
+          "landed": true
+        }
+      ],
+      "landed": true
+    }
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "<REPO>/evals/replay/runs/v2-green-test-misses-it-armb-001/telemetry"
+}
