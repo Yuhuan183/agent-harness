@@ -32,7 +32,7 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | does a contract full of clauses make its own rules obeyed less? | no difference found — 3/15 against 5/15 with 83% of the contract deleted | resolving the gap that remains would cost ~688 runs; and both arms are bad |
 | when a rule fires a fifth of the time, was there anything to mark? | **yes — 30 of 30 runs made the same unforced choice, 8 said so** | computed from retained workdirs, no runs spent |
 | does taking the judgement call out of that rule help? | **yes on `m1` — 14/92 against 44/91, p = 0.0000014** | the one result here big enough to act on |
-| does that carry to a second scenario? | no — `r2` turn 3, 0/10 against 2/10, p = 0.47 | but `r2` has no headroom outside turn 3, which the pre-registration said first |
+| does that carry to a second scenario? | not shown at n=10 per arm — `r2` turn 3, 0/10 against 2/10, p = 0.47 | a null this size is not absence; `r2` also has no headroom outside turn 3, which the pre-registration said first |
 
 **Four hypotheses were built and refuted, three of them mine.** That is this
 directory's main output, and Part 7 explains why it had to be.
@@ -745,6 +745,12 @@ byte identical, because an arm that reworded two things could not say which one
 moved. Its manipulation check names the part that changed — asking whether the
 rule is present would pass in both arms, which is the point of the arm.
 
+That direction is now historical. The operational wording shipped on
+2026-08-16, so `arms.py` resolves the deployed bullet and installs the other
+one: run against today's contract, arm W puts the judgement call *back*. An arm
+that still named a fixed side would install what is already deployed and come
+back identical to its control — a perfect null produced by measuring nothing.
+
 ```
 arm A   material, as shipped     3/15   20%   CI [0.043, 0.481]
 arm W   an applicable test       7/15   47%   CI [0.213, 0.734]
@@ -799,8 +805,10 @@ the cause, and it acts on whether the rule is reached rather than on whether it
 is understood.
 
 **Scope, checked rather than assumed.** `r2` was run *before* editing the
-contract on the strength of this, and the contract is still unedited — the
-result below is why that order mattered. Turn 3 was the pre-registered primary: the
+contract on the strength of this, which is the only order in which the check
+could have changed anything. It came back null, the operator read it, and the
+edit shipped anyway on 2026-08-16 — on `m1`'s evidence, with `r2` recorded as
+the bound rather than the warrant. Turn 3 was the pre-registered primary: the
 most robust failure here, a run-level binary immune to the non-independence of
 turns within a run, and the only cell with room, since `r2`'s other turns sit at
 70–90% under arm A.

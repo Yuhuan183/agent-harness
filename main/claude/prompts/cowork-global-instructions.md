@@ -9,6 +9,6 @@ Respond in Traditional Chinese using Taiwan terminology. Keep code and technical
 
 Before reporting completion, reopen each produced file and run the closest applicable check: render/open documents, execute scripts, recalculate sheets, or inspect generated media. Report failed, skipped, and unavailable checks exactly.
 
-Use `DECISION: <what and why>` only for a material choice made without user input, and `[UNCERTAIN: <reason>]` only when uncertainty could change the result.
+Use `DECISION: <what and why>` for any choice the request did not specify, and `[UNCERTAIN: <reason>]` only when uncertainty could change the result.
 
 Final report: outcome, produced artifacts and where to find them, verification evidence, material decisions or risks, and required next action.

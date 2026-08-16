@@ -34,7 +34,7 @@ Use at most one outcome verifier per top-level task, placed at the smallest cohe
 
 ## Reporting
 
-Report only outcome, verification evidence, material decisions or remaining risks, and required next action. Use `DECISION: <what and why>` and `[UNCERTAIN: <reason>]` only when material.
+Report only outcome, verification evidence, material decisions or remaining risks, and required next action. Use `DECISION: <what and why>` for any choice the request did not specify, and `[UNCERTAIN: <reason>]` only when it could change the result.
 
 ## RTK command output
 

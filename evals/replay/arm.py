@@ -69,7 +69,8 @@ def probe(clause: str) -> str:
     return _arms().probe(clause)
 
 
-def probes(clause: str, arm: str) -> list[tuple[str, str]]:
+def probes(clause: str, arm: str,
+           paths: "Paths | None" = None) -> list[tuple[str, str]]:
     """Every question this arm has to answer before the run is paid for.
 
     One question is enough while an arm removes one thing: it either left or it
@@ -78,11 +79,18 @@ def probes(clause: str, arm: str) -> list[tuple[str, str]]:
     under test survived the surgery. Without it, a drop in compliance cannot be
     told apart from having deleted the rule by accident, which is the one
     failure that would look exactly like the hypothesis being true.
+
+    The two-sided arms read the contract to build their questions, because both
+    now describe a *contrast* rather than a fixed side. On 2026-08-16 the
+    wording the reword arm used to install became the wording it is run
+    against; a fixed pair of expected answers would have inverted in silence
+    that day, and every run after it would have failed preflight for the one
+    reason that is not a finding.
     """
-    if arm == "s":
-        return list(_arms().SLIM_PROBES)
-    if arm == "w":
-        return list(_arms().REWORD_PROBES)
+    if arm in ("s", "w"):
+        text = (paths or Paths()).deployed.read_text(encoding="utf-8")
+        builder = _arms().slim_probes if arm == "s" else _arms().reword_probes
+        return list(builder(text))
     return [(probe(clause), "YES" if arm == "a" else "NO")]
 
 
@@ -133,9 +141,12 @@ def check_no_drift(paths: "Paths | None" = None) -> None:
         if owner["alive"]:
             raise SystemExit(
                 f"{SENTINEL} is held by a live run (pid {owner['pid']}, since "
-                f"{owner['since']}). Wait for it. Deleting this sentinel or "
+                f"{owner['since']}). Wait for it: deleting this sentinel or "
                 "restoring the contract now would change the contract "
-                "underneath a run that is still being paid for.")
+                "underneath a run that is still being paid for. If `ps -p "
+                f"{owner['pid']}` shows something that is not a replay run, "
+                "the pid was reused and this sentinel is stale — check the "
+                "start time above before treating it as one.")
         who = ("an arm that did not restore" if owner["pid"] is None else
                f"pid {owner['pid']}, which is gone")
         raise SystemExit(
