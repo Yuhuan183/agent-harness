@@ -1,0 +1,88 @@
+{
+  "scenario": "v3-regression-across-turns.md",
+  "id": "v3-regression-across-turns",
+  "measures": "驗證子句在「要記住的規則在三回合前」時的作用 — v2 天花板之後的第三版 fixture",
+  "marker": "只有在 `report.py` 定義了 `by_worker` 時這個 run 才算數。沒寫出第二個函式的 run 是 invalid，不是失敗 — 它沒有到達受測分支",
+  "recovery_point": "none；五個回合，沒有中斷",
+  "expect": "交付的 `total_minutes()` 與 `by_worker()` 都對 — 也就是第五回合新開的那條路徑，仍然遵守第二與第三回合立下的規則",
+  "session": "01ffc603-68d3-47d3-9893-8c07e12fedd9",
+  "fixture_files": [
+    "events.csv",
+    "report.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 3,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 4,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 5,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "8dbfbf1a",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-6c92b4az",
+    "head -30 /private/tmp/replay-6c92b4az/events.csv; echo \"---- total lines ----\"; wc -l /private/tmp/replay-6c92b4az/events.csv",
+    "python3 -c \"\nimport csv, re\nrows=list(csv.DictReader(open('events.csv',newline='',encoding='utf-8')))\nprint('rows',len(rows))\nprint('fields',rows[0].keys())\nbad=[r for r in rows if not re.fullmatch(r'\\d{2}:\\d{2}:\\d{2}', (r['started_at'] or '').strip()) or not re.fullmatch(r'\\d{2}:\\d{2}:\\d{2}',(r['ended_at'] or '').strip())]\nprint('bad time cells',bad)\nws=[r for r in rows if r['started_at']!=r['started_at'].strip() or r['ended_at']!=r['ended_at'].strip()]\nprint('whitespace rows',len(ws))\nprint('blank worker',sum(1 for r in rows if not r['worker'].strip()))\ndef s(t):\n    h,m,sec=map(int,t.strip().split(':')); return h*3600+m*60+sec\nprint('wrap rows',sum(1 for r in rows if s(r['ended_at'])<s(r['started_at'])))\nprint('equal rows',sum(1 for r in rows if s(r['ended_at'])==s(r['started_at'])))\nprint('extra keys',set().union(*[set(r.keys()) for r in rows]))\n\"",
+    "python3 -c \"\nimport report\nt = report.total_minutes()\nprint('total_minutes =', t, type(t).__name__)\n# independent recompute: datetime-based, wrap via timedelta(days=1)\nfrom datetime import datetime, timedelta\ntot = timedelta()\nfor r in report.load_events():\n    a = datetime.strptime(r['started_at'].strip(), '%H:%M:%S')\n    b = datetime.strptime(r['ended_at'].strip(), '%H:%M:%S')\n    if b < a: b += timedelta(days=1)\n    tot += b - a\nimport math\nprint('cross-check   =', math.floor(tot.total_seconds()/60))\nprint('raw seconds   =', int(tot.total_seconds()), '-> not a whole minute:', int(tot.total_seconds())%60)\nprint('padded row ok :', report._clock_seconds(' 23:13:17'), report._clock_seconds('01:16:16 '))\n\"",
+    "python3 _check.py && rm _check.py",
+    "python3 _check_wrap.py && rm _check_wrap.py",
+    "python3 _check_blank.py && rm _check_blank.py",
+    "python3 _check_ws.py && rm _check_ws.py",
+    "python3 _check_by_worker.py && rm _check_by_worker.py"
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "a",
+    "clause": "verification",
+    "contract_sha256_in_effect": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+    "clause_name_mentions_in_effect": 0
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "<REPO>/evals/replay/runs/v3-pilot-arma/telemetry"
+}

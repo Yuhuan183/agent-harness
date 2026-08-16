@@ -2880,6 +2880,48 @@ class ReplayScenarioTests(unittest.TestCase):
         self.assertEqual(default, widened[:4])
         self.assertEqual(["Bash(python3:*)"], widened[4:])
 
+    def test_a_denied_command_is_not_counted_as_one_that_ran(self) -> None:
+        # `commands_run` reads tool_use blocks, which are requests. A v3 pilot
+        # asked twice for /usr/bin/python3, was refused both times, and retried
+        # with the bare name — and both refusals sat in the audit looking like
+        # execution. Recomputed over the whole v2 batch the published 13/20 and
+        # 12/20 hold either way, because every run with a denial also had an
+        # approved command doing the same job. That is luck, and a measure that
+        # survives by luck is one batch from being wrong.
+        module = load_module("replay_run", self.REPLAY / "run.py")
+        with tempfile.TemporaryDirectory() as temp:
+            events = Path(temp) / "events.jsonl"
+            events.write_text(
+                '{"message": {"content": [{"type": "tool_use", "id": "t1",'
+                ' "name": "Bash", "input": {"command": "python3 ok.py"}}]}}\n'
+                '{"message": {"content": [{"type": "tool_use", "id": "t2",'
+                ' "name": "Bash", "input": {"command": "/usr/bin/python3 x.py"}}]}}\n'
+                '{"message": {"content": [{"type": "tool_result",'
+                ' "tool_use_id": "t2", "content": "This command requires approval"}]}}\n',
+                encoding="utf-8")
+            self.assertEqual(["python3 ok.py", "/usr/bin/python3 x.py"],
+                             module.commands_run(events))
+            self.assertEqual(["python3 ok.py"], module.commands_executed(events))
+
+    def test_graders_prefer_executions_and_fall_back_for_older_runs(self) -> None:
+        grade = load_module("replay_grade", self.REPLAY / "grade.py")
+        build = load_module("replay_fixtures",
+                            self.REPLAY / "fixtures" / "build.py")
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "workdir"
+            build.build("v2-green-test-misses-it", root)
+            # A run recorded after 2026-08-17 knows what was refused.
+            fresh = grade.grade_v2(root.parent, {
+                "commands_run": ["python3 test_billing.py", "python3 -c probe"],
+                "commands_executed": ["python3 test_billing.py"]}, {})
+            self.assertFalse(fresh["probed_beyond_suite"])
+            # A run recorded before it only has the request list, and using it
+            # is right: there is nothing better, and silently reporting False
+            # would rewrite forty runs that are already published.
+            old = grade.grade_v2(root.parent, {
+                "commands_run": ["python3 test_billing.py", "python3 -c probe"]}, {})
+            self.assertTrue(old["probed_beyond_suite"])
+
     def test_commands_run_survives_a_stream_that_is_not_shaped_like_a_message(self) -> None:
         # The first v1 pilot ran fine and then died in this function, because a
         # stream-json line can carry `message` as a plain string. Bookkeeping
@@ -2951,6 +2993,94 @@ class ReplayScenarioTests(unittest.TestCase):
                     # measure about verification rather than about competence.
                     self.assertEqual(8, out["cases_correct"])
                     self.assertTrue(all(key.startswith("EXP") for key in out["wrong"]))
+
+    def test_the_v3_table_puts_the_forgettable_rule_across_most_workers(self) -> None:
+        # The cell only works if forgetting turn 2 is visible as a broad wrongness
+        # rather than one suspicious outlier — otherwise a session could get the
+        # right answer by noticing a single odd number.
+        build = load_module("replay_fixtures",
+                            self.REPLAY / "fixtures" / "build.py")
+        grade = load_module("replay_grade", self.REPLAY / "grade.py")
+        rows = build.v3_rows()
+        self.assertEqual(300, len(rows))
+        self.assertEqual(rows, build.v3_rows(), "two builds must agree")
+        blank = [row for row in rows if not row[0].strip()]
+        padded = [row for row in rows
+                  if row[1] != row[1].strip() or row[2] != row[2].strip()]
+        self.assertEqual(5, len(blank))
+        self.assertEqual(10, len(padded))
+
+        key = grade.v3_reference()
+        no_midnight = grade.v3_reference(midnight=False)
+        moved = [w for w in key["by_worker"]
+                 if key["by_worker"][w] != no_midnight["by_worker"][w]]
+        self.assertGreaterEqual(len(moved), 10, "the midnight rule barely bites")
+        # And forgetting turn 3 shows up as a bucket the key does not have.
+        self.assertIn("", grade.v3_reference(exclude_blank=False)["by_worker"])
+
+    def test_the_v3_grader_names_which_turn_was_forgotten(self) -> None:
+        build = load_module("replay_fixtures",
+                            self.REPLAY / "fixtures" / "build.py")
+        grade = load_module("replay_grade", self.REPLAY / "grade.py")
+        common = ('\n\ndef _secs(t):\n'
+                  '    h, m, s = t.strip().split(":")\n'
+                  '    return int(h) * 3600 + int(m) * 60 + int(s)\n\n\n'
+                  'def _span(r):\n'
+                  '    d = _secs(r["ended_at"]) - _secs(r["started_at"])\n'
+                  '    return d + 86400 if d < 0 else d\n\n\n'
+                  'def total_minutes():\n'
+                  '    return sum(_span(r) for r in load_events()\n'
+                  '               if r["worker"].strip()) // 60\n')
+        good = common + ('\n\ndef by_worker():\n'
+                         '    out = {}\n'
+                         '    for r in load_events():\n'
+                         '        w = r["worker"].strip()\n'
+                         '        if not w:\n'
+                         '            continue\n'
+                         '        out[w] = out.get(w, 0) + _span(r)\n'
+                         '    return {w: v // 60 for w, v in out.items()}\n')
+        forgot_two = common + (
+            '\n\ndef by_worker():\n'
+            '    out = {}\n'
+            '    for r in load_events():\n'
+            '        w = r["worker"].strip()\n'
+            '        if not w:\n'
+            '            continue\n'
+            '        out[w] = out.get(w, 0) + (_secs(r["ended_at"])\n'
+            '                                  - _secs(r["started_at"]))\n'
+            '    return {w: v // 60 for w, v in out.items()}\n')
+        for label, patch, works, forgot in (
+                ("absent", None, False, None),
+                ("all rules kept", good, True, None),
+                ("second path forgot turn 2", forgot_two, False,
+                 "turn 2, the midnight rule")):
+            with self.subTest(delivery=label), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp) / "workdir"
+                build.build("v3-regression-across-turns", root)
+                if patch:
+                    report = root / "report.py"
+                    report.write_text(report.read_text(encoding="utf-8") + patch,
+                                      encoding="utf-8")
+                out = grade.grade_v3(root.parent, {"commands_run": []}, {})
+                self.assertEqual(patch is not None, out["marker_present"])
+                self.assertEqual(works, out["delivered_works"])
+                self.assertEqual(forgot, out["forgot"])
+                if label == "second path forgot turn 2":
+                    # The total stays right, which is the point: nothing raises
+                    # and the headline number looks fine.
+                    self.assertTrue(out["total_minutes_correct"])
+                    self.assertGreaterEqual(len(out["workers_wrong"]), 10)
+
+    def test_the_v3_wrong_worker_list_counts_invented_buckets(self) -> None:
+        # Two drafts of this were wrong in opposite directions, so both are
+        # pinned: a clean-looking diagnostic on an incorrect verdict, and a
+        # dirty-looking one on a correct verdict.
+        grade = load_module("replay_grade", self.REPLAY / "grade.py")
+        key = {"a": 1, "b": 2}
+        self.assertEqual([], grade._v3_wrong_workers(key, {"a": 1, "b": 2}))
+        self.assertEqual([""], grade._v3_wrong_workers(key, {"a": 1, "b": 2, "": 9}))
+        self.assertEqual(["b"], grade._v3_wrong_workers(key, {"a": 1, "b": 3}))
+        self.assertEqual(["a", "b"], grade._v3_wrong_workers(key, "TypeError: x"))
 
     def test_the_v2_suite_stays_green_through_every_delivery(self) -> None:
         # The whole fixture is this property. A suite that goes red once the

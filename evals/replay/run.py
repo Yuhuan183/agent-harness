@@ -224,6 +224,59 @@ def allowed_tools(execute: bool = False) -> list[str]:
     return grants
 
 
+def commands_executed(events: Path) -> list[str]:
+    """The commands that actually ran, denials removed.
+
+    `commands_run` reads `tool_use` blocks, which are *requests*. A denied
+    command appears there exactly like an approved one — measured 2026-08-17,
+    when a `v3` pilot asked twice for `/usr/bin/python3`, was refused both
+    times, and retried with the bare name. Both refusals were sitting in that
+    run's audit looking like execution.
+
+    It changed nothing this time: recomputed over the whole `v2` batch, the
+    published 13/20 and 12/20 hold either way, because every run that had a
+    denial also had an approved command doing the same job. That is luck, not
+    design, and a measure that survives by luck is one bad batch from being
+    wrong. Both lists are recorded so the difference stays visible.
+    """
+    ran, denied = [], set()
+    for line in events.read_text(encoding="utf-8").splitlines():
+        if '"tool_result"' not in line:
+            continue
+        try:
+            record = json.loads(line)
+        except ValueError:
+            continue
+        message = record.get("message")
+        if not isinstance(message, dict):
+            continue
+        content = message.get("content")
+        for block in content if isinstance(content, list) else []:
+            if isinstance(block, dict) and block.get("type") == "tool_result":
+                text = str(block.get("content"))
+                if "requires approval" in text or "permission denied" in text.lower():
+                    denied.add(block.get("tool_use_id"))
+    for line in events.read_text(encoding="utf-8").splitlines():
+        if '"Bash"' not in line:
+            continue
+        try:
+            record = json.loads(line)
+        except ValueError:
+            continue
+        message = record.get("message")
+        if not isinstance(message, dict):
+            continue
+        content = message.get("content")
+        for block in content if isinstance(content, list) else []:
+            if (isinstance(block, dict) and block.get("type") == "tool_use"
+                    and block.get("name") == "Bash"
+                    and block.get("id") not in denied):
+                command = (block.get("input") or {}).get("command")
+                if command:
+                    ran.append(command)
+    return ran
+
+
 def commands_run(events: Path) -> list[str]:
     """Every shell line the session issued, read back out of its own stream.
 
@@ -511,6 +564,7 @@ def main() -> int:
         "surface": surface_fingerprint(),
         "allow_execution": str(spec.get("allow_execution", "")).lower() == "true",
         "commands_run": commands_run(events),
+        "commands_executed": commands_executed(events),
         "deployed_contract_sha256": sha(DEPLOYED) if DEPLOYED.exists() else None,
         "matches_repo_source": not drift,
         "arm": arm_state,

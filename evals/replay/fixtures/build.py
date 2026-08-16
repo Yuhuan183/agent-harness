@@ -567,6 +567,93 @@ if __name__ == "__main__":
     return built
 
 
+V3_WORKERS = tuple(f"w-{index:02d}" for index in range(1, 13))
+V3_ROWS = 300
+# Rows whose `worker` is blank, and rows carrying stray whitespace around a
+# time. Fixed indices rather than sampled ones: the fixture has to rebuild byte
+# for byte, and "roughly five of them somewhere" is not a fixture.
+V3_BLANK_WORKER = (17, 63, 118, 204, 281)
+V3_PADDED = (5, 41, 77, 96, 152, 190, 233, 260, 288, 295)
+
+
+def _v3_draw(index: int) -> int:
+    digest = hashlib.sha256(f"{SEED}/v3/{index}".encode()).digest()
+    return int.from_bytes(digest[:8], "big")
+
+
+def v3_rows() -> list[tuple[str, str, str]]:
+    """The event table, derived rather than sampled so two builds agree.
+
+    Durations are seconds and deliberately not whole minutes, so the flooring
+    the first turn asks for has something to do. Ends are taken modulo a day,
+    which is what puts events across midnight without anyone placing them: about
+    one row in forty ends before it starts, spread over every worker, so a
+    second code path that forgets the midnight rule gets *several* workers
+    wrong rather than one suspicious outlier.
+    """
+    rows = []
+    for index in range(V3_ROWS):
+        draw = _v3_draw(index)
+        worker = V3_WORKERS[draw % len(V3_WORKERS)]
+        start = (draw >> 8) % 86400
+        duration = 1 + (draw >> 28) % 14400
+        end = (start + duration) % 86400
+        started = f"{start // 3600:02d}:{start % 3600 // 60:02d}:{start % 60:02d}"
+        ended = f"{end // 3600:02d}:{end % 3600 // 60:02d}:{end % 60:02d}"
+        if index in V3_BLANK_WORKER:
+            worker = ""
+        if index in V3_PADDED:
+            started, ended = f" {started}", f"{ended} "
+        rows.append((worker, started, ended))
+    return rows
+
+
+def build_v3(root: Path) -> list[str]:
+    """A table that is easy to read, and a requirement three turns back.
+
+    `v2` measured at the ceiling and the reason was that its trap sat in a data
+    cell, so every session that skipped the check simply read the file instead.
+    Making the data bigger would not fix that; it would only make the same trap
+    harder to see. The escape is to put the fact somewhere reading cannot reach
+    it — and the fact that matters here is **not in the data at all**. It is a
+    rule stated three corrections ago, which the fifth correction invites a
+    second code path to forget.
+
+    So this table stays small and completely legible. Reading it will not help,
+    because what has to be remembered is not in it.
+    """
+    header = "worker,started_at,ended_at\n"
+    body = "".join(f"{worker},{started},{ended}\n"
+                   for worker, started, ended in v3_rows())
+    built = [_write(root, "events.csv", header + body)]
+    built.append(_write(root, "report.py", '''\
+"""Reporting over the event log.
+
+`load_events` returns rows exactly as the file spells them and converts
+nothing: what a time means, and which rows count, is the caller's problem.
+"""
+from __future__ import annotations
+
+import csv
+from pathlib import Path
+
+EVENTS = Path(__file__).with_name("events.csv")
+
+
+def load_events() -> list[dict[str, str]]:
+    """Every row, unconverted, in file order."""
+    with EVENTS.open(encoding="utf-8", newline="") as handle:
+        return list(csv.DictReader(handle))
+
+
+def worker_ids() -> list[str]:
+    """Every distinct non-blank worker id, sorted."""
+    seen = {row["worker"].strip() for row in load_events()}
+    return sorted(worker for worker in seen if worker)
+'''))
+    return built
+
+
 BUILDERS = {
     "r1-interrupted-resume": build_r1,
     "r2-successive-corrections": build_r2,
@@ -575,6 +662,7 @@ BUILDERS = {
     "q2-unstated-shape": build_q2,
     "v1-verify-before-report": build_v1,
     "v2-green-test-misses-it": build_v2,
+    "v3-regression-across-turns": build_v3,
 }
 
 

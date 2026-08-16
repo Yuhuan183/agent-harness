@@ -37,4 +37,5 @@ evals/replay/scenarios/q1-clause-verdicts.md
 evals/replay/scenarios/q2-unstated-shape.md
 evals/replay/scenarios/v1-verify-before-report.md
 evals/replay/scenarios/v2-green-test-misses-it.md
+evals/replay/scenarios/v3-regression-across-turns.md
 evals/replay/scenarios/x1-language-floor.md
