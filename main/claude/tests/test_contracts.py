@@ -1108,10 +1108,15 @@ class DocumentationBudgetTests(unittest.TestCase):
         # provider-routing against the single leaf-dispatch).
         # Raised 620/540 -> 660/580 on 2026-08-17 for `evidence-debugging`,
         # measured at 62 resident words on each provider against 25 of headroom.
-        # Sized to what was measured and nothing more: `test-first-change` will
-        # raise it again with its own number, because a ceiling set for a body
-        # that is not written yet is a budget granted on an estimate.
-        metadata_budgets = {"claude": 660, "codex": 580}
+        # Sized to what was measured and nothing more, which is why the same day
+        # raised it again: 660/580 -> 730/650 for `test-first-change`, measured
+        # at 70 words on each provider. The second raise is the point of the
+        # first one's restraint - a ceiling left for a body not yet written is a
+        # budget granted on an estimate, and this description was measured
+        # twice, at 61 and then 70, because comparing it against the plan's own
+        # contract section found an exclusion missing from it. A number set
+        # before that comparison would have been the one that stuck.
+        metadata_budgets = {"claude": 730, "codex": 650}
         # The widest legitimate description today is speak-human-tw at 176: it
         # states its triggers twice, in zh-TW and English, because it is the
         # one skill invoked by users in either language.
@@ -1411,6 +1416,13 @@ class DocumentationBudgetTests(unittest.TestCase):
             # different semantics, and there is none. Measured 914 + ~2%.
             ".claude/skills/evidence-debugging/SKILL.md": 932,
             ".codex/skills/evidence-debugging/SKILL.md": 932,
+            # Same single source, same reasoning. Measured 913 + ~2%. Its worked
+            # examples are not in here: upstream `tdd` is 38 lines of index whose
+            # substance lives in two TypeScript references, and the replacements
+            # are written in this repo's own languages, which makes them local
+            # content. They live in `references/tuning.md`.
+            ".claude/skills/test-first-change/SKILL.md": 931,
+            ".codex/skills/test-first-change/SKILL.md": 931,
         }
         self.assertEqual(
             {path for path in budgets if "/skills/" in path},
@@ -1622,8 +1634,6 @@ class DocumentationBudgetTests(unittest.TestCase):
                 self.assertIn(
                     f"${skill.name}", prompt.group(1),
                     f"{skill.name}: default_prompt invokes a different skill")
-
-
 
 if __name__ == '__main__':
     unittest.main()

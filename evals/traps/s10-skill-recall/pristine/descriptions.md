@@ -42,3 +42,7 @@ Triggers: "de-AI this text", "make it sound human", "polish this zh-TW copy befo
 ## task-observer
 
 Capture and review reusable skill-improvement observations. Invoke after skill-assisted work receives explicit dissatisfaction or a requested correction or rework (for example, 不滿意, 不符合, 不是我要的, 修正, 重做, unhappy, not what I asked, wrong, fix, redo, or rework), or when the user asks to record feedback, inspect the backlog, act on an observation, or review improvement opportunities. After handling the immediate correction, proactively ask once whether to record the feedback; write only with explicit consent. Do not invoke for ordinary task execution, background monitoring, or automatic skill updates.
+
+## test-first-change
+
+Add or change behaviour by writing the check that fails first, at a seam that reaches the observable result. Invoke when the request asks to implement, add, change or extend behaviour, to write or repair a test, or names TDD or test-first. Do not use for an unexplained defect (diagnose it first with evidence-debugging), for formatting or documentation-only edits, or for a change nothing could have failed on beforehand.
