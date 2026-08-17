@@ -1,10 +1,14 @@
 # Headroom Runtime Guide
 
-> 2026-08-10 本機查核: CLI 與 persistent-service proxy 都是 `headroom-ai 0.34.0`
-> (`headroom install status` running/healthy, `doctor` 的 version check pass).
-> 已退場的 context-tool 舊旗標實測被 `wrap claude` 拒絕 (exit 1), 不帶它則 exit 0;
-> `wrap agy` 仍不存在. 這只證明本機安裝版本與 live service capability, 不等於上游
-> latest release 證據.
+> 2026-08-14 本機查核: CLI 是 `headroom-ai 0.35.0`, 與 PyPI latest 及 GitHub release
+> tag `v0.35.0` (兩者皆 2026-08-13) 同版. **proxy 版本這次沒有觀察到** —
+> `headroom install status` 回報本機的 `persistent-service` deployment 是
+> `stopped` / `Healthy: no`, 停著的服務問不出版本, 升級後也尚未 `install restart`.
+> `headroom wrap` 的 supported tools 清單仍無 `agy` (`wrap agy` 回 `No such command`).
+> 這只證明本機安裝版本, 不證明 live service capability.
+>
+> 2026-08-10 的前一次查核 (CLI 與 proxy 皆 0.34.0, 舊 context-tool 旗標被 `wrap claude`
+> 拒絕) 是當時的紀錄, 不因本次更新而改寫.
 
 > 只記錄跨機器的架構, 操作邊界與版本轉換. venv, PID, port 與 profile 名稱屬 machine-local state, 不進 git.
 
@@ -82,7 +86,7 @@ Claude App 使用 OAuth 直連, 不經 proxy, 只能透過 MCP 做手動文字�
 ## 操作指引
 
 - **Claude**: 需要 Headroom 時使用 `hclaude`; Auto Mode 使用 `hclaude-auto`. 底層是 `headroom wrap claude`. 只有 context 明確不足時才加 `--1m`, 而且加之前要先讀下面那條.
-- **`--1m` 的預設模型陷阱**: 自訂 `ANTHROPIC_BASE_URL` 之下, Claude Code 的 `/model` 選擇不會傳到 API, 只有帶 `[1m]` 後綴的 model id 才會送出 `context-1m` beta header. `--1m` 的做法是在啟動的 process 上設 `ANTHROPIC_MODEL`; 它會保留使用者自己設過的 model, 但 `ANTHROPIC_MODEL` 未設時退回 Headroom 內建的常數 (0.34.0 是 `claude-opus-4-8`). 也就是在乾淨 shell 直接下 `--1m` 會把 session 釘在 Opus 4.8 而不是當前選的模型. 要用就自己一起指定 `ANTHROPIC_MODEL`, 並在 session 內確認實際 model id.
+- **`--1m` 的預設模型陷阱**: 自訂 `ANTHROPIC_BASE_URL` 之下, Claude Code 的 `/model` 選擇不會傳到 API, 只有帶 `[1m]` 後綴的 model id 才會送出 `context-1m` beta header. `--1m` 的做法是在啟動的 process 上設 `ANTHROPIC_MODEL`; 它會保留使用者自己設過的 model, 但 `ANTHROPIC_MODEL` 未設時退回 Headroom 內建的常數 (0.34.0 與 0.35.0 都是 `claude-opus-4-8`). 也就是在乾淨 shell 直接下 `--1m` 會把 session 釘在 Opus 4.8 而不是當前選的模型. 要用就自己一起指定 `ANTHROPIC_MODEL`, 並在 session 內確認實際 model id. 0.35 只修掉相鄰的另一個洞: 顯式傳進去的 `--model` 現在也會被補上 `[1m]` (upstream #2915, PR #2922); 0.34 是 `--model` 蓋過 env var, `--1m` 靜默失效而回落 200k. **預設模型的陷阱沒有跟著修掉.**
 - **on-demand tool loading (`--tool-search`)**: 自訂 `ANTHROPIC_BASE_URL` 會讓 Claude Code 關閉 tool deferral, 改成一次載入所有 tool schema, 吃掉數十 K 的 local context (upstream issue #746). v0.34 的 `wrap claude` 因此會設 `ENABLE_TOOL_SEARCH`, 預設 `true`. 可用值 `true`/`1`/`yes`/`on`, `false`/`0`/`no`/`off`, `auto`, `auto:N` (N 為 0-100); 打錯會直接報錯而不是默默關掉. 優先序是 `--tool-search` 旗標 > 環境裡既有的 `ENABLE_TOOL_SEARCH` (原封不動) > 內建預設; 空字串視同未設. Read/Edit/Bash 這類內建工具永遠不會被延後載入, agent loop 不受影響. 若採 always-on routing (下面的 `persistent-service`), 這個變數要跟 base URL 一起常駐, 否則原生 `claude` 會在沒有 deferral 的情況下走 proxy.
 - **Codex**: 需要 Headroom 時使用 `hcodex`; Auto Mode 使用 `hcodex-auto`. 底層是 `headroom wrap codex`, 不依賴預先存在的永久 provider.
 - **Antigravity CLI**: 原生 Auto Mode 使用 `agy-auto` (`agy --mode accept-edits`). Headroom 入口保留為 `hagy`/`hagy-auto`, 但會先確認安裝版本真的提供 `headroom wrap agy`; 沒有就 exit 127, 不能降級成未壓縮的 `agy`.
@@ -106,10 +110,27 @@ Claude App 使用 OAuth 直連, 不經 proxy, 只能透過 MCP 做手動文字�
 
 ## 版本轉換
 
-本機安裝的 v0.34.0 仍沒有 `headroom wrap agy`; 過去的上游
-[PR #1044](https://github.com/headroomlabs-ai/headroom/pull/1044)
-曾以限定 Google Cloud Code host 的 process-scoped TLS MITM 提案. 不要用無效 base URL
-環境變數, 修改 `/etc/hosts`, 信任 system-wide CA, 或未 review 的 branch 假裝完成整合.
+### v0.34 -> v0.35 (2026-08-13 發版, 2026-08-14 對 0.35.0 原始碼核對)
+
+改到本文件結論的:
+
+| 變動 | 影響 |
+|---|---|
+| `--1m` 會把 `[1m]` 補進顯式 `--model` (#2922) | 只修掉 flag 蓋過 env var 那條路徑; 預設模型常數不變 |
+| Serena 改由 `serena-agent` PyPI wheel 安裝, 不再從 git source (#2877) | code-memory MCP 的來源換了, 註冊與預設不變 |
+| proxy 端 tool search 預設開啟並修復被污染的 transcript (#2807, #2889) | wrapper 的 `--tool-search` 語意與預設 `true` 不變 |
+
+逐條核對後**沒有變**的三件事: 每次 `wrap`/`unwrap` 仍呼叫
+`purge_context_tool_artifacts()` 且比對字串一字未改; `wrap claude` 仍負責設
+`ENABLE_TOOL_SEARCH`; `--1m` 的預設模型常數仍是 `claude-opus-4-8`.
+
+### Antigravity CLI
+
+本機安裝的 v0.35.0 仍沒有 `headroom wrap agy` (supported tools 清單無此項);
+上游 [PR #1044](https://github.com/headroomlabs-ai/headroom/pull/1044)
+仍 open (2026-08-13 有更新), 曾以限定 Google Cloud Code host 的 process-scoped
+TLS MITM 提案. 不要用無效 base URL 環境變數, 修改 `/etc/hosts`, 信任 system-wide CA,
+或未 review 的 branch 假裝完成整合.
 後續 stable release 若加入 `agy`, 須重新驗證 capability probe, MCP config path,
 interactive/print mode, CA trust boundary, macOS 與本文件.
 
