@@ -459,6 +459,7 @@ source location `main/.agents/skills`.
 | `agents/openai.yaml` 的觸發語與 `description` 不漂移 | `test_every_shared_skill_states_the_same_identity_on_both_surfaces` (M1 補) | **部分**: 已擋住改名 (目錄 / frontmatter `name` / `default_prompt` 的 `$name` 三處必須一致), 但 `short_description` 與 `description` 的**語意**是否一致仍靠 review |
 | body 長度與 reference 分層 (`SKILL.md` 精簡, 本地政策放 `references/` 一層外) | per-document 字數上限 | 無 |
 | 不新增 per-skill README / install guide / changelog | 慣例 | 靠 review |
+| 新 skill 要出現在既有的 README 索引裡 (`main/.agents/`, 各 provider) | `test_every_shared_skill_appears_in_the_readme_that_indexes_its_peers` (2026-08-17 補) | 無 |
 
 唯一真正的缺口是 `openai.yaml` 與 `description` 的一致性斷言. **M1 順手補上這一條**, 之後所有
 skill 都受益 — 這比為這次的兩個 skill 各寫一次檢查划算. 補完後這格從「無機制」變成「擋改名,
