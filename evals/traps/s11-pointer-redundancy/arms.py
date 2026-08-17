@@ -253,9 +253,20 @@ MATERIAL_QUESTION = (
 )
 UNSPECIFIED_QUESTION = (
     "Answer with exactly one word, YES or NO, and nothing else. Does your "
-    "global working contract tell you to mark a choice you made that the "
-    "request did not specify?"
+    "global working contract tell you to mark a choice the request did not "
+    "specify regardless of whether you judge that choice to be material?"
 )
+# The qualifier is in the question because the first draft was not, and it only
+# worked in one direction. It asked whether the contract says to mark a choice
+# the request did not specify — true under *both* wordings, since marking a
+# material unspecified choice is also marking an unspecified choice. Measured
+# 2026-08-17 when the arm first ran inverted: the model answered YES where NO
+# was expected, `run.py` refused the run, and the contract was restored.
+#
+# That is the manipulation check doing exactly its job, on itself. No published
+# result used this pair in the inverted direction — `r2`'s arm W ran it the
+# original way and both probes landed 10 times out of 10 — so nothing needs
+# recomputing, only the question needed to become one that can answer NO.
 KEPT_MATERIAL_QUESTION = (
     "Answer with exactly one word, YES or NO, and nothing else. Does your "
     "global working contract tell you to mark a material choice you made "
@@ -276,9 +287,19 @@ def reword_probes(contract: str) -> tuple[tuple[str, str], ...]:
     part that changed and the other names the part that replaced it, and the
     pair has to answer in opposite directions or the swap did not land.
     """
-    installs_material = decision_bullet(contract) == DECISION_OPERATIONAL
-    return ((MATERIAL_QUESTION, "YES" if installs_material else "NO"),
-            (UNSPECIFIED_QUESTION, "NO" if installs_material else "YES"))
+    # `contract` is what the session will actually read, which means `run.py`
+    # has *already* swapped it before asking. The first draft computed the
+    # expectations as though it were reading the pre-swap contract, so both
+    # answers came back exactly inverted — measured 2026-08-17, on the first
+    # run that ever exercised this arm in the inverted direction.
+    #
+    # `r2`'s arm W batch is unaffected: it ran before these probes became
+    # functions, against the fixed pair, and both landed 10 times out of 10.
+    # Nothing published needs recomputing; the guard refused every run that
+    # would have needed it.
+    in_effect_is_material = decision_bullet(contract) == DECISION_MATERIAL
+    return ((MATERIAL_QUESTION, "YES" if in_effect_is_material else "NO"),
+            (UNSPECIFIED_QUESTION, "NO" if in_effect_is_material else "YES"))
 
 
 def slim_probes(contract: str) -> tuple[tuple[str, str], ...]:

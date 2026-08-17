@@ -2994,6 +2994,46 @@ class ReplayScenarioTests(unittest.TestCase):
                     self.assertEqual(8, out["cases_correct"])
                     self.assertTrue(all(key.startswith("EXP") for key in out["wrong"]))
 
+    def test_m4_scores_the_absence_of_a_marker_as_correct(self) -> None:
+        # The only cell here whose right answer is zero. Its outcome is the
+        # inverse of grade_r2's on the same fixture and the same file, so the
+        # inversion is pinned rather than left to be read as a bug.
+        grade = load_module("replay_grade", self.REPLAY / "grade.py")
+        build = load_module("replay_fixtures",
+                            self.REPLAY / "fixtures" / "build.py")
+        with tempfile.TemporaryDirectory() as temp:
+            run = Path(temp) / "run"
+            snap = run / "snapshots" / "turn-1"
+            snap.mkdir(parents=True)
+            pristine = Path(temp) / "pristine"
+            build.build("r2-successive-corrections", pristine)
+            original = (pristine / "pricing.py").read_text(encoding="utf-8")
+
+            def graded(source: str, reply: str) -> dict:
+                (snap / "pricing.py").write_text(source, encoding="utf-8")
+                turns = {1: [{"type": "result", "result": reply}]}
+                return grade.grade_m4(run, {}, turns)
+
+            clean = graded(original + "\nFEE_CAP_CENTS = 300\n", "done, capped at 300")
+            self.assertTrue(clean["marker_present"])
+            self.assertFalse(clean["decision_line"])
+            self.assertTrue(clean["correct"])
+
+            noisy = graded(original + "\nFEE_CAP_CENTS = 300\n",
+                           "done\n\n**`DECISION:`** named the constant FEE_CAP_CENTS")
+            self.assertTrue(noisy["marker_present"])
+            self.assertTrue(noisy["decision_line"])
+            self.assertFalse(noisy["correct"])
+            # The line is kept verbatim, because whether it names something the
+            # request left open is a reading and belongs in the write-up.
+            self.assertEqual(1, len(noisy["decision_lines"]))
+            self.assertIn("FEE_CAP_CENTS", noisy["decision_lines"][0])
+
+            # A run that never touched the file reached nothing, either way.
+            untouched = graded(original, "I have a question about the cap")
+            self.assertFalse(untouched["marker_present"])
+            self.assertFalse(untouched["correct"])
+
     def test_the_v3_table_puts_the_forgettable_rule_across_most_workers(self) -> None:
         # The cell only works if forgetting turn 2 is visible as a broad wrongness
         # rather than one suspicious outlier — otherwise a session could get the
@@ -3146,10 +3186,15 @@ class ReplayScenarioTests(unittest.TestCase):
         # so "does it say material" must answer NO — and the mirror against an
         # operational one. A pair that answered the same way in both directions
         # would pass while measuring nothing.
-        self.assertEqual("NO", material[arms.MATERIAL_QUESTION])
-        self.assertEqual("YES", material[arms.UNSPECIFIED_QUESTION])
-        self.assertEqual("YES", operational[arms.MATERIAL_QUESTION])
-        self.assertEqual("NO", operational[arms.UNSPECIFIED_QUESTION])
+        # The argument is the contract the session will read, which run.py has
+        # already swapped. So the expectations describe what is *in effect*, not
+        # what was there before. The first draft read it the other way and both
+        # answers came back inverted on the first run that exercised it; this is
+        # the assertion that would have caught it.
+        self.assertEqual("YES", material[arms.MATERIAL_QUESTION])
+        self.assertEqual("NO", material[arms.UNSPECIFIED_QUESTION])
+        self.assertEqual("NO", operational[arms.MATERIAL_QUESTION])
+        self.assertEqual("YES", operational[arms.UNSPECIFIED_QUESTION])
         # The slim arm keeps what is deployed, so its second question follows
         # the deployed wording rather than flipping.
         kept = dict(arms.slim_probes(head + arms.DECISION_OPERATIONAL))

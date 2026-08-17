@@ -483,10 +483,20 @@ def main() -> int:
             print(json.dumps(checked, indent=2), file=sys.stderr)
             if not checked["landed"]:
                 shutil.rmtree(work, ignore_errors=True)
+                # Every probe, not the first: two-sided arms ask two questions
+                # and the informative part is *which* of them missed. The old
+                # message read one flat `answer` field, which stopped existing
+                # when arms went two-sided — so the guard refused the run
+                # correctly and then died formatting the reason, which is the
+                # one moment the reason is worth having.
+                missed = ", ".join(
+                    f"answered {asked.get('answer')!r} where {asked.get('expected')!r}"
+                    " was expected"
+                    for asked in checked.get("asked", [])
+                    if not asked.get("landed"))
                 raise SystemExit(
-                    f"manipulation did not land: the model answered "
-                    f"{checked['answer']} where arm {args.arm} expects "
-                    f"{checked['expected']}. A run whose arm did not reach the "
+                    f"manipulation did not land on arm {args.arm}: "
+                    f"{missed or checked}. A run whose arm did not reach the "
                     "agent is not a data point.")
             arm_state["preflight"] = checked
 
