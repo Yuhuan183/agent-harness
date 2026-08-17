@@ -13,12 +13,24 @@ Derived from Matt Pocock's agent skills.
 
 ## What was taken, and how
 
-**Substantial portion — the Phase 1 completion criterion.** `SKILL.md`'s "The
-gate" section is a close adaptation of upstream's, and deliberately so: its value
-is in the precision of the wording — *already run at least once*, *red-capable*,
-*asserts the user's exact symptom*, and the instruction to stop when a theory
-arrives before the command does. Paraphrasing weakens it. This is why the full
-licence sits below rather than a bare notice.
+**Substantial portions — two sections, not one.**
+
+1. **The Phase 1 completion criterion** (`SKILL.md` → "The gate"). A close
+   adaptation, deliberately: the value is in the precision of the wording —
+   *already run at least once*, *red-capable*, *asserts the symptom the user
+   described*, *not "runs without erroring"*, and the instruction to stop when a
+   theory arrives before the command does. Paraphrasing weakens it. The four
+   criteria keep upstream's names and order.
+2. **The redaction section** (`SKILL.md` → "Redact before you show anything").
+   Also close to verbatim: `<REDACTED>` in place of the secret, loops built
+   against environment variables so the credential stays in the environment,
+   quoting only the lines that carry signal, and stopping to ask when the
+   redacted output no longer supports a diagnosis.
+
+A 2026-08-17 review found this file listing only the first and describing the
+second under what it *added*, which is the one direction the distillation plan
+says not to get wrong: calling a substantial portion a concept rewrite. Both are
+named here, and the full licence below covers both.
 
 **Rewritten concepts.** The phase sequence, the feedback-loop constructions, the
 ranked-and-falsifiable hypothesis rule, one-variable probing, tagged temporary
@@ -43,9 +55,10 @@ the finding", and the cleanup gate are upstream's ideas in this repo's words.
   Upstream's tautological category does not cover this shape — the assertion can
   be entirely true and still unrelated to the outcome. It comes from a local
   2026-08-17 incident, not from upstream.
-- The redaction section is upstream's; the instruction to stop and ask when the
-  redacted output no longer supports a diagnosis is kept verbatim in effect
-  because it is the part that prevents quiet over-sharing.
+- *Absence after a change is not evidence when the symptom was never produced on
+  demand.* Upstream implies it by gating on a red-capable command; stating it as
+  its own rule is local, and it is there because that is the move a local
+  incident actually made.
 
 ## Rechecking
 
