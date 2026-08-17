@@ -92,8 +92,9 @@ per-document body budgets, the unstamped-row ceiling. Two rules come with them.
   When a check establishes "the request was sent" but not "the effect happened",
   write the second down as uncovered. Local rule, from a 2026-08-17 incident
   where a passing test asserted a launcher exported a variable while the setting
-  it was meant to change stayed on
-  ([landing-log](../../../../docs/research/landing-log.md)).
+  it was meant to change stayed on, recorded in `docs/research/landing-log.md`.
+  Named, not linked — this file is deployed outside the repo, where no relative
+  path reaches that tree.
 - A green test that bypasses the real failing path — the actual parser, file
   system, shell, provider or proxy — cannot close the claim. Say which path
   stayed unexercised.

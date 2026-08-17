@@ -13,10 +13,12 @@ Derived from Matt Pocock's agent skills.
 - **Licence**: MIT, Copyright (c) 2026 Matt Pocock. Full text below.
 
 Upstream's text is not vendored into this repo, so the classification below rests
-on the verbatim reading recorded the same day in
-[mattpocock-skills-integration](../../../../docs/research/mattpocock-skills-integration.md#第一批兩個-skill-的原始碼精讀),
-not on a diff performed against files present here. A recheck must re-fetch
-upstream; re-reading this file is not a recheck.
+on the verbatim reading recorded the same day under "第一批兩個 skill 的原始碼精讀"
+in `docs/research/mattpocock-skills-integration.md`, not on a diff performed
+against files present here. Named rather than linked, like every other pointer in
+this skill: these files deploy outside the repo, where no relative path reaches
+that tree. A recheck must re-fetch upstream; re-reading this file is not a
+recheck.
 
 ## What was taken, and how
 

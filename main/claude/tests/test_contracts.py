@@ -1565,6 +1565,46 @@ class DocumentationBudgetTests(unittest.TestCase):
                     missing.append(f"{path}: {target}")
         self.assertEqual(missing, [])
 
+    def test_every_tracked_document_links_somewhere_that_exists(self) -> None:
+        """The test above reads five README files. Nothing read the other 143.
+
+        Found on 2026-08-17 by checking M4's "documentation links resolve" item
+        by hand instead of reading it off a green suite: two links written the
+        same day, in the two new skills' tuning files, were off by one directory
+        level and no test looked at either file. The narrow test was not wrong -
+        it guards the navigation surface it names - it was just being read as
+        cover for every document.
+
+        Anchors are checked too, because a renamed heading kills a deep link
+        silently and this repo uses them (the plan and research docs link into
+        each other's sections). The slug rule here matches what GitHub does to
+        these headings, including CJK; on a mismatch the message prints the
+        headings it computed so the answer is not "guess which one moved".
+        """
+        link = re.compile(r"\[[^\]]*\]\(([^)#\s]+)(#[^)\s]*)?\)")
+        broken = []
+        tracked = git("ls-files", "*.md").stdout.split()
+        for name in tracked:
+            path = ROOT / name
+            for target, anchor in link.findall(path.read_text(encoding="utf-8")):
+                if target.startswith(("http://", "https://", "mailto:")):
+                    continue
+                dest = (path.parent / target).resolve()
+                if not dest.exists():
+                    broken.append(f"{name} -> {target}")
+                    continue
+                if not anchor or dest.suffix != ".md":
+                    continue
+                headings = {
+                    re.sub(r"[^\w一-鿿-]", "", head.lower().replace(" ", "-"))
+                    for head in re.findall(
+                        r"^#+\s+(.*)$", dest.read_text(encoding="utf-8"), re.M)}
+                if anchor[1:].lower() not in headings:
+                    broken.append(
+                        f"{name} -> {target}{anchor}: no such heading in "
+                        f"{target}; it has {sorted(headings)}")
+        self.assertEqual([], broken, f"{len(tracked)} tracked documents scanned")
+
     def test_documented_baseline_matches_runtime_contract(self) -> None:
         plan = read(".claude/plans/orchestration-plan.md")
         readme = read("README.md")
