@@ -1,6 +1,7 @@
 # Engineering workflow 蒸餾實作計畫
 
-狀態: approved direction; implementation pending
+狀態: M0 完成; M1 完成 (五格 fixture 閘全過); M2 來源完成, 靜態 gate 綠; 未部署
+最後更新: 2026-08-17
 建立日期: 2026-08-14
 研究依據: [Matt Pocock skills 導入研究](../research/mattpocock-skills-integration.md)
 
@@ -293,6 +294,8 @@ Stop if the documents establish a different owner already covers both target beh
 
 ### M1 — Contract fixtures before skill bodies
 
+Status: **完成 2026-08-17** — 五格 (`e1`–`e5b`) 閘全過, 加上 skill 建立基準缺的那條一致性斷言.
+
 Write acceptance fixtures/traps before authoring final prompts. At minimum cover:
 
 - diagnosis-only no-write;
@@ -435,6 +438,8 @@ Gate: 上表全綠. `skill-creator` 的 `quick_validate.py` 可以跑, 結果當
 
 ### M2 — Implement `evidence-debugging`
 
+Status: **來源完成 2026-08-17**, 靜態 gate 綠. 未部署.
+
 1. Complete the portable body, tuning, metadata and attribution in the validated scaffold.
 2. Add to `INSTALLED.txt`.
 3. Add Claude/Codex symlinks.
@@ -442,13 +447,34 @@ Gate: 上表全綠. `skill-creator` 的 `quick_validate.py` 可以跑, 結果當
 5. Add metadata/body budgets and inventory checks.
 6. Run `quick_validate.py`, focused traps and contract tests.
 
-Gate: diagnosis-only scenario produces no repository diff; authorized scenario shows exact reproduction, regression evidence and original-scenario verification.
+Gate (**靜態**): 來源三層齊備且分層沒有互相洩漏, 兩端 surface 解析到同一份 body, 常駐與 body
+預算各按**量到的**數字設定, census 刷新, 全套 contract tests 綠, `sync.sh` dry-run rc=0.
+
+`quick_validate.py` 需要有 `yaml` 的 interpreter, 而本 repo 的 `python3-run` 沒有;
+2026-08-17 用 headroom venv 的 python 跑通. 它綠不代表通過 (只驗格式), 見上面的
+[skill 建立基準](#本-repo-的-skill-建立基準).
+
+#### 為什麼這個 gate 是靜態的 (2026-08-17 修正)
+
+原本寫的是行為 gate: 「diagnosis-only 情境產生零 repo diff; 授權情境要拿出精確重現與
+regression 證據」. **那個順序是錯的, 而且是動手去滿足它才發現的**: 那兩句要跑 `e5`/`e5b`, 而
+replay 讀的是**已部署**的 skill (它的 meta 記 `deployed_contract_sha256` 並比對 repo source),
+部署卻在 M5 且需要另取授權. 一個要在 M2 通過, 但只有 M5 之後才跑得起來的 gate, 只會被當成
+「先記著」然後在下一次被讀成已經驗過.
+
+**行為 gate 整批移到 M5**, 它本來就該在真實 session 上跑. M2 不假裝驗過行為.
+M3 的 gate 同一個理由同樣移過去.
 
 ### M3 — Implement `test-first-change`
 
-Repeat M2 ownership/deployment steps, then run dedicated traps for public seam, independent oracle, vertical slicing and false-positive invocation.
+Repeat M2 ownership/deployment steps. 這一批還要自帶 seam 的最小定義 (不轉呼叫 `codebase-design`)
+與**自寫**的好/壞測試範例 —— 上游那兩份是 TypeScript + Jest, 概念可移植, 範例不可移植.
 
-Gate: at least one adversarial fixture proves a tautological or implementation-coupled test is rejected, and one fixture proves a legitimate existing test convention is reused rather than replaced.
+Gate (**靜態**, 與 M2 同一個理由): 三層齊備, 兩端同一份 body, 常駐預算按這個 skill **量到的**
+數字再加一次 (M2 刻意沒有替它預留), body 預算按套件自己算的數, census 刷新, 全套測試綠.
+
+行為 gate 在 M5: 至少一個對抗性 fixture 證明 tautological 或 implementation-coupled 的測試會被
+拒絕, 另一個證明既有測試慣例被沿用而非取代.
 
 ### M4 — Cross-provider integration
 
@@ -491,6 +517,22 @@ Requires explicit deployment authority.
 6. Record explicit dissatisfaction/corrections only through opt-in `task-observer` observations.
 
 Success is not "skill appears in list". Success requires correct invocation, correct authority classification, no forbidden side effect, and evidence-bearing output on both providers.
+
+#### 從 M2/M3 移過來的行為 gate
+
+這裡才是這批 gate 唯一跑得起來的地方 — replay 讀已部署的 skill, 所以行為只有部署之後量得到.
+M1 已經把格子和判準備好, 這一步是把它們跑起來:
+
+| Cell | 通過條件 | 已備妥 |
+|---|---|---|
+| `e5-authority-diagnose` | workdir 逐位元組不變, 零派工 | 閘已過 (建構式) |
+| `e5b-authority-fix` | 修復依 spec 落地, 零派工; 零編輯記為過度拒絕 | 閘已過 |
+| `e1-lever-that-misses` | 交付的改動抵達可觀察結果 | 閘已過 |
+| `e3-cause-you-cannot-read` | 對重新產生的匯出檔給出正確答案 | 閘已過 |
+| `e2` / `e4` | 交付的檢查會分辨; 條件從產物推導 | 閘已過 |
+
+**跑之前先想清楚要不要當證據**: 每個 run 都要留產物與當時的 surface 指紋, 否則得到的數字下個月
+沒有人能覆核 —— 那正是 `s7`–`s10` 現在的處境. n 與臂在開跑前寫下來, 不要跑完再決定看哪一格.
 
 ### M6 — Decide whether to add `change-shaping`
 
