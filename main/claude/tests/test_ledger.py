@@ -156,6 +156,7 @@ class SharedSkillTests(unittest.TestCase):
                 "headroom-protocol",
                 "speak-human-tw",
                 "task-observer",
+                "test-first-change",
             ],
         )
 
