@@ -1,6 +1,6 @@
 # Engineering workflow 蒸餾實作計畫
 
-狀態: M0 完成; M1 完成 (五格 fixture 閘全過); M2 來源完成, 靜態 gate 綠; 未部署
+狀態: M0 完成; M1 完成 (五格 fixture 閘全過); M2/M3 兩個 skill 來源完成, 靜態 gate 綠; 未部署
 最後更新: 2026-08-17
 建立日期: 2026-08-14
 研究依據: [Matt Pocock skills 導入研究](../research/mattpocock-skills-integration.md)
@@ -196,6 +196,20 @@ main/codex/skills/
 
 邊界: 不得把 TDD 強加到純文件, 產生式資料, 瑣碎設定, 或本來就不可能有「改動前失敗」的變更上.
 
+**實際落地的比草稿寬 (2026-08-17)**. 草稿只在「使用者明講 TDD」時觸發; 出貨的版本觸發於
+implement / add / change / extend behaviour, 加上寫或修測試, 加上 TDD 這個詞. 理由是這個 skill
+要防的失敗 (事後補的斷言因為程式碼已存在而通過) 恰好只發生在**沒有人明講 TDD**的時候 —— 一個
+只在被點名時才啟動的規則, 剛好在它最有用的場合缺席.
+
+代價照實記: 觸發面變大, Claude 端會在多數實作工作上載入這份 body (Codex 端是 explicit-only).
+拿草稿那條邊界回填 `description` 的排除語作為對沖 —— 「a change nothing could have failed on
+beforehand」. 對照時發現草稿的另外兩條也沒進去, 一起補: 期望值取自獨立來源 (寫進步驟 1),
+以及不得一次寫完所有測試 (寫進 Never). refactor 的範圍規則放 tuning, 因為那是授權/範圍而非技術.
+
+這次對照的順序值得記下來: **先按 61 字設好預算, 才去比對計畫的 contract 段**, 於是補完排除語
+後要重量一次 (61 → 70). 換句話說, 預算設得比內容早, 而如果沒有回頭比對, 那個早設的數字就會
+是最終的數字 —— 這正是這個 skill 自己在講的事.
+
 ### Workflow
 
 **Seam** (自帶定義, 不轉呼叫其他 skill): 可以觀察到行為, 而不必伸手進內部的那個公開邊界.
@@ -277,6 +291,22 @@ When substantial text, templates, or examples are copied, include the full MIT l
 | `test-first-change` | **concept 重寫** | 上游本體只有 38 行索引, 實質在兩份 TypeScript 範例, 而範例本專案不採用. 反 pattern 的三個分類 (implementation-coupled, tautological, horizontal slicing) 概念採用, 文字自寫 |
 
 分類寫錯的方向只有一種要緊: 把 substantial portion 說成 concept 重寫. 不確定時歸到前者.
+
+### 兩個預測都偏向錯的那一邊 (2026-08-17 落地後回填)
+
+上表兩格都比實際少算, 而且是同一個方向:
+
+| Skill | 預測 | 實際寫下的 | 差在哪 |
+|---|---|---|---|
+| `evidence-debugging` | 一段近乎逐字 | **兩段** (進場判準 + redaction) | redaction 那節與閘一樣接近逐字, 初版把它列在「本專案新增」旁邊, review 才改回來 |
+| `test-first-change` | 純 concept 重寫 | **兩段** (不可能失敗的斷言前兩類 + mock 邊界) | 「38 行索引」是對的, 但實質在 `tests.md` 與 `mocking.md`, 而那兩份的分類邊界被採用了 |
+
+推論不是「以後預測要保守一點」, 而是**這種預測本來就不該當結論用**: 兩次都是在寫
+`ATTRIBUTION.md` 逐段比對時才算清楚的. 預測欄留著當紀錄, 但 gate 認的是逐段那次.
+
+而逐段比對本身有一個機械檢查涵蓋不到的縫: 它只會檢查**已經列出來的**條目.
+`test-first-change` 的 recheck 段因此明寫「re-classify every section, not only the ones
+already listed」, 這是唯一能防那個縫的東西, 而它是人做的.
 
 ## Implementation phases
 
@@ -426,15 +456,61 @@ source location `main/.agents/skills`.
 | prompt census 記到 `kind: skill-metadata` | `scripts/prompt-surface-census.py --check` | 新 skill 要重新產生指紋 |
 | Claude 與 Codex 解析到**同一份** `SKILL.md` | symlink 結構 + deployment 測試 | 無 |
 | `INSTALLED.txt` 有 owner, `deployment-manifest.tsv` 兩個 surface 各一列 | `sync.sh` 與 weekly-integrity | 無 |
-| `agents/openai.yaml` 的觸發語與 `description` 不漂移 | **無** | 需補一條斷言, 觸發語改動時同步 |
+| `agents/openai.yaml` 的觸發語與 `description` 不漂移 | `test_every_shared_skill_states_the_same_identity_on_both_surfaces` (M1 補) | **部分**: 已擋住改名 (目錄 / frontmatter `name` / `default_prompt` 的 `$name` 三處必須一致), 但 `short_description` 與 `description` 的**語意**是否一致仍靠 review |
 | body 長度與 reference 分層 (`SKILL.md` 精簡, 本地政策放 `references/` 一層外) | per-document 字數上限 | 無 |
 | 不新增 per-skill README / install guide / changelog | 慣例 | 靠 review |
 
 唯一真正的缺口是 `openai.yaml` 與 `description` 的一致性斷言. **M1 順手補上這一條**, 之後所有
-skill 都受益 — 這比為這次的兩個 skill 各寫一次檢查划算.
+skill 都受益 — 這比為這次的兩個 skill 各寫一次檢查划算. 補完後這格從「無機制」變成「擋改名,
+不擋語意漂移」, 上表照實記; 剩下那半沒有便宜的機械做法, 不假裝關掉.
 
 Gate: 上表全綠. `skill-creator` 的 `quick_validate.py` 可以跑, 結果當附證; 它綠不代表通過,
 它紅則直接修. 紀錄裡寫明兩者各跑了沒有, 不要讓「其中一個過了」蓋掉另一個沒跑.
+
+#### 基準補兩條 (2026-08-17, M2 review 的兩個發現)
+
+M2 的 review 找到兩件事, 兩件都不是測試抓的. 各評估過能不能機械化, 答案不一樣:
+
+| 發現 | 能不能測 | 結果 |
+|---|---|---|
+| `ATTRIBUTION.md` 把兩段 substantial portion 說成一段 | **不能** | 分類正確性需要上游文本在樹裡, 而本 repo 不 vendor 上游. 改補一條**不同**的檢查 (見下), 並在每份 ATTRIBUTION 的 recheck 段明寫要重分類每一節 |
+| s10 的 12 筆結果列在 bundle 重生成後失去立足點 | **能** | 補 ratchet: 每格未蓋指紋的結果列數凍結, 新增一筆就紅 |
+
+新增的兩條斷言:
+
+- `test_every_derived_skill_pins_a_commit_and_carries_its_licence`
+  (`test_contracts.py`) —— 任何有 `ATTRIBUTION.md` 的 skill 都要 (a) 指名上游 URL,
+  (b) 帶授權**條文**而不只是授權名稱, (c) 釘一個 40 位 SHA. 理由是版本字串不是識別碼 (上游
+  在 `v1.2.3` 不變的情況下走了 12 個 commit), 而「Licence: MIT」滿足句子不滿足義務.
+  `speak-human-tw` 只釘了 tag, 列為 grandfathered 一格 —— 它是可以縮的上限, 不是豁免.
+- `test_no_trap_gains_a_result_row_that_cannot_be_dated` (`test_mechanisms.py`) ——
+  未蓋指紋的結果列數**按格**凍結. 按格而非總數, 否則一格刪列可以替另一格買到加未蓋指紋列的
+  額度. 唯一能保持綠的方向是蓋指紋.
+
+兩條都反向驗過會紅 (拿掉 SHA / 破壞授權條文 / 給 s10 加一列), 不是只看它綠.
+
+**要講清楚第一條不涵蓋什麼**: 它抓缺漏與過期出處, 抓不到分類錯誤. 把它讀成「已經涵蓋 review
+那個發現」正好是 B 群那個失敗 —— 用產物的形狀替代它的實質. 測試的 docstring 自己寫著這句.
+
+#### 第二條測完才發現的第三件事: 逼出來的指紋是錯的
+
+裝完 ratchet 去覆核 s10, 指紋**沒有動** —— `80839ac8` 撐過了兩次加 skill. 原因是
+`surface.tsv` 是手維護的六行清單, 而 `build.py` 是 glob `main/claude/skills/*/SKILL.md`.
+兩邊從來沒有互相比對過.
+
+這比「舊列沒蓋指紋」嚴重一級: ratchet 會逼新列蓋指紋, 而那個指紋會顯示 **current**, 同時漏掉
+八個選項裡的兩個. 也就是說我補的那條, 在修掉這件事之前只會把「沒有證據」升級成「錯的證據」.
+
+沒抓到它的兩個綠燈值得記名:
+
+- `build.py --check` 比對 bundle 與**當下的 frontmatter** —— 今天紅了兩次, 完全正常運作;
+- `test_every_declared_surface_path_exists` 比對**列出來的路徑**與檔案系統 —— 也是綠的.
+
+兩個都在檢查清單的成員, 沒有一個在檢查清單本身. 補
+`test_the_selection_surface_lists_every_skill_the_bundle_is_built_from`
+把宣告與產生器對起來; `surface.tsv` 改成照 `build.py` 讀的方式列, 指紋 → `e990a5f5`.
+
+**這一格是 B 群失敗形態的第三個實例**, 而且是在為 B 群補測試的過程中撞到的.
 
 ### M2 — Implement `evidence-debugging`
 
@@ -451,7 +527,15 @@ Gate (**靜態**): 來源三層齊備且分層沒有互相洩漏, 兩端 surface
 預算各按**量到的**數字設定, census 刷新, 全套 contract tests 綠, `sync.sh` dry-run rc=0.
 
 `quick_validate.py` 需要有 `yaml` 的 interpreter, 而本 repo 的 `python3-run` 沒有;
-2026-08-17 用 headroom venv 的 python 跑通. 它綠不代表通過 (只驗格式), 見上面的
+2026-08-17 先記成「用 headroom venv 的 python 跑通」, **當天再跑就找不到那個 venv** —— 一條
+複述不出來的指令等於沒記. 實際可重跑的是這條 (無需常駐安裝, 也不動 repo 的 interpreter):
+
+```bash
+uv run --with pyyaml --no-project python \
+  ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py main/.agents/skills/<name>
+```
+
+它綠不代表通過 (只驗格式), 見上面的
 [skill 建立基準](#本-repo-的-skill-建立基準).
 
 #### 為什麼這個 gate 是靜態的 (2026-08-17 修正)
@@ -467,14 +551,43 @@ M3 的 gate 同一個理由同樣移過去.
 
 ### M3 — Implement `test-first-change`
 
+Status: **來源完成 2026-08-17**, 靜態 gate 綠. 未部署.
+
 Repeat M2 ownership/deployment steps. 這一批還要自帶 seam 的最小定義 (不轉呼叫 `codebase-design`)
 與**自寫**的好/壞測試範例 —— 上游那兩份是 TypeScript + Jest, 概念可移植, 範例不可移植.
 
 Gate (**靜態**, 與 M2 同一個理由): 三層齊備, 兩端同一份 body, 常駐預算按這個 skill **量到的**
 數字再加一次 (M2 刻意沒有替它預留), body 預算按套件自己算的數, census 刷新, 全套測試綠.
 
+實跑結果: 三層 + `agents/openai.yaml` 齊備; 兩端與來源三個 SHA256 相同; 常駐 70 字 (兩端各自),
+預算 660/580 → **730/650**; body 913 字 → **931**; census 與 s10 bundle 各刷新兩次;
+355 tests OK; `sync.sh` dry-run rc=0; `git diff --check` rc=0.
+上游 `quick_validate.py` 兩個 skill 都跑, 都 valid —— 只驗格式, 記在這裡當附證不當通過依據.
+
+分層落點的一個決定: `SKILL.md` 零 CJK, 中文動詞清單與**全部**好/壞範例都在
+`references/tuning.md`. 範例用的是 Python `unittest` / shell / markdown 契約斷言, 那是本 repo
+的語言而不是通用技術, 所以它們本來就屬於本地層 —— 上游把「什麼是好測試」外包給
+`references/tests.md`, 我們外包給 tuning, 位置不同但都不在可攜層.
+
 行為 gate 在 M5: 至少一個對抗性 fixture 證明 tautological 或 implementation-coupled 的測試會被
 拒絕, 另一個證明既有測試慣例被沿用而非取代.
+
+#### 觸發面: 兩個 skill 都答「fix」, 怎麼分
+
+這是第一次有兩個蒸餾 skill 的觸發語真的相交, 所以判準寫下來:
+
+| 情況 | 誰 |
+|---|---|
+| 症狀已知, 原因不明 | `evidence-debugging` |
+| 要改的行為已知 (含已診斷完的修復) | `test-first-change` |
+| 只要求解釋或評估 | 都不是 |
+
+`test-first-change` 的 `description` 直接點名 `evidence-debugging`, 這是刻意的:
+不點名時兩者只能靠語感分, 而「fix」兩邊都寫著. 代價是可攜層出現一個 sibling skill 名 ——
+接受, 因為這兩個是同一批一起發佈的, 而且拿掉它就沒有任何機制在描述層做這個區分.
+
+**這同時改變了 `s10-skill-recall` 的題目條件**: 那格的 `descriptions.md` 現在有八條, 其中兩條
+互相指涉. 已記在該格 README, 舊的 12 筆結果列不是在這個條件下量的.
 
 ### M4 — Cross-provider integration
 
