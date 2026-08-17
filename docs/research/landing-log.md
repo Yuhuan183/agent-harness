@@ -441,3 +441,11 @@ s11 的 fixture 壞了四次, 成因每次都一樣 - **把「要求的條件」
 - 自訂 base URL 會關掉 Claude Code 的 on-demand tool loading; 0.34 用 `ENABLE_TOOL_SEARCH` 補回來 (upstream #746). 常駐 routing 要讓這個變數跟 base URL 一起常駐.
 - `--1m` 在 `ANTHROPIC_MODEL` 未設時退回 Headroom 內建的模型常數, 會把 session 釘在比當前選擇更舊的模型上.
 
+#### 2026-08-14 查核結果 (Headroom 0.35 升級): 這次是儀器先開口
+
+- **儀器第一次先於人發現東西.** `evidence-check.py` 的第四個 instrument 在我開始逐檔比對之前, 就點名四筆歸屬給 headroom 的版號宣稱 (runtime guide 開頭, `RTK.md`, [README](README.md#時效性基準) 的那一列, `setup.md` 兩處) 與本機 `0.35.0` 不符. 2026-08-11 加上去時它只證明過「對已知的兩筆會開火」, 這是它第一次在未知的一輪裡起作用.
+- **上面那三件事以 0.35 原始碼逐條再核對, 全部沒變**: context-tool 殘留照樣在每次 `wrap`/`unwrap` 被刪且比對字串一字未改, `ENABLE_TOOL_SEARCH` 照樣由 `wrap claude` 設, `--1m` 的預設模型常數照樣是 `claude-opus-4-8`.
+- **唯一改到結論的是 `--1m` 的另一半**: 0.35 會把 `[1m]` 補進顯式傳入的 `--model` (#2922); 0.34 是 `--model` 蓋過 env var, `--1m` 靜默失效而回落 200k. 預設模型的陷阱沒修 - 修掉的是相鄰那個洞.
+- **`wrap agy` 仍不存在**, PR #1044 仍 open (2026-08-13 有更新), `hagy` 必須 fail closed 的結論不變.
+- **同一個失效換了新位置**: 前一次是把升級意圖當成查核結果; 這次是**裝好的版本不等於跑著的版本** - CLI 是 0.35.0, 但 `persistent-service` 停著, 所以根本沒有 proxy 版本可以宣稱. runtime guide 因此明寫「這次沒有觀察到 proxy 版本」, 而不是沿用 CLI 的數字.
+- 這次沒有需要改動的研究結論. 版本資訊落在 [README 的時效性基準](README.md#時效性基準) 那列與 [`headroom-runtime.md`](../../main/.agents/docs/headroom-runtime.md) 的 v0.34 -> v0.35 段.

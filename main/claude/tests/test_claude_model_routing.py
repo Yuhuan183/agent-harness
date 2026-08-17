@@ -137,8 +137,8 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
 
     def test_validate_rejects_nonfinite_model_metrics(self) -> None:
         score_lines = {
-            SCRIPT: "score = 50.61",
-            ROOT / "main/codex/scripts/model-routing": "score = 49.4440",
+            SCRIPT: "score = 52.46",
+            ROOT / "main/codex/scripts/model-routing": "score = 50.73",
         }
         for script, score_line in score_lines.items():
             source = (script.parent.parent / "model-routing.toml").read_text(
@@ -285,7 +285,7 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         # only asserts which generation that is, and `experience-log` copies
         # that assertion into the ledger. Behavioral proof with a planted stale
         # generation — an unfalsifiable assertion is not a check.
-        after = "2026-07-26T00:00:00Z"
+        after = "2026-08-14T00:00:00Z"
 
         def check(model: str, timestamp: str = after) -> subprocess.CompletedProcess:
             with tempfile.TemporaryDirectory() as temp_dir:
