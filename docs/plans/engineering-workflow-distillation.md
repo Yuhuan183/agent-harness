@@ -1,7 +1,7 @@
 # Engineering workflow 蒸餾實作計畫
 
-狀態: approved direction; implementation pending  
-建立日期: 2026-08-14  
+狀態: approved direction; implementation pending
+建立日期: 2026-08-14
 研究依據: [Matt Pocock skills 導入研究](../research/mattpocock-skills-integration.md)
 
 ## Checkable outcome
@@ -83,6 +83,18 @@ Skill 可以把既有規則轉成領域內的具體 stop, 但不能重複整份 
 
 來自工作摩擦的改善只能在使用者同意記錄 observation, 且 observation 經 review/actioned 後成為 tuning 候選. 上游更新不得自動改寫這一層.
 
+## 上游相依的處置
+
+2026-08-17 精讀 pin `068b6e0` 後確定的四項相依. **每一項都要有明文處置**, 不能只把上游那行刪掉
+留下空洞 — 空洞會在蒸餾版裡變成沒有 owner 的假設 ([研究](../research/mattpocock-skills-integration.md#第一批兩個-skill-的原始碼精讀)).
+
+| 上游相依 | 本專案承接者 | 判準 |
+|---|---|---|
+| `CONTEXT.md` + ADR (兩個 skill 的開頭第一段) | `AGENTS.md` 與 [architecture.md](../architecture.md) | 蒸餾版指向既有 owner; 不得建立 `CONTEXT.md`, `docs/adr/*` 或任何新的根文件 |
+| `codebase-design` skill (`tdd` 取 seam 語彙) | 蒸餾版自帶最小定義 | seam = 可觀察行為的公開邊界. 一句話帶完, 不留跨 skill 指標, 不引進 module/depth/leverage 全套語彙 |
+| `tests.md` / `mocking.md` (TypeScript + Jest 範例) | 自寫等價範例 | 概念移植, **範例重寫**. 本 repo 的測試面是 Python `unittest`, shell, 與 markdown 契約斷言; 直接翻譯 Jest 範例會教出這裡不存在的習慣 |
+| `scripts/hitl-loop.template.sh` (feedback loop 第 10 級) | **移除該級** | 本 repo 的驗證面沒有「必須有人點擊」的情境. 留一個未實作的指標比沒有更糟 |
+
 ## 目標檔案結構
 
 ```text
@@ -128,25 +140,40 @@ main/codex/skills/
 ### Workflow
 
 1. Classify authority: diagnosis-only or change-authorized.
-2. Capture exact user-observed symptom and success condition.
-3. Build the tightest repeatable feedback loop that fails on this symptom.
-4. Minimize while preserving the same failure.
-5. Trace from observed boundary toward likely cause; form one falsifiable hypothesis at a time.
-6. Run the smallest probe that can refute the hypothesis.
-7. Conclude with evidence strength: verified root cause, strongest hypothesis, or unresolved.
-8. Diagnosis-only stops here.
-9. Change-authorized work adds a failing regression at an appropriate public seam when practical, applies the smallest coherent fix, reruns minimized and original scenarios, then the narrow relevant suite.
+2. Redact before showing anything. Commands, outputs and captured artifacts carry secrets; write `<REDACTED>`, build loops against env vars, quote only the lines that carry signal. If the redacted output is not enough to diagnose, say so and ask.
+3. Capture the exact user-observed symptom and the success condition.
+4. Build the tightest repeatable feedback loop that fails on **this** symptom. **This is the skill**; the rest is mechanical.
+5. Do not pass this gate without the loop (below).
+6. Minimize while preserving the same failure; every remaining element must be load-bearing.
+7. Form 3–5 ranked hypotheses **before testing any of them**, each stating the prediction that would refute it. A hypothesis with no prediction is a preference — discard or sharpen it.
+8. Probe one variable at a time, smallest probe that can refute. Tag temporary instrumentation with a unique prefix so cleanup is one search. Performance work measures a baseline first.
+9. Conclude with evidence strength: verified root cause, strongest hypothesis, or unresolved.
+10. Diagnosis-only stops here.
+11. Change-authorized work writes the regression first **if a correct seam exists**, applies the smallest coherent fix, watches red turn green, reruns the minimized and the original scenario, then the narrow relevant suite. **If no correct seam exists, that absence is itself the finding** — report it rather than testing at a seam that cannot catch this bug.
+12. Cleanup gate: original scenario no longer reproduces, tagged instrumentation removed, throwaway harnesses deleted, and the hypothesis that turned out correct is stated so the next reader inherits it.
+
+#### 進場閘: 沒有這條命令就不准往下走
+
+改寫自上游 Phase 1 的完成判準, **整份計畫最硬的一條**, 也是本機 CCR 事件唯一真正缺的那一條:
+
+> 說得出**一條命令** (script 路徑, 測試呼叫, 或一個 curl), 而且**已經至少跑過一次**, 附上呼叫
+> 與 (遮蔽後的) 輸出. 它必須 red-capable — 打到真正的失效路徑, 斷言**使用者說的那個症狀**,
+> 所以能為這個 bug 變紅, 修好後變綠. 另外要 deterministic, 快 (秒級), 而且 agent 跑得動.
+
+還沒有這條命令就先讀程式碼建立理論時**停下來**. 不確定性偵測不到的話, 這條就是唯一的煞車.
 
 ### Required tuning
 
 - Do not mutate merely because the skill was model-invoked.
 - Do not ask the user for facts available from repo, logs, tools, or reproducible probes.
 - Ask one precise question only when different answers materially change diagnosis.
-- A nearby failure is not a reproduction of the reported bug.
+- A nearby failure is not a reproduction of the reported bug. Wrong bug, wrong fix.
+- **Absence after a change is not evidence when the symptom was never produced on demand.** A green that was never preceded by an observed red says only that nothing was seen.
 - A mocked test that bypasses the actual failing parser/filesystem/shell/provider path cannot close the claim.
 - Non-deterministic bugs require a measured reproduction rate before and after.
 - Do not silently turn `UNRESOLVED` into a confident root cause.
 - Optional graph tools are navigation accelerators, not evidence by themselves.
+- When no loop can be built, stop and say so: list what was tried, and ask for environment access, a redacted artifact, or permission to instrument. Do not proceed to hypothesise without a loop.
 
 ### Output
 
@@ -170,26 +197,40 @@ main/codex/skills/
 
 ### Workflow
 
-1. Identify desired observable behavior and the highest stable public seam.
-2. Inspect existing tests and nearby conventions before inventing a new seam.
-3. Choose an expected result from an independent source of truth.
-4. Write one test for one vertical slice.
-5. Run it and confirm it fails for the intended reason.
-6. Add the smallest implementation that makes it pass.
-7. Rerun the focused test.
-8. Repeat only for the next justified slice.
-9. Run the narrow relevant suite; broader suite only when blast radius justifies it.
-10. Report whether red, green, and boundary verification were actually observed.
+**Seam** (自帶定義, 不轉呼叫其他 skill): 可以觀察到行為, 而不必伸手進內部的那個公開邊界.
+
+1. Identify the desired observable behavior and the highest stable public seam.
+2. Check that the seam **reaches that behavior** — not merely the action under your control (below).
+3. Inspect existing tests and nearby conventions before inventing a new seam.
+4. Choose an expected result from an independent source of truth.
+5. Write one test for one vertical slice — a tracer bullet that answers to what the last cycle taught.
+6. Run it and confirm it fails **for the intended reason**, not merely that it fails.
+7. Add the smallest implementation that makes it pass; do not anticipate future slices.
+8. Rerun the focused test.
+9. Repeat only for the next justified slice.
+10. Run the narrow relevant suite; broader suite only when blast radius justifies it.
+11. Report whether red, green, and boundary verification were actually observed — and name what stayed unverified.
+
+#### Seam 必須抵達結果, 不只抵達動作
+
+本專案獨有, 上游沒有這條. 來源是 2026-08-17 的 CCR 事件 ([研究](../research/mattpocock-skills-integration.md#本機證據-ccr-事件同時檢驗了這兩個-skill)):
+
+當時的測試斷言「launcher 有匯出 `HEADROOM_LOSSLESS`」— seam 沒有疑義, 斷言也是真的, 但那個
+變數要影響的 proxy 早就在跑, 效果是零, 測試全綠. 上游的 tautological 定義抓不到這個形狀,
+因為斷言並沒有重算程式碼的算法; 它斷言了**一件正確但與結果無關的事**.
+
+> 只證明得了「請求已發出」時, 把「效果是否發生」明寫成未涵蓋, 不讓綠燈代言.
 
 ### Required tuning
 
 - Prefer an existing public seam; new seams are design decisions, not test convenience.
-- Do not ask the user to confirm a seam the repo already makes clear.
+- Do not ask the user to confirm a seam the repo already makes clear. Upstream blocks on confirming every seam; here the binding question is whether the seam reaches the outcome, and that is usually answerable from the repo.
 - Ask one precise question if competing seams materially change public API or ownership.
-- Avoid implementation-coupled mocks and tautological expected values.
+- Mock only at system boundaries (external service, clock, randomness). Never mock what this repo owns.
+- Expected values come from an independent source — a known literal, a worked example, the spec. An expectation recomputed the way the code computes it passes by construction and can never disagree with the code.
 - Do not bulk-write all tests before any implementation feedback.
 - Do not equate a green unit test with browser/device/provider/runtime verification.
-- Refactoring outside the approved behavior slice requires separate scope justification.
+- Refactoring is not part of the red-green loop and outside the approved slice requires separate scope justification.
 - The skill does not commit and does not automatically invoke code review or subagents.
 
 ### Output
@@ -227,6 +268,15 @@ Each `ATTRIBUTION.md` records:
 
 When substantial text, templates, or examples are copied, include the full MIT license. Even if implementation is independently rewritten, retain a concise attribution so later maintainers can reconstruct why the skill exists and compare future upstream changes.
 
+2026-08-17 精讀後的預期分類, 兩個 skill 不同, ATTRIBUTION 要分別如實寫:
+
+| Skill | 預期分類 | 理由 |
+|---|---|---|
+| `evidence-debugging` | **concept + 一段近乎逐字的判準** | Phase 1 完成判準是整份上游最有價值的一條, 而它的價值就在措辭的精確 (「已經跑過一次」「red-capable」). 改寫會削弱它; 因此預期會是重寫的流程加上明確標示來源的一段. 這一段落在 substantial portion 那側, MIT 全文要帶 |
+| `test-first-change` | **concept 重寫** | 上游本體只有 38 行索引, 實質在兩份 TypeScript 範例, 而範例本專案不採用. 反 pattern 的三個分類 (implementation-coupled, tautological, horizontal slicing) 概念採用, 文字自寫 |
+
+分類寫錯的方向只有一種要緊: 把 substantial portion 說成 concept 重寫. 不確定時歸到前者.
+
 ## Implementation phases
 
 ### M0 — Research and decision record
@@ -248,12 +298,20 @@ Write acceptance fixtures/traps before authoring final prompts. At minimum cover
 - diagnosis-only no-write;
 - change-authorized repair;
 - wrong-bug reproduction rejected;
+- **no red-capable command yet → refuses to hypothesise**;
+- **absence after a change is not reported as a fix when no red was ever observed**;
+- **a seam that reaches the action but not the outcome is reported as uncovered, not as green**;
+- secrets are redacted before any command, output or artifact is shown;
 - test fails for intended reason;
 - mocked path does not close runtime claim;
 - no auto commit/push/issue;
 - no direct subagent dispatch;
 - one precise blocking question;
 - visual/live verification remains explicit.
+
+上面粗體的三條**不是想像出來的情境, 是 2026-08-17 CCR 事件的重建** — 那次三條全踩. 用真的
+發生過的失敗當 fixture, 比自己編一個容易在事後被說成「本來就不會這樣」的情境強得多; 而且它
+自帶一組已知的正確答案 (當時做了什麼, 應該做什麼), 可以直接當 grader 的判準.
 
 Likely files:
 
