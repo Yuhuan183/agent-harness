@@ -1555,6 +1555,51 @@ class DocumentationBudgetTests(unittest.TestCase):
         self.assertIn("stable brief", doc)
         self.assertIn("研究摘要不再複製容易過期的 route 表格", research)
 
+    def test_every_shared_skill_states_the_same_identity_on_both_surfaces(self) -> None:
+        """A skill names itself three times, and a rename can miss one silently.
+
+        The directory, the frontmatter `name`, and the `$name` inside
+        `agents/openai.yaml`'s `default_prompt` are three independent spellings
+        of one identity. Claude routes on the first two; Codex hands the third
+        to the user as the way to invoke the skill. Nothing else compares them,
+        so a rename that updates the folder and the frontmatter — the two a
+        grep for the old name finds — leaves Codex offering a prompt that
+        invokes nothing, and every existing check stays green.
+
+        This is the one gap the skill-creation baseline had: upstream's
+        `skill-creator` validates frontmatter shape and never looks at the
+        Codex interface, while this repo's own checks price the metadata
+        without reading it for agreement. Written once here rather than per
+        skill, so the next skill inherits it.
+        """
+        skills = sorted(
+            p for p in (ROOT / "main/.agents/skills").iterdir() if p.is_dir())
+        self.assertTrue(skills, "no shared skills found")
+        for skill in skills:
+            with self.subTest(skill=skill.name):
+                head = re.match(
+                    r"^---\n(.*?)\n---",
+                    (skill / "SKILL.md").read_text(encoding="utf-8"), re.S)
+                self.assertIsNotNone(head, f"{skill.name}: no frontmatter")
+                declared = re.search(r"^name:\s*(\S+)\s*$", head.group(1), re.M)
+                self.assertIsNotNone(declared, f"{skill.name}: no name in frontmatter")
+                self.assertEqual(
+                    declared.group(1), skill.name,
+                    f"{skill.name}: frontmatter name disagrees with its directory")
+
+                interface = skill / "agents/openai.yaml"
+                self.assertTrue(
+                    interface.exists(),
+                    f"{skill.name}: no agents/openai.yaml, so Codex gets no interface")
+                prompt = re.search(
+                    r"default_prompt:\s*\"(.*?)\"",
+                    interface.read_text(encoding="utf-8"), re.S)
+                self.assertIsNotNone(
+                    prompt, f"{skill.name}: openai.yaml has no default_prompt")
+                self.assertIn(
+                    f"${skill.name}", prompt.group(1),
+                    f"{skill.name}: default_prompt invokes a different skill")
+
 
 
 if __name__ == '__main__':
