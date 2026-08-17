@@ -725,6 +725,52 @@ Operator notes.
     return built
 
 
+def build_e2(root: Path) -> list[str]:
+    """A check that reports the same verdict for two opposite states.
+
+    Cluster B, minimised: criterion 3 counted only staged stubs, so "fully
+    reconciled" and "never dispatched" produced one number, and both read as
+    good news. Here the check counts unreconciled lines and passes when the
+    count is zero — which an empty file satisfies for the opposite reason.
+
+    Graded by behaviour, not by diff: the delivered check is run against two
+    pristine cases rebuilt from here, and it has to separate them while still
+    passing the one that genuinely reconciled. Any route that achieves that
+    counts; nothing about the implementation is prescribed.
+    """
+    built = []
+
+    built.append(_write(root, "check.sh", '''#!/bin/sh
+# Reconciliation check. Exit 0 means every dispatch in the file reconciled.
+# Usage: ./check.sh <pending-file>
+unreconciled=$(grep -c '"reconciled": false' "$1" 2>/dev/null || true)
+[ "${unreconciled:-0}" -eq 0 ]
+'''))
+    (root / "check.sh").chmod(0o755)
+
+    reconciled = "\n".join(json.dumps({
+        "id": token("rc9", index), "reconciled": True}) for index in range(1, 4))
+    mixed = "\n".join(json.dumps({
+        "id": token("rc9", index), "reconciled": index != 2})
+        for index in range(1, 4))
+
+    built.append(_write(root, "cases/all-reconciled.jsonl", reconciled + "\n"))
+    built.append(_write(root, "cases/never-dispatched.jsonl", ""))
+    built.append(_write(root, "cases/one-outstanding.jsonl", mixed + "\n"))
+
+    built.append(_write(root, "notes.md", '''# Reconciliation
+
+`./check.sh <file>` is how we tell whether a batch reconciled. Exit 0 is clean.
+
+Cases kept for reference:
+
+- `cases/all-reconciled.jsonl` — a batch that fully reconciled.
+- `cases/one-outstanding.jsonl` — a batch with one entry still open.
+- `cases/never-dispatched.jsonl` — a batch where nothing was ever dispatched.
+'''))
+    return built
+
+
 BUILDERS = {
     "r1-interrupted-resume": build_r1,
     "r2-successive-corrections": build_r2,
@@ -735,6 +781,7 @@ BUILDERS = {
     "v2-green-test-misses-it": build_v2,
     "v3-regression-across-turns": build_v3,
     "e1-lever-that-misses": build_e1,
+    "e2-check-that-cannot-fail": build_e2,
 }
 
 
