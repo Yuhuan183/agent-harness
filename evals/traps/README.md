@@ -25,9 +25,17 @@ run 共用的代號。為了目錄好讀而讓那些指向不存在的名字, �
 | `s10` | variant 分類 | **無** |
 | `s11` | scenarios + runs —— [`../replay/`](../replay/README.md) 的原型 | 127 |
 
-`s7`–`s10` 的 grader 還在, 但**沒有東西會重算它們**。而「會被引用的數字要重算, 不要讀回」是本
-repo 對自己數字的硬規則 (見 replay README 的 Part 7)。所以這四個要當**已歸檔的結論**讀, 不要
-重跑一次就引用新數字 —— 那個數字沒有留存產物可以覆核。
+要分清楚兩件不同的事:
+
+- **跑得動。** `s7`–`s10` 的 brief, pristine 與 grader 都在, `s10` 還有 `build.py`。想重跑是跑得動的。
+- **留不下來。** 它們不保存 run 產物, 所以**重跑得到的數字沒有東西可以覆核**。而「會被引用的
+  數字要重算, 不要讀回」是本 repo 對自己數字的硬規則 (見 replay README 的 Part 7)。
+
+所以規則是: **這四個裡的既有數字當已歸檔的結論讀; 要重跑並引用新數字, 就得自己留下產物**
+(run 目錄, 條件, 以及當時的 surface 指紋), 否則那個數字下個月沒有人能覆核。
+
+`docs/contract-slimming.md` 那條「動 skill description 前先跑 `s10` 兩臂」仍然有效 —— 它要的是
+model-in-the-loop 的鑑別度, 測試量不到 —— 只是照上面那條, 產物要留。
 
 `s11` 的 dispatch clause 那一格已經被 replay 的 `d1`/`d2` 答完 (見
 [landing-log](../../docs/research/landing-log.md) 2026-08-13)。
