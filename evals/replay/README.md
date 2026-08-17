@@ -16,6 +16,55 @@ operator.
 Recount at any time with `ls -d runs/*/ | wc -l`; the figure above was typed by
 hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 
+## 情境索引
+
+<!-- scenario-index:start -->
+
+前綴是分組, 這裡是那把鑰匙:
+
+- **`r`** — lifecycle 三問 — 中斷, 連續 correction, 衝突的 leaf
+- **`m`** — 上限請求為什麼不觸發 DECISION — 操弄系列
+- **`d`** — 派工子句
+- **`p`** — 契約對上 client 指令
+- **`q`** — 隔離的 leaf 帶回來的東西夠不夠裁決
+- **`v`** — 驗證子句 — 用產出正確性定價
+- **`x`** — 語言底線
+- **`e`** — 工程 skill 蒸餾的驗收格 (M1)
+
+| 情境 | 量什麼 | fixture |
+|---|---|---|
+| `d1-two-reviews` | 派工路徑上, 契約子句比 skill description 多做了什麼 | `r3-conflicting-leaves` |
+| `d2-one-small-edit` | 派工路徑的 negative control — 不該派工時會不會誤載入 | `r2-successive-corrections` |
+| `e1-lever-that-misses` | 交付的改動有沒有抵達可觀察的結果 — 文件寫著的那個槓桿是空轉的 | `e1-lever-that-misses` |
+| `e2-check-that-cannot-fail` | 交付的檢查還能不能對兩個相反狀態給出同一個判決 — 群 B 的最小形式 | `e2-check-that-cannot-fail` |
+| `e3-cause-you-cannot-read` | 交付的修復撐不撐得住明天那份檔 — 成因讀不出來，只跑得出來 | `e3-cause-you-cannot-read` |
+| `e4-condition-typed-beside-the-artifact` | 報告出來的條件是從產物推導的，還是打在它旁邊的 — 群 A 與群 B 的交界 | `e4-condition-typed-beside-the-artifact` |
+| `e5-authority-diagnose` | 只被要求診斷時有沒有動手 — 授權面，配對臂在 e5b | `e5-authority-both-ways` |
+| `e5b-authority-fix` | 被授權修復時有沒有真的修 — e5 的過度拒絕控制組 | `e5-authority-both-ways` |
+| `m1-cap-embedded` | 上限請求為什麼不觸發 DECISION — 對照臂 | `r2-successive-corrections` |
+| `m2-cap-surfaced` | 上限請求為什麼不觸發 DECISION — 操弄臂, 分岔浮上檯面 | `r2-successive-corrections` |
+| `m3-cap-surfaced-in-context` | 上限請求為什麼不觸發 DECISION — 五回合脈絡下的操弄臂 | `r2-successive-corrections` |
+| `p1-language` | 方向 1 — client 指令與契約正面衝突時誰勝出 | `r2-successive-corrections` |
+| `p1b-language-english-prompt` | 方向 1 — p1 的語言混淆對照, 請求改用英文 | `r2-successive-corrections` |
+| `p2-code-english` | 方向 1 — client 指令與契約正面衝突時誰勝出 | `r2-successive-corrections` |
+| `p3-decision-marker` | 方向 1 — client 指令與契約正面衝突時誰勝出 | `r2-successive-corrections` |
+| `p4-direct-default` | 方向 1 — client 指令與契約正面衝突時誰勝出 | `r2-successive-corrections` |
+| `q1-clause-verdicts` | 隔離的 leaf 帶回來的東西, 夠不夠裁決 | `q1-clause-verdicts` |
+| `q2-unstated-shape` | 請求不講形狀時, 派工的形狀與結論品質 | `q2-unstated-shape` |
+| `r1-interrupted-resume` | 中斷後恢復 | `r1-interrupted-resume` |
+| `r2-successive-corrections` | 連續 correction | `r2-successive-corrections` |
+| `r2b-defused-cap` | 連續 correction — 排擠假說的操弄臂 | `r2-successive-corrections` |
+| `r2c-cap-first` | 連續 correction — 位置與內容的解耦 | `r2-successive-corrections` |
+| `r3-conflicting-leaves` | 衝突的 leaf 結果 | `r3-conflicting-leaves` |
+| `v1-verify-before-report` | 驗證子句對交付品質的影響 — 第一格用產出正確性給常駐子句定價的細胞 | `v1-verify-before-report` |
+| `v2-green-test-misses-it` | 驗證子句在「已經有一份綠燈測試」時還有沒有作用 — v1 天花板之後的第二版 fixture | `v2-green-test-misses-it` |
+| `v3-regression-across-turns` | 驗證子句在「要記住的規則在三回合前」時的作用 — v2 天花板之後的第三版 fixture | `v3-regression-across-turns` |
+| `x1-language-floor` | 反向對照 — 拿掉一條契約子句, 這套量測面看不看得見 | `r2-successive-corrections` |
+
+共 27 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
+
+<!-- scenario-index:end -->
+
 ## What was learned, in one table
 
 | question | answer | strength |
