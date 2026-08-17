@@ -38,8 +38,9 @@ repeatedly, and stop conditions it has paid for.
   When a check can establish "the request was sent" but not "the effect
   happened", write the second down as uncovered. This rule is local: it came from
   a 2026-08-17 incident where a passing test asserted a launcher exported a
-  variable while the setting it was meant to change stayed on
-  ([landing-log](../../../../docs/research/landing-log.md)).
+  variable while the setting it was meant to change stayed on, recorded in
+  `docs/research/landing-log.md`. Named, not linked — this file is deployed
+  outside the repo, where no relative path reaches that tree.
 - Non-deterministic defects need a measured reproduction rate quoted before and
   after, not "seems better".
 
