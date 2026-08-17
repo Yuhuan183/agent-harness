@@ -1413,9 +1413,17 @@ class DocumentationBudgetTests(unittest.TestCase):
             ".codex/skills/task-observer/SKILL.md": 770,
             # One source, symlinked to both providers: the plan forbids a wrapper
             # fork without refutable runtime evidence that the two sides need
-            # different semantics, and there is none. Measured 914 + ~2%.
-            ".claude/skills/evidence-debugging/SKILL.md": 932,
-            ".codex/skills/evidence-debugging/SKILL.md": 932,
+            # different semantics, and there is none.
+            #
+            # 932 was set from "measured 914", and the file is 929 - so the
+            # ceiling delivered 0.3% instead of the ~2% the comment above claims
+            # for this tier, and said in writing that it had. Corrected 2026-08-17
+            # to the real measurement, 929 + ~2%. The 914 was taken mid-edit and
+            # never re-read; a number recorded next to what it measured is only
+            # worth anything if it can be recomputed from the file, which this one
+            # could not. Not a refill: nothing needed to fit.
+            ".claude/skills/evidence-debugging/SKILL.md": 947,
+            ".codex/skills/evidence-debugging/SKILL.md": 947,
             # Same single source, same reasoning. Measured 913 + ~2%. Its worked
             # examples are not in here: upstream `tdd` is 38 lines of index whose
             # substance lives in two TypeScript references, and the replacements
@@ -1577,9 +1585,12 @@ class DocumentationBudgetTests(unittest.TestCase):
 
         Anchors are checked too, because a renamed heading kills a deep link
         silently and this repo uses them (the plan and research docs link into
-        each other's sections). The slug rule here matches what GitHub does to
-        these headings, including CJK; on a mismatch the message prints the
-        headings it computed so the answer is not "guess which one moved".
+        each other's sections). The slug rule is calibrated against the 40
+        anchors currently in this tree, English and CJK - it is not GitHub's
+        algorithm and should not be described as one, so a heading using
+        punctuation this repo has not used yet could produce a false red. On any
+        mismatch the message prints the headings it computed, which makes that
+        case one glance to tell apart from a real break.
         """
         link = re.compile(r"\[[^\]]*\]\(([^)#\s]+)(#[^)\s]*)?\)")
         broken = []
@@ -1674,6 +1685,35 @@ class DocumentationBudgetTests(unittest.TestCase):
                 self.assertIn(
                     f"${skill.name}", prompt.group(1),
                     f"{skill.name}: default_prompt invokes a different skill")
+
+    def test_every_shared_skill_appears_in_the_readme_that_indexes_its_peers(self) -> None:
+        """Installing a skill wires six machine-checked surfaces and one nobody checked.
+
+        `INSTALLED.txt`, both symlinks, both manifest rows and the budgets all
+        have assertions. The human indexes did not, so `evidence-debugging` and
+        `test-first-change` were absent from all three READMEs that list every
+        one of their peers - and both a review of M2 and a review of M3 walked
+        past it, which is what an unchecked convention looks like after two
+        chances.
+
+        The roster and the index are independent sources, so this compares them
+        rather than looking for a heading. A provider README only has to carry
+        the name where that provider actually deploys it, which the manifest
+        decides, not this test.
+        """
+        installed = read(".agents/skills/INSTALLED.txt").split()
+        self.assertTrue(installed, "no shared skills listed")
+        shared_index = read(".agents/README.md")
+        missing = []
+        for name in installed:
+            if f"skills/{name}/" not in shared_index:
+                missing.append(f"main/.agents/README.md: {name}")
+            for provider in ("claude", "codex"):
+                if not (ROOT / f"main/{provider}/skills/{name}").exists():
+                    continue
+                if name not in read(f".{provider}/README.md"):
+                    missing.append(f"main/{provider}/README.md: {name}")
+        self.assertEqual([], missing)
 
     # `speak-human-tw` identifies its upstream by tag alone (v1.4.0). Left as
     # it is on purpose: retro-fitting a SHA means resolving what that tag
