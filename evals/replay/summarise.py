@@ -316,7 +316,12 @@ def summarise(reports: list[dict]) -> dict:
     verify: dict[str, dict] = {}
     for report in reports:
         outcome = report["outcome"]
-        if "probed_beyond_suite" not in outcome:
+        # Each verification cell names its own secondary, because what counts as
+        # "checked more than the obvious" is a property of that cell's fixture.
+        secondary = next((key for key in ("probed_beyond_suite",
+                                          "checked_by_worker_after_writing_it")
+                          if key in outcome), None)
+        if secondary is None:
             continue
         row = verify.setdefault(report["scenario"], {"arms": {}})
         cell = row["arms"].setdefault(report.get("arm", "a"), {
@@ -328,8 +333,8 @@ def summarise(reports: list[dict]) -> dict:
             continue
         cell["reached"] += 1
         cell["correct"] += 1 if outcome["correct"] else 0
-        cell["probed_beyond"] += 1 if outcome["probed_beyond_suite"] else 0
-        cell["ran_suite"] += 1 if outcome["ran_shipped_tests"] else 0
+        cell["probed_beyond"] += 1 if outcome[secondary] else 0
+        cell["ran_suite"] += 1 if outcome.get("ran_shipped_tests") else 0
 
     for row in verify.values():
         base, arm = row["arms"].get("a"), row["arms"].get("b")
