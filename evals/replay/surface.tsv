@@ -7,8 +7,27 @@
 # hooks without also losing the contract (measured 2026-08-12), so the hook
 # layer is inside this construct rather than beside it.
 #
+# 2026-08-17: the resident skill bodies and the six `e*` scenarios were missing,
+# and `test_the_replay_surface_lists_every_scenario_and_every_resident_skill`
+# now holds them here. Both omissions were about to stamp the M5 gate's result
+# rows `current` against a fingerprint covering neither the cells nor the code
+# under test. Skills are listed for the whole suite rather than for the `e*`
+# cells alone: `e5` opens with "先別動, 跟我說為什麼" and never names a skill, so
+# which one fires is decided by all eight resident descriptions competing, and
+# recording only the two under test would leave their competitors unfingerprinted.
+# The accepted cost is that a skill edit now stales every row here, which is the
+# same trade this file already takes for the contract and the hooks.
+#
 # Recompute: evals/scripts/trap-surface.py --trap replay
 main/claude/CLAUDE.contract.md
+main/claude/skills/baton-dispatch/SKILL.md
+main/claude/skills/provider-routing/SKILL.md
+main/claude/skills/headroom-protocol/SKILL.md
+main/claude/skills/speak-human-tw/SKILL.md
+main/claude/skills/experience-ledger/SKILL.md
+main/claude/skills/task-observer/SKILL.md
+main/claude/skills/evidence-debugging/SKILL.md
+main/claude/skills/test-first-change/SKILL.md
 main/claude/hooks/experience-pending.py
 main/claude/hooks/leaf-redispatch.py
 main/claude/hooks/runtime-guard.py
@@ -40,3 +59,9 @@ evals/replay/scenarios/v1-verify-before-report.md
 evals/replay/scenarios/v2-green-test-misses-it.md
 evals/replay/scenarios/v3-regression-across-turns.md
 evals/replay/scenarios/x1-language-floor.md
+evals/replay/scenarios/e1-lever-that-misses.md
+evals/replay/scenarios/e2-check-that-cannot-fail.md
+evals/replay/scenarios/e3-cause-you-cannot-read.md
+evals/replay/scenarios/e4-condition-typed-beside-the-artifact.md
+evals/replay/scenarios/e5-authority-diagnose.md
+evals/replay/scenarios/e5b-authority-fix.md
