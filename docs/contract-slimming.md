@@ -106,6 +106,9 @@ model-in-the-loop 量得到: 測試只能釘住觸發詞在不在, 量不出改�
 它量的是**鑑別度, 不是實際載入行為** (批次分類, 非 fresh session 觀測), 所以證據不對稱:
 **某一臂失敗是強證據** (連這種容易的條件都過不了), **某一臂通過是弱證據** (必要非充分).
 通過不等於可以砍; 只有失敗能直接否決一次修剪.
+`s10` 不保存 run 產物 ([為什麼](../evals/traps/README.md#狀態-已歸檔的結論-不是可重跑的儀器)),
+所以要引用這次重跑的數字, 就得自己留下 run 目錄, 條件與當時的 surface 指紋 —— 否則那個數字
+沒有東西可以覆核, 而本 repo 對自己引用的數字要求重算而非讀回.
 
 `main/.agents/scripts/python3-run scripts/prompt-surface-census.py --check docs/research/prompt-surface-census.json`
 另行鎖定 Claude/Codex 的 resident, dispatch-time skill
