@@ -88,6 +88,20 @@ nineteenth `SELECT:` line raises `R5-malformed`, and a created
 the two exempt names are matched as exact paths, not basenames at any depth.
 `test_the_selection_grader_exit_zero_means_what_it_claims` runs these four.
 
+## The bundle changed on 2026-08-17
+
+`evidence-debugging` was added to the shared skills, so `pristine/descriptions.md`
+was regenerated and now carries seven descriptions instead of six. `build.py
+--check` refuses a run against a stale surface, so future runs are fine.
+
+**Every result row already in this file predates that.** Those rows carry no
+surface stamp — `scripts/evidence-check.py` has been reporting them as
+`unstamped 12` since the stamping mechanism existed — so nothing in the artifact
+says which bundle produced them, and adding a description changed that bundle
+without any signal. Recorded here because the alternative is a reader comparing a
+future 18/18 against an older one measured on a different set of choices.
+
+
 **Ledger hygiene.** Log every trap dispatch with `--class smoke` (excluded from
 route-preference decision counts).
 
