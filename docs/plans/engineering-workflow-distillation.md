@@ -1,6 +1,6 @@
 # Engineering workflow 蒸餾實作計畫
 
-狀態: M0 完成; M1 完成 (五格 fixture 閘全過); M2/M3 兩個 skill 來源完成, 靜態 gate 綠; 未部署
+狀態: M0-M4 完成 (M1 五格 fixture 閘全過, M2/M3 兩個 skill 來源完成靜態 gate 綠, M4 跨端整合全綠); 未部署
 最後更新: 2026-08-17
 建立日期: 2026-08-14
 研究依據: [Matt Pocock skills 導入研究](../research/mattpocock-skills-integration.md)
@@ -617,6 +617,42 @@ Also verify:
 - worktree contains no generated caches or temporary probes.
 
 Do not run `scripts/sync.sh --apply` in this phase unless separately authorized.
+
+#### 實跑結果 (2026-08-17)
+
+八條指令全 rc=0: 357 tests, Claude 三條 model-routing (validate / check-pins /
+check-aliases), Codex validate, census `--check`, `git diff --check`,
+`sync.sh` dry-run. 未跑 `--apply`.
+
+上面六項逐項獨立驗過, **不用「套件綠了」代言** —— 那正好是 reach-marker 那個形狀:
+
+| 項目 | 結果 |
+|---|---|
+| 每個共用 skill 在 `INSTALLED.txt` 只有一個 owner | 6 列 = 6 個目錄, 無重複 |
+| 兩端解析到同一份 `SKILL.md` | 4 個共用 body 兩端逐位元組相同; `headroom-protocol` 與 `task-observer` 的 Claude 端是刻意分叉 (要帶 `disable-model-invocation: false`, 共用 body 帶不了), 由具名測試宣告 |
+| manifest 每個可部署 surface 恰好一列 | 38 列, 來源與目標都無重複, 無遺漏 |
+| 預算涵蓋兩端拼法 | 無漏 |
+| 文件連結可解析 | **紅了兩條, 見下** |
+| worktree 無產生式快取或臨時探針 | 未追蹤且未忽略的只有使用者自己的 `untitled.md`; 23 個 `__pycache__` 與 7 個 `.DS_Store` 都在 `.gitignore` 裡, 屬設計如此 |
+
+##### 「文件連結可解析」這格是手驗才紅的
+
+`test_documentation_navigation_links_resolve_locally` 只讀**五個 README**, 剩下 143 份追蹤中的
+markdown 沒有任何測試看過. 而當天寫的兩條連結 (兩個 skill 的 tuning) 差一層目錄, 兩個檔案都不
+在那五個裡面.
+
+那條窄測試沒有錯 —— 它守的是它自己命名的導覽面; 錯的是**把它讀成涵蓋所有文件**.
+
+修的方向不是補一層 `../`: 這些檔案會部署到 repo 之外, 那裡任何相對路徑都到不了 `docs/`.
+所以改成具名指標 (與同兩份檔案早就對 `AGENTS.md`, `docs/architecture.md` 的做法一致).
+`test-first-change/ATTRIBUTION.md` 指向研究文件那條同樣改掉; 留下的唯一 repo 相對連結是
+`tuning.md` → `../../evidence-debugging/SKILL.md`, 它在 repo 與部署後**都**解析得到, 因為兩個
+skill 部署成同層兄弟.
+
+補 `test_every_tracked_document_links_somewhere_that_exists`: 掃全部追蹤中的 markdown,
+路徑與 anchor 都驗 (anchor 因為改標題會靜默弄死深連結, 而本 repo 的計畫與研究文件互相深連).
+先看它為現況變紅 (兩條路徑), 再改壞一個標題確認 anchor 那半也會紅 —— 失敗訊息會印出它算出來的
+標題集, 所以答案不是「猜哪個動了」.
 
 ### M5 — Deploy and observe
 
