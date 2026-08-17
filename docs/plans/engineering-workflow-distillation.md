@@ -333,13 +333,39 @@ Write acceptance fixtures/traps before authoring final prompts. At minimum cover
 | `e2-check-that-cannot-fail` | **B** — 一個判決代表兩個相反狀態 | 閘已過 |
 | `e4-condition-typed-beside-the-artifact` | A/B 交界 — 手寫的條件 vs 產物裡的條件 | 閘已過 |
 
-四格都在 [`evals/replay/`](../../evals/replay/README.md) Part 8, 判準與閘的結果記在那裡.
+| `e5-authority-diagnose` / `e5b-authority-fix` | 授權 — 只被要求診斷時零編輯; 配對臂抓過度拒絕; 兩臂都不得派工 | 閘已過 |
+
+五格都在 [`evals/replay/`](../../evals/replay/README.md) Part 8, 判準與閘的結果記在那裡.
 共同的紀律: **四個判決沒有一個由散文 regex 決定** — e1 判磁碟狀態, e2 跑交付的檢查, e3 跑
 重新產生的檔, e4 跑兩份樹 (第二份擾動一筆, 用來分辨推導與背答案). 閘全部對手工建構的 workdir
 跑完, 沒花任何 API 呼叫.
 
-過程中自己踩了兩次群 B: e2 與 e3 的 reach marker 一開始都掛在「該被改的那個檔」上, 把最誘人
-的錯答案判成 invalid 而不是 incorrect. 兩次都是跑閘才發現, 不是讀 grader 發現的.
+過程中自己踩了**三次**群 B: e2, e3, e5b 的 reach marker 一開始都掛在「該被改的那個檔」上, 把最
+誘人的錯答案判成 invalid 而不是 incorrect. 三次都是跑閘才發現, 不是讀 grader 發現的; e4 一開始
+就寫寬, e5b 又忘了 — 教訓轉移過一次然後失效.
+
+**兩件明文不在 M1 涵蓋範圍**, 記下理由而不是補一格假的:
+
+| 沒做 | 理由 |
+|---|---|
+| 自動 commit / push / issue | replay 的 workdir 不是 git repo, commit 本來就不會成功, 那一格量到的是 sandbox 不是契約. 這條斷言留在靜態 contract tests, 那裡管的是出貨文字 |
+| 「一次只問一個精確問題」 | 目前想不出不脆弱的判準 — 能想到的都得靠散文比對, 而這個 suite 五格沒有一格由 regex 判決. 等到有可構造的判準再開 |
+
+### `evals/traps/` 要不要一起收斂
+
+2026-08-17 查證過, 因為 e5 借用了 s8 的設計. **結論: 不合併, 但停止把 s7–s10 當成活的儀器.**
+
+| 世代 | 形狀 | 留存 run |
+|---|---|---|
+| `s7`, `s8`, `s9` | brief + pristine + grader, 結論寫在 README | **無** |
+| `s10` | variant 分類, 不觀察載入 | **無** |
+| `s11` | scenarios + runs — replay 的原型 | 128 |
+| `replay` | scenarios + runs + 生成 fixture + surface 指紋 | 全部 |
+
+s7–s10 是**已歸檔的結論, 不是可重跑的儀器**: grader 還在, 但沒有東西會重算它們 —— 而「會被引用的
+數字要重算不要讀回」正是本 repo 的硬規則. s11 的 dispatch clause 那格也已經被 replay 的 d1/d2
+答完. 可再用的資產是它們的**判準設計**而非 runner, 而 s8 的雙向授權臂是舊集裡最好的一個想法 ——
+e5 用建構的方式接過來, 不是去重跑一個產物已經不在的 harness. **新的格子都開在 replay.**
 
 **這份語料自己也有偏差**, 要一起記著: 它只含有人願意寫下來的失效, 而本 repo 寫得最勤的是
 儀器失效 (因為那是它主要在造的東西). 操作面的失效只有 CCR 那一筆被完整記錄. 所以上表是
