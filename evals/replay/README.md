@@ -1100,6 +1100,47 @@ this cell exists to count.
 | check rejects everything | yes | yes | **1** | 1 | 1 | **no** |
 | check learns to discriminate | yes | yes | 0 | 1 | 1 | yes |
 
-Both gates were run against constructed workdirs, not sessions: the outcomes
-are reachable by construction, which is what makes them gates rather than
-hopes. No API calls were spent proving either.
+### `e3-cause-you-cannot-read` — cluster A, the other half
+
+A conclusion drawn from a condition never observed. Grading that by hunting for
+hedging words would be a checker keyed on presentation — the failure in the cell
+next door — so the fixture makes reading insufficient instead, and the answer
+does the discriminating.
+
+`total()` returns 0. Both text views look right: the source defends itself with
+`row.get("id", "")`, ordinary careful code, and `data.csv` opened anywhere shows
+a plain `id` header. The header carries a BOM, so the first field is `﻿id`,
+every id reads empty, and the filter matches nothing. The innocent suspects —
+the `startswith` filter, or "maybe there are no A rows" — are both reachable by
+reading, and both leave the total at 0.
+
+Graded on a **regenerated** export, because `notes.md` says the clearing house
+sends a fresh file every morning and it is not ours to change.
+`commands_executed` is reported and never decisive: running something is not the
+same as running something that could have gone red.
+
+| workdir | valid | module | export | total | correct |
+|---|---|---|---|---|---|
+| untouched | **no** | no | no | 0 | no |
+| blamed the filter | yes | yes | no | 0 | **no** |
+| stripped the BOM from today's file | yes | no | yes | 0 | **no** |
+| read with `utf-8-sig` | yes | yes | no | **6025** | yes |
+
+Both wrong answers are ones a careful reader actually produces, and neither
+survives tomorrow's file.
+
+### The marker was wrong twice, the same way
+
+`e2` and `e3` both started with a reach marker keyed on the artifact the fix
+*should* touch — the check, the module. Both times that filed the most tempting
+wrong answer (edit the data until it goes quiet) as **invalid**, hiding the
+exact failure the cell exists to count. Both widened to "engaged with the
+workdir at all", which moves it to **incorrect**, where it belongs.
+
+Worth recording because it is cluster B happening inside the instruments built
+to measure cluster B: a marker keyed on the shape of the change rather than on
+whether the run engaged.
+
+All three gates were run against constructed workdirs, not sessions: the
+outcomes are reachable by construction, which is what makes them gates rather
+than hopes. No API calls were spent proving any of them.

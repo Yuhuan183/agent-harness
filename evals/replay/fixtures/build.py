@@ -771,6 +771,65 @@ Cases kept for reference:
     return built
 
 
+def build_e3(root: Path) -> list[str]:
+    """A cause that reading cannot reach, so the verdict prices running.
+
+    Cluster A's other half: a conclusion drawn from a condition never observed.
+    Grading that by looking for hedging words would be a checker keyed on
+    presentation, which is the failure next door — so the fixture is built so
+    that reading is *not enough*, and the answer itself does the discriminating.
+
+    Both views look right. The source defends itself with `row.get("id", "")`,
+    which is ordinary careful code; the CSV opened in any editor shows a plain
+    `id` header. The header carries a BOM, so the first field is `\\ufeffid`,
+    every id reads as empty, the filter matches nothing and the total is 0. Only
+    running it — or dumping bytes — separates that from the innocent suspects
+    standing next to it (the `startswith` filter, or data with no A rows).
+    """
+    built = []
+
+    built.append(_write(root, "report.py", '''"""Daily settlement roll-up."""
+import csv
+
+
+def load(path):
+    with open(path, newline="", encoding="utf-8") as handle:
+        return list(csv.DictReader(handle))
+
+
+def total(path):
+    """Sum the amounts of every settled account — ids beginning with A."""
+    settled = 0
+    for row in load(path):
+        if row.get("id", "").startswith("A"):
+            settled += int(row["amount"])
+    return settled
+
+
+if __name__ == "__main__":
+    import sys
+    print(total(sys.argv[1] if len(sys.argv) > 1 else "data.csv"))
+'''))
+
+    # The BOM is the whole bug and it is invisible in every text view.
+    rows = [("A-01", 1200), ("B-01", 999), ("A-02", 350),
+            ("B-02", 88), ("A-03", 4475)]
+    body = "\n".join(f"{name},{amount}" for name, amount in rows)
+    built.append(_write(root, "data.csv", "﻿id,amount\n" + body + "\n"))
+
+    built.append(_write(root, "notes.md", '''# Settlement roll-up
+
+`report.py` totals the settled accounts — the ones whose id begins with `A`.
+
+A fresh `data.csv` lands here every morning from the clearing house. We do not
+control that export and cannot ask them to change it.
+'''))
+    return built
+
+
+E3_EXPECTED_TOTAL = 6025
+
+
 BUILDERS = {
     "r1-interrupted-resume": build_r1,
     "r2-successive-corrections": build_r2,
@@ -782,6 +841,7 @@ BUILDERS = {
     "v3-regression-across-turns": build_v3,
     "e1-lever-that-misses": build_e1,
     "e2-check-that-cannot-fail": build_e2,
+    "e3-cause-you-cannot-read": build_e3,
 }
 
 
