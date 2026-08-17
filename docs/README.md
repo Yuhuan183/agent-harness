@@ -12,6 +12,7 @@
 | 安裝, 同步或回滾 | [配置與部署](setup.md) | [Claude README](../main/claude/README.md), [Codex README](../main/codex/README.md) |
 | 修改 leaf role 或派工契約 | [Playbook: Leaf 分派](harness-engineering.md#leaf-分派的三層契約) | [Briefs](../main/claude/skills/baton-dispatch/references/briefs-and-stops.md) |
 | 評估 model/effort/provider | [研究摘要](research/README.md) | [Claude routing](../main/claude/model-routing.toml), [Codex routing](../main/codex/model-routing.toml) |
+| 評估 Matt Pocock 工程 skills 的導入方式 | [導入研究](research/mattpocock-skills-integration.md) | [蒸餾實作計畫](plans/engineering-workflow-distillation.md) |
 | 用 Fable 5 時避免被切到 Opus | [Fable 5 安全 fallback](fable-5-fallback.md) | [provider-routing](../main/claude/skills/provider-routing/SKILL.md) |
 | 查 experience-ledger 指標 | [Metrics](../main/.agents/skills/experience-ledger/references/metrics.md) | [skill 本體](../main/.agents/skills/experience-ledger/SKILL.md) |
 | 驗證派工狀態與路由證據 | [派工生命週期](dispatch-lifecycle.md) | [bridge-liveness](../main/claude/skills/provider-routing/references/bridge-liveness.md) |
@@ -31,6 +32,8 @@
 | [架構總覽](architecture.md) | 由上而下的骨幹敘事: 架構圖, 核心想法, QC, 生命週期, hook, 附檔導引 | 各層細節 (指向專門文檔), 可變的 model 數值 |
 | [Harness Engineering Playbook](harness-engineering.md) | 可跨專案複用的設計與驗證方法 | 當前 route pins, 實驗原始數據 |
 | [研究摘要](research/README.md) | benchmark 快照, 成本口徑, 案例取捨, 研究缺口 | runtime 強制規則, 現行 route pins |
+| [Matt Pocock skills 導入研究](research/mattpocock-skills-integration.md) | 上游快照, 工作流比較, 相容性, 採用與拒絕理由 | 實作進度, runtime skill 本體 |
+| [Engineering workflow 蒸餾實作計畫](plans/engineering-workflow-distillation.md) | 已核准方向, 分階段 scope, gates, rollback 與 completion criteria | 上游研究全文, 已部署狀態 |
 | [配置與部署](setup.md) | bootstrap, apply, 驗收與回滾步驟 | 模型選擇理由 |
 | [契約瘦身規範](contract-slimming.md) | CLAUDE.md/AGENTS.md 的內容判定, 預算原則與驗收 | 歷史歷程, 當前 orchestration 狀態 |
 | [派工生命週期](dispatch-lifecycle.md) | 派工五個狀態的承載物, 不成立的推論, 驗證清單 | 派工形狀與 QC (baton-dispatch), provider 選擇 (provider-routing) |
