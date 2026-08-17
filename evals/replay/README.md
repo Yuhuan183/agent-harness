@@ -7,8 +7,8 @@ verification gap from 2026-07-28, and `docs/research/lifecycle-replay.md` set
 four survival criteria a replay result must meet before it may be cited.
 
 This directory closed criterion 2 — a scenario per question with its reach
-marker written before anything ran — and then kept going. **423 runs retained,
-2026-08-12 to 08-17**: 405 in batches, plus sixteen pilots, one run the
+marker written before anything ran — and then kept going. **465 runs retained,
+2026-08-12 to 08-17**: 445 in batches, plus eighteen pilots, one run the
 provider aborted, and one voided by an operator mistake — all kept, because an
 invalid run is data about the scenario and a voided one is data about the
 operator.
@@ -36,6 +36,7 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | does that carry to a second scenario? | not shown at n=10 per arm — `r2` turn 3, 0/10 against 2/10, p = 0.47 | a null this size is not absence; `r2` also has no headroom outside turn 3, which the pre-registration said first |
 | can a resident clause be priced on what gets *delivered*? | **yes, the cell works** — 40 runs, zero invalid, the grader runs the shipped code | the first result-quality measure here; `q1`/`q2` could only ever grade a reply |
 | does deleting the verification clause make the delivered code worse? | no difference found — 20/20 against 20/20 in three fixtures, arm B's lower bound 0.832 each | and the reasons differ: two traps were inside reading distance, the third was refactored out of existence |
+| does the wider `DECISION:` wording fire where nothing is unspecified? | **no false positive in 40 runs** — 1/20 against 0/20, and the one mark was legitimate on reading | the cost side of the change shipped on 2026-08-16; upper bound 0.168 |
 
 **Four hypotheses were built and refuted, three of them mine.** That is this
 directory's main output, and Part 7 explains why it had to be.

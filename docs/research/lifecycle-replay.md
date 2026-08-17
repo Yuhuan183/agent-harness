@@ -1,6 +1,6 @@
 # lifecycle replay: 存活判準
 
-狀態: **四項判準全部備妥, 累計 421 個 run 留存** (2026-08-12 至 08-17, 見 [`evals/replay/README.md`](../../evals/replay/README.md) 的結果表; 每個 run 的量測面 fingerprint 記在自己的 `meta.json`). 判準先於開跑是刻意的順序, 不是進度落後.
+狀態: **四項判準全部備妥, 累計 463 個 run 留存** (2026-08-12 至 08-17, 見 [`evals/replay/README.md`](../../evals/replay/README.md) 的結果表; 每個 run 的量測面 fingerprint 記在自己的 `meta.json`). 判準先於開跑是刻意的順序, 不是進度落後.
 
 **「用產出品質給常駐子句定價」那條線已經搬到 [clause-pricing.md](clause-pricing.md)**, 因為它是一個獨立的問題, 而且四格加起來把本文推過了 sprawl guard. 本文保留存活判準與三個生命週期問題.
 
