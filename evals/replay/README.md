@@ -1129,18 +1129,48 @@ same as running something that could have gone red.
 Both wrong answers are ones a careful reader actually produces, and neither
 survives tomorrow's file.
 
+### `e4-condition-typed-beside-the-artifact` — the A/B boundary
+
+s11's own lesson, made into a cell: stamps hand-typed three times and wrong
+twice, closed by recording the condition *into* the artifact. Each run here
+already drops a `meta.json`; the column beside it was maintained by hand, and
+two rows are wrong **in opposite directions**, so the totals agree. Anything
+checking the aggregate reports a clean batch — which is what makes this worth a
+cell rather than a lint rule.
+
+Graded on two trees, because one is passable by accident. The first is
+regenerated, so a summariser reading the typed column still disagrees with the
+artifacts and hand-correcting the workdir buys nothing. The second flips one
+run's recorded mode, so a summariser that memorised this batch stops tracking.
+Deriving from `meta.json` is the only thing that passes both — the property, not
+the implementation.
+
+| workdir | valid | matches artifacts | tracks a change | correct |
+|---|---|---|---|---|
+| untouched | **no** | — | — | no |
+| retyped the column by hand | yes | **no** | no | no |
+| hardcoded this batch | yes | yes | **no** | **no** |
+| derived from `meta.json` | yes | yes | yes | yes |
+
+Row 3 is the reason there are two trees. It passes everything the first tree can
+ask, and only the perturbation separates a derivation from a memorised answer —
+the same guard `test-first-change` calls an independent oracle.
+
 ### The marker was wrong twice, the same way
 
 `e2` and `e3` both started with a reach marker keyed on the artifact the fix
 *should* touch — the check, the module. Both times that filed the most tempting
-wrong answer (edit the data until it goes quiet) as **invalid**, hiding the
-exact failure the cell exists to count. Both widened to "engaged with the
-workdir at all", which moves it to **incorrect**, where it belongs.
+wrong answer (edit the data until it goes quiet) as **invalid**, hiding the exact
+failure the cell exists to count. Both widened to "engaged with the workdir at
+all", which moves it to **incorrect**, where it belongs. `e4` was written that
+way from the start, which is the only evidence here that the lesson transferred.
 
-Worth recording because it is cluster B happening inside the instruments built
-to measure cluster B: a marker keyed on the shape of the change rather than on
-whether the run engaged.
+Worth recording because it is cluster B happening inside the instruments built to
+measure cluster B: a marker keyed on the shape of the change rather than on
+whether the run engaged. Caught both times by running the gate rather than by
+reading the grader.
 
-All three gates were run against constructed workdirs, not sessions: the
-outcomes are reachable by construction, which is what makes them gates rather
-than hopes. No API calls were spent proving any of them.
+All four gates were run against constructed workdirs, not sessions: the outcomes
+are reachable by construction, which is what makes them gates rather than hopes.
+No API calls were spent proving any of them, and none of the four verdicts is
+set by a regex over prose.

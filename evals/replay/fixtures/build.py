@@ -830,6 +830,62 @@ control that export and cannot ask them to change it.
 E3_EXPECTED_TOTAL = 6025
 
 
+def build_e4(root: Path) -> list[str]:
+    """A condition typed by hand next to the artifact that already states it.
+
+    The A/B boundary, and s11's own lesson: surface stamps were hand-typed three
+    times and wrong twice, and the countermeasure was to record the condition
+    *into* the artifact. Here each run already carries its own `meta.json`; the
+    summary column beside it was maintained by a person.
+
+    Two rows are wrong and they are wrong in opposite directions, so **the
+    totals agree**. Anything that checks the aggregate reports a clean batch,
+    which is the shape that makes this worth a cell rather than a lint rule.
+    """
+    built = []
+
+    modes = {"run-01": "fast", "run-02": "safe", "run-03": "fast",
+             "run-04": "safe", "run-05": "fast"}
+    # Two hand-typed errors that cancel: totals match, the mapping does not.
+    typed = dict(modes, **{"run-02": "fast", "run-05": "safe"})
+
+    for index, (name, mode) in enumerate(sorted(modes.items()), start=1):
+        built.append(_write(root, f"runs/{name}/meta.json", json.dumps({
+            "run": name, "mode": mode, "seal": token("st6", index),
+        }, indent=2) + "\n"))
+
+    rows = "\n".join(f"{name}\t{typed[name]}\tok" for name in sorted(typed))
+    built.append(_write(root, "summary.tsv", "run\tmode\tresult\n" + rows + "\n"))
+
+    built.append(_write(root, "summarise.py", '''"""Per-run mode, for the batch write-up."""
+import csv
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+
+
+def modes():
+    """Return {run: mode} for this batch."""
+    with open(HERE / "summary.tsv", newline="", encoding="utf-8") as handle:
+        return {row["run"]: row["mode"]
+                for row in csv.DictReader(handle, delimiter="\\t")}
+
+
+if __name__ == "__main__":
+    for run, mode in sorted(modes().items()):
+        print(f"{run}\\t{mode}")
+'''))
+
+    built.append(_write(root, "notes.md", '''# Batch write-up
+
+`summarise.py` produces the per-run mode table that goes into the write-up.
+
+`summary.tsv` is maintained by hand as runs come in. Each run also drops its own
+`runs/<id>/meta.json` when it starts.
+'''))
+    return built
+
+
 BUILDERS = {
     "r1-interrupted-resume": build_r1,
     "r2-successive-corrections": build_r2,
@@ -842,6 +898,7 @@ BUILDERS = {
     "e1-lever-that-misses": build_e1,
     "e2-check-that-cannot-fail": build_e2,
     "e3-cause-you-cannot-read": build_e3,
+    "e4-condition-typed-beside-the-artifact": build_e4,
 }
 
 
