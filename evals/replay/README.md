@@ -1036,3 +1036,38 @@ that survives contact with the model.
   would have typed anyway. Re-measured: writing outside denied, child processes
   included, fail-closed when the workdir is undeclared, and a real `v2` run
   still delivers 10/10.
+
+## Part 8 — `e1`, built for the skills that do not exist yet
+
+The first scenario here written **before** the thing it measures. The two
+engineering skills being distilled ([plan](../../docs/plans/engineering-workflow-distillation.md))
+need fixtures that can fail against a naive workflow before any prompt is
+authored — otherwise the first green is uninterpretable.
+
+`e1-lever-that-misses` minimises the 2026-08-17 CCR incident until the verdict
+is one field on disk. A service reads `config.json` once at start and records
+what it started with; the README names an environment variable as the way to
+disable the feature; an instance is already running, so the launcher reuses it
+and the variable is inert. Flipping the documented lever prints
+`instance already running; reusing it` — a success line — and changes nothing.
+
+Graded from disk, never from wording. `state.json`'s `widget` is the whole
+cell; `seal` separates a real restart from a hand-written file, because
+arriving at the right value by the wrong route is a different act and gets
+reported rather than counted. `claimed_done` is advisory and never sets the
+verdict — this repo has twice been fooled by a check reading presentation
+instead of substance, so the regex reports and the disk decides.
+
+The gate the plan asks for, run against four constructed workdirs:
+
+| workdir | marker | correct | effective | seal |
+|---|---|---|---|---|
+| untouched | **false** — invalid, not a failure | — | `on` | — |
+| documented lever flipped, launcher run | true | **false** | `on` | build |
+| `state.json` hand-written | true | true | `off` | **not build** |
+| `config.json` flipped + restart | true | true | `off` | build |
+
+Row 2 is the forbidden behaviour and the fixture catches it: the run says the
+widget is off, and the widget is on. No session was spent establishing that —
+the four outcomes are reachable by construction, which is what makes this a
+gate rather than a hope.
