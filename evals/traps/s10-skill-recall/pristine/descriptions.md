@@ -10,6 +10,10 @@ Decide the dispatch shape — direct, one agent, bounded parallel, workflow, or 
 觸發：已經決定要派工、「怎麼拆」「平行處理」「批次」「多個 writer」。
 不觸發：小修改、已知目標查找、緊耦合除錯（留在 main 直接做）。
 
+## evidence-debugging
+
+Diagnose a reported defect from a reproduction you have actually run, and stop at the root cause unless repair was asked for. Invoke when the request says something is broken, failing, throwing, flaky, wrong, or slow, or asks to diagnose or debug. Do not use for explaining code, reviewing a diff, refactoring, or writing a test for behaviour that already works.
+
 ## experience-ledger
 
 Dispatch experience ledger and analysis — log each outcome after QC, accumulate role × provider metrics (AR/CR/RB/FR/QS), and steer data-driven provider choice.

@@ -1106,7 +1106,12 @@ class DocumentationBudgetTests(unittest.TestCase):
         # reason, exactly like raising a document budget.
         # Claude carries one more skill than Codex (baton-dispatch and
         # provider-routing against the single leaf-dispatch).
-        metadata_budgets = {"claude": 620, "codex": 540}
+        # Raised 620/540 -> 660/580 on 2026-08-17 for `evidence-debugging`,
+        # measured at 62 resident words on each provider against 25 of headroom.
+        # Sized to what was measured and nothing more: `test-first-change` will
+        # raise it again with its own number, because a ceiling set for a body
+        # that is not written yet is a budget granted on an estimate.
+        metadata_budgets = {"claude": 660, "codex": 580}
         # The widest legitimate description today is speak-human-tw at 176: it
         # states its triggers twice, in zh-TW and English, because it is the
         # one skill invoked by users in either language.
@@ -1401,6 +1406,11 @@ class DocumentationBudgetTests(unittest.TestCase):
             ".codex/skills/headroom-protocol/SKILL.md": 235,
             ".claude/skills/task-observer/SKILL.md": 145,
             ".codex/skills/task-observer/SKILL.md": 770,
+            # One source, symlinked to both providers: the plan forbids a wrapper
+            # fork without refutable runtime evidence that the two sides need
+            # different semantics, and there is none. Measured 914 + ~2%.
+            ".claude/skills/evidence-debugging/SKILL.md": 932,
+            ".codex/skills/evidence-debugging/SKILL.md": 932,
         }
         self.assertEqual(
             {path for path in budgets if "/skills/" in path},
