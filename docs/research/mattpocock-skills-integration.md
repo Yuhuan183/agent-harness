@@ -1,10 +1,10 @@
 # Matt Pocock skills 導入研究
 
-研究日期: 2026-08-14; 上游重查 2026-08-17  
-上游: [mattpocock/skills](https://github.com/mattpocock/skills)  
-研究基準 (2026-08-14): Claude marketplace catalog `f8f7402b0ff3b88bf311d2efedeb6aad5841d0bb`; upstream pin `8b78b531ab965735c5dc74f6f7a219e1e37326df`; release `v1.2.3` (`6acc160e4e0cd062dbbbd7a1b26ae92855edf07e`)  
-**目前 marketplace pin (2026-08-17): `068b6e0c62393147daf03530149cdce209c93da8`** — 見[上游 pin 三天內就動了](#上游-pin-三天內就動了)  
-本地基準: branch `new-artificialanalysis`; HEAD `8d5d2e18e0fca9c341429bd6ce8a51040d5e4f10`
+- 研究日期: 2026-08-14; 上游重查與第一批原始碼精讀 2026-08-17
+- 上游: [mattpocock/skills](https://github.com/mattpocock/skills)
+- 研究基準 (2026-08-14): Claude marketplace catalog `f8f7402b0ff3b88bf311d2efedeb6aad5841d0bb`; upstream pin `8b78b531ab965735c5dc74f6f7a219e1e37326df`; release `v1.2.3` (`6acc160e4e0cd062dbbbd7a1b26ae92855edf07e`)
+- **目前 marketplace pin (2026-08-17): `068b6e0c62393147daf03530149cdce209c93da8`** — 見[上游 pin 三天內就動了](#上游-pin-三天內就動了)
+- 本地基準: branch `new-artificialanalysis`; HEAD `8d5d2e18e0fca9c341429bd6ce8a51040d5e4f10`
 
 > 本文件保存上游事實, 方案比較與採用決策. 實作順序, 檔案範圍, 驗收與停止條件在
 > [蒸餾實作計畫](../plans/engineering-workflow-distillation.md).
@@ -112,7 +112,7 @@ flowchart LR
 
 | 處置 | 上游 skills | 原因 |
 |---|---|---|
-| 第一批蒸餾 | `diagnosing-bugs`, `tdd` | 價值高, 邊界相對獨立; 可改寫成符合本專案授權與驗證規則的核心 |
+| 第一批蒸餾 | `diagnosing-bugs`, `tdd` | 價值高, 邊界相對獨立; 可改寫成符合本專案授權與驗證規則的核心. 精讀後成本不對稱: `diagnosing-bugs` 本體自足, `tdd` 的實質在兩份 reference 與一個跨 skill 指標, 見[原始碼精讀](#第一批兩個-skill-的原始碼精讀) |
 | 第二批候選 | `grilling`, `grill-with-docs`, `to-spec`, `to-tickets`, `domain-modeling`, `codebase-design`, `code-review` | 方法有價值, 但需要重新設計問題數量, 文件 ownership, issue publishing 與 dispatch |
 | 不直接導入 | `implement`, `ask-matt`, `setup-matt-pocock-skills`, `research`, `grill-me` | 與現有 main contract, skill routing, source ownership 或 leaf dispatch 重複; `grill-me` 只是轉呼叫 `grilling` 的一行 alias |
 | 有需求再評估 | `triage`, `wayfinder`, `prototype`, `wizard`, `handoff`, `teach`, `to-questionnaire`, `wait-what`, `resolving-merge-conflicts` | 不是目前核心缺口, 部分還需要外部 tracker, 秘密或高風險操作 |
@@ -163,6 +163,95 @@ flowchart LR
 ### Context 與觸發面
 
 全套安裝增加 25 組 resident name/description, 並讓主流程一次可能載入多個相依 skill body. 這不是不可接受的絕對大小, 但相對目前只管理四個共用 skills, 對尚未證明需要的流程屬於過早擴張.
+
+## 第一批兩個 skill 的原始碼精讀
+
+2026-08-17, 在 pin `068b6e0` 上逐字讀完 `diagnosing-bugs` 與 `tdd` 及其 reference.
+**先前的分組與相容性判斷是從 manifest 與結構推的, 這節是從內文讀的**, 兩者結論一致, 但精讀
+另外查出四項相依與一項先前沒注意到的價值.
+
+### 體積與構成
+
+| Skill | SKILL.md | 附帶 | 實際份量 |
+|---|---:|---|---|
+| `diagnosing-bugs` | 138 行 / 8614B | `scripts/`, `agents/` | 本體就是全部內容, 六個 phase 自足 |
+| `tdd` | **38 行** / 3578B | `tests.md` (2214B), `mocking.md` (1481B), `agents/` | 本體是索引, 實質在兩份 reference |
+
+`tdd` 比預期薄很多. 它把「什麼是好測試」外包給 `tests.md`, 把 mock 邊界外包給
+`mocking.md`, 再把 seam/module/depth 的語彙外包給 `codebase-design` skill. **蒸餾它不是改寫
+38 行, 是要決定那三份外包內容各自由誰承接.**
+
+### 四項相依, 每項都要處置
+
+| 相依 | 兩個 skill 怎麼用 | 本專案的處置 |
+|---|---|---|
+| `CONTEXT.md` 與 ADR | **兩個 skill 的開頭第一段都是**「read `CONTEXT.md` (if it exists)」與 respect ADRs | 計畫明文不新增 `CONTEXT.md` 與 `docs/adr/*`. 蒸餾版要改指既有 owner (`AGENTS.md`, [architecture.md](../architecture.md)), 不能只把那行刪掉留下空洞 |
+| `codebase-design` skill | `tdd` 要 agent 呼叫 Skill tool 取 seam 語彙 | 不導入該 skill. 蒸餾版自帶最小語彙 (seam = 可觀察行為的公開邊界), 不留跨 skill 指標 |
+| `tests.md` / `mocking.md` | TypeScript + Jest 範例 | 概念可移植, **範例不可移植** — 本 repo 是 Python + shell + markdown 契約. 要自己寫等價範例, 不是翻譯 |
+| `scripts/hitl-loop.template.sh` | feedback loop 第 10 級 (需要人點擊時的結構化迴圈) | 本 repo 的驗證面沒有這種情境; 直接移除該級, 不留未實作的指標 |
+
+### 先前沒注意到的一項價值
+
+`diagnosing-bugs` 有一節 **Redact**: 這個 skill 會要求展示命令, 輸出與擷取的產物, 所以先把
+秘密換成 `<REDACTED>`, 迴圈以環境變數建構讓憑證留在環境裡, 擷取的產物只引用帶訊號的那幾行;
+**遮蔽後不足以診斷就明說並問使用者**. 這條在原本的分組表裡沒有出現過, 而它與本 repo 既有的
+「外部寫入需明確授權」是互補而非重複 — 那條管的是寫出去, 這條管的是貼出來.
+
+### 精讀確認的兩個衝突
+
+先前從結構推出的兩個衝突, 在內文得到逐字證實:
+
+- **`diagnosing-bugs` 沒有授權閘**. Phase 5 直接寫 regression test 並套用修復, Phase 6 的完成
+  清單也預設改動已發生. 全文沒有任何一句把 diagnosis 與 fix 分開.
+- **`tdd` 的 seam 確認是硬阻斷**: 「Test only at pre-agreed seams... confirm them with the
+  user. **No test is written at an unconfirmed seam.**」與本專案「不要問 repo 已經講清楚的
+  事」直接相斥. 本機證據支持修改而非照抄, 見下節.
+
+### 最值得整批搬過來的一條
+
+`diagnosing-bugs` 的 Phase 1 完成判準, 是整個上游 repo 裡最硬的一條規則:
+
+> 說得出**一條命令** — script 路徑, 測試呼叫或一個 curl — 而且你**已經至少跑過一次**
+> (附上呼叫與輸出), 並且它 red-capable (打到真正的 bug 路徑, 斷言使用者說的那個症狀),
+> deterministic, fast, agent-runnable. 「還沒有這條命令就先讀程式碼建立理論」時**停下來**.
+
+它把「我覺得問題在這」和「我有一個會為這件事變紅的東西」變成兩個可以分辨的狀態. 這正是本
+repo 反覆在別的載體上重新發現的同一件事 (帶日期的查核宣稱, trap 結果列的指紋), 而上游把它
+寫成了 debugging 的進場條件.
+
+## 本機證據: CCR 事件同時檢驗了這兩個 skill
+
+2026-08-17 處理 Headroom 0.35 CCR 失效的整個過程, 事後對照這兩個 skill **兩邊都不及格**.
+這不是借來的論證, 是同一天在這個 repo 上發生的事, 完整經過在
+[landing-log](landing-log.md) 與 `main/.agents/docs/headroom-runtime.md`.
+
+| 上游規則 | 當時實際做的事 | 差在哪 |
+|---|---|---|
+| Phase 1: 沒有 red-capable 命令就不准進 Phase 2 | **一次都沒有重現過**那個 `HTTP 200 empty/malformed`. 從讀 proxy log 直接跳到假設 | 正是該 skill 自稱要防的那個失敗 |
+| Phase 2: 迴圈要產生**使用者描述的**失敗, 不是附近那個 | 手上有的是 401, 429 與一條 CCR 轉換紀錄; 前兩者形狀就不對, 第三者只是相關 | 沒有「錯的 bug = 錯的修復」這道檢查 |
+| 修復後要看它由紅轉綠 | 觀察到的是改設定後**症狀沒再出現** | 從來沒紅過的東西, 綠不構成證據 |
+| `tdd`: 斷言不能由建構保證通過 | 那條測試斷言「launcher 有匯出 `HEADROOM_LOSSLESS`」 | 它重述了程式碼做的事, **永遠不可能與程式碼不一致**; 而它全綠時 CCR 完全沒關掉 |
+
+### 這件事改動了兩條 tuning
+
+**第一條, 補一條上游沒有的規則.** 上游的 seam 規則是「和使用者確認 seam」. 當時的 seam 毫無
+疑義 (就是那個 shell function), 問誰都不會變; 真正的問題是**那個 seam 碰不到要觀察的結果** —
+變數送出去了, 而它要影響的 proxy 早就在跑. 所以本專案的版本是:
+
+> seam 必須抵達可觀察的結果, 不只是抵達你控制得了的那個動作. 當測試只能證明「請求已發出」,
+> 就把「效果是否發生」明寫成未涵蓋, 不讓綠燈代言.
+
+上游的 tautological 定義 (斷言重算了程式碼的算法) 涵蓋不到這個形狀 — 我們這一筆是**斷言了
+正確的事實, 但那個事實與結果無關**. 這是對上游分類的補充, 不是複述.
+
+### 兩件不能從這裡多讀的事
+
+- **這不表示當時的處置是錯的.** 停用 CCR 這個決定本身有原始碼層級的證據 (lossless 會清掉
+  `ccr_inject_marker` 與 `ccr_inject_tool`, 那條串流轉換因此沒有入口). 不及格的是**因果宣稱
+  的強度**, 不是動作.
+- **這不是「有了 skill 就不會發生」.** 沒有任何證據支持那個推論. 它支持的只有一件事: 這兩個
+  skill 想防的失敗在本機真實發生過, 所以它們處理的不是假想問題. 這條把採用理由從「上游說它
+  有用」換成「本機有一筆」, 僅此而已.
 
 ## 三種主要方案
 
@@ -226,6 +315,8 @@ ATTRIBUTION.md
 - build/fix 使用最窄, 真能反駁聲稱的驗證, 不用綠色 mocked test 代替真實路徑.
 - 不自動 commit, push, publish, 建立 issue, 寫秘密或執行 cutover.
 - 不直接 dispatch; 需要 leaf 時回到既有 dispatch skill.
+- seam 要抵達可觀察的結果, 不只是抵達自己控制得了的動作; 測試只證明得了「請求已發出」時, 把「效果是否發生」明寫成未涵蓋. 這條來自本機 CCR 事件, 上游沒有.
+- 展示命令, 輸出或擷取產物之前先遮蔽秘密; 遮蔽後不足以診斷就明說並詢問, 不自行降低遮蔽標準.
 - 對使用者的輸出使用台灣繁中; code, identifier, command, runtime instruction 使用英文.
 - 報告只保留 outcome, evidence, material decision, risk 與 next action.
 
@@ -250,7 +341,8 @@ ATTRIBUTION.md
 ## 仍未解決的證據
 
 - 沒有安裝 Claude plugin, 也沒有做 live update probe; marketplace pin 在 version 不變時是否一定刷新既有安裝仍未確認.
-- 沒有在 disposable repo 執行整套工作流; 目前對衝突的判斷來自完整 skill source 與本專案 contract 對照, 不是 live behavior measurement.
+- 沒有在 disposable repo 執行整套工作流. 第一批兩個 skill 已於 2026-08-17 在 pin `068b6e0` 上逐字精讀, 衝突判斷因此有內文依據 (見上); 但**仍然沒有一次 live behavior measurement** — 沒有觀察過上游版本在真實任務上的行為, 也沒有量過蒸餾版與原版的差異.
+- CCR 那筆本機證據是**事後對照**, 不是事前登記的檢定. 它證明這兩個 skill 針對的失敗在本機發生過, 不證明採用它們會降低發生率. 後者要等蒸餾版落地後才可能量, 而且要先想清楚量什麼.
 - `scripts/sync.sh` dry-run 在 sandbox 因 HOME temporary/lock paths 被拒絕而未完整通過; 錯誤是 `/Users/zack/.gate-test-*` 與 `~/.agents/telemetry/experience-pending.jsonl.lock` 的 `PermissionError`, 沒有觀察到本研究範圍的 product assertion failure.
 
 ## 來源

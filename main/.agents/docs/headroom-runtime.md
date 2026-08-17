@@ -7,8 +7,14 @@
 > `headroom wrap` 的 supported tools 清單仍無 `agy` (`wrap agy` 回 `No such command`).
 > 這只證明本機安裝版本, 不證明 live service capability.
 >
-> 2026-08-10 的前一次查核 (CLI 與 proxy 皆 0.34.0, 舊 context-tool 旗標被 `wrap claude`
-> 拒絕) 是當時的紀錄, 不因本次更新而改寫.
+> **2026-08-17 補上那個缺口**: `persistent-service` 已重啟, `install status` 回報
+> `running` / `Healthy: yes`, 而 `/health` 自己說 `0.35.0` — 這次 proxy 版本是**觀察到的**,
+> 不是從 CLI 推的. `/settings` 是 `{"lossless": true}`, 啟動 banner 少了 `tool_injection`.
+>
+> 兩則都留著, 因為上面那則是「問不出來」的紀錄, 而這則是問出來之後的答案. 前一則不因後一則作廢.
+>
+> 2026-08-10 的更前一次查核 (CLI 與 proxy 皆 0.34.0, 舊 context-tool 旗標被 `wrap claude`
+> 拒絕) 同樣是當時的紀錄, 不因後續更新而改寫.
 
 > 只記錄跨機器的架構, 操作邊界與版本轉換. venv, PID, port 與 profile 名稱屬 machine-local state, 不進 git.
 
