@@ -2597,6 +2597,43 @@ class ReplayScenarioTests(unittest.TestCase):
     def _scenarios(self) -> list[Path]:
         return sorted((self.REPLAY / "scenarios").glob("*.md"))
 
+    def test_the_scenario_index_is_generated_and_current(self) -> None:
+        """A directory listing of opaque prefixes is unreadable, and the fix
+        must not be a table maintained by hand.
+
+        `e4` exists because a condition typed beside the artifact that already
+        states it diverges, so the index is rendered from each scenario's own
+        frontmatter and this asserts the rendered block is what the README
+        holds. A new scenario without a row is red, not merely undocumented,
+        and the row cannot disagree with what a run is graded against.
+        """
+        index = subprocess.run(
+            [sys.executable, str(self.REPLAY / "scenario-index.py"), "--check"],
+            capture_output=True, text=True)
+        self.assertEqual(index.returncode, 0,
+                         index.stderr or index.stdout)
+
+    def test_every_trap_appears_in_the_trap_index(self) -> None:
+        """The traps carry no frontmatter, so their index is written by hand —
+        which is exactly the shape that drifts. This pins both directions."""
+        traps = ROOT / "evals" / "traps"
+        listed = {path.name for path in traps.iterdir()
+                  if path.is_dir() and path.name != "__pycache__"}
+        index = (traps / "README.md").read_text(encoding="utf-8")
+        for name in sorted(listed):
+            handle = name.split("-")[0]
+            with self.subTest(trap=name):
+                self.assertIn(f"| `{handle}` |", index,
+                              f"{name}: no row in evals/traps/README.md")
+                self.assertIn(f"{name}/README.md", index,
+                              f"{name}: index row does not link to it")
+        # And nothing in the index that no longer exists on disk.
+        for handle in re.findall(r"^\| `(s\d+)` \|", index, re.M):
+            with self.subTest(row=handle):
+                self.assertTrue(
+                    any(name.startswith(f"{handle}-") for name in listed),
+                    f"{handle}: index row for a trap that is gone")
+
     def test_every_scenario_pre_declares_marker_and_recovery_point(self) -> None:
         module = load_module("replay_run", self.REPLAY / "run.py")
         for scenario in self._scenarios():
