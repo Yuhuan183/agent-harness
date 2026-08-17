@@ -328,10 +328,18 @@ Write acceptance fixtures/traps before authoring final prompts. At minimum cover
 
 | Fixture | 覆蓋 | 狀態 |
 |---|---|---|
-| `e1-lever-that-misses` | A — 文件寫的槓桿抵達不了結果 | 已建, 閘已通過 |
-| 待建: 沒有 red-capable 命令就拒絕提假設 | A — 沒有觀察過的條件不能當根因 | 待建 |
-| 待建: 通過的檢查斷言了形狀而非實質 | **B** — 目前完全沒覆蓋 | 待建 |
-| 待建: 手寫的條件與產物裡的條件不符 | A+B 交界 — 對策是「把條件記進產物」 | 待建 |
+| `e1-lever-that-misses` | A — 文件寫的槓桿抵達不了結果 | 閘已過 |
+| `e3-cause-you-cannot-read` | A — 讀不出來的成因; 沒觀察過的條件不能當根因 | 閘已過 |
+| `e2-check-that-cannot-fail` | **B** — 一個判決代表兩個相反狀態 | 閘已過 |
+| `e4-condition-typed-beside-the-artifact` | A/B 交界 — 手寫的條件 vs 產物裡的條件 | 閘已過 |
+
+四格都在 [`evals/replay/`](../../evals/replay/README.md) Part 8, 判準與閘的結果記在那裡.
+共同的紀律: **四個判決沒有一個由散文 regex 決定** — e1 判磁碟狀態, e2 跑交付的檢查, e3 跑
+重新產生的檔, e4 跑兩份樹 (第二份擾動一筆, 用來分辨推導與背答案). 閘全部對手工建構的 workdir
+跑完, 沒花任何 API 呼叫.
+
+過程中自己踩了兩次群 B: e2 與 e3 的 reach marker 一開始都掛在「該被改的那個檔」上, 把最誘人
+的錯答案判成 invalid 而不是 incorrect. 兩次都是跑閘才發現, 不是讀 grader 發現的.
 
 **這份語料自己也有偏差**, 要一起記著: 它只含有人願意寫下來的失效, 而本 repo 寫得最勤的是
 儀器失效 (因為那是它主要在造的東西). 操作面的失效只有 CCR 那一筆被完整記錄. 所以上表是

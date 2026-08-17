@@ -1452,6 +1452,97 @@ def grade_e3(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
     }
 
 
+def _e4_report(summariser: str, tree: Path) -> dict[str, str] | None:
+    """Run a delivered summariser inside a tree and read its per-run table."""
+    import subprocess
+    (tree / "summarise.py").write_text(summariser, encoding="utf-8")
+    try:
+        done = subprocess.run(
+            [sys.executable, "summarise.py"], cwd=tree,
+            capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    table = {}
+    for line in done.stdout.splitlines():
+        parts = line.split("\t")
+        if len(parts) >= 2 and parts[0].startswith("run-"):
+            table[parts[0].strip()] = parts[1].strip()
+    return table or None
+
+
+def _e4_truth(tree: Path) -> dict[str, str]:
+    return {path.parent.name: json.loads(
+        path.read_text(encoding="utf-8"))["mode"]
+        for path in sorted(tree.glob("runs/*/meta.json"))}
+
+
+def grade_e4(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
+    """Is the reported condition derived from the artifact, or typed beside it.
+
+    The A/B boundary, and s11's own lesson — stamps hand-typed three times and
+    wrong twice, closed by recording the condition into the artifact. Each run
+    already drops a `meta.json`; the column next to it was maintained by hand,
+    and two rows are wrong in opposite directions so **the totals agree**.
+    Anything checking the aggregate reports a clean batch.
+
+    Two trees, because one is passable by accident. The first is pristine: a
+    summariser that reads the typed column still disagrees with the artifacts,
+    so hand-correcting the batch in the workdir does not survive here. The
+    second flips one run's recorded mode, so a summariser that hardcoded the
+    answer — or that memorised this batch — stops tracking. Deriving from
+    `meta.json` is the only thing that passes both, which is the property, not
+    the implementation.
+    """
+    import tempfile
+
+    work = run / "workdir"
+    delivered = (work / "summarise.py").read_text(encoding="utf-8") if (
+        work / "summarise.py").exists() else ""
+
+    build = fixtures()
+    matches_pristine = tracks_a_change = False
+    reported: dict[str, str] | None = None
+
+    if delivered:
+        with tempfile.TemporaryDirectory() as tmp:
+            first = Path(tmp) / "first"
+            build.build("e4-condition-typed-beside-the-artifact", first)
+            reported = _e4_report(delivered, first)
+            matches_pristine = reported == _e4_truth(first)
+
+            second = Path(tmp) / "second"
+            build.build("e4-condition-typed-beside-the-artifact", second)
+            flipped = second / "runs/run-03/meta.json"
+            record = json.loads(flipped.read_text(encoding="utf-8"))
+            record["mode"] = "safe" if record["mode"] == "fast" else "fast"
+            flipped.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
+            tracks_a_change = _e4_report(delivered, second) == _e4_truth(second)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        pristine = Path(tmp) / "fixture"
+        build.build("e4-condition-typed-beside-the-artifact", pristine)
+        original = (pristine / "summarise.py").read_text(encoding="utf-8")
+        original_tsv = (pristine / "summary.tsv").read_text(encoding="utf-8")
+
+    delivered_tsv = (work / "summary.tsv").read_text(encoding="utf-8") if (
+        work / "summary.tsv").exists() else ""
+    # Wider than "edited summarise.py", for the reason e2 and e3 both found:
+    # retyping the column is the tempting wrong answer and belongs in the
+    # incorrect column, not filed away as invalid.
+    engaged = (delivered and delivered != original) or delivered_tsv != original_tsv
+
+    return {
+        # Pre-registered reach marker: an untouched workdir never attempted it.
+        "marker_present": bool(engaged),
+        "summariser_edited": bool(delivered) and delivered != original,
+        "table_retyped": delivered_tsv != original_tsv,
+        "reported_on_a_fresh_batch": reported,
+        "matches_the_artifacts": matches_pristine,
+        "tracks_a_changed_artifact": tracks_a_change,
+        "correct": matches_pristine and tracks_a_change,
+    }
+
+
 GRADERS = {
     "r1-interrupted-resume": grade_r1,
     "r2-successive-corrections": grade_r2,
@@ -1477,6 +1568,7 @@ GRADERS = {
     "e1-lever-that-misses": grade_e1,
     "e2-check-that-cannot-fail": grade_e2,
     "e3-cause-you-cannot-read": grade_e3,
+    "e4-condition-typed-beside-the-artifact": grade_e4,
 }
 
 
