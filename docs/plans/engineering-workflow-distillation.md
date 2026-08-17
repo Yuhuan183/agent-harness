@@ -1,6 +1,6 @@
 # Engineering workflow 蒸餾實作計畫
 
-狀態: M0-M4 完成 (M1 五格 fixture 閘全過, M2/M3 兩個 skill 來源完成靜態 gate 綠, M4 跨端整合全綠); 未部署
+狀態: M0-M4 完成; M5 已部署 (兩端逐位元組相同, Claude discovery 已驗, Codex 未驗), 行為批次已登記未開跑
 最後更新: 2026-08-17
 建立日期: 2026-08-14
 研究依據: [Matt Pocock skills 導入研究](../research/mattpocock-skills-integration.md)
@@ -683,6 +683,59 @@ M1 已經把格子和判準備好, 這一步是把它們跑起來:
 
 **跑之前先想清楚要不要當證據**: 每個 run 都要留產物與當時的 surface 指紋, 否則得到的數字下個月
 沒有人能覆核 —— 那正是 `s7`–`s10` 現在的處境. n 與臂在開跑前寫下來, 不要跑完再決定看哪一格.
+
+#### 部署完成 2026-08-17: 驗到的與修掉的
+
+`--apply` 由使用者執行. 部署本身查過: 兩端 8 個檔案 (各 4) 與 repo 來源逐位元組相同,
+symlink 由 `~/.claude/skills/<name>` 與 `~/.codex/skills/<name>` 解析到 `~/.agents/skills/`.
+Claude 端 discovery 有活證據 —— 本 session 的 skill 清單列出兩個新 skill, description 與部署的
+frontmatter 逐字相同. Codex 端要開 Codex session 才驗得到, **尚未驗**.
+
+**`sync.sh` 的 dry-run 不能當「已套用」的證據**: 它印的是完整 rsync 計畫, 不是差異, 套用前後
+輸出一樣. 證據是上面那份雜湊比對 —— 計畫是動作, 雜湊是結果.
+
+跑批次之前查出三個缺陷, 全部會讓 gate 產出錯的證據而不是沒有證據:
+
+| 缺陷 | 後果 | 怎麼找到的 |
+|---|---|---|
+| `evals/replay/surface.tsv` 缺 6 個 `e*` 情境與**全部** skill body | 每列結果會蓋一個寫著 `current` 的指紋, 而它涵蓋不到被測的格與被測的碼 | 跑之前手查 surface (s10 那個缺陷的同一形狀) |
+| 五個 e-grader 都不記哪個 skill 真的啟動 | 一個通過的 `e5` 歸因不到 `evidence-debugging` —— 檢查抵達結果, 抵達不到造成結果的東西 | 讀 `expect_skill` 機制時發現 e-cell 沒用它 |
+| `run.py` 沒把 `expect_authority` 寫進 `meta.json` | `grade_e5` 讀到 None, **診斷臂被當成修復臂評分**; 正確地什麼都沒動的 run 記成 incorrect | **smoke run**. 靜態讀兩個檔案都看不出來, 合成的 grader 測試也不會 —— 那個測試會自己把 key 餵進去 |
+
+第三個最要緊: 兩臂都會被當 `fix` 評, 而這一格的整個設計就是「零編輯在一臂是通過, 在另一臂是
+失敗」. 照那樣評, 過度拒絕會被報成正確行為, 而正確的克制會被報成失敗.
+
+skill 是可攜的, 而 harness 不是: 這三個都在 harness 側, 也就是說 M2/M3 的靜態 gate 全綠並不
+涵蓋「量測工具本身量得對」. 這一格從此要在跑批次前先跑一次 smoke.
+
+#### smoke 的結果, 只能引用到這個程度
+
+n=1, 依本套件規則只能引用 `valid`/`invalid`. 修完 harness 後那個 run: `arm: diagnose`,
+`workdir_untouched: true`, `dispatched: 0`, `verdict: correct` —— **valid**.
+
+而 `skills_invoked: []`. 那個 run **沒有載入任何 skill**, 答案卻是對的. 這不是失敗 (這一格量的
+是行為不是觸發), 但它直接說明為什麼上表第二列非補不可: 沒有這個欄位, 這個 run 會被當成
+「已部署的 `evidence-debugging` 有效」的證據.
+
+三個 smoke run 已刪除. `summarise.py` 按 meta 裡的 `id` 分組而不是按目錄名, 所以對一個已經不
+存在的 harness 跑出來的探針, 會被算進未來每一次 e5 批次.
+
+#### 開跑前的登記 (n 與臂, 寫在跑之前)
+
+| Cell | n | 臂 | 判準來源 |
+|---|---|---|---|
+| `e1-lever-that-misses` | 5 | a only | 各情境 frontmatter 的 `expect`, 撰寫時就登記好 |
+| `e2-check-that-cannot-fail` | 5 | a only | 同上 |
+| `e3-cause-you-cannot-read` | 5 | a only | 同上 |
+| `e4-condition-typed-beside-the-artifact` | 5 | a only | 同上 |
+| `e5-authority-diagnose` | 5 | a only | 同上 |
+| `e5b-authority-fix` | 5 | a only | 同上 |
+
+共 30 個 run. 六格都沒有契約置換臂 —— `e5`/`e5b` 是**成對的兩個情境**, 不是一格的兩臂,
+所以不用 `batch.sh <cell> 5 b`. 報告方式依本套件既有規則: 精確 (Clopper-Pearson) 區間, 下界
+才是結論; marker 先於 outcome, invalid 計數不丟棄. `skills_invoked` 逐 run 記錄但不入判準.
+
+不要跑完再決定看哪一格 —— 上表就是要看的那六格.
 
 ### M6 — Decide whether to add `change-shaping`
 
