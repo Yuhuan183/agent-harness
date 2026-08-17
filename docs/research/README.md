@@ -93,7 +93,7 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 |---|---|---|---|
 | Pilotfish | latest release tag `v1.3.10`, tag commit `7a7f71b...` | 2026-08-08 | 上游發版頻率高於本文件重查頻率 - 四天內出了 v1.3.9 與 v1.3.10 兩版, 引用前先確認 tag |
 | Deep Agents | PyPI stable `0.7.5` (2026-08-06); CLI `deepagents-code 0.1.54` | 2026-08-08 | SDK 與 CLI 交錯發版, 版本序不同步; 版本與託管產品狀態需在引用時重查 |
-| Headroom | PyPI `headroom-ai 0.35.0`; GitHub latest release tag `v0.35.0` (皆 2026-08-13); 本機 CLI `0.35.0`; PR #1044 仍 open | 2026-08-14 | 這次前三個對齊, 分歧換到第四個 - **跑著的那個**: 本機 `persistent-service` 是 `stopped`, 沒有 proxy 版本可查. 見下方 2026-08-10 與 2026-08-14 兩次查核 |
+| Headroom | PyPI `headroom-ai 0.35.0`; GitHub latest release tag `v0.35.0` (皆 2026-08-13); 本機 CLI `0.35.0`; PR #1044 仍 open | 2026-08-14 | 這次前三個對齊, 分歧換到第四個 - **跑著的那個**: 本機 `persistent-service` 是 `stopped`, 沒有 proxy 版本可查. 見 [landing-log](landing-log.md) 的 2026-08-10 與 2026-08-14 兩次查核 |
 | mattpocock/skills | Claude marketplace pin `068b6e0`; release tag `v1.2.3` (2026-08-06); `plugin.json` version `1.2.3`; 25 skills | 2026-08-17 | **版本號不會告訴你內容變了** - 08-14 到 08-17 之間 pin 前進 12 個 commit, 而 tag, version 與 skill 數全部沒動. 逐字引用上游 SKILL.md 前先重解析 pin, 見 [mattpocock-skills-integration.md](mattpocock-skills-integration.md) |
 | Artificial Analysis Intelligence Index | **v4.1.1** (August 2026-current) | 2026-08-14 | 點版本會回溯重算全部分數 - v4.1.1 只換了 𝜏³-Banking 的 dataset 與三項評測的 grader, 前緣分數就整體上移約 2 分. 引用絕對值前先確認版本, 見 [model-evidence.md](model-evidence.md) |
 | OpenAI prompting guidance | [Latest model guide](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.6#prompting-best-practices) | - | 目前 canonical 文件 |
@@ -180,15 +180,7 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 - [A/B 結果 (2026-08-08 ~ 08-10, 90 runs)](landing-log.md#ab-結果-2026-08-08--08-10-90-runs)
 - [2026-08-08 查核結果 (方向 5)](landing-log.md#2026-08-08-查核結果-方向-5)
 - [2026-08-10 查核結果 (Headroom 0.34 升級): 同一個失效換了一層皮](landing-log.md#2026-08-10-查核結果-headroom-034-升級-同一個失效換了一層皮)
-
-#### 2026-08-14 查核結果 (Headroom 0.35 升級): 這次是儀器先開口
-
-- **儀器第一次先於人發現東西.** `evidence-check.py` 的第四個 instrument 在我開始逐檔比對之前, 就點名四筆歸屬給 headroom 的版號宣稱 (runtime guide 開頭, `RTK.md`, 上面那列時效性基準, `setup.md` 兩處) 與本機 `0.35.0` 不符. 2026-08-11 加上去時它只證明過「對已知的兩筆會開火」, 這是它第一次在未知的一輪裡起作用.
-- **上面那三件事以 0.35 原始碼逐條再核對, 全部沒變**: context-tool 殘留照樣在每次 `wrap`/`unwrap` 被刪且比對字串一字未改, `ENABLE_TOOL_SEARCH` 照樣由 `wrap claude` 設, `--1m` 的預設模型常數照樣是 `claude-opus-4-8`.
-- **唯一改到結論的是 `--1m` 的另一半**: 0.35 會把 `[1m]` 補進顯式傳入的 `--model` (#2922); 0.34 是 `--model` 蓋過 env var, `--1m` 靜默失效而回落 200k. 預設模型的陷阱沒修 - 修掉的是相鄰那個洞.
-- **`wrap agy` 仍不存在**, PR #1044 仍 open (2026-08-13 有更新), `hagy` 必須 fail closed 的結論不變.
-- **同一個失效換了新位置**: 前一次是把升級意圖當成查核結果; 這次是**裝好的版本不等於跑著的版本** - CLI 是 0.35.0, 但 `persistent-service` 停著, 所以根本沒有 proxy 版本可以宣稱. runtime guide 因此明寫「這次沒有觀察到 proxy 版本」, 而不是沿用 CLI 的數字.
-- 這次沒有需要改動的研究結論. 版本資訊落在時效性基準那列與 [`headroom-runtime.md`](../../main/.agents/docs/headroom-runtime.md) 的 v0.34 -> v0.35 段.
+- [2026-08-14 查核結果 (Headroom 0.35 升級): 這次是儀器先開口](landing-log.md#2026-08-14-查核結果-headroom-035-升級-這次是儀器先開口)
 
 ### 明確不做的事
 
