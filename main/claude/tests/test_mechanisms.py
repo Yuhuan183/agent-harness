@@ -2551,6 +2551,45 @@ class TrapSurfaceTests(unittest.TestCase):
             "the bundle is built from a skill this trap's surface does not "
             "fingerprint, so its stamps would claim to cover a choice they omit")
 
+    def test_the_replay_surface_lists_every_scenario_and_every_resident_skill(self) -> None:
+        """Same omission as s10's, in the suite that was about to grade two new skills.
+
+        Six `e*` scenarios were added to `evals/replay/scenarios/` and none
+        reached `surface.tsv`, which lists all 21 of their predecessors. Nor did
+        the two skill bodies those cells exist to measure. Running the M5 gates in
+        that state would have stamped every result row `current` against a
+        fingerprint covering neither the cells nor the code under test.
+
+        Skills are in the causal path for the whole suite, not only the `e*`
+        cells, which is why this asks for all of them rather than the two.
+        `e5`'s turn is "先別動, 跟我說為什麼" - no explicit invocation - so which
+        skill fires is decided by all eight resident descriptions competing, and
+        whichever wins contributes its body. Listing only the two under test
+        would reproduce the exact defect: a stamp reading `current` while the
+        descriptions it competed against go unrecorded.
+
+        The cost is accepted deliberately: a skill edit now stales every replay
+        row, including rows about interrupts that no skill touches. That is the
+        direction this suite already chose for `CLAUDE.contract.md` and the three
+        hook scripts, and a stale stamp says "the rules may have improved" while
+        a missing one says nothing at all.
+        """
+        module = load_module(
+            "trap_surface", ROOT / "evals" / "scripts" / "trap-surface.py")
+        declared = set(module.surface_paths("replay"))
+        required = {
+            path.relative_to(ROOT).as_posix()
+            for path in (ROOT / "evals/replay/scenarios").glob("*.md")}
+        required |= {
+            f"main/claude/skills/{name}/SKILL.md"
+            for name in (
+                path.name
+                for path in (ROOT / "main/claude/skills").iterdir()
+                if (path / "SKILL.md").is_file())}
+        self.assertEqual(
+            set(), required - declared,
+            "a replay run reads these and its stamps would not cover them")
+
     # Dated result rows carrying no surface stamp, per trap, measured
     # 2026-08-17. These are frozen, not approved: they can be lowered by
     # stamping a row, and a new unstamped row anywhere fails.
