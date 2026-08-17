@@ -321,23 +321,48 @@ Likely files:
 
 Gate: fixtures must fail against an intentionally naive/imported workflow or otherwise demonstrate they are capable of detecting the forbidden behavior. A green test that only searches preferred wording is insufficient.
 
-After the fixtures prove they can detect failure, use the active `skill-creator` package to scaffold both folders into the already-approved source location `main/.agents/skills`. During implementation:
+After the fixtures prove they can detect failure, scaffold both folders into the already-approved
+source location `main/.agents/skills`.
 
-- run its `scripts/init_skill.py` rather than hand-building an incomplete folder;
-- read its `references/openai_yaml.md` before generating interface metadata;
-- keep YAML frontmatter to `name` and `description`, with all trigger language in `description`;
-- generate `agents/openai.yaml` deterministically and regenerate it whenever the trigger changes;
-- keep `SKILL.md` concise and under 500 lines, with local policy one reference level away;
-- do not add per-skill README, install guide, changelog or other auxiliary files.
+#### skill-creator 是工具, 不是判準
 
-Gate: both scaffolds pass the active `skill-creator` package's `scripts/quick_validate.py` before final behavior is added.
+`skill-creator` 在這台機器上**是有的** (2026-08-17 查證: Codex 的 system skill
+`~/.codex/skills/.system/skill-creator`, 另有一份在 Claude 官方 marketplace 快取裡).
+先前寫「機器上沒有」是查得太窄 — 只看了 `~/.claude/skills` 與 `~/.agents/skills` 兩個路徑就下結論.
 
-`skill-creator` 是 client 端載入的套件, 不是本 repo 的受管內容 — 研究日與 2026-08-17 的機器上
-`~/.claude/skills` 與 `~/.agents/skills` 都沒有它. 因此這個 gate 只有在該 session 真的載得到
-`skill-creator` 時成立. 載不到時**不得跳過驗證**, 改以本 repo 自有的等價檢查頂上:
-frontmatter 只有 `name` 與 `description`, 兩個 provider surface 解析到同一份 `SKILL.md`,
-`agents/openai.yaml` 與 `description` 的觸發語一致, 以及 `main/claude/tests` 的 metadata 與
-預算斷言全綠. 並在該階段的紀錄裡寫明用的是哪一套, 不要讓「gate 過了」蓋掉「gate 沒跑」.
+它提供 `init_skill.py` (從樣板建目錄), `generate_openai_yaml.py`, `references/openai_yaml.md`
+與 `quick_validate.py`. 讀過 `quick_validate.py` 後可以精確說出它管什麼: **只管格式** —
+`SKILL.md` 存在, frontmatter 是合法 YAML, 鍵只落在
+`name`/`description`/`license`/`allowed-tools`/`metadata`, `name` 是 hyphen-case.
+
+**它管不到這個 repo 真正會壞的地方.** 一個格式完美的 skill 照樣可以撐爆常駐預算, 兩端解析到
+不同的 body, 或漏掉 manifest 的一列. 所以分工是:
+
+| 角色 | 誰 | 為什麼 |
+|---|---|---|
+| 建立骨架, 產生 interface metadata | `skill-creator` (可用時) | 省事且格式穩定; 用不到時手建同樣可以, 骨架不是判準 |
+| **通過與否** | 本 repo 自有基準 (下表) | 這裡的失敗形態是成本與雙端一致性, 上游 linter 沒有這兩件事的概念 |
+
+#### 本 repo 的 skill 建立基準
+
+新 skill 要成立, 下列每一條都要有機械檢查, 而且**大部分已經存在**, 不必新建:
+
+| 判準 | 現有機制 | 缺口 |
+|---|---|---|
+| frontmatter 只有 `name` 與 `description`, 觸發語全寫在 `description` | `test_contracts.py` 解析 frontmatter | 無 |
+| name + description 計入常駐預算 (每個 session 都付) | `test_resident_skill_metadata_stays_within_budget`, CJK-aware 計字 | 無 |
+| prompt census 記到 `kind: skill-metadata` | `scripts/prompt-surface-census.py --check` | 新 skill 要重新產生指紋 |
+| Claude 與 Codex 解析到**同一份** `SKILL.md` | symlink 結構 + deployment 測試 | 無 |
+| `INSTALLED.txt` 有 owner, `deployment-manifest.tsv` 兩個 surface 各一列 | `sync.sh` 與 weekly-integrity | 無 |
+| `agents/openai.yaml` 的觸發語與 `description` 不漂移 | **無** | 需補一條斷言, 觸發語改動時同步 |
+| body 長度與 reference 分層 (`SKILL.md` 精簡, 本地政策放 `references/` 一層外) | per-document 字數上限 | 無 |
+| 不新增 per-skill README / install guide / changelog | 慣例 | 靠 review |
+
+唯一真正的缺口是 `openai.yaml` 與 `description` 的一致性斷言. **M1 順手補上這一條**, 之後所有
+skill 都受益 — 這比為這次的兩個 skill 各寫一次檢查划算.
+
+Gate: 上表全綠. `skill-creator` 的 `quick_validate.py` 可以跑, 結果當附證; 它綠不代表通過,
+它紅則直接修. 紀錄裡寫明兩者各跑了沒有, 不要讓「其中一個過了」蓋掉另一個沒跑.
 
 ### M2 — Implement `evidence-debugging`
 
@@ -420,7 +445,7 @@ Likely distilled behavior: facts first, one blocking decision at a time, local c
 | `main/codex/skills/<name>` | relative symlink | Codex discovery |
 | `scripts/deployment-manifest.tsv` | add provider surface mappings | only source-to-HOME map |
 | `scripts/sync.sh` | only if current hard-coded symlink verification cannot cover new inventory | deployment verification, not new installer |
-| `main/claude/tests/test_contracts.py` | metadata, budget and semantic contract assertions | resident/dispatch surface protection |
+| `main/claude/tests/test_contracts.py` | metadata, budget and semantic contract assertions; **plus the new `openai.yaml` ↔ `description` drift assertion** (the one real gap in the skill-creation baseline, written once for every skill rather than twice for these two) | resident/dispatch surface protection |
 | `main/claude/tests/test_deployment.py` | managed inventory/symlink/parity coverage if missing | deployment protection |
 | `evals/traps/` | behaviorally refutable scenarios | prompt behavior evidence |
 | `docs/research/prompt-surface-census.json` | refresh after skill surface changes | measured prompt inventory |
