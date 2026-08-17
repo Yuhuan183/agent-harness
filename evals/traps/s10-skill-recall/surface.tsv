@@ -5,12 +5,24 @@
 # the whole file is fingerprinted: a body edit that leaves the description
 # untouched produces a stale warning, which is the safe direction.
 #
+# 2026-08-17: this list is exactly what `build.py` renders the bundle from, and
+# `test_the_selection_surface_lists_every_skill_the_bundle_is_built_from` holds
+# it there. It used to be hand-kept and went stale by omission - installing
+# `evidence-debugging` and `test-first-change` put eight descriptions in front of
+# the agent while the fingerprint below still covered six, so a stamp taken then
+# would have claimed currency against a surface that was missing two of the
+# choices under test. Paths are spelled the way `build.py` reads them; the
+# `main/.agents/...` spellings this file used before resolve to the same bytes
+# through the symlinks, but only one spelling can be checked for completeness.
+#
 # Recompute: evals/scripts/trap-surface.py --trap s10-skill-recall
 main/claude/skills/baton-dispatch/SKILL.md
+main/claude/skills/evidence-debugging/SKILL.md
+main/claude/skills/experience-ledger/SKILL.md
+main/claude/skills/headroom-protocol/SKILL.md
 main/claude/skills/provider-routing/SKILL.md
-main/.agents/skills/experience-ledger/SKILL.md
-main/.agents/skills/headroom-protocol/SKILL.md
-main/.agents/skills/speak-human-tw/SKILL.md
-main/.agents/skills/task-observer/SKILL.md
+main/claude/skills/speak-human-tw/SKILL.md
+main/claude/skills/task-observer/SKILL.md
+main/claude/skills/test-first-change/SKILL.md
 evals/traps/s10-skill-recall/briefs/arm-a-leaf-brief.md
 evals/traps/s10-skill-recall/grade.py
