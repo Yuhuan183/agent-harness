@@ -85,7 +85,7 @@ Claude App 使用 OAuth 直連, 不經 proxy, 只能透過 MCP 做手動文字�
 
 ## 操作指引
 
-- **Claude**: 需要 Headroom 時使用 `hclaude`; Auto Mode 使用 `hclaude-auto`. 底層是 `headroom wrap claude`. 只有 context 明確不足時才加 `--1m`, 而且加之前要先讀下面那條.
+- **Claude**: 需要 Headroom 時使用 `hclaude`; Auto Mode 使用 `hclaude-auto`. 底層是 `headroom wrap claude`. 只有 context 明確不足時才加 `--1m`, 而且加之前要先讀下面那條. 0.35 的 CCR 在串流路徑上會壞, 處置是 machine-local 的, 見「版本轉換」的 CCR 那節.
 - **`--1m` 的預設模型陷阱**: 自訂 `ANTHROPIC_BASE_URL` 之下, Claude Code 的 `/model` 選擇不會傳到 API, 只有帶 `[1m]` 後綴的 model id 才會送出 `context-1m` beta header. `--1m` 的做法是在啟動的 process 上設 `ANTHROPIC_MODEL`; 它會保留使用者自己設過的 model, 但 `ANTHROPIC_MODEL` 未設時退回 Headroom 內建的常數 (0.34.0 與 0.35.0 都是 `claude-opus-4-8`). 也就是在乾淨 shell 直接下 `--1m` 會把 session 釘在 Opus 4.8 而不是當前選的模型. 要用就自己一起指定 `ANTHROPIC_MODEL`, 並在 session 內確認實際 model id. 0.35 只修掉相鄰的另一個洞: 顯式傳進去的 `--model` 現在也會被補上 `[1m]` (upstream #2915, PR #2922); 0.34 是 `--model` 蓋過 env var, `--1m` 靜默失效而回落 200k. **預設模型的陷阱沒有跟著修掉.**
 - **on-demand tool loading (`--tool-search`)**: 自訂 `ANTHROPIC_BASE_URL` 會讓 Claude Code 關閉 tool deferral, 改成一次載入所有 tool schema, 吃掉數十 K 的 local context (upstream issue #746). v0.34 的 `wrap claude` 因此會設 `ENABLE_TOOL_SEARCH`, 預設 `true`. 可用值 `true`/`1`/`yes`/`on`, `false`/`0`/`no`/`off`, `auto`, `auto:N` (N 為 0-100); 打錯會直接報錯而不是默默關掉. 優先序是 `--tool-search` 旗標 > 環境裡既有的 `ENABLE_TOOL_SEARCH` (原封不動) > 內建預設; 空字串視同未設. Read/Edit/Bash 這類內建工具永遠不會被延後載入, agent loop 不受影響. 若採 always-on routing (下面的 `persistent-service`), 這個變數要跟 base URL 一起常駐, 否則原生 `claude` 會在沒有 deferral 的情況下走 proxy.
 - **Codex**: 需要 Headroom 時使用 `hcodex`; Auto Mode 使用 `hcodex-auto`. 底層是 `headroom wrap codex`, 不依賴預先存在的永久 provider.
@@ -123,6 +123,48 @@ Claude App 使用 OAuth 直連, 不經 proxy, 只能透過 MCP 做手動文字�
 逐條核對後**沒有變**的三件事: 每次 `wrap`/`unwrap` 仍呼叫
 `purge_context_tool_artifacts()` 且比對字串一字未改; `wrap claude` 仍負責設
 `ENABLE_TOOL_SEARCH`; `--1m` 的預設模型常數仍是 `claude-opus-4-8`.
+
+### 0.35 的 CCR 在 Claude 串流路徑上會壞
+
+**這是上游 bug 的暫時處置, 不由本 repo 管理.** 開關住在 machine-local 的
+`~/.headroom/settings.json`, 與 profile, port 同級, 不進 git; 這節只記邊界與怎麼查.
+
+CCR (Compress-Cache-Retrieve) 壓掉大塊工具輸出, 留下 `<<ccr:...>>` marker, 並注入
+`headroom_retrieve` 讓模型需要時取回原文 — 有損壓縮**加上**還原路徑. 0.35 遇到串流請求時
+會把上游改成非串流以便在伺服器端處理取回 (`ccr_streaming_retrieve_buffered_non_stream`),
+而回吐給 client 的內容可能解析不了, 症狀是 HTTP 200 但 body 是空的或壞的.
+
+處置用 `lossless` 而不是 `no-ccr`: 依上游自己的說明 `--no-ccr` 是 lossy compression with no
+recovery path, 壓掉的工具輸出救不回來; lossless 只做無損轉換, 代價僅是省得比較少. 0.35 原始碼
+確認它一次清掉 `ccr_inject_marker` 與 `ccr_inject_tool` — 沒有 marker, 也沒有工具可注入,
+那條串流轉換就失去入口, 不是繞過它.
+
+設在哪, 由部署形態決定:
+
+| 部署形態 | 設在哪 |
+|---|---|
+| `persistent-service` 常駐 | `POST /settings` body `{"values": {"lossless": true}}`, 再 `headroom install restart`; 值落在 `~/.headroom/settings.json` |
+| wrap-first | 該次 session 的環境變數 `HEADROOM_LOSSLESS=1` |
+
+**環境變數只到得了「這次啟動的 proxy」.** port 上已有 proxy 時 `wrap` 直接重用它, 而它的功能
+比對只看 memory / learn / code_graph / copilot / openai-api-url — lossless 不在清單裡, 於是
+變數靜靜地沒作用. 2026-08-17 實測: 常駐服務在跑時 `hclaude` 重用了既有 proxy (PID 未變),
+變數確實出現在 session 環境裡卻毫無效果. 優先序是 `環境變數 > settings.json > 內建預設`,
+而常駐服務的行程環境沒有這個變數, 所以設定檔會贏.
+
+怎麼看跑著的是哪個模式 — `/health` 沒有任何 CCR 欄位, 但不是查不到, 只是不在那裡:
+
+| 看什麼 | 開著 CCR | lossless 生效 |
+|---|---|---|
+| `GET /settings` (loopback) | 沒有 `lossless` 鍵 | `{"lossless": true}` |
+| 啟動 banner 的 `CCR (Compress-Cache-Retrieve): ENABLED (...)` | 含 `tool_injection` | **不含 `tool_injection`** |
+| `proxy.log` | 出現 `ccr_streaming_retrieve_buffered_non_stream` | 不再出現 |
+
+banner 仍會列 `response_handling`, `context_tracking`, `proactive_expansion` — **那不代表沒生效**,
+lossless 只強制 `ccr_inject_tool` 為 false.
+
+撤除: `{"values": {"lossless": false}}` 後重啟, 或直接刪掉該鍵. 撤除前先確認上游修的是串流那條
+路徑, 不是只改了壓縮策略 — 兩者的 release note 讀起來很像.
 
 ### Antigravity CLI
 
