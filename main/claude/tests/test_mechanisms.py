@@ -2520,6 +2520,79 @@ class TrapSurfaceTests(unittest.TestCase):
                     module.surface_paths(trap.name),
                     "fingerprint skipped a declared file")
 
+    def test_the_selection_surface_lists_every_skill_the_bundle_is_built_from(self) -> None:
+        """The two tests above check the list's members. Neither checks the list.
+
+        `s10-skill-recall` shows the difference and cost it on 2026-08-17. Its
+        `surface.tsv` was hand-kept while `build.py` renders the bundle by
+        globbing `main/claude/skills/*/SKILL.md`, so installing two skills put
+        eight descriptions in front of the agent under test and left the
+        fingerprint covering six. Every existing check stayed green:
+        `test_every_declared_surface_path_exists` verifies that what is listed is
+        there, and `build.py --check` verifies the bundle matches the live
+        frontmatters — nothing compared the surface against the generator.
+
+        The consequence is worse than a stale fingerprint. A stamp taken in that
+        state reads as current, so the one mechanism that dates this trap's
+        evidence would have been actively wrong rather than merely absent.
+        """
+        build = load_module(
+            "s10_build", ROOT / "evals/traps/s10-skill-recall/build.py")
+        rendered_from = {
+            str(path.relative_to(ROOT))
+            for path in sorted(build.SKILLS.iterdir())
+            if (path / "SKILL.md").is_file()
+            for path in [path / "SKILL.md"]}
+        module = load_module(
+            "trap_surface", ROOT / "evals" / "scripts" / "trap-surface.py")
+        declared = set(module.surface_paths("s10-skill-recall"))
+        self.assertEqual(
+            set(), rendered_from - declared,
+            "the bundle is built from a skill this trap's surface does not "
+            "fingerprint, so its stamps would claim to cover a choice they omit")
+
+    # Dated result rows carrying no surface stamp, per trap, measured
+    # 2026-08-17. These are frozen, not approved: they can be lowered by
+    # stamping a row, and a new unstamped row anywhere fails.
+    UNSTAMPED_ROW_CEILING = {
+        "replay": 0,
+        "s7-false-completion": 17,
+        "s8-spec-conflict": 8,
+        "s9-tz-bucketing": 7,
+        "s10-skill-recall": 12,
+        "s11-pointer-redundancy": 0,
+    }
+
+    def test_no_trap_gains_a_result_row_that_cannot_be_dated(self) -> None:
+        """`evidence-check` counts unstamped rows and always exits 0; this holds the line.
+
+        Reporting was the right call for that script - made fail-closed, the
+        cheapest way to stay green is to stop writing the date beside what was
+        checked. But a number that only ever gets printed is a number that grows,
+        and s10 showed the bill. Installing a fifth shared skill regenerated its
+        option bundle, correctly and with `build.py --check` guarding every
+        future run; the twelve rows already written carry no stamp, so they now
+        describe a measurement on a set of options that no longer exists, and
+        nothing in the artifact says so.
+
+        Those twelve cannot be stamped after the fact, which is exactly why the
+        ceiling is per trap rather than a total: a trap deleting rows must not
+        buy another trap room to add unstamped ones. The direction that stays
+        green is stamping.
+        """
+        module = load_module("evidence_check", ROOT / "scripts" / "evidence-check.py")
+        counted = {row["trap"]: row for row in module.audit_traps()}
+        self.assertEqual(
+            sorted(counted), sorted(self.UNSTAMPED_ROW_CEILING),
+            "a trap appeared or vanished; give it a ceiling of 0 and stamp its rows")
+        for trap, ceiling in sorted(self.UNSTAMPED_ROW_CEILING.items()):
+            with self.subTest(trap=trap):
+                self.assertLessEqual(
+                    counted[trap]["unstamped_rows"], ceiling,
+                    f"{trap}: a dated result row carries no surface fingerprint, so "
+                    "it cannot say which bytes produced it. Stamp the new row "
+                    "rather than raising this number")
+
 
 class UntiedDispatchIdTests(unittest.TestCase):
     """The weekly half of the same check `experience-log` now makes at write
