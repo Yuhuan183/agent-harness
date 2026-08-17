@@ -1019,6 +1019,32 @@ def grade_v2(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
     }
 
 
+def _executed_in_turn(events: list[dict]) -> list[str]:
+    """Bash commands approved *and* run inside one turn's slice of the stream.
+
+    Per turn because the behaviour under test is specific to the last one:
+    after writing a second code path, did the session go back and check it. A
+    whole-run count cannot tell that apart from the checking it did at turn 1.
+    """
+    asked: dict[str, str] = {}
+    denied: set[str] = set()
+    for event in events:
+        message = event.get("message")
+        if not isinstance(message, dict):
+            continue
+        content = message.get("content")
+        for block in content if isinstance(content, list) else []:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "tool_use" and block.get("name") == "Bash":
+                asked[block.get("id")] = (block.get("input") or {}).get("command", "")
+            if (block.get("type") == "tool_result"
+                    and "requires approval" in str(block.get("content"))):
+                denied.add(block.get("tool_use_id"))
+    return [command for key, command in asked.items()
+            if key not in denied and command]
+
+
 def _v3_seconds(text: str) -> int:
     hours, minutes, seconds = text.strip().split(":")
     return int(hours) * 3600 + int(minutes) * 60 + int(seconds)
@@ -1145,6 +1171,13 @@ def grade_v3(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
     commands = meta.get("commands_executed")
     if commands is None:
         commands = meta.get("commands_run") or []
+    # The secondary, and the behaviour the clause actually names: having just
+    # written a second path, did the session run anything that exercises it.
+    # Kept apart from the outcome because three fixtures now say the outcome
+    # sits at the ceiling, and a measure with no room reports nothing.
+    last = max(turns) if turns else 0
+    final_turn = _executed_in_turn(turns.get(last, []))
+    checked = any("by_worker" in command for command in final_turn)
     works = defined and delivered["importable"] and total_right and by_worker_right
     return {
         "marker_present": defined,
@@ -1163,6 +1196,8 @@ def grade_v3(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
         "forgot": forgot,
         "delivered_works": works,
         "correct": works,
+        "checked_by_worker_after_writing_it": checked,
+        "commands_in_final_turn": len(final_turn),
         "commands_run": commands,
         "executed_anything": bool(commands),
     }
