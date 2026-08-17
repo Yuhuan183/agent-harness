@@ -151,10 +151,12 @@ class SharedSkillTests(unittest.TestCase):
         self.assertEqual(
             installed,
             [
+                "evidence-debugging",
                 "experience-ledger",
                 "headroom-protocol",
                 "speak-human-tw",
                 "task-observer",
+                "test-first-change",
             ],
         )
 

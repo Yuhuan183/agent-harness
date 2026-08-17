@@ -17,6 +17,8 @@ main/claude/skills/baton-dispatch	.claude/skills/baton-dispatch
 main/claude/skills/provider-routing	.claude/skills/provider-routing
 main/claude/skills/headroom-protocol	.claude/skills/headroom-protocol
 main/claude/skills/speak-human-tw	.claude/skills/speak-human-tw
+main/claude/skills/evidence-debugging	.claude/skills/evidence-debugging
+main/claude/skills/test-first-change	.claude/skills/test-first-change
 main/claude/skills/experience-ledger	.claude/skills/experience-ledger
 main/claude/skills/task-observer	.claude/skills/task-observer
 main/codex/AGENTS.contract.md	.codex/AGENTS.md
@@ -31,5 +33,7 @@ main/codex/scripts	.codex/scripts
 main/codex/skills/leaf-dispatch	.codex/skills/leaf-dispatch
 main/codex/skills/headroom-protocol	.codex/skills/headroom-protocol
 main/codex/skills/speak-human-tw	.codex/skills/speak-human-tw
+main/codex/skills/evidence-debugging	.codex/skills/evidence-debugging
+main/codex/skills/test-first-change	.codex/skills/test-first-change
 main/codex/skills/experience-ledger	.codex/skills/experience-ledger
 main/codex/skills/task-observer	.codex/skills/task-observer

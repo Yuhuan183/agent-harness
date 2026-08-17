@@ -1,0 +1,10 @@
+interface:
+  display_name: "Evidence Debugging"
+  short_description: "Diagnose from a reproduction you have actually run"
+  default_prompt: "Use $evidence-debugging to diagnose a defect from a reproduction that can go red."
+policy:
+  # Explicit-only for the first release, per the distillation plan: the M1 cells
+  # price behaviour once invoked, not whether invocation fires on the right asks.
+  # Nothing here bounds a false positive yet, so the plan's own rule applies.
+  # Revisit once description discrimination has been measured.
+  allow_implicit_invocation: false

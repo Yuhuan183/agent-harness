@@ -2520,6 +2520,79 @@ class TrapSurfaceTests(unittest.TestCase):
                     module.surface_paths(trap.name),
                     "fingerprint skipped a declared file")
 
+    def test_the_selection_surface_lists_every_skill_the_bundle_is_built_from(self) -> None:
+        """The two tests above check the list's members. Neither checks the list.
+
+        `s10-skill-recall` shows the difference and cost it on 2026-08-17. Its
+        `surface.tsv` was hand-kept while `build.py` renders the bundle by
+        globbing `main/claude/skills/*/SKILL.md`, so installing two skills put
+        eight descriptions in front of the agent under test and left the
+        fingerprint covering six. Every existing check stayed green:
+        `test_every_declared_surface_path_exists` verifies that what is listed is
+        there, and `build.py --check` verifies the bundle matches the live
+        frontmatters — nothing compared the surface against the generator.
+
+        The consequence is worse than a stale fingerprint. A stamp taken in that
+        state reads as current, so the one mechanism that dates this trap's
+        evidence would have been actively wrong rather than merely absent.
+        """
+        build = load_module(
+            "s10_build", ROOT / "evals/traps/s10-skill-recall/build.py")
+        rendered_from = {
+            str(path.relative_to(ROOT))
+            for path in sorted(build.SKILLS.iterdir())
+            if (path / "SKILL.md").is_file()
+            for path in [path / "SKILL.md"]}
+        module = load_module(
+            "trap_surface", ROOT / "evals" / "scripts" / "trap-surface.py")
+        declared = set(module.surface_paths("s10-skill-recall"))
+        self.assertEqual(
+            set(), rendered_from - declared,
+            "the bundle is built from a skill this trap's surface does not "
+            "fingerprint, so its stamps would claim to cover a choice they omit")
+
+    # Dated result rows carrying no surface stamp, per trap, measured
+    # 2026-08-17. These are frozen, not approved: they can be lowered by
+    # stamping a row, and a new unstamped row anywhere fails.
+    UNSTAMPED_ROW_CEILING = {
+        "replay": 0,
+        "s7-false-completion": 17,
+        "s8-spec-conflict": 8,
+        "s9-tz-bucketing": 7,
+        "s10-skill-recall": 12,
+        "s11-pointer-redundancy": 0,
+    }
+
+    def test_no_trap_gains_a_result_row_that_cannot_be_dated(self) -> None:
+        """`evidence-check` counts unstamped rows and always exits 0; this holds the line.
+
+        Reporting was the right call for that script - made fail-closed, the
+        cheapest way to stay green is to stop writing the date beside what was
+        checked. But a number that only ever gets printed is a number that grows,
+        and s10 showed the bill. Installing a fifth shared skill regenerated its
+        option bundle, correctly and with `build.py --check` guarding every
+        future run; the twelve rows already written carry no stamp, so they now
+        describe a measurement on a set of options that no longer exists, and
+        nothing in the artifact says so.
+
+        Those twelve cannot be stamped after the fact, which is exactly why the
+        ceiling is per trap rather than a total: a trap deleting rows must not
+        buy another trap room to add unstamped ones. The direction that stays
+        green is stamping.
+        """
+        module = load_module("evidence_check", ROOT / "scripts" / "evidence-check.py")
+        counted = {row["trap"]: row for row in module.audit_traps()}
+        self.assertEqual(
+            sorted(counted), sorted(self.UNSTAMPED_ROW_CEILING),
+            "a trap appeared or vanished; give it a ceiling of 0 and stamp its rows")
+        for trap, ceiling in sorted(self.UNSTAMPED_ROW_CEILING.items()):
+            with self.subTest(trap=trap):
+                self.assertLessEqual(
+                    counted[trap]["unstamped_rows"], ceiling,
+                    f"{trap}: a dated result row carries no surface fingerprint, so "
+                    "it cannot say which bytes produced it. Stamp the new row "
+                    "rather than raising this number")
+
 
 class UntiedDispatchIdTests(unittest.TestCase):
     """The weekly half of the same check `experience-log` now makes at write
@@ -2596,6 +2669,43 @@ class ReplayScenarioTests(unittest.TestCase):
 
     def _scenarios(self) -> list[Path]:
         return sorted((self.REPLAY / "scenarios").glob("*.md"))
+
+    def test_the_scenario_index_is_generated_and_current(self) -> None:
+        """A directory listing of opaque prefixes is unreadable, and the fix
+        must not be a table maintained by hand.
+
+        `e4` exists because a condition typed beside the artifact that already
+        states it diverges, so the index is rendered from each scenario's own
+        frontmatter and this asserts the rendered block is what the README
+        holds. A new scenario without a row is red, not merely undocumented,
+        and the row cannot disagree with what a run is graded against.
+        """
+        index = subprocess.run(
+            [sys.executable, str(self.REPLAY / "scenario-index.py"), "--check"],
+            capture_output=True, text=True)
+        self.assertEqual(index.returncode, 0,
+                         index.stderr or index.stdout)
+
+    def test_every_trap_appears_in_the_trap_index(self) -> None:
+        """The traps carry no frontmatter, so their index is written by hand —
+        which is exactly the shape that drifts. This pins both directions."""
+        traps = ROOT / "evals" / "traps"
+        listed = {path.name for path in traps.iterdir()
+                  if path.is_dir() and path.name != "__pycache__"}
+        index = (traps / "README.md").read_text(encoding="utf-8")
+        for name in sorted(listed):
+            handle = name.split("-")[0]
+            with self.subTest(trap=name):
+                self.assertIn(f"| `{handle}` |", index,
+                              f"{name}: no row in evals/traps/README.md")
+                self.assertIn(f"{name}/README.md", index,
+                              f"{name}: index row does not link to it")
+        # And nothing in the index that no longer exists on disk.
+        for handle in re.findall(r"^\| `(s\d+)` \|", index, re.M):
+            with self.subTest(row=handle):
+                self.assertTrue(
+                    any(name.startswith(f"{handle}-") for name in listed),
+                    f"{handle}: index row for a trap that is gone")
 
     def test_every_scenario_pre_declares_marker_and_recovery_point(self) -> None:
         module = load_module("replay_run", self.REPLAY / "run.py")
@@ -3948,6 +4058,46 @@ class VersionAttestationTests(unittest.TestCase):
         module = self._module()
         self.assertEqual("match", module.verdict_for("0.34", "0.34.0", False))
         self.assertEqual("differs", module.verdict_for("0.33", "0.34.0", False))
+
+    def test_a_zh_tw_floor_and_a_dated_title_are_not_stale_attestations(self) -> None:
+        """Two shapes added 2026-08-17, both from the same review of a real report.
+
+        Half of that run's discrepancies were sentences that are still true.
+        `起` is zh-TW's "from <version> onwards", the exact counterpart of the
+        English floors this class already covers, so `Headroom v0.34 起已移除 …`
+        was filed as a permanent finding about a correct sentence. And a dated
+        section title names the version it was *about*: rewriting
+        `#### 2026-08-10 查核結果 (Headroom 0.34 升級)` to today's number destroys
+        the record it exists to keep.
+
+        The dividing line is what the guard below asserts, and it is the one that
+        matters: exempting *headings* is not exempting dated lines. A dated claim
+        in prose is precisely what this instrument is for - the date is what makes
+        going stale checkable - so the exemption is keyed on the heading marker
+        and the anchor link, never on the presence of a date.
+        """
+        module = self._module()
+        floor = "Headroom v0.34 起已移除 CLI context tools; wrapper 不再傳入舊參數."
+        self.assertIn(("headroom", "0.34"), module.attributions_in(floor))
+        self.assertTrue(module.FLOOR.search(floor))
+        self.assertEqual(
+            "floor-met", module.verdict_for("0.34", "0.35.0", is_floor=True))
+
+        for line in (
+            "#### 2026-08-10 查核結果 (Headroom 0.34 升級): 同一個失效換了一層皮",
+            "- [2026-08-10 查核結果 (Headroom 0.34 升級)](landing-log.md"
+            "#2026-08-10-查核結果-headroom-034-升級)",
+        ):
+            with self.subTest(line=line[:40]):
+                self.assertTrue(module.HISTORY.search(line))
+
+        # The guard. Same date, same tool, same wrong number - still a claim.
+        claim = "2026-08-10 本機查核: CLI 與 proxy 都是 `headroom-ai 0.34.0`."
+        self.assertIsNone(
+            module.HISTORY.search(claim),
+            "a dated prose attestation must stay checkable; exempting it would "
+            "make the date - the thing that makes staleness detectable - into "
+            "the way to avoid being checked")
 
     def test_it_reports_and_never_fails(self) -> None:
         # Same contract as the rest of this script: a stale attestation is a

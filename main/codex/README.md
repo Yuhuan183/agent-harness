@@ -20,6 +20,8 @@
 | `skills/experience-ledger` | symlink → `../.agents/skills/experience-ledger` (派工經驗記帳與分析, 與 Claude 共用) | 自動 |
 | `skills/speak-human-tw` | symlink → `../.agents/skills/speak-human-tw` (繁中去 AI 味, 與 Claude 共用同一本體) | 自動 |
 | `skills/task-observer` | symlink → `../.agents/skills/task-observer` (使用受挫時主動詢問, 同意後才記錄; machine-local JSONL) | 自動 |
+| `skills/evidence-debugging` | symlink → `../.agents/skills/evidence-debugging` (以已跑過的重現做診斷, 與 Claude 共用同一本體) | 自動 |
+| `skills/test-first-change` | symlink → `../.agents/skills/test-first-change` (先寫會紅的檢查再改行為, 與 Claude 共用同一本體) | 自動 |
 | `prompts/custom-instructions.md` | ChatGPT Chat/Work 的 account-wide custom instructions; Codex agent 仍由 `AGENTS.contract.md` 管理 | 自動複製到 `~/.codex`; App 手動套用 |
 | `config.merge.toml` | 可攜的 agent depth 與七個 custom role 註冊片段, 由 `sync.sh` 以 **section-scoped 自動 merge** 寫入 `~/.codex/config.toml` (只碰 `[agents]` 與 `[agents.*]`); model/effort 仍由使用者與 machine-local 設定持有 | 自動 (merge-toml) |
 | `config.toml` | 機器狀態 (headroom proxy, marketplace, trust, project 路徑等 machine-local 段); **不入庫** (gitignored), 僅存在本機 | 不覆蓋 |

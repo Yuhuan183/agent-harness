@@ -5,12 +5,24 @@ Two instruments, one question. Both were built after a 2026-08-08 check found
 that most of this repo's evidence citations had quietly stopped resolving.
 
 1. **Citations.** Every backtick-wrapped hex string in tracked markdown, sorted
-   into resolves / dead / foreign. Foreign means the line also carries a URL, so
-   the citation is about another repository and is not expected to resolve here;
-   those are correctly formed today because they are full-length and linked. The
-   dead ones are all bare short SHAs, which is the finding: in a repo that
-   rebases branches before merging, a bare short SHA is not a durable anchor. It
-   names a history that the next rebase rewrites.
+   by what can be established about it: `resolves` here, `foreign` (the line
+   carries a URL or names the repository it belongs to), `fingerprint` (one of
+   this repo's own content hashes — a measured surface or a contract hash, which
+   git was never going to resolve), and `unresolved` for the residual.
+
+   The residual used to be called `dead`, with a docstring asserting those were
+   all stale short SHAs. Re-checked 2026-08-17: of twenty, seven were upstream
+   pins quoted without a link and thirteen were fingerprints. **Zero were stale
+   local commits.** The bucket was reporting the shape of a token rather than its
+   substance — the failure the traps call cluster B, in the instrument built to
+   price evidence — and it had a clean, quotable, entirely wrong headline. The
+   residual is now named for what is actually known, because after a rebase "was
+   this ever a commit" is not answerable, and a bucket that answers it anyway is
+   how the first false finding gets published.
+
+   The original concern still stands on its own: a bare short SHA is not a
+   durable anchor in a repo that rebases before merging. It is just not what
+   this instrument was measuring.
 
 2. **Trap evidence age.** Each trap declares its measured surface in
    `surface.tsv`; result rows stamped `[surface <short>]` are compared against
@@ -59,6 +71,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 CITATION = re.compile(r"`([0-9a-f]{7,40})`")
+# A line that names another repository is citing that repository's history, and
+# no amount of `git rev-parse` here will resolve it. The URL rule missed these
+# because an upstream pin is usually quoted bare inside a table cell.
+UPSTREAM_REPO = re.compile(
+    r"mattpocock/skills|anthropics/claude-plugins|headroomlabs-ai|"
+    r"Nanako0129/pilotfish|marketplace|upstream pin|上游|marketplace pin",
+    re.IGNORECASE)
+FINGERPRINT_WORD = re.compile(r"指紋|fingerprint|surface", re.IGNORECASE)
 STAMP = re.compile(r"\[surface ([0-9a-f]{8})\]")
 URL = re.compile(r"https?://")
 
@@ -98,7 +118,18 @@ ATTRIBUTION = r"[\s,:]*(?:version\s+)?v?(\d+\.\d+(?:\.\d+)?)"
 # for as long as the requirement stands - reporting it as a discrepancy every
 # run is how a report earns the right to be ignored. Satisfied floors are
 # counted and dropped; an unmet one is the thing worth printing.
-FLOOR = re.compile(r"以上|至少|or newer|or later|at least|minimum|\bmin\b|>=|\+ ")
+FLOOR = re.compile(
+    # `起` is zh-TW's "from <version> onwards", the exact counterpart of the
+    # English floors beside it. Without it, `Headroom v0.34 起已移除 …` filed as a
+    # discrepancy on every run - a permanent finding about a sentence that is
+    # still true, which is how a report teaches people to skip it.
+    r"以上|至少|\d\S*\s*起|or newer|or later|at least|minimum|\bmin\b|>=|\+ ")
+
+# A dated section title is a record of what was checked then, not a claim about
+# now. `#### 2026-08-10 查核結果 (Headroom 0.34 升級)` names the version it was
+# about, and rewriting it to today's version would destroy the thing it exists to
+# preserve. Links to such a heading carry the same text and the same exemption.
+HISTORY = re.compile(r"^#{1,6}\s+20\d\d-\d\d-\d\d|\]\(\S*#20\d\d-\d\d-\d\d")
 
 
 def tracked_markdown() -> list[Path]:
@@ -114,9 +145,45 @@ def resolves(sha: str) -> bool:
         capture_output=True).returncode == 0
 
 
+def known_fingerprints() -> set[str]:
+    """The fingerprint each suite computes for its surface right now.
+
+    Computed, not pattern-matched: whether a token is a commit or a content hash
+    is a question about provenance, and this is the one part of it that can be
+    answered positively. It only ever recognises *current* fingerprints —
+    historical stamps are preserved in the READMEs on purpose ("the stamp stays
+    at X because that is what produced these rows") and will never equal a fresh
+    computation, which is why the residual bucket carries a caveat instead of
+    pretending to be a defect list.
+    """
+    found: set[str] = set()
+    for row in audit_traps():
+        current = str(row.get("current") or "")
+        if current:
+            found.update({current, current[:8], current[:12]})
+    return found
+
+
 def audit_citations() -> dict[str, list[dict[str, object]]]:
+    """Backticked hex, sorted by what can be established about it.
+
+    The first draft had one residual bucket called `dead` and a docstring
+    asserting those were all stale short SHAs. On 2026-08-17 that population had
+    turned over completely: of twenty, seven were upstream pins written without
+    a link and thirteen were this repo's own content fingerprints — measured
+    surfaces and contract hashes, which git was never going to resolve. Zero
+    were stale local commits.
+
+    That is the failure the traps call cluster B, in the instrument built to
+    price evidence: a checker keyed on the shape of a token (hex in backticks)
+    rather than its substance (whether it is a git ref at all). So the classes
+    now name what was established, and the residual is `unresolved` rather than
+    `dead` — because after a rebase, "was this ever a commit" is not answerable,
+    and a bucket that asserts it anyway invites exactly one clean false finding.
+    """
     buckets: dict[str, list[dict[str, object]]] = {
-        "resolves": [], "foreign": [], "dead": []}
+        "resolves": [], "foreign": [], "fingerprint": [], "unresolved": []}
+    fingerprints = known_fingerprints()
     seen: dict[str, dict[str, object]] = {}
     for path in tracked_markdown():
         relative = path.relative_to(ROOT).as_posix()
@@ -125,17 +192,27 @@ def audit_citations() -> dict[str, list[dict[str, object]]]:
                 if sha.isdigit():
                     continue
                 record = seen.setdefault(
-                    sha, {"sha": sha, "sites": [], "linked": False})
+                    sha, {"sha": sha, "sites": [], "linked": False,
+                          "upstream": False, "stamped": False})
                 if relative not in record["sites"]:
                     record["sites"].append(relative)
                 record["linked"] = record["linked"] or bool(URL.search(line))
+                record["upstream"] = record["upstream"] or bool(
+                    UPSTREAM_REPO.search(line))
+                # `[surface 20411df0]` and prose naming a fingerprint are the
+                # two forms this repo writes content hashes in.
+                record["stamped"] = record["stamped"] or bool(
+                    re.search(rf"surface\s+{sha}", line)
+                    or (FINGERPRINT_WORD.search(line) and sha in line))
     for sha, record in sorted(seen.items()):
         if resolves(sha):
             buckets["resolves"].append(record)
-        elif record["linked"]:
+        elif record["linked"] or record["upstream"]:
             buckets["foreign"].append(record)
+        elif record["stamped"] or sha in fingerprints:
+            buckets["fingerprint"].append(record)
         else:
-            buckets["dead"].append(record)
+            buckets["unresolved"].append(record)
     return buckets
 
 
@@ -282,6 +359,8 @@ def audit_versions() -> list[dict[str, object]]:
         relative = path.relative_to(ROOT).as_posix()
         for number, line in enumerate(
                 path.read_text(encoding="utf-8").splitlines(), 1):
+            if HISTORY.search(line):
+                continue
             for tool, claimed in attributions_in(line):
                 here = local_version(tool)
                 rows.append({"site": f"{relative}:{number}", "tool": tool,
@@ -313,12 +392,16 @@ def main() -> int:
     total = sum(len(bucket) for bucket in citations.values())
     print(f"citations: {total} distinct, "
           f"{len(citations['resolves'])} resolve, "
-          f"{len(citations['foreign'])} foreign (linked), "
-          f"{len(citations['dead'])} dead")
-    for record in citations["dead"]:
-        print(f"  dead  {record['sha']}")
+          f"{len(citations['foreign'])} foreign (linked or names its repo), "
+          f"{len(citations['fingerprint'])} content fingerprints, "
+          f"{len(citations['unresolved'])} unresolved")
+    if citations["unresolved"]:
+        print("  (not a defect list: a historical `[surface …]` stamp or a "
+              "contract hash lands here by design)")
+    for record in citations["unresolved"]:
+        print(f"  unresolved  {record['sha']}")
         for site in record["sites"]:
-            print(f"          {site}")
+            print(f"              {site}")
 
     print()
     print("trap evidence:")

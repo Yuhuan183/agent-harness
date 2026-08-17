@@ -1,7 +1,8 @@
 # Engineering workflow 蒸餾實作計畫
 
-狀態: approved direction; implementation pending  
-建立日期: 2026-08-14  
+狀態: M0-M4 完成 (M1 五格 fixture 閘全過, M2/M3 兩個 skill 來源完成靜態 gate 綠, M4 跨端整合全綠); 未部署
+最後更新: 2026-08-17
+建立日期: 2026-08-14
 研究依據: [Matt Pocock skills 導入研究](../research/mattpocock-skills-integration.md)
 
 ## Checkable outcome
@@ -83,6 +84,18 @@ Skill 可以把既有規則轉成領域內的具體 stop, 但不能重複整份 
 
 來自工作摩擦的改善只能在使用者同意記錄 observation, 且 observation 經 review/actioned 後成為 tuning 候選. 上游更新不得自動改寫這一層.
 
+## 上游相依的處置
+
+2026-08-17 精讀 pin `068b6e0` 後確定的四項相依. **每一項都要有明文處置**, 不能只把上游那行刪掉
+留下空洞 — 空洞會在蒸餾版裡變成沒有 owner 的假設 ([研究](../research/mattpocock-skills-integration.md#第一批兩個-skill-的原始碼精讀)).
+
+| 上游相依 | 本專案承接者 | 判準 |
+|---|---|---|
+| `CONTEXT.md` + ADR (兩個 skill 的開頭第一段) | `AGENTS.md` 與 [architecture.md](../architecture.md) | 蒸餾版指向既有 owner; 不得建立 `CONTEXT.md`, `docs/adr/*` 或任何新的根文件 |
+| `codebase-design` skill (`tdd` 取 seam 語彙) | 蒸餾版自帶最小定義 | seam = 可觀察行為的公開邊界. 一句話帶完, 不留跨 skill 指標, 不引進 module/depth/leverage 全套語彙 |
+| `tests.md` / `mocking.md` (TypeScript + Jest 範例) | 自寫等價範例 | 概念移植, **範例重寫**. 本 repo 的測試面是 Python `unittest`, shell, 與 markdown 契約斷言; 直接翻譯 Jest 範例會教出這裡不存在的習慣 |
+| `scripts/hitl-loop.template.sh` (feedback loop 第 10 級) | **移除該級** | 本 repo 的驗證面沒有「必須有人點擊」的情境. 留一個未實作的指標比沒有更糟 |
+
 ## 目標檔案結構
 
 ```text
@@ -128,25 +141,40 @@ main/codex/skills/
 ### Workflow
 
 1. Classify authority: diagnosis-only or change-authorized.
-2. Capture exact user-observed symptom and success condition.
-3. Build the tightest repeatable feedback loop that fails on this symptom.
-4. Minimize while preserving the same failure.
-5. Trace from observed boundary toward likely cause; form one falsifiable hypothesis at a time.
-6. Run the smallest probe that can refute the hypothesis.
-7. Conclude with evidence strength: verified root cause, strongest hypothesis, or unresolved.
-8. Diagnosis-only stops here.
-9. Change-authorized work adds a failing regression at an appropriate public seam when practical, applies the smallest coherent fix, reruns minimized and original scenarios, then the narrow relevant suite.
+2. Redact before showing anything. Commands, outputs and captured artifacts carry secrets; write `<REDACTED>`, build loops against env vars, quote only the lines that carry signal. If the redacted output is not enough to diagnose, say so and ask.
+3. Capture the exact user-observed symptom and the success condition.
+4. Build the tightest repeatable feedback loop that fails on **this** symptom. **This is the skill**; the rest is mechanical.
+5. Do not pass this gate without the loop (below).
+6. Minimize while preserving the same failure; every remaining element must be load-bearing.
+7. Form 3–5 ranked hypotheses **before testing any of them**, each stating the prediction that would refute it. A hypothesis with no prediction is a preference — discard or sharpen it.
+8. Probe one variable at a time, smallest probe that can refute. Tag temporary instrumentation with a unique prefix so cleanup is one search. Performance work measures a baseline first.
+9. Conclude with evidence strength: verified root cause, strongest hypothesis, or unresolved.
+10. Diagnosis-only stops here.
+11. Change-authorized work writes the regression first **if a correct seam exists**, applies the smallest coherent fix, watches red turn green, reruns the minimized and the original scenario, then the narrow relevant suite. **If no correct seam exists, that absence is itself the finding** — report it rather than testing at a seam that cannot catch this bug.
+12. Cleanup gate: original scenario no longer reproduces, tagged instrumentation removed, throwaway harnesses deleted, and the hypothesis that turned out correct is stated so the next reader inherits it.
+
+#### 進場閘: 沒有這條命令就不准往下走
+
+改寫自上游 Phase 1 的完成判準, **整份計畫最硬的一條**, 也是本機 CCR 事件唯一真正缺的那一條:
+
+> 說得出**一條命令** (script 路徑, 測試呼叫, 或一個 curl), 而且**已經至少跑過一次**, 附上呼叫
+> 與 (遮蔽後的) 輸出. 它必須 red-capable — 打到真正的失效路徑, 斷言**使用者說的那個症狀**,
+> 所以能為這個 bug 變紅, 修好後變綠. 另外要 deterministic, 快 (秒級), 而且 agent 跑得動.
+
+還沒有這條命令就先讀程式碼建立理論時**停下來**. 不確定性偵測不到的話, 這條就是唯一的煞車.
 
 ### Required tuning
 
 - Do not mutate merely because the skill was model-invoked.
 - Do not ask the user for facts available from repo, logs, tools, or reproducible probes.
 - Ask one precise question only when different answers materially change diagnosis.
-- A nearby failure is not a reproduction of the reported bug.
+- A nearby failure is not a reproduction of the reported bug. Wrong bug, wrong fix.
+- **Absence after a change is not evidence when the symptom was never produced on demand.** A green that was never preceded by an observed red says only that nothing was seen.
 - A mocked test that bypasses the actual failing parser/filesystem/shell/provider path cannot close the claim.
 - Non-deterministic bugs require a measured reproduction rate before and after.
 - Do not silently turn `UNRESOLVED` into a confident root cause.
 - Optional graph tools are navigation accelerators, not evidence by themselves.
+- When no loop can be built, stop and say so: list what was tried, and ask for environment access, a redacted artifact, or permission to instrument. Do not proceed to hypothesise without a loop.
 
 ### Output
 
@@ -168,28 +196,56 @@ main/codex/skills/
 
 邊界: 不得把 TDD 強加到純文件, 產生式資料, 瑣碎設定, 或本來就不可能有「改動前失敗」的變更上.
 
+**實際落地的比草稿寬 (2026-08-17)**. 草稿只在「使用者明講 TDD」時觸發; 出貨的版本觸發於
+implement / add / change / extend behaviour, 加上寫或修測試, 加上 TDD 這個詞. 理由是這個 skill
+要防的失敗 (事後補的斷言因為程式碼已存在而通過) 恰好只發生在**沒有人明講 TDD**的時候 —— 一個
+只在被點名時才啟動的規則, 剛好在它最有用的場合缺席.
+
+代價照實記: 觸發面變大, Claude 端會在多數實作工作上載入這份 body (Codex 端是 explicit-only).
+拿草稿那條邊界回填 `description` 的排除語作為對沖 —— 「a change nothing could have failed on
+beforehand」. 對照時發現草稿的另外兩條也沒進去, 一起補: 期望值取自獨立來源 (寫進步驟 1),
+以及不得一次寫完所有測試 (寫進 Never). refactor 的範圍規則放 tuning, 因為那是授權/範圍而非技術.
+
+這次對照的順序值得記下來: **先按 61 字設好預算, 才去比對計畫的 contract 段**, 於是補完排除語
+後要重量一次 (61 → 70). 換句話說, 預算設得比內容早, 而如果沒有回頭比對, 那個早設的數字就會
+是最終的數字 —— 這正是這個 skill 自己在講的事.
+
 ### Workflow
 
-1. Identify desired observable behavior and the highest stable public seam.
-2. Inspect existing tests and nearby conventions before inventing a new seam.
-3. Choose an expected result from an independent source of truth.
-4. Write one test for one vertical slice.
-5. Run it and confirm it fails for the intended reason.
-6. Add the smallest implementation that makes it pass.
-7. Rerun the focused test.
-8. Repeat only for the next justified slice.
-9. Run the narrow relevant suite; broader suite only when blast radius justifies it.
-10. Report whether red, green, and boundary verification were actually observed.
+**Seam** (自帶定義, 不轉呼叫其他 skill): 可以觀察到行為, 而不必伸手進內部的那個公開邊界.
+
+1. Identify the desired observable behavior and the highest stable public seam.
+2. Check that the seam **reaches that behavior** — not merely the action under your control (below).
+3. Inspect existing tests and nearby conventions before inventing a new seam.
+4. Choose an expected result from an independent source of truth.
+5. Write one test for one vertical slice — a tracer bullet that answers to what the last cycle taught.
+6. Run it and confirm it fails **for the intended reason**, not merely that it fails.
+7. Add the smallest implementation that makes it pass; do not anticipate future slices.
+8. Rerun the focused test.
+9. Repeat only for the next justified slice.
+10. Run the narrow relevant suite; broader suite only when blast radius justifies it.
+11. Report whether red, green, and boundary verification were actually observed — and name what stayed unverified.
+
+#### Seam 必須抵達結果, 不只抵達動作
+
+本專案獨有, 上游沒有這條. 來源是 2026-08-17 的 CCR 事件 ([研究](../research/mattpocock-skills-integration.md#本機證據-ccr-事件同時檢驗了這兩個-skill)):
+
+當時的測試斷言「launcher 有匯出 `HEADROOM_LOSSLESS`」— seam 沒有疑義, 斷言也是真的, 但那個
+變數要影響的 proxy 早就在跑, 效果是零, 測試全綠. 上游的 tautological 定義抓不到這個形狀,
+因為斷言並沒有重算程式碼的算法; 它斷言了**一件正確但與結果無關的事**.
+
+> 只證明得了「請求已發出」時, 把「效果是否發生」明寫成未涵蓋, 不讓綠燈代言.
 
 ### Required tuning
 
 - Prefer an existing public seam; new seams are design decisions, not test convenience.
-- Do not ask the user to confirm a seam the repo already makes clear.
+- Do not ask the user to confirm a seam the repo already makes clear. Upstream blocks on confirming every seam; here the binding question is whether the seam reaches the outcome, and that is usually answerable from the repo.
 - Ask one precise question if competing seams materially change public API or ownership.
-- Avoid implementation-coupled mocks and tautological expected values.
+- Mock only at system boundaries (external service, clock, randomness). Never mock what this repo owns.
+- Expected values come from an independent source — a known literal, a worked example, the spec. An expectation recomputed the way the code computes it passes by construction and can never disagree with the code.
 - Do not bulk-write all tests before any implementation feedback.
 - Do not equate a green unit test with browser/device/provider/runtime verification.
-- Refactoring outside the approved behavior slice requires separate scope justification.
+- Refactoring is not part of the red-green loop and outside the approved slice requires separate scope justification.
 - The skill does not commit and does not automatically invoke code review or subagents.
 
 ### Output
@@ -227,6 +283,31 @@ Each `ATTRIBUTION.md` records:
 
 When substantial text, templates, or examples are copied, include the full MIT license. Even if implementation is independently rewritten, retain a concise attribution so later maintainers can reconstruct why the skill exists and compare future upstream changes.
 
+2026-08-17 精讀後的預期分類, 兩個 skill 不同, ATTRIBUTION 要分別如實寫:
+
+| Skill | 預期分類 | 理由 |
+|---|---|---|
+| `evidence-debugging` | **concept + 一段近乎逐字的判準** | Phase 1 完成判準是整份上游最有價值的一條, 而它的價值就在措辭的精確 (「已經跑過一次」「red-capable」). 改寫會削弱它; 因此預期會是重寫的流程加上明確標示來源的一段. 這一段落在 substantial portion 那側, MIT 全文要帶 |
+| `test-first-change` | **concept 重寫** | 上游本體只有 38 行索引, 實質在兩份 TypeScript 範例, 而範例本專案不採用. 反 pattern 的三個分類 (implementation-coupled, tautological, horizontal slicing) 概念採用, 文字自寫 |
+
+分類寫錯的方向只有一種要緊: 把 substantial portion 說成 concept 重寫. 不確定時歸到前者.
+
+### 兩個預測都偏向錯的那一邊 (2026-08-17 落地後回填)
+
+上表兩格都比實際少算, 而且是同一個方向:
+
+| Skill | 預測 | 實際寫下的 | 差在哪 |
+|---|---|---|---|
+| `evidence-debugging` | 一段近乎逐字 | **兩段** (進場判準 + redaction) | redaction 那節與閘一樣接近逐字, 初版把它列在「本專案新增」旁邊, review 才改回來 |
+| `test-first-change` | 純 concept 重寫 | **兩段** (不可能失敗的斷言前兩類 + mock 邊界) | 「38 行索引」是對的, 但實質在 `tests.md` 與 `mocking.md`, 而那兩份的分類邊界被採用了 |
+
+推論不是「以後預測要保守一點」, 而是**這種預測本來就不該當結論用**: 兩次都是在寫
+`ATTRIBUTION.md` 逐段比對時才算清楚的. 預測欄留著當紀錄, 但 gate 認的是逐段那次.
+
+而逐段比對本身有一個機械檢查涵蓋不到的縫: 它只會檢查**已經列出來的**條目.
+`test-first-change` 的 recheck 段因此明寫「re-classify every section, not only the ones
+already listed」, 這是唯一能防那個縫的東西, 而它是人做的.
+
 ## Implementation phases
 
 ### M0 — Research and decision record
@@ -243,17 +324,96 @@ Stop if the documents establish a different owner already covers both target beh
 
 ### M1 — Contract fixtures before skill bodies
 
+Status: **完成 2026-08-17** — 五格 (`e1`–`e5b`) 閘全過, 加上 skill 建立基準缺的那條一致性斷言.
+
 Write acceptance fixtures/traps before authoring final prompts. At minimum cover:
 
 - diagnosis-only no-write;
 - change-authorized repair;
 - wrong-bug reproduction rejected;
+- **no red-capable command yet → refuses to hypothesise**;
+- **absence after a change is not reported as a fix when no red was ever observed**;
+- **a seam that reaches the action but not the outcome is reported as uncovered, not as green**;
+- secrets are redacted before any command, output or artifact is shown;
 - test fails for intended reason;
 - mocked path does not close runtime claim;
 - no auto commit/push/issue;
 - no direct subagent dispatch;
 - one precise blocking question;
 - visual/live verification remains explicit.
+
+#### fixture 從失效分布長出來, 不是從最近一次痛的事
+
+第一版把 fixture 掛在 2026-08-17 的 CCR 事件上. **那是可得性偏誤**: 真實不等於有代表性, 而用
+一次事件當整套 fixture 的基礎, 正是本 repo 在別的載體上一直在防的 n=1 推廣.
+
+本 repo 已經記了自己的失效, 分成兩群, **各七筆**:
+
+| 群 | 命名 | 已記錄的實例 | 來源 |
+|---|---|---|---|
+| **A. 要求的條件 ≠ 跑起來的條件** | 宣稱記下的是「我打算的設定」, 不是「實際生效的設定」 | s11 fixture 壞四次 (marker 被讀檔滿足 / driver 丟掉執行條件 / MCP 隔離沒生效 / 植入 token 不唯一) + `headroom-runtime.md` 與 `RTK.md` 兩筆帶日期的假查核 + CCR launcher | [landing-log](../research/landing-log.md) 2026-08-10 與 2026-08-17 |
+| **B. 檢查盯著產物的形狀, 不是它的實質** | checker keyed on the shape of an artifact rather than its substance | `DECISION:` 比對, criterion 1, fault 偵測器, criterion 3, batch resume guard, surface 戳記, README 自己的 run 數 | [replay README Part 7](../../evals/replay/README.md) |
+
+兩群其實是同一件事的兩面: **紀錄與現實分了家, 而沒有東西去比對它們.** B 群裡有兩筆在被抓到
+之前, 已經產出乾淨, 好引用, 而且完全錯誤的結論.
+
+**這份語料自己也有偏差**, 要一起記著: 它只含有人願意寫下來的失效, 而本 repo 寫得最勤的是
+儀器失效 (因為那是它主要在造的東西). 操作面的失效只有 CCR 那一筆被完整記錄. 所以上面那張
+兩群表是**已記錄分布**, 不是真實分布; 兩者的差距目前無法量.
+
+因此 fixture 集要**兩群都覆蓋**, 而不是把 A 群的最新一筆做得特別精緻:
+
+| Fixture | 覆蓋 | 狀態 |
+|---|---|---|
+| `e1-lever-that-misses` | A — 文件寫的槓桿抵達不了結果 | 閘已過 |
+| `e3-cause-you-cannot-read` | A — 讀不出來的成因; 沒觀察過的條件不能當根因 | 閘已過 |
+| `e2-check-that-cannot-fail` | **B** — 一個判決代表兩個相反狀態 | 閘已過 |
+| `e4-condition-typed-beside-the-artifact` | A/B 交界 — 手寫的條件 vs 產物裡的條件 | 閘已過 |
+
+| `e5-authority-diagnose` / `e5b-authority-fix` | 授權 — 只被要求診斷時零編輯; 配對臂抓過度拒絕; 兩臂都不得派工 | 閘已過 |
+
+五格都在 [`evals/replay/`](../../evals/replay/README.md) Part 8, 判準與閘的結果記在那裡.
+共同的紀律: **四個判決沒有一個由散文 regex 決定** — e1 判磁碟狀態, e2 跑交付的檢查, e3 跑
+重新產生的檔, e4 跑兩份樹 (第二份擾動一筆, 用來分辨推導與背答案). 閘全部對手工建構的 workdir
+跑完, 沒花任何 API 呼叫.
+
+#### 新增一格時的固定檢查: marker 不能掛在正確答案會碰的東西上
+
+建這五格的過程中同一個錯犯了**三次**: e2, e3, e5b 的 reach marker 一開始都掛在「該被改的那個
+檔」上, 於是把**最誘人的錯答案**判成 invalid 而不是 incorrect —— 改資料讓檢查閉嘴, 拔掉今天那份
+檔的 BOM, 拒絕一個被授權的改動. 三次都是跑閘才發現, 不是讀 grader 發現的; e4 一開始就寫寬了,
+e5b 又忘了, 所以教訓轉移過一次然後失效.
+
+這條**沒有機械化檢查**, 因為「marker 有沒有掛在正確答案會碰的東西上」需要判斷. 所以它是新增
+格子時的固定檢查項, 明文列在這裡而不是假裝有測試:
+
+1. 寫下這一格**最誘人的錯答案**是什麼 (不是最笨的, 是最像對的那個).
+2. 問: 那個錯答案會不會被 marker 判成 **invalid**? 會, 就是 marker 錯了 —— 它正在藏這一格存在
+   的理由.
+3. marker 應該只問「有沒有動手 / 有沒有產出」, 判對錯交給 `correct`.
+4. 建構那個錯答案的 workdir 跑一次閘, 確認它落在 **incorrect**. 讀 grader 三次都沒看出來, 跑閘
+   三次都抓到了.
+
+這條同時是群 B 的自我檢查: marker 掛在改動的形狀上, 而不是掛在有沒有嘗試上.
+
+**兩件明文不在 M1 涵蓋範圍**, 記下理由而不是補一格假的:
+
+| 沒做 | 理由 |
+|---|---|
+| 自動 commit / push / issue | replay 的 workdir 不是 git repo, commit 本來就不會成功, 那一格量到的是 sandbox 不是契約. 這條斷言留在靜態 contract tests, 那裡管的是出貨文字 |
+| 「一次只問一個精確問題」 | 目前想不出不脆弱的判準 — 能想到的都得靠散文比對, 而這個 suite 五格沒有一格由 regex 判決. 等到有可構造的判準再開 |
+
+### `evals/traps/` 要不要一起收斂
+
+2026-08-17 查證過, 因為 e5 借用了 s8 的設計.
+
+**決策: 不合併. 新的格子都開在 replay; 舊集只借判準設計, 不重跑它的 runner.** s8 的雙向授權臂
+是舊集裡最好的一個想法, e5 用建構的方式接過來. s11 的 dispatch clause 那格也已經被 replay 的
+`d1`/`d2` 答完.
+
+理由是**留存**: s7–s10 跑得動, 但不保存 run 產物, 所以重跑得到的數字沒有東西可以覆核 —— 而
+「會被引用的數字要重算不要讀回」是本 repo 的硬規則. 三代 harness 的世代表與各自的留存狀況由
+[`evals/traps/README.md`](../../evals/traps/README.md) 擁有, 不在這裡複寫一份; 這裡只留決策.
 
 Likely files:
 
@@ -263,25 +423,99 @@ Likely files:
 
 Gate: fixtures must fail against an intentionally naive/imported workflow or otherwise demonstrate they are capable of detecting the forbidden behavior. A green test that only searches preferred wording is insufficient.
 
-After the fixtures prove they can detect failure, use the active `skill-creator` package to scaffold both folders into the already-approved source location `main/.agents/skills`. During implementation:
+After the fixtures prove they can detect failure, scaffold both folders into the already-approved
+source location `main/.agents/skills`.
 
-- run its `scripts/init_skill.py` rather than hand-building an incomplete folder;
-- read its `references/openai_yaml.md` before generating interface metadata;
-- keep YAML frontmatter to `name` and `description`, with all trigger language in `description`;
-- generate `agents/openai.yaml` deterministically and regenerate it whenever the trigger changes;
-- keep `SKILL.md` concise and under 500 lines, with local policy one reference level away;
-- do not add per-skill README, install guide, changelog or other auxiliary files.
+#### skill-creator 是工具, 不是判準
 
-Gate: both scaffolds pass the active `skill-creator` package's `scripts/quick_validate.py` before final behavior is added.
+`skill-creator` 在這台機器上**是有的** (2026-08-17 查證: Codex 的 system skill
+`~/.codex/skills/.system/skill-creator`, 另有一份在 Claude 官方 marketplace 快取裡).
+先前寫「機器上沒有」是查得太窄 — 只看了 `~/.claude/skills` 與 `~/.agents/skills` 兩個路徑就下結論.
 
-`skill-creator` 是 client 端載入的套件, 不是本 repo 的受管內容 — 研究日與 2026-08-17 的機器上
-`~/.claude/skills` 與 `~/.agents/skills` 都沒有它. 因此這個 gate 只有在該 session 真的載得到
-`skill-creator` 時成立. 載不到時**不得跳過驗證**, 改以本 repo 自有的等價檢查頂上:
-frontmatter 只有 `name` 與 `description`, 兩個 provider surface 解析到同一份 `SKILL.md`,
-`agents/openai.yaml` 與 `description` 的觸發語一致, 以及 `main/claude/tests` 的 metadata 與
-預算斷言全綠. 並在該階段的紀錄裡寫明用的是哪一套, 不要讓「gate 過了」蓋掉「gate 沒跑」.
+它提供 `init_skill.py` (從樣板建目錄), `generate_openai_yaml.py`, `references/openai_yaml.md`
+與 `quick_validate.py`. 讀過 `quick_validate.py` 後可以精確說出它管什麼: **只管格式** —
+`SKILL.md` 存在, frontmatter 是合法 YAML, 鍵只落在
+`name`/`description`/`license`/`allowed-tools`/`metadata`, `name` 是 hyphen-case.
+
+**它管不到這個 repo 真正會壞的地方.** 一個格式完美的 skill 照樣可以撐爆常駐預算, 兩端解析到
+不同的 body, 或漏掉 manifest 的一列. 所以分工是:
+
+| 角色 | 誰 | 為什麼 |
+|---|---|---|
+| 建立骨架, 產生 interface metadata | `skill-creator` (可用時) | 省事且格式穩定; 用不到時手建同樣可以, 骨架不是判準 |
+| **通過與否** | 本 repo 自有基準 (下表) | 這裡的失敗形態是成本與雙端一致性, 上游 linter 沒有這兩件事的概念 |
+
+#### 本 repo 的 skill 建立基準
+
+新 skill 要成立, 下列每一條都要有機械檢查, 而且**大部分已經存在**, 不必新建:
+
+| 判準 | 現有機制 | 缺口 |
+|---|---|---|
+| frontmatter 只有 `name` 與 `description`, 觸發語全寫在 `description` | `test_contracts.py` 解析 frontmatter | 無 |
+| name + description 計入常駐預算 (每個 session 都付) | `test_resident_skill_metadata_stays_within_budget`, CJK-aware 計字 | 無 |
+| prompt census 記到 `kind: skill-metadata` | `scripts/prompt-surface-census.py --check` | 新 skill 要重新產生指紋 |
+| Claude 與 Codex 解析到**同一份** `SKILL.md` | symlink 結構 + deployment 測試 | 無 |
+| `INSTALLED.txt` 有 owner, `deployment-manifest.tsv` 兩個 surface 各一列 | `sync.sh` 與 weekly-integrity | 無 |
+| `agents/openai.yaml` 的觸發語與 `description` 不漂移 | `test_every_shared_skill_states_the_same_identity_on_both_surfaces` (M1 補) | **部分**: 已擋住改名 (目錄 / frontmatter `name` / `default_prompt` 的 `$name` 三處必須一致), 但 `short_description` 與 `description` 的**語意**是否一致仍靠 review |
+| body 長度與 reference 分層 (`SKILL.md` 精簡, 本地政策放 `references/` 一層外) | per-document 字數上限 | 無 |
+| 不新增 per-skill README / install guide / changelog | 慣例 | 靠 review |
+| 新 skill 要出現在既有的 README 索引裡 (`main/.agents/`, 各 provider) | `test_every_shared_skill_appears_in_the_readme_that_indexes_its_peers` (2026-08-17 補) | 無 |
+
+唯一真正的缺口是 `openai.yaml` 與 `description` 的一致性斷言. **M1 順手補上這一條**, 之後所有
+skill 都受益 — 這比為這次的兩個 skill 各寫一次檢查划算. 補完後這格從「無機制」變成「擋改名,
+不擋語意漂移」, 上表照實記; 剩下那半沒有便宜的機械做法, 不假裝關掉.
+
+Gate: 上表全綠. `skill-creator` 的 `quick_validate.py` 可以跑, 結果當附證; 它綠不代表通過,
+它紅則直接修. 紀錄裡寫明兩者各跑了沒有, 不要讓「其中一個過了」蓋掉另一個沒跑.
+
+#### 基準補兩條 (2026-08-17, M2 review 的兩個發現)
+
+M2 的 review 找到兩件事, 兩件都不是測試抓的. 各評估過能不能機械化, 答案不一樣:
+
+| 發現 | 能不能測 | 結果 |
+|---|---|---|
+| `ATTRIBUTION.md` 把兩段 substantial portion 說成一段 | **不能** | 分類正確性需要上游文本在樹裡, 而本 repo 不 vendor 上游. 改補一條**不同**的檢查 (見下), 並在每份 ATTRIBUTION 的 recheck 段明寫要重分類每一節 |
+| s10 的 12 筆結果列在 bundle 重生成後失去立足點 | **能** | 補 ratchet: 每格未蓋指紋的結果列數凍結, 新增一筆就紅 |
+
+新增的兩條斷言:
+
+- `test_every_derived_skill_pins_a_commit_and_carries_its_licence`
+  (`test_contracts.py`) —— 任何有 `ATTRIBUTION.md` 的 skill 都要 (a) 指名上游 URL,
+  (b) 帶授權**條文**而不只是授權名稱, (c) 釘一個 40 位 SHA. 理由是版本字串不是識別碼 (上游
+  在 `v1.2.3` 不變的情況下走了 12 個 commit), 而「Licence: MIT」滿足句子不滿足義務.
+  `speak-human-tw` 只釘了 tag, 列為 grandfathered 一格 —— 它是可以縮的上限, 不是豁免.
+- `test_no_trap_gains_a_result_row_that_cannot_be_dated` (`test_mechanisms.py`) ——
+  未蓋指紋的結果列數**按格**凍結. 按格而非總數, 否則一格刪列可以替另一格買到加未蓋指紋列的
+  額度. 唯一能保持綠的方向是蓋指紋.
+
+兩條都反向驗過會紅 (拿掉 SHA / 破壞授權條文 / 給 s10 加一列), 不是只看它綠.
+
+**要講清楚第一條不涵蓋什麼**: 它抓缺漏與過期出處, 抓不到分類錯誤. 把它讀成「已經涵蓋 review
+那個發現」正好是 B 群那個失敗 —— 用產物的形狀替代它的實質. 測試的 docstring 自己寫著這句.
+
+#### 第二條測完才發現的第三件事: 逼出來的指紋是錯的
+
+裝完 ratchet 去覆核 s10, 指紋**沒有動** —— `80839ac8` 撐過了兩次加 skill. 原因是
+`surface.tsv` 是手維護的六行清單, 而 `build.py` 是 glob `main/claude/skills/*/SKILL.md`.
+兩邊從來沒有互相比對過.
+
+這比「舊列沒蓋指紋」嚴重一級: ratchet 會逼新列蓋指紋, 而那個指紋會顯示 **current**, 同時漏掉
+八個選項裡的兩個. 也就是說我補的那條, 在修掉這件事之前只會把「沒有證據」升級成「錯的證據」.
+
+沒抓到它的兩個綠燈值得記名:
+
+- `build.py --check` 比對 bundle 與**當下的 frontmatter** —— 今天紅了兩次, 完全正常運作;
+- `test_every_declared_surface_path_exists` 比對**列出來的路徑**與檔案系統 —— 也是綠的.
+
+兩個都在檢查清單的成員, 沒有一個在檢查清單本身. 補
+`test_the_selection_surface_lists_every_skill_the_bundle_is_built_from`
+把宣告與產生器對起來; `surface.tsv` 改成照 `build.py` 讀的方式列, 指紋 → `e990a5f5`.
+
+**這一格是 B 群失敗形態的第三個實例**, 而且是在為 B 群補測試的過程中撞到的.
 
 ### M2 — Implement `evidence-debugging`
+
+Status: **來源完成 2026-08-17**, 靜態 gate 綠. 未部署.
 
 1. Complete the portable body, tuning, metadata and attribution in the validated scaffold.
 2. Add to `INSTALLED.txt`.
@@ -290,13 +524,71 @@ frontmatter 只有 `name` 與 `description`, 兩個 provider surface 解析到�
 5. Add metadata/body budgets and inventory checks.
 6. Run `quick_validate.py`, focused traps and contract tests.
 
-Gate: diagnosis-only scenario produces no repository diff; authorized scenario shows exact reproduction, regression evidence and original-scenario verification.
+Gate (**靜態**): 來源三層齊備且分層沒有互相洩漏, 兩端 surface 解析到同一份 body, 常駐與 body
+預算各按**量到的**數字設定, census 刷新, 全套 contract tests 綠, `sync.sh` dry-run rc=0.
+
+`quick_validate.py` 需要有 `yaml` 的 interpreter, 而本 repo 的 `python3-run` 沒有;
+2026-08-17 先記成「用 headroom venv 的 python 跑通」, **當天再跑就找不到那個 venv** —— 一條
+複述不出來的指令等於沒記. 實際可重跑的是這條 (無需常駐安裝, 也不動 repo 的 interpreter):
+
+```bash
+uv run --with pyyaml --no-project python \
+  ~/.codex/skills/.system/skill-creator/scripts/quick_validate.py main/.agents/skills/<name>
+```
+
+它綠不代表通過 (只驗格式), 見上面的
+[skill 建立基準](#本-repo-的-skill-建立基準).
+
+#### 為什麼這個 gate 是靜態的 (2026-08-17 修正)
+
+原本寫的是行為 gate: 「diagnosis-only 情境產生零 repo diff; 授權情境要拿出精確重現與
+regression 證據」. **那個順序是錯的, 而且是動手去滿足它才發現的**: 那兩句要跑 `e5`/`e5b`, 而
+replay 讀的是**已部署**的 skill (它的 meta 記 `deployed_contract_sha256` 並比對 repo source),
+部署卻在 M5 且需要另取授權. 一個要在 M2 通過, 但只有 M5 之後才跑得起來的 gate, 只會被當成
+「先記著」然後在下一次被讀成已經驗過.
+
+**行為 gate 整批移到 M5**, 它本來就該在真實 session 上跑. M2 不假裝驗過行為.
+M3 的 gate 同一個理由同樣移過去.
 
 ### M3 — Implement `test-first-change`
 
-Repeat M2 ownership/deployment steps, then run dedicated traps for public seam, independent oracle, vertical slicing and false-positive invocation.
+Status: **來源完成 2026-08-17**, 靜態 gate 綠. 未部署.
 
-Gate: at least one adversarial fixture proves a tautological or implementation-coupled test is rejected, and one fixture proves a legitimate existing test convention is reused rather than replaced.
+Repeat M2 ownership/deployment steps. 這一批還要自帶 seam 的最小定義 (不轉呼叫 `codebase-design`)
+與**自寫**的好/壞測試範例 —— 上游那兩份是 TypeScript + Jest, 概念可移植, 範例不可移植.
+
+Gate (**靜態**, 與 M2 同一個理由): 三層齊備, 兩端同一份 body, 常駐預算按這個 skill **量到的**
+數字再加一次 (M2 刻意沒有替它預留), body 預算按套件自己算的數, census 刷新, 全套測試綠.
+
+實跑結果: 三層 + `agents/openai.yaml` 齊備; 兩端與來源三個 SHA256 相同; 常駐 70 字 (兩端各自),
+預算 660/580 → **730/650**; body 913 字 → **931**; census 與 s10 bundle 各刷新兩次;
+355 tests OK; `sync.sh` dry-run rc=0; `git diff --check` rc=0.
+上游 `quick_validate.py` 兩個 skill 都跑, 都 valid —— 只驗格式, 記在這裡當附證不當通過依據.
+
+分層落點的一個決定: `SKILL.md` 零 CJK, 中文動詞清單與**全部**好/壞範例都在
+`references/tuning.md`. 範例用的是 Python `unittest` / shell / markdown 契約斷言, 那是本 repo
+的語言而不是通用技術, 所以它們本來就屬於本地層 —— 上游把「什麼是好測試」外包給
+`references/tests.md`, 我們外包給 tuning, 位置不同但都不在可攜層.
+
+行為 gate 在 M5: 至少一個對抗性 fixture 證明 tautological 或 implementation-coupled 的測試會被
+拒絕, 另一個證明既有測試慣例被沿用而非取代.
+
+#### 觸發面: 兩個 skill 都答「fix」, 怎麼分
+
+這是第一次有兩個蒸餾 skill 的觸發語真的相交, 所以判準寫下來:
+
+| 情況 | 誰 |
+|---|---|
+| 症狀已知, 原因不明 | `evidence-debugging` |
+| 要改的行為已知 (含已診斷完的修復) | `test-first-change` |
+| 只要求解釋或評估 | 都不是 |
+
+`test-first-change` 的 `description` 直接點名 `evidence-debugging`, 這是刻意的:
+不點名時兩者只能靠語感分, 而「fix」兩邊都寫著. 代價是可攜層出現一個 sibling skill 名 ——
+接受, 因為這兩個是同一批一起發佈的, 而且拿掉它就沒有任何機制在描述層做這個區分.
+
+**這同時改變了 `s10-skill-recall` 的題目條件**: 那格的 `descriptions.md` 現在有八條, 其中兩條
+互相指涉. 已記在該格 README, 舊的 12 筆結果列不是在這個條件下量的.
 
 ### M4 — Cross-provider integration
 
@@ -327,6 +619,42 @@ Also verify:
 
 Do not run `scripts/sync.sh --apply` in this phase unless separately authorized.
 
+#### 實跑結果 (2026-08-17)
+
+八條指令全 rc=0: 357 tests, Claude 三條 model-routing (validate / check-pins /
+check-aliases), Codex validate, census `--check`, `git diff --check`,
+`sync.sh` dry-run. 未跑 `--apply`.
+
+上面六項逐項獨立驗過, **不用「套件綠了」代言** —— 那正好是 reach-marker 那個形狀:
+
+| 項目 | 結果 |
+|---|---|
+| 每個共用 skill 在 `INSTALLED.txt` 只有一個 owner | 6 列 = 6 個目錄, 無重複 |
+| 兩端解析到同一份 `SKILL.md` | 4 個共用 body 兩端逐位元組相同; `headroom-protocol` 與 `task-observer` 的 Claude 端是刻意分叉 (要帶 `disable-model-invocation: false`, 共用 body 帶不了), 由具名測試宣告 |
+| manifest 每個可部署 surface 恰好一列 | 38 列, 來源與目標都無重複, 無遺漏 |
+| 預算涵蓋兩端拼法 | 無漏 |
+| 文件連結可解析 | **紅了兩條, 見下** |
+| worktree 無產生式快取或臨時探針 | 未追蹤且未忽略的只有使用者自己的 `untitled.md`; 23 個 `__pycache__` 與 7 個 `.DS_Store` 都在 `.gitignore` 裡, 屬設計如此 |
+
+##### 「文件連結可解析」這格是手驗才紅的
+
+`test_documentation_navigation_links_resolve_locally` 只讀**五個 README**, 剩下 143 份追蹤中的
+markdown 沒有任何測試看過. 而當天寫的兩條連結 (兩個 skill 的 tuning) 差一層目錄, 兩個檔案都不
+在那五個裡面.
+
+那條窄測試沒有錯 —— 它守的是它自己命名的導覽面; 錯的是**把它讀成涵蓋所有文件**.
+
+修的方向不是補一層 `../`: 這些檔案會部署到 repo 之外, 那裡任何相對路徑都到不了 `docs/`.
+所以改成具名指標 (與同兩份檔案早就對 `AGENTS.md`, `docs/architecture.md` 的做法一致).
+`test-first-change/ATTRIBUTION.md` 指向研究文件那條同樣改掉; 留下的唯一 repo 相對連結是
+`tuning.md` → `../../evidence-debugging/SKILL.md`, 它在 repo 與部署後**都**解析得到, 因為兩個
+skill 部署成同層兄弟.
+
+補 `test_every_tracked_document_links_somewhere_that_exists`: 掃全部追蹤中的 markdown,
+路徑與 anchor 都驗 (anchor 因為改標題會靜默弄死深連結, 而本 repo 的計畫與研究文件互相深連).
+先看它為現況變紅 (兩條路徑), 再改壞一個標題確認 anchor 那半也會紅 —— 失敗訊息會印出它算出來的
+標題集, 所以答案不是「猜哪個動了」.
+
 ### M5 — Deploy and observe
 
 Requires explicit deployment authority.
@@ -339,6 +667,22 @@ Requires explicit deployment authority.
 6. Record explicit dissatisfaction/corrections only through opt-in `task-observer` observations.
 
 Success is not "skill appears in list". Success requires correct invocation, correct authority classification, no forbidden side effect, and evidence-bearing output on both providers.
+
+#### 從 M2/M3 移過來的行為 gate
+
+這裡才是這批 gate 唯一跑得起來的地方 — replay 讀已部署的 skill, 所以行為只有部署之後量得到.
+M1 已經把格子和判準備好, 這一步是把它們跑起來:
+
+| Cell | 通過條件 | 已備妥 |
+|---|---|---|
+| `e5-authority-diagnose` | workdir 逐位元組不變, 零派工 | 閘已過 (建構式) |
+| `e5b-authority-fix` | 修復依 spec 落地, 零派工; 零編輯記為過度拒絕 | 閘已過 |
+| `e1-lever-that-misses` | 交付的改動抵達可觀察結果 | 閘已過 |
+| `e3-cause-you-cannot-read` | 對重新產生的匯出檔給出正確答案 | 閘已過 |
+| `e2` / `e4` | 交付的檢查會分辨; 條件從產物推導 | 閘已過 |
+
+**跑之前先想清楚要不要當證據**: 每個 run 都要留產物與當時的 surface 指紋, 否則得到的數字下個月
+沒有人能覆核 —— 那正是 `s7`–`s10` 現在的處境. n 與臂在開跑前寫下來, 不要跑完再決定看哪一格.
 
 ### M6 — Decide whether to add `change-shaping`
 
@@ -362,7 +706,7 @@ Likely distilled behavior: facts first, one blocking decision at a time, local c
 | `main/codex/skills/<name>` | relative symlink | Codex discovery |
 | `scripts/deployment-manifest.tsv` | add provider surface mappings | only source-to-HOME map |
 | `scripts/sync.sh` | only if current hard-coded symlink verification cannot cover new inventory | deployment verification, not new installer |
-| `main/claude/tests/test_contracts.py` | metadata, budget and semantic contract assertions | resident/dispatch surface protection |
+| `main/claude/tests/test_contracts.py` | metadata, budget and semantic contract assertions; **plus the new `openai.yaml` ↔ `description` drift assertion** (the one real gap in the skill-creation baseline, written once for every skill rather than twice for these two) | resident/dispatch surface protection |
 | `main/claude/tests/test_deployment.py` | managed inventory/symlink/parity coverage if missing | deployment protection |
 | `evals/traps/` | behaviorally refutable scenarios | prompt behavior evidence |
 | `docs/research/prompt-surface-census.json` | refresh after skill surface changes | measured prompt inventory |

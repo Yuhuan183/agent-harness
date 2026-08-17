@@ -1106,7 +1106,17 @@ class DocumentationBudgetTests(unittest.TestCase):
         # reason, exactly like raising a document budget.
         # Claude carries one more skill than Codex (baton-dispatch and
         # provider-routing against the single leaf-dispatch).
-        metadata_budgets = {"claude": 620, "codex": 540}
+        # Raised 620/540 -> 660/580 on 2026-08-17 for `evidence-debugging`,
+        # measured at 62 resident words on each provider against 25 of headroom.
+        # Sized to what was measured and nothing more, which is why the same day
+        # raised it again: 660/580 -> 730/650 for `test-first-change`, measured
+        # at 70 words on each provider. The second raise is the point of the
+        # first one's restraint - a ceiling left for a body not yet written is a
+        # budget granted on an estimate, and this description was measured
+        # twice, at 61 and then 70, because comparing it against the plan's own
+        # contract section found an exclusion missing from it. A number set
+        # before that comparison would have been the one that stuck.
+        metadata_budgets = {"claude": 730, "codex": 650}
         # The widest legitimate description today is speak-human-tw at 176: it
         # states its triggers twice, in zh-TW and English, because it is the
         # one skill invoked by users in either language.
@@ -1401,6 +1411,26 @@ class DocumentationBudgetTests(unittest.TestCase):
             ".codex/skills/headroom-protocol/SKILL.md": 235,
             ".claude/skills/task-observer/SKILL.md": 145,
             ".codex/skills/task-observer/SKILL.md": 770,
+            # One source, symlinked to both providers: the plan forbids a wrapper
+            # fork without refutable runtime evidence that the two sides need
+            # different semantics, and there is none.
+            #
+            # 932 was set from "measured 914", and the file is 929 - so the
+            # ceiling delivered 0.3% instead of the ~2% the comment above claims
+            # for this tier, and said in writing that it had. Corrected 2026-08-17
+            # to the real measurement, 929 + ~2%. The 914 was taken mid-edit and
+            # never re-read; a number recorded next to what it measured is only
+            # worth anything if it can be recomputed from the file, which this one
+            # could not. Not a refill: nothing needed to fit.
+            ".claude/skills/evidence-debugging/SKILL.md": 947,
+            ".codex/skills/evidence-debugging/SKILL.md": 947,
+            # Same single source, same reasoning. Measured 913 + ~2%. Its worked
+            # examples are not in here: upstream `tdd` is 38 lines of index whose
+            # substance lives in two TypeScript references, and the replacements
+            # are written in this repo's own languages, which makes them local
+            # content. They live in `references/tuning.md`.
+            ".claude/skills/test-first-change/SKILL.md": 931,
+            ".codex/skills/test-first-change/SKILL.md": 931,
         }
         self.assertEqual(
             {path for path in budgets if "/skills/" in path},
@@ -1484,10 +1514,23 @@ class DocumentationBudgetTests(unittest.TestCase):
         match data - so a failure here is drift and never a false positive.
         Quotes and dashes are excluded because they have no half-width form,
         which is rule 7's own carve-out.
+
+        Tracked files only, and the sentence above about false positives is why.
+        On 2026-08-17 an untracked note at the repo root turned this red — full
+        width throughout, and correctly so, because it was nobody's deliverable
+        and this rule is about what ships. A guard that fires on a scratch file
+        in a dirty worktree teaches people to ignore it. `git ls-files` is the
+        same boundary `scripts/evidence-check.py` already uses, and anything
+        committed enters the scope on the same commit that adds it.
         """
         convertible = "，。、：；？！（）％＃＆＊＋－／＜＝＞＠［＼］＾＿｀｛｜｝"
+        tracked = {
+            (ROOT / name).resolve()
+            for name in git("ls-files", "*.md").stdout.split()}
         offenders = {}
         for path in sorted(ROOT.glob("docs/**/*.md")) + sorted(ROOT.glob("*.md")):
+            if path.resolve() not in tracked:
+                continue
             marks = sorted({character
                             for character in path.read_text(encoding="utf-8")
                             if character in convertible})
@@ -1530,6 +1573,49 @@ class DocumentationBudgetTests(unittest.TestCase):
                     missing.append(f"{path}: {target}")
         self.assertEqual(missing, [])
 
+    def test_every_tracked_document_links_somewhere_that_exists(self) -> None:
+        """The test above reads five README files. Nothing read the other 143.
+
+        Found on 2026-08-17 by checking M4's "documentation links resolve" item
+        by hand instead of reading it off a green suite: two links written the
+        same day, in the two new skills' tuning files, were off by one directory
+        level and no test looked at either file. The narrow test was not wrong -
+        it guards the navigation surface it names - it was just being read as
+        cover for every document.
+
+        Anchors are checked too, because a renamed heading kills a deep link
+        silently and this repo uses them (the plan and research docs link into
+        each other's sections). The slug rule is calibrated against the 40
+        anchors currently in this tree, English and CJK - it is not GitHub's
+        algorithm and should not be described as one, so a heading using
+        punctuation this repo has not used yet could produce a false red. On any
+        mismatch the message prints the headings it computed, which makes that
+        case one glance to tell apart from a real break.
+        """
+        link = re.compile(r"\[[^\]]*\]\(([^)#\s]+)(#[^)\s]*)?\)")
+        broken = []
+        tracked = git("ls-files", "*.md").stdout.split()
+        for name in tracked:
+            path = ROOT / name
+            for target, anchor in link.findall(path.read_text(encoding="utf-8")):
+                if target.startswith(("http://", "https://", "mailto:")):
+                    continue
+                dest = (path.parent / target).resolve()
+                if not dest.exists():
+                    broken.append(f"{name} -> {target}")
+                    continue
+                if not anchor or dest.suffix != ".md":
+                    continue
+                headings = {
+                    re.sub(r"[^\w一-鿿-]", "", head.lower().replace(" ", "-"))
+                    for head in re.findall(
+                        r"^#+\s+(.*)$", dest.read_text(encoding="utf-8"), re.M)}
+                if anchor[1:].lower() not in headings:
+                    broken.append(
+                        f"{name} -> {target}{anchor}: no such heading in "
+                        f"{target}; it has {sorted(headings)}")
+        self.assertEqual([], broken, f"{len(tracked)} tracked documents scanned")
+
     def test_documented_baseline_matches_runtime_contract(self) -> None:
         plan = read(".claude/plans/orchestration-plan.md")
         readme = read("README.md")
@@ -1555,6 +1641,134 @@ class DocumentationBudgetTests(unittest.TestCase):
         self.assertIn("stable brief", doc)
         self.assertIn("研究摘要不再複製容易過期的 route 表格", research)
 
+    def test_every_shared_skill_states_the_same_identity_on_both_surfaces(self) -> None:
+        """A skill names itself three times, and a rename can miss one silently.
+
+        The directory, the frontmatter `name`, and the `$name` inside
+        `agents/openai.yaml`'s `default_prompt` are three independent spellings
+        of one identity. Claude routes on the first two; Codex hands the third
+        to the user as the way to invoke the skill. Nothing else compares them,
+        so a rename that updates the folder and the frontmatter — the two a
+        grep for the old name finds — leaves Codex offering a prompt that
+        invokes nothing, and every existing check stays green.
+
+        This is the one gap the skill-creation baseline had: upstream's
+        `skill-creator` validates frontmatter shape and never looks at the
+        Codex interface, while this repo's own checks price the metadata
+        without reading it for agreement. Written once here rather than per
+        skill, so the next skill inherits it.
+        """
+        skills = sorted(
+            p for p in (ROOT / "main/.agents/skills").iterdir() if p.is_dir())
+        self.assertTrue(skills, "no shared skills found")
+        for skill in skills:
+            with self.subTest(skill=skill.name):
+                head = re.match(
+                    r"^---\n(.*?)\n---",
+                    (skill / "SKILL.md").read_text(encoding="utf-8"), re.S)
+                self.assertIsNotNone(head, f"{skill.name}: no frontmatter")
+                declared = re.search(r"^name:\s*(\S+)\s*$", head.group(1), re.M)
+                self.assertIsNotNone(declared, f"{skill.name}: no name in frontmatter")
+                self.assertEqual(
+                    declared.group(1), skill.name,
+                    f"{skill.name}: frontmatter name disagrees with its directory")
+
+                interface = skill / "agents/openai.yaml"
+                self.assertTrue(
+                    interface.exists(),
+                    f"{skill.name}: no agents/openai.yaml, so Codex gets no interface")
+                prompt = re.search(
+                    r"default_prompt:\s*\"(.*?)\"",
+                    interface.read_text(encoding="utf-8"), re.S)
+                self.assertIsNotNone(
+                    prompt, f"{skill.name}: openai.yaml has no default_prompt")
+                self.assertIn(
+                    f"${skill.name}", prompt.group(1),
+                    f"{skill.name}: default_prompt invokes a different skill")
+
+    def test_every_shared_skill_appears_in_the_readme_that_indexes_its_peers(self) -> None:
+        """Installing a skill wires six machine-checked surfaces and one nobody checked.
+
+        `INSTALLED.txt`, both symlinks, both manifest rows and the budgets all
+        have assertions. The human indexes did not, so `evidence-debugging` and
+        `test-first-change` were absent from all three READMEs that list every
+        one of their peers - and both a review of M2 and a review of M3 walked
+        past it, which is what an unchecked convention looks like after two
+        chances.
+
+        The roster and the index are independent sources, so this compares them
+        rather than looking for a heading. A provider README only has to carry
+        the name where that provider actually deploys it, which the manifest
+        decides, not this test.
+        """
+        installed = read(".agents/skills/INSTALLED.txt").split()
+        self.assertTrue(installed, "no shared skills listed")
+        shared_index = read(".agents/README.md")
+        missing = []
+        for name in installed:
+            if f"skills/{name}/" not in shared_index:
+                missing.append(f"main/.agents/README.md: {name}")
+            for provider in ("claude", "codex"):
+                if not (ROOT / f"main/{provider}/skills/{name}").exists():
+                    continue
+                if name not in read(f".{provider}/README.md"):
+                    missing.append(f"main/{provider}/README.md: {name}")
+        self.assertEqual([], missing)
+
+    # `speak-human-tw` identifies its upstream by tag alone (v1.4.0). Left as
+    # it is on purpose: retro-fitting a SHA means resolving what that tag
+    # pointed at when the skill was distilled, which nobody can do from here.
+    # It is grandfathered, not exempt - the ceiling is one entry and shrinks.
+    ATTRIBUTION_WITHOUT_A_COMMIT = {"speak-human-tw"}
+
+    def test_every_derived_skill_pins_a_commit_and_carries_its_licence(self) -> None:
+        """A version string is not an identifier, and a licence name is not a licence.
+
+        Both halves come from things that went wrong rather than from a policy.
+        The first: upstream `mattpocock/skills` moved twelve commits under an
+        unchanged `v1.2.3` while the marketplace pin followed along, so an
+        attribution naming only the release records a number that was true of
+        two different bodies of text. The SHA is the only part that says what
+        was read.
+
+        The second: MIT and CC BY both require the notice to travel with
+        substantial portions, so `- Licence: MIT` satisfies the sentence and not
+        the obligation. This asserts a clause from the body of the licence, not
+        its name, which is the difference between citing it and shipping it.
+
+        What this does *not* check is whether the attribution classifies its
+        borrowings correctly - a 2026-08-17 review found `evidence-debugging`
+        listing one substantial portion where there were two, and no mechanical
+        check could have caught that without upstream's text in the tree. That
+        stays a review step, and it is written into each ATTRIBUTION's own
+        recheck section. Reading this test as covering it would be the same
+        mistake the redaction section made: a check keyed on the shape of the
+        artifact standing in for its substance.
+        """
+        derived = [
+            skill
+            for skill in sorted((ROOT / "main/.agents/skills").iterdir())
+            if skill.is_dir() and (skill / "ATTRIBUTION.md").exists()]
+        self.assertTrue(derived, "no derived skills found")
+        for skill in derived:
+            with self.subTest(skill=skill.name):
+                text = (skill / "ATTRIBUTION.md").read_text(encoding="utf-8")
+                self.assertRegex(
+                    text, r"https?://\S*github\.com/\S+",
+                    f"{skill.name}: attribution names no upstream source")
+                # One clause from the operative text of each licence this repo
+                # actually derives from. Present means the notice shipped.
+                self.assertTrue(
+                    "WITHOUT WARRANTY OF ANY KIND" in text
+                    or "creativecommons.org/licenses" in text,
+                    f"{skill.name}: attribution names a licence but does not "
+                    "carry its text, which is what the licence requires")
+                if skill.name in self.ATTRIBUTION_WITHOUT_A_COMMIT:
+                    continue
+                self.assertRegex(
+                    text, r"\b[0-9a-f]{40}\b",
+                    f"{skill.name}: attribution pins no commit, so a later "
+                    "reader cannot tell which upstream text was distilled")
 
 
 if __name__ == '__main__':

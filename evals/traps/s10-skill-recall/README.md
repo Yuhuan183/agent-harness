@@ -32,7 +32,7 @@ bound on that cost, which is more than nothing and less than a routing test.
 
 | Path | Role | Show to agent under test? |
 |---|---|---|
-| `pristine/descriptions.md` | generated: the six resident descriptions, as a session carries them | arm A: yes (as a fresh copy) |
+| `pristine/descriptions.md` | generated: every resident description, as a session carries them (eight since 2026-08-17, six when the rows below were measured) | arm A: yes (as a fresh copy) |
 | `pristine/utterances.md` | the eighteen opening messages | yes |
 | `variants/*.md` | arm B/C/D surfaces, one lever each | that arm only, as `descriptions.md` |
 | `GROUND-TRUTH.md` | item design, answer rationale, failure modes, A/B protocol | never |
@@ -87,6 +87,42 @@ nineteenth `SELECT:` line raises `R5-malformed`, and a created
 `nested/report.md`, `sub/descriptions.md` or any other file raises `S1-added` —
 the two exempt names are matched as exact paths, not basenames at any depth.
 `test_the_selection_grader_exit_zero_means_what_it_claims` runs these four.
+
+## The bundle changed on 2026-08-17
+
+`evidence-debugging` and then `test-first-change` were added to the shared
+skills, so `pristine/descriptions.md` was regenerated twice the same day and now
+carries eight descriptions instead of six.
+
+**And `surface.tsv` did not notice.** It was a hand-kept list of six files while
+`build.py` renders the bundle by globbing `main/claude/skills/*/SKILL.md`, so the
+fingerprint stayed `80839ac8` through both additions. That is worse than a stale
+stamp: a stamp taken in that state would have read as *current* against a surface
+missing two of the eight choices under test. Fixed by listing exactly what the
+generator reads (surface is now `e990a5f5`) and by
+`test_the_selection_surface_lists_every_skill_the_bundle_is_built_from`, which
+compares the declaration against the generator instead of trusting either alone.
+
+Worth naming why nothing caught it: `build.py --check` compares the bundle to the
+live frontmatters, and `test_every_declared_surface_path_exists` compares the
+listed paths to the filesystem. Both were green. Neither compared the list to
+what the trap actually measures — a check on an artifact's members standing in
+for a check on the artifact.
+
+Two of the eight now name each other — `test-first-change` tells the reader to
+diagnose an unexplained defect first, and points at `evidence-debugging` by name.
+That is deliberate discrimination between two skills that both answer to "fix",
+and it is also a new condition in this trap's item set: an agent choosing between
+them now has a cross-reference to follow, which the older rows were never
+measured against.
+
+**Every result row already in this file predates that.** Those rows carry no
+surface stamp — `scripts/evidence-check.py` has been reporting them as
+`unstamped 12` since the stamping mechanism existed — so nothing in the artifact
+says which bundle produced them, and adding a description changed that bundle
+without any signal. Recorded here because the alternative is a reader comparing a
+future 18/18 against an older one measured on a different set of choices.
+
 
 **Ledger hygiene.** Log every trap dispatch with `--class smoke` (excluded from
 route-preference decision counts).
