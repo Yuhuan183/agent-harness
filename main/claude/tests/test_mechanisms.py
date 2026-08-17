@@ -2709,6 +2709,49 @@ class ReplayScenarioTests(unittest.TestCase):
     def _scenarios(self) -> list[Path]:
         return sorted((self.REPLAY / "scenarios").glob("*.md"))
 
+    def test_every_key_a_grader_reads_is_a_key_a_run_records(self) -> None:
+        """`run.py` writes `meta.json`; `grade.py` reads it. Nothing compared the two.
+
+        Found by an M5 smoke run on 2026-08-17, not by reading either file.
+        `e5-authority-diagnose` declares `expect_authority: diagnose`, `grade_e5`
+        branches on `meta.get("expect_authority") == "diagnose"`, and `run.py`
+        never carried the key - so the diagnose arm graded as the fix arm, and a
+        run that correctly touched nothing scored `correct: false`. Both arms of
+        the pair would have been graded as `fix`, which inverts the one cell whose
+        whole design is that zero edits is the pass on one side and the failure on
+        the other.
+
+        `meta.get` returning None is the trap: it is indistinguishable from a
+        pre-registered condition that was genuinely absent, so the harness
+        silently substituted its own default for what the scenario asked for.
+        That is this repo's cluster A - the asked-for condition replaced by
+        another - reached through a missing dict key rather than through prose.
+
+        Producer against consumer, both by extraction rather than by a list
+        someone maintains. A synthetic grader test could not have caught it,
+        because the test would have supplied the key itself.
+        """
+        grade = (self.REPLAY / "grade.py").read_text(encoding="utf-8")
+        run = (self.REPLAY / "run.py").read_text(encoding="utf-8")
+        consumed = (set(re.findall(r'meta\.get\(\s*"([^"]+)"', grade))
+                    | set(re.findall(r'meta\[\s*"([^"]+)"\s*\]', grade)))
+        recorded = set(re.findall(r'^\s*"([^"]+)":', run, re.M))
+        self.assertEqual(
+            set(), consumed - recorded,
+            "a grader branches on a key no run writes, so it silently reads None "
+            "and substitutes its own default for the pre-registered condition")
+
+        # And the other direction, for the two cells that carry it: a key in the
+        # frontmatter that no run records cannot reach a grader at all.
+        declared = set()
+        for path in self._scenarios():
+            head = re.match(
+                r"^---\n(.*?)\n---", path.read_text(encoding="utf-8"), re.S)
+            declared |= set(re.findall(r"^(\w+):", head.group(1), re.M))
+        self.assertEqual(
+            set(), declared - recorded,
+            "a scenario pre-registers a field that never reaches meta.json")
+
     def test_the_scenario_index_is_generated_and_current(self) -> None:
         """A directory listing of opaque prefixes is unreadable, and the fix
         must not be a table maintained by hand.

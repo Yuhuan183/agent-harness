@@ -568,6 +568,12 @@ def main() -> int:
         "recovery_point": spec["recovery_point"],
         "expect": spec["expect"],
         "session": session,
+        # Both halves, deliberately: `fixture` is the builder the scenario asked
+        # for and `fixture_files` is what that builder actually produced. Keeping
+        # only the second identifies the builder by its output, which is fine
+        # until an output changes; keeping both is how a run says what it
+        # requested as well as what it got.
+        "fixture": spec.get("fixture"),
         "fixture_files": built,
         "turns": records,
         "interrupt": interrupt_state,
@@ -582,6 +588,12 @@ def main() -> int:
         "contract_rule": spec.get("contract_rule"),
         "inject_system": spec.get("inject_system"),
         "expect_skill": spec.get("expect_skill"),
+        # Carried since 2026-08-17. `grade_e5` branches on it to decide which of
+        # the paired authority arms it is grading, and without it every run read
+        # None and graded as the fix arm - so the diagnose arm's correct
+        # do-nothing run scored incorrect. The pair only means anything when each
+        # side is graded by its own criterion.
+        "expect_authority": spec.get("expect_authority"),
         "hooks": "live (user settings source; not suppressible without also "
                  "dropping the contract)",
         "telemetry_diverted_to": str(run_dir / "telemetry"),
