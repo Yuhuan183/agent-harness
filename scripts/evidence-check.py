@@ -118,7 +118,18 @@ ATTRIBUTION = r"[\s,:]*(?:version\s+)?v?(\d+\.\d+(?:\.\d+)?)"
 # for as long as the requirement stands - reporting it as a discrepancy every
 # run is how a report earns the right to be ignored. Satisfied floors are
 # counted and dropped; an unmet one is the thing worth printing.
-FLOOR = re.compile(r"以上|至少|or newer|or later|at least|minimum|\bmin\b|>=|\+ ")
+FLOOR = re.compile(
+    # `起` is zh-TW's "from <version> onwards", the exact counterpart of the
+    # English floors beside it. Without it, `Headroom v0.34 起已移除 …` filed as a
+    # discrepancy on every run - a permanent finding about a sentence that is
+    # still true, which is how a report teaches people to skip it.
+    r"以上|至少|\d\S*\s*起|or newer|or later|at least|minimum|\bmin\b|>=|\+ ")
+
+# A dated section title is a record of what was checked then, not a claim about
+# now. `#### 2026-08-10 查核結果 (Headroom 0.34 升級)` names the version it was
+# about, and rewriting it to today's version would destroy the thing it exists to
+# preserve. Links to such a heading carry the same text and the same exemption.
+HISTORY = re.compile(r"^#{1,6}\s+20\d\d-\d\d-\d\d|\]\(\S*#20\d\d-\d\d-\d\d")
 
 
 def tracked_markdown() -> list[Path]:
@@ -348,6 +359,8 @@ def audit_versions() -> list[dict[str, object]]:
         relative = path.relative_to(ROOT).as_posix()
         for number, line in enumerate(
                 path.read_text(encoding="utf-8").splitlines(), 1):
+            if HISTORY.search(line):
+                continue
             for tool, claimed in attributions_in(line):
                 here = local_version(tool)
                 rows.append({"site": f"{relative}:{number}", "tool": tool,
