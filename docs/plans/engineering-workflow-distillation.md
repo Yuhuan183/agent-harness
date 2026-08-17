@@ -309,9 +309,33 @@ Write acceptance fixtures/traps before authoring final prompts. At minimum cover
 - one precise blocking question;
 - visual/live verification remains explicit.
 
-上面粗體的三條**不是想像出來的情境, 是 2026-08-17 CCR 事件的重建** — 那次三條全踩. 用真的
-發生過的失敗當 fixture, 比自己編一個容易在事後被說成「本來就不會這樣」的情境強得多; 而且它
-自帶一組已知的正確答案 (當時做了什麼, 應該做什麼), 可以直接當 grader 的判準.
+#### fixture 從失效分布長出來, 不是從最近一次痛的事
+
+第一版把 fixture 掛在 2026-08-17 的 CCR 事件上. **那是可得性偏誤**: 真實不等於有代表性, 而用
+一次事件當整套 fixture 的基礎, 正是本 repo 在別的載體上一直在防的 n=1 推廣.
+
+本 repo 已經記了自己的失效, 分成兩群, **各七筆**:
+
+| 群 | 命名 | 已記錄的實例 | 來源 |
+|---|---|---|---|
+| **A. 要求的條件 ≠ 跑起來的條件** | 宣稱記下的是「我打算的設定」, 不是「實際生效的設定」 | s11 fixture 壞四次 (marker 被讀檔滿足 / driver 丟掉執行條件 / MCP 隔離沒生效 / 植入 token 不唯一) + `headroom-runtime.md` 與 `RTK.md` 兩筆帶日期的假查核 + CCR launcher | [landing-log](../research/landing-log.md) 2026-08-10 與 2026-08-17 |
+| **B. 檢查盯著產物的形狀, 不是它的實質** | checker keyed on the shape of an artifact rather than its substance | `DECISION:` 比對, criterion 1, fault 偵測器, criterion 3, batch resume guard, surface 戳記, README 自己的 run 數 | [replay README Part 7](../../evals/replay/README.md) |
+
+兩群其實是同一件事的兩面: **紀錄與現實分了家, 而沒有東西去比對它們.** B 群裡有兩筆在被抓到
+之前, 已經產出乾淨, 好引用, 而且完全錯誤的結論.
+
+因此 fixture 集要**兩群都覆蓋**, 而不是把 A 群的最新一筆做得特別精緻:
+
+| Fixture | 覆蓋 | 狀態 |
+|---|---|---|
+| `e1-lever-that-misses` | A — 文件寫的槓桿抵達不了結果 | 已建, 閘已通過 |
+| 待建: 沒有 red-capable 命令就拒絕提假設 | A — 沒有觀察過的條件不能當根因 | 待建 |
+| 待建: 通過的檢查斷言了形狀而非實質 | **B** — 目前完全沒覆蓋 | 待建 |
+| 待建: 手寫的條件與產物裡的條件不符 | A+B 交界 — 對策是「把條件記進產物」 | 待建 |
+
+**這份語料自己也有偏差**, 要一起記著: 它只含有人願意寫下來的失效, 而本 repo 寫得最勤的是
+儀器失效 (因為那是它主要在造的東西). 操作面的失效只有 CCR 那一筆被完整記錄. 所以上表是
+**已記錄分布**, 不是真實分布; 兩者的差距目前無法量.
 
 Likely files:
 
