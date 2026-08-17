@@ -4014,6 +4014,46 @@ class VersionAttestationTests(unittest.TestCase):
         self.assertEqual("match", module.verdict_for("0.34", "0.34.0", False))
         self.assertEqual("differs", module.verdict_for("0.33", "0.34.0", False))
 
+    def test_a_zh_tw_floor_and_a_dated_title_are_not_stale_attestations(self) -> None:
+        """Two shapes added 2026-08-17, both from the same review of a real report.
+
+        Half of that run's discrepancies were sentences that are still true.
+        `起` is zh-TW's "from <version> onwards", the exact counterpart of the
+        English floors this class already covers, so `Headroom v0.34 起已移除 …`
+        was filed as a permanent finding about a correct sentence. And a dated
+        section title names the version it was *about*: rewriting
+        `#### 2026-08-10 查核結果 (Headroom 0.34 升級)` to today's number destroys
+        the record it exists to keep.
+
+        The dividing line is what the guard below asserts, and it is the one that
+        matters: exempting *headings* is not exempting dated lines. A dated claim
+        in prose is precisely what this instrument is for - the date is what makes
+        going stale checkable - so the exemption is keyed on the heading marker
+        and the anchor link, never on the presence of a date.
+        """
+        module = self._module()
+        floor = "Headroom v0.34 起已移除 CLI context tools; wrapper 不再傳入舊參數."
+        self.assertIn(("headroom", "0.34"), module.attributions_in(floor))
+        self.assertTrue(module.FLOOR.search(floor))
+        self.assertEqual(
+            "floor-met", module.verdict_for("0.34", "0.35.0", is_floor=True))
+
+        for line in (
+            "#### 2026-08-10 查核結果 (Headroom 0.34 升級): 同一個失效換了一層皮",
+            "- [2026-08-10 查核結果 (Headroom 0.34 升級)](landing-log.md"
+            "#2026-08-10-查核結果-headroom-034-升級)",
+        ):
+            with self.subTest(line=line[:40]):
+                self.assertTrue(module.HISTORY.search(line))
+
+        # The guard. Same date, same tool, same wrong number - still a claim.
+        claim = "2026-08-10 本機查核: CLI 與 proxy 都是 `headroom-ai 0.34.0`."
+        self.assertIsNone(
+            module.HISTORY.search(claim),
+            "a dated prose attestation must stay checkable; exempting it would "
+            "make the date - the thing that makes staleness detectable - into "
+            "the way to avoid being checked")
+
     def test_it_reports_and_never_fails(self) -> None:
         # Same contract as the rest of this script: a stale attestation is a
         # fact to weigh. Made fail-closed, the cheapest way to stay green would
