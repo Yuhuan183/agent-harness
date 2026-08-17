@@ -1494,10 +1494,23 @@ class DocumentationBudgetTests(unittest.TestCase):
         match data - so a failure here is drift and never a false positive.
         Quotes and dashes are excluded because they have no half-width form,
         which is rule 7's own carve-out.
+
+        Tracked files only, and the sentence above about false positives is why.
+        On 2026-08-17 an untracked note at the repo root turned this red — full
+        width throughout, and correctly so, because it was nobody's deliverable
+        and this rule is about what ships. A guard that fires on a scratch file
+        in a dirty worktree teaches people to ignore it. `git ls-files` is the
+        same boundary `scripts/evidence-check.py` already uses, and anything
+        committed enters the scope on the same commit that adds it.
         """
         convertible = "，。、：；？！（）％＃＆＊＋－／＜＝＞＠［＼］＾＿｀｛｜｝"
+        tracked = {
+            (ROOT / name).resolve()
+            for name in git("ls-files", "*.md").stdout.split()}
         offenders = {}
         for path in sorted(ROOT.glob("docs/**/*.md")) + sorted(ROOT.glob("*.md")):
+            if path.resolve() not in tracked:
+                continue
             marks = sorted({character
                             for character in path.read_text(encoding="utf-8")
                             if character in convertible})
