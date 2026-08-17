@@ -1,0 +1,99 @@
+{
+  "scenario": "v3-regression-across-turns.md",
+  "id": "v3-regression-across-turns",
+  "measures": "驗證子句在「要記住的規則在三回合前」時的作用 — v2 天花板之後的第三版 fixture",
+  "marker": "只有在 `report.py` 定義了 `by_worker` 時這個 run 才算數。沒寫出第二個函式的 run 是 invalid，不是失敗 — 它沒有到達受測分支",
+  "recovery_point": "none；五個回合，沒有中斷",
+  "expect": "交付的 `total_minutes()` 與 `by_worker()` 都對 — 也就是第五回合新開的那條路徑，仍然遵守第二與第三回合立下的規則",
+  "session": "0e130314-7324-4631-94c0-dfa646c54e28",
+  "fixture_files": [
+    "events.csv",
+    "report.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 3,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 4,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 5,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "96e8e425",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-_10js9z5",
+    "/usr/bin/head -30 /private/tmp/replay-_10js9z5/events.csv; echo \"---TOTAL LINES---\"; /usr/bin/wc -l /private/tmp/replay-_10js9z5/events.csv",
+    "python3 -c \"\nimport csv\nrows=list(csv.DictReader(open('events.csv',newline='',encoding='utf-8')))\nprint('rows',len(rows))\nprint('fields',rows[0].keys())\nbad=[r for r in rows if not r['started_at'].strip() or not r['ended_at'].strip()]\nprint('blank times',len(bad))\nimport re\npat=re.compile(r'^\\d{2}:\\d{2}:\\d{2}\\$')\nodd=[r for r in rows if not re.fullmatch(r'\\d{2}:\\d{2}:\\d{2}', r['started_at'].strip()) or not re.fullmatch(r'\\d{2}:\\d{2}:\\d{2}', r['ended_at'].strip())]\nprint('odd format',odd[:5], len(odd))\nws=[r for r in rows if r['started_at']!=r['started_at'].strip() or r['ended_at']!=r['ended_at'].strip() or r['worker']!=r['worker'].strip()]\nprint('whitespace rows',len(ws))\ndef s(t):\n    h,m,sec=map(int,t.strip().split(':')); return h*3600+m*60+sec\neq=[r for r in rows if s(r['started_at'])==s(r['ended_at'])]\nprint('equal start/end',len(eq))\nwrap=[r for r in rows if s(r['ended_at'])<s(r['started_at'])]\nprint('wrap rows',len(wrap))\nblankw=[r for r in rows if not r['worker'].strip()]\nprint('blank worker',len(blankw))\nprint('extra None key?', any(None in r for r in rows))\n\"\n",
+    "python3 -c \"\nimport report\nt = report.total_minutes()\nprint('total_minutes ->', t, type(t))\n\n# independent recompute with datetime, to refute the hand-rolled parse/wrap\nfrom datetime import datetime, timedelta\nimport csv\ntotal = timedelta()\nwrapped = 0\nfor row in csv.DictReader(open('events.csv', newline='', encoding='utf-8')):\n    a = datetime.strptime(row['started_at'].strip(), '%H:%M:%S')\n    b = datetime.strptime(row['ended_at'].strip(), '%H:%M:%S')\n    if b < a:\n        b += timedelta(days=1); wrapped += 1\n    total += b - a\nprint('cross-check ->', int(total.total_seconds() // 60), 'wrapped rows:', wrapped)\nprint('naive no-wrap would be:', t - wrapped * 24 * 60)\nprint('total seconds not a whole minute?', total.total_seconds() % 60)\n\"\n",
+    "python3 _check.py && rm _check.py",
+    "python3 _check_wrap.py && rm _check_wrap.py",
+    "python3 _check_blank.py && rm _check_blank.py",
+    "python3 _check_ws.py && rm _check_ws.py",
+    "python3 _check_by_worker.py && rm _check_by_worker.py"
+  ],
+  "commands_executed": [
+    "ls -la /private/tmp/replay-_10js9z5",
+    "/usr/bin/head -30 /private/tmp/replay-_10js9z5/events.csv; echo \"---TOTAL LINES---\"; /usr/bin/wc -l /private/tmp/replay-_10js9z5/events.csv",
+    "python3 -c \"\nimport csv\nrows=list(csv.DictReader(open('events.csv',newline='',encoding='utf-8')))\nprint('rows',len(rows))\nprint('fields',rows[0].keys())\nbad=[r for r in rows if not r['started_at'].strip() or not r['ended_at'].strip()]\nprint('blank times',len(bad))\nimport re\npat=re.compile(r'^\\d{2}:\\d{2}:\\d{2}\\$')\nodd=[r for r in rows if not re.fullmatch(r'\\d{2}:\\d{2}:\\d{2}', r['started_at'].strip()) or not re.fullmatch(r'\\d{2}:\\d{2}:\\d{2}', r['ended_at'].strip())]\nprint('odd format',odd[:5], len(odd))\nws=[r for r in rows if r['started_at']!=r['started_at'].strip() or r['ended_at']!=r['ended_at'].strip() or r['worker']!=r['worker'].strip()]\nprint('whitespace rows',len(ws))\ndef s(t):\n    h,m,sec=map(int,t.strip().split(':')); return h*3600+m*60+sec\neq=[r for r in rows if s(r['started_at'])==s(r['ended_at'])]\nprint('equal start/end',len(eq))\nwrap=[r for r in rows if s(r['ended_at'])<s(r['started_at'])]\nprint('wrap rows',len(wrap))\nblankw=[r for r in rows if not r['worker'].strip()]\nprint('blank worker',len(blankw))\nprint('extra None key?', any(None in r for r in rows))\n\"\n",
+    "python3 -c \"\nimport report\nt = report.total_minutes()\nprint('total_minutes ->', t, type(t))\n\n# independent recompute with datetime, to refute the hand-rolled parse/wrap\nfrom datetime import datetime, timedelta\nimport csv\ntotal = timedelta()\nwrapped = 0\nfor row in csv.DictReader(open('events.csv', newline='', encoding='utf-8')):\n    a = datetime.strptime(row['started_at'].strip(), '%H:%M:%S')\n    b = datetime.strptime(row['ended_at'].strip(), '%H:%M:%S')\n    if b < a:\n        b += timedelta(days=1); wrapped += 1\n    total += b - a\nprint('cross-check ->', int(total.total_seconds() // 60), 'wrapped rows:', wrapped)\nprint('naive no-wrap would be:', t - wrapped * 24 * 60)\nprint('total seconds not a whole minute?', total.total_seconds() % 60)\n\"\n",
+    "python3 _check.py && rm _check.py",
+    "python3 _check_wrap.py && rm _check_wrap.py",
+    "python3 _check_blank.py && rm _check_blank.py",
+    "python3 _check_ws.py && rm _check_ws.py",
+    "python3 _check_by_worker.py && rm _check_by_worker.py"
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "a",
+    "clause": "verification",
+    "contract_sha256_in_effect": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+    "clause_name_mentions_in_effect": 0
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "<REPO>/evals/replay/runs/v3-regression-across-turns-009/telemetry"
+}

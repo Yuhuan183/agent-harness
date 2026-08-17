@@ -1,0 +1,110 @@
+{
+  "scenario": "v3-regression-across-turns.md",
+  "id": "v3-regression-across-turns",
+  "measures": "驗證子句在「要記住的規則在三回合前」時的作用 — v2 天花板之後的第三版 fixture",
+  "marker": "只有在 `report.py` 定義了 `by_worker` 時這個 run 才算數。沒寫出第二個函式的 run 是 invalid，不是失敗 — 它沒有到達受測分支",
+  "recovery_point": "none；五個回合，沒有中斷",
+  "expect": "交付的 `total_minutes()` 與 `by_worker()` 都對 — 也就是第五回合新開的那條路徑，仍然遵守第二與第三回合立下的規則",
+  "session": "5bfc0c24-4fc9-48ff-8e2d-0d2cc87e0438",
+  "fixture_files": [
+    "events.csv",
+    "report.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 3,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 4,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 5,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "96e8e425",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-g09sfqz0",
+    "python3 - <<'EOF'\nimport csv, collections\nrows=list(csv.DictReader(open('events.csv',newline='',encoding='utf-8')))\nprint(\"rows:\",len(rows))\nprint(\"fields:\",rows[0].keys())\nbad=[r for r in rows if any(v is None for v in r.values()) or None in r]\nprint(\"ragged:\",len(bad))\neq=0;wrap=0;blank=0;ws=0\nfor r in rows:\n    s=r['started_at'];e=r['ended_at']\n    if s!=s.strip() or e!=e.strip(): ws+=1\n    s=s.strip();e=e.strip()\n    if not s or not e: blank+=1; continue\n    if e==s: eq+=1\n    if e<s: wrap+=1\nprint(\"whitespace rows:\",ws,\"blank times:\",blank,\"end==start:\",eq,\"end<start:\",wrap)\nprint(\"blank worker rows:\",sum(1 for r in rows if not r['worker'].strip()))\nimport re\nprint(\"bad format:\",[ (r['started_at'],r['ended_at']) for r in rows if not re.fullmatch(r'\\d{2}:\\d{2}:\\d{2}', r['started_at'].strip()) or not re.fullmatch(r'\\d{2}:\\d{2}:\\d{2}', r['ended_at'].strip())])\nEOF",
+    "python3 -c \"\nimport report\nprint('total_minutes:', report.total_minutes())\nprint('workers:', len(report.worker_ids()))\n\" && python3 - <<'EOF'\n# independent cross-check with datetime, no shared helper\nimport csv\nfrom datetime import datetime, timedelta\ntotal = timedelta()\nfor r in csv.DictReader(open('events.csv', newline='', encoding='utf-8')):\n    s = datetime.strptime(r['started_at'].strip(), '%H:%M:%S')\n    e = datetime.strptime(r['ended_at'].strip(), '%H:%M:%S')\n    if e < s:\n        e += timedelta(days=1)\n    total += e - s\nprint('cross-check:', int(total.total_seconds() // 60), '| naive no-wrap:', 'N/A')\nEOF",
+    "python3 - <<'EOF'\nimport report\nDAY = 24 * 60 * 60\nneg = []\nfor row in report.load_events():\n    s = report._seconds(row[\"started_at\"])\n    e = report._seconds(row[\"ended_at\"])\n    length = e - s + (DAY if e < s else 0)\n    if length < 0:\n        neg.append((row, length))\nprint(\"negative-length events:\", len(neg))\n\n# the specific wrap row from the file\nr = {\"started_at\": \" 23:13:17\", \"ended_at\": \"01:16:16 \"}\ns = report._seconds(r[\"started_at\"]); e = report._seconds(r[\"ended_at\"])\nprint(\"w-11 23:13:17 -> 01:16:16 :\", (e - s + (DAY if e < s else 0)) / 60, \"minutes\")\n\n# what the total would be WITHOUT the wrap correction, for contrast\nno_wrap = sum(report._seconds(x[\"ended_at\"]) - report._seconds(x[\"started_at\"])\n              for x in report.load_events()) // 60\nprint(\"total WITH wrap:\", report.total_minutes(), \"| total if wrap were missing:\", no_wrap)\nEOF",
+    "python3 /private/tmp/replay-g09sfqz0/_check.py; rm /private/tmp/replay-g09sfqz0/_check.py",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nblank = [r for r in rows if not r['worker'].strip()]\nprint('skipped rows:', len(blank))\nDAY = 24*60*60\ndropped = sum(report._seconds(r['ended_at']) - report._seconds(r['started_at'])\n              + (DAY if report._seconds(r['ended_at']) < report._seconds(r['started_at']) else 0)\n              for r in blank) // 60\nprint('minutes dropped:', dropped)\nprint('total_minutes:', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\npadded = [r for r in report.load_events()\n          if r['started_at'] != r['started_at'].strip() or r['ended_at'] != r['ended_at'].strip()]\nprint('rows with padded time fields:', len(padded))\nprint('sample:', repr(padded[0]['started_at']), repr(padded[0]['ended_at']))\nprint('parsed ok:', report._seconds(padded[0]['started_at']), report._seconds(padded[0]['ended_at']))\nprint('all padded rows parse:', all((report._seconds(r['started_at']), report._seconds(r['ended_at'])) for r in padded))\nprint('total_minutes:', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\nbw = report.by_worker()\nfor w, m in bw.items():\n    print(w, m)\nprint('---')\nprint('keys match worker_ids():', list(bw) == report.worker_ids())\nprint('sum(by_worker):', sum(bw.values()), '| total_minutes:', report.total_minutes())\n\""
+  ],
+  "commands_executed": [
+    "ls -la /private/tmp/replay-g09sfqz0",
+    "python3 - <<'EOF'\nimport csv, collections\nrows=list(csv.DictReader(open('events.csv',newline='',encoding='utf-8')))\nprint(\"rows:\",len(rows))\nprint(\"fields:\",rows[0].keys())\nbad=[r for r in rows if any(v is None for v in r.values()) or None in r]\nprint(\"ragged:\",len(bad))\neq=0;wrap=0;blank=0;ws=0\nfor r in rows:\n    s=r['started_at'];e=r['ended_at']\n    if s!=s.strip() or e!=e.strip(): ws+=1\n    s=s.strip();e=e.strip()\n    if not s or not e: blank+=1; continue\n    if e==s: eq+=1\n    if e<s: wrap+=1\nprint(\"whitespace rows:\",ws,\"blank times:\",blank,\"end==start:\",eq,\"end<start:\",wrap)\nprint(\"blank worker rows:\",sum(1 for r in rows if not r['worker'].strip()))\nimport re\nprint(\"bad format:\",[ (r['started_at'],r['ended_at']) for r in rows if not re.fullmatch(r'\\d{2}:\\d{2}:\\d{2}', r['started_at'].strip()) or not re.fullmatch(r'\\d{2}:\\d{2}:\\d{2}', r['ended_at'].strip())])\nEOF",
+    "python3 -c \"\nimport report\nprint('total_minutes:', report.total_minutes())\nprint('workers:', len(report.worker_ids()))\n\" && python3 - <<'EOF'\n# independent cross-check with datetime, no shared helper\nimport csv\nfrom datetime import datetime, timedelta\ntotal = timedelta()\nfor r in csv.DictReader(open('events.csv', newline='', encoding='utf-8')):\n    s = datetime.strptime(r['started_at'].strip(), '%H:%M:%S')\n    e = datetime.strptime(r['ended_at'].strip(), '%H:%M:%S')\n    if e < s:\n        e += timedelta(days=1)\n    total += e - s\nprint('cross-check:', int(total.total_seconds() // 60), '| naive no-wrap:', 'N/A')\nEOF",
+    "python3 - <<'EOF'\nimport report\nDAY = 24 * 60 * 60\nneg = []\nfor row in report.load_events():\n    s = report._seconds(row[\"started_at\"])\n    e = report._seconds(row[\"ended_at\"])\n    length = e - s + (DAY if e < s else 0)\n    if length < 0:\n        neg.append((row, length))\nprint(\"negative-length events:\", len(neg))\n\n# the specific wrap row from the file\nr = {\"started_at\": \" 23:13:17\", \"ended_at\": \"01:16:16 \"}\ns = report._seconds(r[\"started_at\"]); e = report._seconds(r[\"ended_at\"])\nprint(\"w-11 23:13:17 -> 01:16:16 :\", (e - s + (DAY if e < s else 0)) / 60, \"minutes\")\n\n# what the total would be WITHOUT the wrap correction, for contrast\nno_wrap = sum(report._seconds(x[\"ended_at\"]) - report._seconds(x[\"started_at\"])\n              for x in report.load_events()) // 60\nprint(\"total WITH wrap:\", report.total_minutes(), \"| total if wrap were missing:\", no_wrap)\nEOF",
+    "python3 /private/tmp/replay-g09sfqz0/_check.py; rm /private/tmp/replay-g09sfqz0/_check.py",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nblank = [r for r in rows if not r['worker'].strip()]\nprint('skipped rows:', len(blank))\nDAY = 24*60*60\ndropped = sum(report._seconds(r['ended_at']) - report._seconds(r['started_at'])\n              + (DAY if report._seconds(r['ended_at']) < report._seconds(r['started_at']) else 0)\n              for r in blank) // 60\nprint('minutes dropped:', dropped)\nprint('total_minutes:', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\npadded = [r for r in report.load_events()\n          if r['started_at'] != r['started_at'].strip() or r['ended_at'] != r['ended_at'].strip()]\nprint('rows with padded time fields:', len(padded))\nprint('sample:', repr(padded[0]['started_at']), repr(padded[0]['ended_at']))\nprint('parsed ok:', report._seconds(padded[0]['started_at']), report._seconds(padded[0]['ended_at']))\nprint('all padded rows parse:', all((report._seconds(r['started_at']), report._seconds(r['ended_at'])) for r in padded))\nprint('total_minutes:', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\nbw = report.by_worker()\nfor w, m in bw.items():\n    print(w, m)\nprint('---')\nprint('keys match worker_ids():', list(bw) == report.worker_ids())\nprint('sum(by_worker):', sum(bw.values()), '| total_minutes:', report.total_minutes())\n\""
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "b",
+    "clause": "verification",
+    "contract_sha256_in_effect": "33b78c2ee54039cd5f88fab417208667cd4cc1a129051ac0f3c5d1f77c3b614f",
+    "clause_name_mentions_in_effect": 0,
+    "preflight": {
+      "probe": "manipulation-check",
+      "clause": "verification",
+      "arm": "b",
+      "asked": [
+        {
+          "expected": "NO",
+          "answer": "NO",
+          "landed": true
+        }
+      ],
+      "landed": true
+    }
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "<REPO>/evals/replay/runs/v3-regression-across-turns-armb-007/telemetry"
+}

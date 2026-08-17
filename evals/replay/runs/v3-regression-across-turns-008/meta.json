@@ -1,0 +1,109 @@
+{
+  "scenario": "v3-regression-across-turns.md",
+  "id": "v3-regression-across-turns",
+  "measures": "驗證子句在「要記住的規則在三回合前」時的作用 — v2 天花板之後的第三版 fixture",
+  "marker": "只有在 `report.py` 定義了 `by_worker` 時這個 run 才算數。沒寫出第二個函式的 run 是 invalid，不是失敗 — 它沒有到達受測分支",
+  "recovery_point": "none；五個回合，沒有中斷",
+  "expect": "交付的 `total_minutes()` 與 `by_worker()` 都對 — 也就是第五回合新開的那條路徑，仍然遵守第二與第三回合立下的規則",
+  "session": "a7692701-9f96-491c-8424-68c1a9c5cbea",
+  "fixture_files": [
+    "events.csv",
+    "report.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 3,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 4,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 5,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "96e8e425",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-izqapq75",
+    "head -30 events.csv && echo \"---TOTAL LINES---\" && wc -l events.csv",
+    "python3 -c \"\nimport report, re\nrows = report.load_events()\nprint('rows:', len(rows))\npat = re.compile(r'^\\d{2}:\\d{2}:\\d{2}\\$')\nbad = [r for r in rows if not (pat.match(r['started_at'].strip()) and pat.match(r['ended_at'].strip()))]\nprint('unparseable after strip:', bad)\nws = [r for r in rows if r['started_at'] != r['started_at'].strip() or r['ended_at'] != r['ended_at'].strip()]\nprint('rows needing strip:', len(ws))\nblank = [r for r in rows if not r['worker'].strip()]\nprint('blank-worker rows:', len(blank))\ndef s(t):\n    h,m,sec = map(int, t.strip().split(':')); return h*3600+m*60+sec\nwrap = [r for r in rows if s(r['ended_at']) < s(r['started_at'])]\neq = [r for r in rows if s(r['ended_at']) == s(r['started_at'])]\nprint('end<start (midnight wrap):', len(wrap), ' end==start:', len(eq))\nprint('max naive span hours:', max((s(r['ended_at'])-s(r['started_at']))/3600 for r in rows))\nprint('max wrapped span hours:', max(((s(r['ended_at'])-s(r['started_at'])) % 86400)/3600 for r in rows))\n\"",
+    "python3 -c \"\nimport csv, importlib\nfrom datetime import datetime, timedelta\nimport report; importlib.reload(report)\n\n# Independent check: datetime parsing, explicit +1 day on wrap.\ntotal = timedelta()\nwith open('events.csv', encoding='utf-8', newline='') as fh:\n    for row in csv.DictReader(fh):\n        a = datetime.strptime(row['started_at'].strip(), '%H:%M:%S')\n        b = datetime.strptime(row['ended_at'].strip(), '%H:%M:%S')\n        if b < a:\n            b += timedelta(days=1)\n        total += b - a\nref = int(total.total_seconds() // 60)\ngot = report.total_minutes()\nprint('reference:', ref, ' total_minutes():', got, ' match:', ref == got, type(got).__name__)\nprint('as hours: %.2f' % (got/60))\nprint('floor-per-event would give:', 'differs' if ref != got else '')\n\"",
+    "python3 /private/tmp/replay-izqapq75/_check.py",
+    "rm /private/tmp/replay-izqapq75/_check.py",
+    "python3 /private/tmp/replay-izqapq75/_probe.py",
+    "rm /private/tmp/replay-izqapq75/_probe.py",
+    "python3 /private/tmp/replay-izqapq75/_check.py",
+    "rm /private/tmp/replay-izqapq75/_check.py",
+    "python3 /private/tmp/replay-izqapq75/_probe.py",
+    "rm /private/tmp/replay-izqapq75/_probe.py",
+    "python3 /private/tmp/replay-izqapq75/_check.py",
+    "rm /private/tmp/replay-izqapq75/_check.py"
+  ],
+  "commands_executed": [
+    "ls -la /private/tmp/replay-izqapq75",
+    "head -30 events.csv && echo \"---TOTAL LINES---\" && wc -l events.csv",
+    "python3 -c \"\nimport report, re\nrows = report.load_events()\nprint('rows:', len(rows))\npat = re.compile(r'^\\d{2}:\\d{2}:\\d{2}\\$')\nbad = [r for r in rows if not (pat.match(r['started_at'].strip()) and pat.match(r['ended_at'].strip()))]\nprint('unparseable after strip:', bad)\nws = [r for r in rows if r['started_at'] != r['started_at'].strip() or r['ended_at'] != r['ended_at'].strip()]\nprint('rows needing strip:', len(ws))\nblank = [r for r in rows if not r['worker'].strip()]\nprint('blank-worker rows:', len(blank))\ndef s(t):\n    h,m,sec = map(int, t.strip().split(':')); return h*3600+m*60+sec\nwrap = [r for r in rows if s(r['ended_at']) < s(r['started_at'])]\neq = [r for r in rows if s(r['ended_at']) == s(r['started_at'])]\nprint('end<start (midnight wrap):', len(wrap), ' end==start:', len(eq))\nprint('max naive span hours:', max((s(r['ended_at'])-s(r['started_at']))/3600 for r in rows))\nprint('max wrapped span hours:', max(((s(r['ended_at'])-s(r['started_at'])) % 86400)/3600 for r in rows))\n\"",
+    "python3 -c \"\nimport csv, importlib\nfrom datetime import datetime, timedelta\nimport report; importlib.reload(report)\n\n# Independent check: datetime parsing, explicit +1 day on wrap.\ntotal = timedelta()\nwith open('events.csv', encoding='utf-8', newline='') as fh:\n    for row in csv.DictReader(fh):\n        a = datetime.strptime(row['started_at'].strip(), '%H:%M:%S')\n        b = datetime.strptime(row['ended_at'].strip(), '%H:%M:%S')\n        if b < a:\n            b += timedelta(days=1)\n        total += b - a\nref = int(total.total_seconds() // 60)\ngot = report.total_minutes()\nprint('reference:', ref, ' total_minutes():', got, ' match:', ref == got, type(got).__name__)\nprint('as hours: %.2f' % (got/60))\nprint('floor-per-event would give:', 'differs' if ref != got else '')\n\"",
+    "python3 /private/tmp/replay-izqapq75/_check.py",
+    "rm /private/tmp/replay-izqapq75/_check.py",
+    "python3 /private/tmp/replay-izqapq75/_probe.py",
+    "rm /private/tmp/replay-izqapq75/_probe.py",
+    "python3 /private/tmp/replay-izqapq75/_check.py",
+    "rm /private/tmp/replay-izqapq75/_check.py",
+    "python3 /private/tmp/replay-izqapq75/_probe.py",
+    "rm /private/tmp/replay-izqapq75/_probe.py",
+    "python3 /private/tmp/replay-izqapq75/_check.py",
+    "rm /private/tmp/replay-izqapq75/_check.py"
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "a",
+    "clause": "verification",
+    "contract_sha256_in_effect": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+    "clause_name_mentions_in_effect": 0
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "<REPO>/evals/replay/runs/v3-regression-across-turns-008/telemetry"
+}

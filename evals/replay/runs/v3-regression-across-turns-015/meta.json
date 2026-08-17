@@ -1,0 +1,97 @@
+{
+  "scenario": "v3-regression-across-turns.md",
+  "id": "v3-regression-across-turns",
+  "measures": "驗證子句在「要記住的規則在三回合前」時的作用 — v2 天花板之後的第三版 fixture",
+  "marker": "只有在 `report.py` 定義了 `by_worker` 時這個 run 才算數。沒寫出第二個函式的 run 是 invalid，不是失敗 — 它沒有到達受測分支",
+  "recovery_point": "none；五個回合，沒有中斷",
+  "expect": "交付的 `total_minutes()` 與 `by_worker()` 都對 — 也就是第五回合新開的那條路徑，仍然遵守第二與第三回合立下的規則",
+  "session": "72b409dd-0988-46de-ab81-66a3075a1f07",
+  "fixture_files": [
+    "events.csv",
+    "report.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 3,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 4,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 5,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "96e8e425",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-1mklumtg",
+    "head -30 /private/tmp/replay-1mklumtg/events.csv; echo \"---TOTAL LINES---\"; wc -l /private/tmp/replay-1mklumtg/events.csv",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nwrapped = [r for r in rows if report._clock_seconds(r['ended_at']) < report._clock_seconds(r['started_at'])]\nblank = [r for r in rows if not r['worker'].strip()]\nprint('rows:', len(rows))\nprint('midnight-wrap rows:', len(wrapped))\nprint('blank-worker rows:', len(blank))\nprint('total_minutes():', report.total_minutes())\nprint('type:', type(report.total_minutes()).__name__)\n\"",
+    "python3 -c \"\nimport csv, report\nfrom datetime import datetime, timedelta\ntotal = timedelta()\nwith open('/private/tmp/replay-1mklumtg/events.csv', newline='', encoding='utf-8') as h:\n    for row in csv.DictReader(h):\n        s = datetime.strptime(row['started_at'].strip(), '%H:%M:%S')\n        e = datetime.strptime(row['ended_at'].strip(), '%H:%M:%S')\n        if e < s: e += timedelta(days=1)\n        total += e - s\nimport math\nprint('independent floor-minutes:', math.floor(total.total_seconds() / 60))\nprint('report.total_minutes()   :', report.total_minutes())\nprint('naive no-wrap (for contrast):', 'negative durations -> wrong')\n\"",
+    "python3 -c \"\nimport report\nDAY = report.DAY_SECONDS\nrows = report.load_events()\nneg = []\nsamples = []\nfor r in rows:\n    s = report._clock_seconds(r['started_at']); e = report._clock_seconds(r['ended_at'])\n    raw = e - s\n    used = raw % DAY\n    if used < 0: neg.append(r)\n    if raw < 0 and len(samples) < 3:\n        samples.append((r['worker'].strip(), r['started_at'].strip(), r['ended_at'].strip(), raw, used, used/60))\nprint('events contributing a negative length:', len(neg))\nprint()\nprint('wrapped-row spot check (raw diff -> value actually summed):')\nfor w, s, e, raw, used, mins in samples:\n    print(f'  {w} {s} -> {e}: raw={raw}s  summed={used}s ({mins:.2f} min)  delta=+{(used-raw)/3600:.0f}h')\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nkept = [r for r in rows if r['worker'].strip()]\nskipped = [r for r in rows if not r['worker'].strip()]\nDAY = report.DAY_SECONDS\ndropped = sum((report._clock_seconds(r['ended_at']) - report._clock_seconds(r['started_at'])) % DAY for r in skipped)\nprint('rows:', len(rows), '| counted:', len(kept), '| skipped:', len(skipped))\nprint('minutes dropped:', dropped / 60)\nprint('total_minutes():', report.total_minutes())\nprint('35400 - dropped//60 check:', 35400 - dropped // 60)\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nws = [r for r in rows if r['started_at'] != r['started_at'].strip() or r['ended_at'] != r['ended_at'].strip()]\nprint('rows with padded time fields:', len(ws))\nfor r in ws[:3]:\n    print(f'  started_at={r[\\\"started_at\\\"]!r} ended_at={r[\\\"ended_at\\\"]!r}')\nprint()\nprint('parse spot checks:')\nfor probe in [' 23:13:17', '01:16:16 ', '  07:38:22  ', '\\t09:05:01\\n', '9: 5 : 1']:\n    try:\n        print(f'  {probe!r} -> {report._clock_seconds(probe)}')\n    except Exception as exc:\n        print(f'  {probe!r} -> ERROR {type(exc).__name__}: {exc}')\nprint()\nprint('total_minutes():', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\nbw = report.by_worker()\ntm = report.total_minutes()\nprint('total_minutes():', tm, '(unchanged from 34841:', tm == 34841, ')')\nprint('keys match worker_ids():', list(bw) == report.worker_ids())\nprint('all values int:', all(isinstance(v, int) for v in bw.values()))\nprint()\nfor w, m in bw.items():\n    print(f'  {w}: {m}')\nprint()\nprint('sum of per-worker floors:', sum(bw.values()), '| total_minutes:', tm, '| diff:', tm - sum(bw.values()))\n\""
+  ],
+  "commands_executed": [
+    "ls -la /private/tmp/replay-1mklumtg",
+    "head -30 /private/tmp/replay-1mklumtg/events.csv; echo \"---TOTAL LINES---\"; wc -l /private/tmp/replay-1mklumtg/events.csv",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nwrapped = [r for r in rows if report._clock_seconds(r['ended_at']) < report._clock_seconds(r['started_at'])]\nblank = [r for r in rows if not r['worker'].strip()]\nprint('rows:', len(rows))\nprint('midnight-wrap rows:', len(wrapped))\nprint('blank-worker rows:', len(blank))\nprint('total_minutes():', report.total_minutes())\nprint('type:', type(report.total_minutes()).__name__)\n\"",
+    "python3 -c \"\nimport csv, report\nfrom datetime import datetime, timedelta\ntotal = timedelta()\nwith open('/private/tmp/replay-1mklumtg/events.csv', newline='', encoding='utf-8') as h:\n    for row in csv.DictReader(h):\n        s = datetime.strptime(row['started_at'].strip(), '%H:%M:%S')\n        e = datetime.strptime(row['ended_at'].strip(), '%H:%M:%S')\n        if e < s: e += timedelta(days=1)\n        total += e - s\nimport math\nprint('independent floor-minutes:', math.floor(total.total_seconds() / 60))\nprint('report.total_minutes()   :', report.total_minutes())\nprint('naive no-wrap (for contrast):', 'negative durations -> wrong')\n\"",
+    "python3 -c \"\nimport report\nDAY = report.DAY_SECONDS\nrows = report.load_events()\nneg = []\nsamples = []\nfor r in rows:\n    s = report._clock_seconds(r['started_at']); e = report._clock_seconds(r['ended_at'])\n    raw = e - s\n    used = raw % DAY\n    if used < 0: neg.append(r)\n    if raw < 0 and len(samples) < 3:\n        samples.append((r['worker'].strip(), r['started_at'].strip(), r['ended_at'].strip(), raw, used, used/60))\nprint('events contributing a negative length:', len(neg))\nprint()\nprint('wrapped-row spot check (raw diff -> value actually summed):')\nfor w, s, e, raw, used, mins in samples:\n    print(f'  {w} {s} -> {e}: raw={raw}s  summed={used}s ({mins:.2f} min)  delta=+{(used-raw)/3600:.0f}h')\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nkept = [r for r in rows if r['worker'].strip()]\nskipped = [r for r in rows if not r['worker'].strip()]\nDAY = report.DAY_SECONDS\ndropped = sum((report._clock_seconds(r['ended_at']) - report._clock_seconds(r['started_at'])) % DAY for r in skipped)\nprint('rows:', len(rows), '| counted:', len(kept), '| skipped:', len(skipped))\nprint('minutes dropped:', dropped / 60)\nprint('total_minutes():', report.total_minutes())\nprint('35400 - dropped//60 check:', 35400 - dropped // 60)\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nws = [r for r in rows if r['started_at'] != r['started_at'].strip() or r['ended_at'] != r['ended_at'].strip()]\nprint('rows with padded time fields:', len(ws))\nfor r in ws[:3]:\n    print(f'  started_at={r[\\\"started_at\\\"]!r} ended_at={r[\\\"ended_at\\\"]!r}')\nprint()\nprint('parse spot checks:')\nfor probe in [' 23:13:17', '01:16:16 ', '  07:38:22  ', '\\t09:05:01\\n', '9: 5 : 1']:\n    try:\n        print(f'  {probe!r} -> {report._clock_seconds(probe)}')\n    except Exception as exc:\n        print(f'  {probe!r} -> ERROR {type(exc).__name__}: {exc}')\nprint()\nprint('total_minutes():', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\nbw = report.by_worker()\ntm = report.total_minutes()\nprint('total_minutes():', tm, '(unchanged from 34841:', tm == 34841, ')')\nprint('keys match worker_ids():', list(bw) == report.worker_ids())\nprint('all values int:', all(isinstance(v, int) for v in bw.values()))\nprint()\nfor w, m in bw.items():\n    print(f'  {w}: {m}')\nprint()\nprint('sum of per-worker floors:', sum(bw.values()), '| total_minutes:', tm, '| diff:', tm - sum(bw.values()))\n\""
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "a",
+    "clause": "verification",
+    "contract_sha256_in_effect": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+    "clause_name_mentions_in_effect": 0
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "<REPO>/evals/replay/runs/v3-regression-across-turns-015/telemetry"
+}

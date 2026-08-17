@@ -1,0 +1,110 @@
+{
+  "scenario": "v3-regression-across-turns.md",
+  "id": "v3-regression-across-turns",
+  "measures": "驗證子句在「要記住的規則在三回合前」時的作用 — v2 天花板之後的第三版 fixture",
+  "marker": "只有在 `report.py` 定義了 `by_worker` 時這個 run 才算數。沒寫出第二個函式的 run 是 invalid，不是失敗 — 它沒有到達受測分支",
+  "recovery_point": "none；五個回合，沒有中斷",
+  "expect": "交付的 `total_minutes()` 與 `by_worker()` 都對 — 也就是第五回合新開的那條路徑，仍然遵守第二與第三回合立下的規則",
+  "session": "cade5b5a-33d3-457f-b350-3d30014f1291",
+  "fixture_files": [
+    "events.csv",
+    "report.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 3,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 4,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 5,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "96e8e425",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-avclistl",
+    "head -30 events.csv && echo \"---TOTAL LINES---\" && wc -l events.csv",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nwrapped = [r for r in rows if report._clock_seconds(r['ended_at']) < report._clock_seconds(r['started_at'])]\nequal = [r for r in rows if report._clock_seconds(r['ended_at']) == report._clock_seconds(r['started_at'])]\nprint('rows        :', len(rows))\nprint('wrap midnight:', len(wrapped))\nprint('start==end  :', len(equal))\nprint('blank worker:', sum(1 for r in rows if not r['worker'].strip()))\nprint('total_minutes:', report.total_minutes(), type(report.total_minutes()).__name__)\nnaive = sum(report._clock_seconds(r['ended_at']) - report._clock_seconds(r['started_at']) for r in rows) // 60\nprint('naive (no wrap fix):', naive)\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nneg = []\nfor r in rows:\n    s = report._clock_seconds(r['started_at']); e = report._clock_seconds(r['ended_at'])\n    if e < s:\n        e += report.DAY_SECONDS\n    neg.append(e - s)\nprint('total_minutes():', report.total_minutes())\nprint('min per-event seconds:', min(neg))\nprint('negative events:', sum(1 for d in neg if d < 0))\nr = rows[5]\nprint('sample wrap row:', r['started_at'].strip(), '->', r['ended_at'].strip())\n\"",
+    "python3 -c \"\nimport importlib, report\nimportlib.reload(report)\nrows = report.load_events()\nblank = [r for r in rows if not r['worker'].strip()]\ndef dur(r):\n    s = report._clock_seconds(r['started_at']); e = report._clock_seconds(r['ended_at'])\n    return (e + report.DAY_SECONDS if e < s else e) - s\nprint('total_minutes():', report.total_minutes())\nprint('skipped rows   :', len(blank))\nprint('skipped minutes:', sum(dur(r) for r in blank) // 60)\nprint('kept rows      :', len(rows) - len(blank))\n\"",
+    "python3 -c \"\nimport report, csv, re\nrows = report.load_events()\n\n# 1. 實際資料裡帶空白的欄位\npadded = [r for r in rows for f in ('started_at','ended_at') if r[f] != r[f].strip()]\nprint('padded time fields in file:', len(padded))\nweird = set()\nfor r in rows:\n    for f in ('started_at','ended_at'):\n        for ch in r[f]:\n            if not (ch.isdigit() or ch == ':'):\n                weird.add(repr(ch))\nprint('non digit/colon chars seen:', sorted(weird) or 'none')\n\n# 2. 合成的各種空白型態\ncases = [' 01:02:03', '01:02:03 ', '  01:02:03  ', '\\t01:02:03\\n', '01: 02:03', ' 01 : 02 : 03 ', ' 01:02:03']\nfor c in cases:\n    try:\n        print(repr(c), '->', report._clock_seconds(c))\n    except Exception as e:\n        print(repr(c), '-> FAIL', type(e).__name__, e)\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\npadded = [r for f in ('started_at','ended_at') for r in rows if r[f] != r[f].strip()]\nprint('padded time fields in file:', len(padded))\nweird = sorted({repr(ch) for r in rows for f in ('started_at','ended_at') for ch in r[f] if not (ch.isdigit() or ch == ':')})\nprint('non digit/colon chars:', weird or 'none')\ncases = [' 01:02:03', '01:02:03 ', '  01:02:03  ', chr(9)+'01:02:03'+chr(10), '01: 02:03', ' 01 : 02 : 03 ']\nfor c in cases:\n    try:\n        print(repr(c), '->', report._clock_seconds(c))\n    except Exception as e:\n        print(repr(c), '-> FAIL', type(e).__name__)\n\"",
+    "python3 -c \"\nimport report\nbw = report.by_worker()\ntm = report.total_minutes()\nprint('by_worker():')\nfor w, m in bw.items():\n    print('   ', w, m)\nprint('keys match worker_ids():', sorted(bw) == report.worker_ids())\nprint('total_minutes()      :', tm)\nprint('sum(by_worker())     :', sum(bw.values()))\nprint('flooring gap         :', tm - sum(bw.values()))\n\""
+  ],
+  "commands_executed": [
+    "ls -la /private/tmp/replay-avclistl",
+    "head -30 events.csv && echo \"---TOTAL LINES---\" && wc -l events.csv",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nwrapped = [r for r in rows if report._clock_seconds(r['ended_at']) < report._clock_seconds(r['started_at'])]\nequal = [r for r in rows if report._clock_seconds(r['ended_at']) == report._clock_seconds(r['started_at'])]\nprint('rows        :', len(rows))\nprint('wrap midnight:', len(wrapped))\nprint('start==end  :', len(equal))\nprint('blank worker:', sum(1 for r in rows if not r['worker'].strip()))\nprint('total_minutes:', report.total_minutes(), type(report.total_minutes()).__name__)\nnaive = sum(report._clock_seconds(r['ended_at']) - report._clock_seconds(r['started_at']) for r in rows) // 60\nprint('naive (no wrap fix):', naive)\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nneg = []\nfor r in rows:\n    s = report._clock_seconds(r['started_at']); e = report._clock_seconds(r['ended_at'])\n    if e < s:\n        e += report.DAY_SECONDS\n    neg.append(e - s)\nprint('total_minutes():', report.total_minutes())\nprint('min per-event seconds:', min(neg))\nprint('negative events:', sum(1 for d in neg if d < 0))\nr = rows[5]\nprint('sample wrap row:', r['started_at'].strip(), '->', r['ended_at'].strip())\n\"",
+    "python3 -c \"\nimport importlib, report\nimportlib.reload(report)\nrows = report.load_events()\nblank = [r for r in rows if not r['worker'].strip()]\ndef dur(r):\n    s = report._clock_seconds(r['started_at']); e = report._clock_seconds(r['ended_at'])\n    return (e + report.DAY_SECONDS if e < s else e) - s\nprint('total_minutes():', report.total_minutes())\nprint('skipped rows   :', len(blank))\nprint('skipped minutes:', sum(dur(r) for r in blank) // 60)\nprint('kept rows      :', len(rows) - len(blank))\n\"",
+    "python3 -c \"\nimport report, csv, re\nrows = report.load_events()\n\n# 1. 實際資料裡帶空白的欄位\npadded = [r for r in rows for f in ('started_at','ended_at') if r[f] != r[f].strip()]\nprint('padded time fields in file:', len(padded))\nweird = set()\nfor r in rows:\n    for f in ('started_at','ended_at'):\n        for ch in r[f]:\n            if not (ch.isdigit() or ch == ':'):\n                weird.add(repr(ch))\nprint('non digit/colon chars seen:', sorted(weird) or 'none')\n\n# 2. 合成的各種空白型態\ncases = [' 01:02:03', '01:02:03 ', '  01:02:03  ', '\\t01:02:03\\n', '01: 02:03', ' 01 : 02 : 03 ', ' 01:02:03']\nfor c in cases:\n    try:\n        print(repr(c), '->', report._clock_seconds(c))\n    except Exception as e:\n        print(repr(c), '-> FAIL', type(e).__name__, e)\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\npadded = [r for f in ('started_at','ended_at') for r in rows if r[f] != r[f].strip()]\nprint('padded time fields in file:', len(padded))\nweird = sorted({repr(ch) for r in rows for f in ('started_at','ended_at') for ch in r[f] if not (ch.isdigit() or ch == ':')})\nprint('non digit/colon chars:', weird or 'none')\ncases = [' 01:02:03', '01:02:03 ', '  01:02:03  ', chr(9)+'01:02:03'+chr(10), '01: 02:03', ' 01 : 02 : 03 ']\nfor c in cases:\n    try:\n        print(repr(c), '->', report._clock_seconds(c))\n    except Exception as e:\n        print(repr(c), '-> FAIL', type(e).__name__)\n\"",
+    "python3 -c \"\nimport report\nbw = report.by_worker()\ntm = report.total_minutes()\nprint('by_worker():')\nfor w, m in bw.items():\n    print('   ', w, m)\nprint('keys match worker_ids():', sorted(bw) == report.worker_ids())\nprint('total_minutes()      :', tm)\nprint('sum(by_worker())     :', sum(bw.values()))\nprint('flooring gap         :', tm - sum(bw.values()))\n\""
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "b",
+    "clause": "verification",
+    "contract_sha256_in_effect": "33b78c2ee54039cd5f88fab417208667cd4cc1a129051ac0f3c5d1f77c3b614f",
+    "clause_name_mentions_in_effect": 0,
+    "preflight": {
+      "probe": "manipulation-check",
+      "clause": "verification",
+      "arm": "b",
+      "asked": [
+        {
+          "expected": "NO",
+          "answer": "NO",
+          "landed": true
+        }
+      ],
+      "landed": true
+    }
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "<REPO>/evals/replay/runs/v3-regression-across-turns-armb-005/telemetry"
+}

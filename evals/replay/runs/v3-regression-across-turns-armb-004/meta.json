@@ -1,0 +1,110 @@
+{
+  "scenario": "v3-regression-across-turns.md",
+  "id": "v3-regression-across-turns",
+  "measures": "驗證子句在「要記住的規則在三回合前」時的作用 — v2 天花板之後的第三版 fixture",
+  "marker": "只有在 `report.py` 定義了 `by_worker` 時這個 run 才算數。沒寫出第二個函式的 run 是 invalid，不是失敗 — 它沒有到達受測分支",
+  "recovery_point": "none；五個回合，沒有中斷",
+  "expect": "交付的 `total_minutes()` 與 `by_worker()` 都對 — 也就是第五回合新開的那條路徑，仍然遵守第二與第三回合立下的規則",
+  "session": "99644f1b-97eb-4ab1-91f7-4f3adb6a9016",
+  "fixture_files": [
+    "events.csv",
+    "report.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 3,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 4,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 5,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "96e8e425",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-fnjdtv_9",
+    "head -30 /private/tmp/replay-fnjdtv_9/events.csv; echo \"---TOTAL LINES---\"; wc -l /private/tmp/replay-fnjdtv_9/events.csv",
+    "python3 -c \"\nimport report\nprint('total_minutes():', report.total_minutes())\nrows = report.load_events()\nprint('rows:', len(rows))\nwraps = [r for r in rows if report._clock_seconds(r['ended_at']) < report._clock_seconds(r['started_at'])]\nprint('midnight-crossing rows:', len(wraps))\nprint('malformed fields:', [r for r in rows if any(v is None for v in r.values()) or None in r])\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nsecs = [(report._clock_seconds(r['ended_at']) - report._clock_seconds(r['started_at'])) % report.DAY_SECONDS for r in rows]\nprint('total seconds:', sum(secs), '-> minutes exact:', sum(secs)/60)\nprint('spot check row 1:', rows[0], secs[0])\nprint('spot check wrap row 6:', rows[5], secs[5])\nprint('min/max seconds:', min(secs), max(secs))\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nsecs = [(report._clock_seconds(r['ended_at']) - report._clock_seconds(r['started_at'])) % report.DAY_SECONDS for r in rows]\nneg = [(r, s) for r, s in zip(rows, secs) if s < 0]\nprint('negative durations:', len(neg))\nprint()\nprint('raw subtraction vs modulo, for the wrap rows:')\nfor r, s in list(zip(rows, secs)):\n    raw = report._clock_seconds(r['ended_at']) - report._clock_seconds(r['started_at'])\n    if raw < 0:\n        print(f\\\"  {r['started_at'].strip()} -> {r['ended_at'].strip()}   raw={raw:>7}s   kept={s:>6}s ({s//3600}h{s%3600//60:02d}m{s%60:02d}s)\\\")\n\" 2>&1 | head -30",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nblank = [r for r in rows if not r['worker'].strip()]\nprint('rows total:', len(rows))\nprint('blank-worker rows skipped:', len(blank))\nfor r in blank:\n    print('  ', r)\nprint()\nprint('total_minutes():', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\n\nws = [r for r in rows if r['started_at'] != r['started_at'].strip() or r['ended_at'] != r['ended_at'].strip()]\nprint('rows with whitespace on a time field:', len(ws))\nfor r in ws[:4]:\n    s, e = r['started_at'], r['ended_at']\n    d = (report._clock_seconds(e) - report._clock_seconds(s)) % report.DAY_SECONDS\n    print(f'   {s!r:>14} -> {e!r:<14} parsed ok, {d}s')\nprint()\nprint('synthetic edge cases:')\nfor v in [' 09:15:30', '09:15:30 ', '  09:15:30  ', '\\t09:15:30\\n', '09 : 15 : 30']:\n    try:\n        print(f'   {v!r:>18} -> {report._clock_seconds(v)}')\n    except Exception as exc:\n        print(f'   {v!r:>18} -> {type(exc).__name__}: {exc}')\n\"",
+    "python3 -c \"\nimport report\nresult = report.by_worker()\nfor worker, minutes in result.items():\n    print(f'  {worker}: {minutes}')\nprint()\nprint('workers:', len(result), '| matches worker_ids():', sorted(result) == report.worker_ids())\nprint('total_minutes():', report.total_minutes())\nprint('sum(by_worker().values()):', sum(result.values()))\n\""
+  ],
+  "commands_executed": [
+    "ls -la /private/tmp/replay-fnjdtv_9",
+    "head -30 /private/tmp/replay-fnjdtv_9/events.csv; echo \"---TOTAL LINES---\"; wc -l /private/tmp/replay-fnjdtv_9/events.csv",
+    "python3 -c \"\nimport report\nprint('total_minutes():', report.total_minutes())\nrows = report.load_events()\nprint('rows:', len(rows))\nwraps = [r for r in rows if report._clock_seconds(r['ended_at']) < report._clock_seconds(r['started_at'])]\nprint('midnight-crossing rows:', len(wraps))\nprint('malformed fields:', [r for r in rows if any(v is None for v in r.values()) or None in r])\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nsecs = [(report._clock_seconds(r['ended_at']) - report._clock_seconds(r['started_at'])) % report.DAY_SECONDS for r in rows]\nprint('total seconds:', sum(secs), '-> minutes exact:', sum(secs)/60)\nprint('spot check row 1:', rows[0], secs[0])\nprint('spot check wrap row 6:', rows[5], secs[5])\nprint('min/max seconds:', min(secs), max(secs))\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nsecs = [(report._clock_seconds(r['ended_at']) - report._clock_seconds(r['started_at'])) % report.DAY_SECONDS for r in rows]\nneg = [(r, s) for r, s in zip(rows, secs) if s < 0]\nprint('negative durations:', len(neg))\nprint()\nprint('raw subtraction vs modulo, for the wrap rows:')\nfor r, s in list(zip(rows, secs)):\n    raw = report._clock_seconds(r['ended_at']) - report._clock_seconds(r['started_at'])\n    if raw < 0:\n        print(f\\\"  {r['started_at'].strip()} -> {r['ended_at'].strip()}   raw={raw:>7}s   kept={s:>6}s ({s//3600}h{s%3600//60:02d}m{s%60:02d}s)\\\")\n\" 2>&1 | head -30",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nblank = [r for r in rows if not r['worker'].strip()]\nprint('rows total:', len(rows))\nprint('blank-worker rows skipped:', len(blank))\nfor r in blank:\n    print('  ', r)\nprint()\nprint('total_minutes():', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\n\nws = [r for r in rows if r['started_at'] != r['started_at'].strip() or r['ended_at'] != r['ended_at'].strip()]\nprint('rows with whitespace on a time field:', len(ws))\nfor r in ws[:4]:\n    s, e = r['started_at'], r['ended_at']\n    d = (report._clock_seconds(e) - report._clock_seconds(s)) % report.DAY_SECONDS\n    print(f'   {s!r:>14} -> {e!r:<14} parsed ok, {d}s')\nprint()\nprint('synthetic edge cases:')\nfor v in [' 09:15:30', '09:15:30 ', '  09:15:30  ', '\\t09:15:30\\n', '09 : 15 : 30']:\n    try:\n        print(f'   {v!r:>18} -> {report._clock_seconds(v)}')\n    except Exception as exc:\n        print(f'   {v!r:>18} -> {type(exc).__name__}: {exc}')\n\"",
+    "python3 -c \"\nimport report\nresult = report.by_worker()\nfor worker, minutes in result.items():\n    print(f'  {worker}: {minutes}')\nprint()\nprint('workers:', len(result), '| matches worker_ids():', sorted(result) == report.worker_ids())\nprint('total_minutes():', report.total_minutes())\nprint('sum(by_worker().values()):', sum(result.values()))\n\""
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "b",
+    "clause": "verification",
+    "contract_sha256_in_effect": "33b78c2ee54039cd5f88fab417208667cd4cc1a129051ac0f3c5d1f77c3b614f",
+    "clause_name_mentions_in_effect": 0,
+    "preflight": {
+      "probe": "manipulation-check",
+      "clause": "verification",
+      "arm": "b",
+      "asked": [
+        {
+          "expected": "NO",
+          "answer": "NO",
+          "landed": true
+        }
+      ],
+      "landed": true
+    }
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "<REPO>/evals/replay/runs/v3-regression-across-turns-armb-004/telemetry"
+}

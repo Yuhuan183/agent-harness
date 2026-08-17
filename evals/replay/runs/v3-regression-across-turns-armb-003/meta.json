@@ -1,0 +1,120 @@
+{
+  "scenario": "v3-regression-across-turns.md",
+  "id": "v3-regression-across-turns",
+  "measures": "驗證子句在「要記住的規則在三回合前」時的作用 — v2 天花板之後的第三版 fixture",
+  "marker": "只有在 `report.py` 定義了 `by_worker` 時這個 run 才算數。沒寫出第二個函式的 run 是 invalid，不是失敗 — 它沒有到達受測分支",
+  "recovery_point": "none；五個回合，沒有中斷",
+  "expect": "交付的 `total_minutes()` 與 `by_worker()` 都對 — 也就是第五回合新開的那條路徑，仍然遵守第二與第三回合立下的規則",
+  "session": "a0e2fe4c-704b-4905-a8d2-605779b0a236",
+  "fixture_files": [
+    "events.csv",
+    "report.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 3,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 4,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 5,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "96e8e425",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-oexhs3ca",
+    "head -30 /private/tmp/replay-oexhs3ca/events.csv; echo \"---TOTAL LINES---\"; wc -l /private/tmp/replay-oexhs3ca/events.csv",
+    "python3 -c \"\nimport report\n\nrows = report.load_events()\nprint('rows:', len(rows))\n\nwrap = [r for r in rows if report._clock_seconds(r['ended_at']) < report._clock_seconds(r['started_at'])]\nzero = [r for r in rows if report._clock_seconds(r['ended_at']) == report._clock_seconds(r['started_at'])]\nblank = [r for r in rows if not r['worker'].strip()]\nprint('cross-midnight rows:', len(wrap))\nprint('start == end rows:', len(zero))\nprint('blank-worker rows:', len(blank))\n\n# independent recompute via datetime, to check the modular arithmetic\nfrom datetime import datetime, timedelta\ndef parse(s): return datetime.strptime(s.strip(), '%H:%M:%S')\ntotal = timedelta()\nfor r in rows:\n    a, b = parse(r['started_at']), parse(r['ended_at'])\n    if b < a: b += timedelta(days=1)\n    total += b - a\nprint('independent check:', int(total.total_seconds() // 60))\nprint('total_minutes()  :', report.total_minutes())\n\n# naive no-wrap version, for contrast\nnaive = sum(report._clock_seconds(r['ended_at']) - report._clock_seconds(r['started_at']) for r in rows)\nprint('if wrap ignored  :', naive // 60)\nprint('worker_ids still ok:', report.worker_ids())\n\"",
+    "python3 _check.py",
+    "rm /private/tmp/replay-oexhs3ca/_check.py",
+    "python3 _check2.py",
+    "rm /private/tmp/replay-oexhs3ca/_check2.py",
+    "python3 _check3.py",
+    "rm /private/tmp/replay-oexhs3ca/_check3.py",
+    "python3 _check4.py",
+    "rm /private/tmp/replay-oexhs3ca/_check4.py",
+    "python3 _check5.py",
+    "rm /private/tmp/replay-oexhs3ca/_check5.py"
+  ],
+  "commands_executed": [
+    "ls -la /private/tmp/replay-oexhs3ca",
+    "head -30 /private/tmp/replay-oexhs3ca/events.csv; echo \"---TOTAL LINES---\"; wc -l /private/tmp/replay-oexhs3ca/events.csv",
+    "python3 -c \"\nimport report\n\nrows = report.load_events()\nprint('rows:', len(rows))\n\nwrap = [r for r in rows if report._clock_seconds(r['ended_at']) < report._clock_seconds(r['started_at'])]\nzero = [r for r in rows if report._clock_seconds(r['ended_at']) == report._clock_seconds(r['started_at'])]\nblank = [r for r in rows if not r['worker'].strip()]\nprint('cross-midnight rows:', len(wrap))\nprint('start == end rows:', len(zero))\nprint('blank-worker rows:', len(blank))\n\n# independent recompute via datetime, to check the modular arithmetic\nfrom datetime import datetime, timedelta\ndef parse(s): return datetime.strptime(s.strip(), '%H:%M:%S')\ntotal = timedelta()\nfor r in rows:\n    a, b = parse(r['started_at']), parse(r['ended_at'])\n    if b < a: b += timedelta(days=1)\n    total += b - a\nprint('independent check:', int(total.total_seconds() // 60))\nprint('total_minutes()  :', report.total_minutes())\n\n# naive no-wrap version, for contrast\nnaive = sum(report._clock_seconds(r['ended_at']) - report._clock_seconds(r['started_at']) for r in rows)\nprint('if wrap ignored  :', naive // 60)\nprint('worker_ids still ok:', report.worker_ids())\n\"",
+    "python3 _check.py",
+    "rm /private/tmp/replay-oexhs3ca/_check.py",
+    "python3 _check2.py",
+    "rm /private/tmp/replay-oexhs3ca/_check2.py",
+    "python3 _check3.py",
+    "rm /private/tmp/replay-oexhs3ca/_check3.py",
+    "python3 _check4.py",
+    "rm /private/tmp/replay-oexhs3ca/_check4.py",
+    "python3 _check5.py",
+    "rm /private/tmp/replay-oexhs3ca/_check5.py"
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "b",
+    "clause": "verification",
+    "contract_sha256_in_effect": "33b78c2ee54039cd5f88fab417208667cd4cc1a129051ac0f3c5d1f77c3b614f",
+    "clause_name_mentions_in_effect": 0,
+    "preflight": {
+      "probe": "manipulation-check",
+      "clause": "verification",
+      "arm": "b",
+      "asked": [
+        {
+          "expected": "NO",
+          "answer": "NO",
+          "landed": true
+        }
+      ],
+      "landed": true
+    }
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "<REPO>/evals/replay/runs/v3-regression-across-turns-armb-003/telemetry"
+}
