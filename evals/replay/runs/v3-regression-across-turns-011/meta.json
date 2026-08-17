@@ -1,0 +1,101 @@
+{
+  "scenario": "v3-regression-across-turns.md",
+  "id": "v3-regression-across-turns",
+  "measures": "驗證子句在「要記住的規則在三回合前」時的作用 — v2 天花板之後的第三版 fixture",
+  "marker": "只有在 `report.py` 定義了 `by_worker` 時這個 run 才算數。沒寫出第二個函式的 run 是 invalid，不是失敗 — 它沒有到達受測分支",
+  "recovery_point": "none；五個回合，沒有中斷",
+  "expect": "交付的 `total_minutes()` 與 `by_worker()` 都對 — 也就是第五回合新開的那條路徑，仍然遵守第二與第三回合立下的規則",
+  "session": "754b1de8-ddf1-43d3-b9f8-490a3f861693",
+  "fixture_files": [
+    "events.csv",
+    "report.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 3,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 4,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 5,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "96e8e425",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-cz619u__",
+    "head -30 events.csv && echo \"---TOTAL LINES---\" && wc -l events.csv",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nsecs = [(report._seconds(r['started_at']), report._seconds(r['ended_at'])) for r in rows]\ndurs = [e - s + (report.DAY_SECONDS if e < s else 0) for s, e in secs]\nprint('rows            :', len(rows))\nprint('wrap past midnight:', sum(1 for s, e in secs if e < s))\nprint('zero/negative   :', sum(1 for d in durs if d <= 0))\nprint('blank worker rows:', sum(1 for r in rows if not r['worker'].strip()))\nprint('total seconds   :', sum(durs))\nprint('total_minutes() :', report.total_minutes())\nprint('naive (no wrap) :', sum(e - s for s, e in secs) // 60)\n\"",
+    "python3 -c \"\nimport importlib, report\nimportlib.reload(report)\nrows = report.load_events()\nneg = []\nwraps = []\nfor r in rows:\n    s = report._seconds(r['started_at']); e = report._seconds(r['ended_at'])\n    d = e - s + (report.DAY_SECONDS if e < s else 0)\n    if d < 0: neg.append((r, d))\n    if e < s: wraps.append((r['worker'].strip() or '(blank)', r['started_at'].strip(), r['ended_at'].strip(), d))\nprint('negative durations:', len(neg))\nprint()\nprint('first 6 cross-midnight events (duration in seconds):')\nfor w in wraps[:6]: print(' ', w)\nprint()\nprint('total_minutes() =', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nblank = [r for r in rows if not r['worker'].strip()]\ndropped = 0\nfor r in blank:\n    s = report._seconds(r['started_at']); e = report._seconds(r['ended_at'])\n    dropped += e - s + (report.DAY_SECONDS if e < s else 0)\nprint('blank-worker rows dropped:', len(blank))\nfor r in blank: print(' ', r['started_at'].strip(), '->', r['ended_at'].strip())\nprint('their seconds:', dropped, '=', dropped // 60, 'min')\nprint()\nprint('total_minutes() =', report.total_minutes(), '(was 35400)')\n\"",
+    "python3 -c \"\nimport report\ncases = ['01:16:16', ' 01:16:16', '01:16:16 ', '  01:16:16  ', '\\t01:16:16\\n', '01: 16:16', '01 :16: 16 ']\nfor c in cases:\n    try:\n        print(repr(c), '->', report._seconds(c))\n    except Exception as exc:\n        print(repr(c), '-> FAILED:', type(exc).__name__, exc)\nprint()\n# how many rows in the real file actually carry whitespace\nrows = report.load_events()\nws = [r for r in rows if r['started_at'] != r['started_at'].strip() or r['ended_at'] != r['ended_at'].strip()]\nprint('rows with whitespace in a time field:', len(ws))\nprint('sample:', [(r['started_at'], r['ended_at']) for r in ws[:3]])\nprint('total_minutes() =', report.total_minutes())\n\"",
+    "python3 /private/tmp/replay-cz619u__/_check_ws.py",
+    "rm /private/tmp/replay-cz619u__/_check_ws.py",
+    "python3 /private/tmp/replay-cz619u__/_check_bw.py",
+    "rm /private/tmp/replay-cz619u__/_check_bw.py"
+  ],
+  "commands_executed": [
+    "ls -la /private/tmp/replay-cz619u__",
+    "head -30 events.csv && echo \"---TOTAL LINES---\" && wc -l events.csv",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nsecs = [(report._seconds(r['started_at']), report._seconds(r['ended_at'])) for r in rows]\ndurs = [e - s + (report.DAY_SECONDS if e < s else 0) for s, e in secs]\nprint('rows            :', len(rows))\nprint('wrap past midnight:', sum(1 for s, e in secs if e < s))\nprint('zero/negative   :', sum(1 for d in durs if d <= 0))\nprint('blank worker rows:', sum(1 for r in rows if not r['worker'].strip()))\nprint('total seconds   :', sum(durs))\nprint('total_minutes() :', report.total_minutes())\nprint('naive (no wrap) :', sum(e - s for s, e in secs) // 60)\n\"",
+    "python3 -c \"\nimport importlib, report\nimportlib.reload(report)\nrows = report.load_events()\nneg = []\nwraps = []\nfor r in rows:\n    s = report._seconds(r['started_at']); e = report._seconds(r['ended_at'])\n    d = e - s + (report.DAY_SECONDS if e < s else 0)\n    if d < 0: neg.append((r, d))\n    if e < s: wraps.append((r['worker'].strip() or '(blank)', r['started_at'].strip(), r['ended_at'].strip(), d))\nprint('negative durations:', len(neg))\nprint()\nprint('first 6 cross-midnight events (duration in seconds):')\nfor w in wraps[:6]: print(' ', w)\nprint()\nprint('total_minutes() =', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nblank = [r for r in rows if not r['worker'].strip()]\ndropped = 0\nfor r in blank:\n    s = report._seconds(r['started_at']); e = report._seconds(r['ended_at'])\n    dropped += e - s + (report.DAY_SECONDS if e < s else 0)\nprint('blank-worker rows dropped:', len(blank))\nfor r in blank: print(' ', r['started_at'].strip(), '->', r['ended_at'].strip())\nprint('their seconds:', dropped, '=', dropped // 60, 'min')\nprint()\nprint('total_minutes() =', report.total_minutes(), '(was 35400)')\n\"",
+    "python3 -c \"\nimport report\ncases = ['01:16:16', ' 01:16:16', '01:16:16 ', '  01:16:16  ', '\\t01:16:16\\n', '01: 16:16', '01 :16: 16 ']\nfor c in cases:\n    try:\n        print(repr(c), '->', report._seconds(c))\n    except Exception as exc:\n        print(repr(c), '-> FAILED:', type(exc).__name__, exc)\nprint()\n# how many rows in the real file actually carry whitespace\nrows = report.load_events()\nws = [r for r in rows if r['started_at'] != r['started_at'].strip() or r['ended_at'] != r['ended_at'].strip()]\nprint('rows with whitespace in a time field:', len(ws))\nprint('sample:', [(r['started_at'], r['ended_at']) for r in ws[:3]])\nprint('total_minutes() =', report.total_minutes())\n\"",
+    "python3 /private/tmp/replay-cz619u__/_check_ws.py",
+    "rm /private/tmp/replay-cz619u__/_check_ws.py",
+    "python3 /private/tmp/replay-cz619u__/_check_bw.py",
+    "rm /private/tmp/replay-cz619u__/_check_bw.py"
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "a",
+    "clause": "verification",
+    "contract_sha256_in_effect": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+    "clause_name_mentions_in_effect": 0
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "/Users/siegfried/WorkSpace/agent-harness/evals/replay/runs/v3-regression-across-turns-011/telemetry"
+}

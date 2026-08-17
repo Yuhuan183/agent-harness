@@ -7,8 +7,8 @@ verification gap from 2026-07-28, and `docs/research/lifecycle-replay.md` set
 four survival criteria a replay result must meet before it may be cited.
 
 This directory closed criterion 2 — a scenario per question with its reach
-marker written before anything ran — and then kept going. **380 runs retained,
-2026-08-12 to 08-17**: 365 in batches, plus thirteen pilots, one run the
+marker written before anything ran — and then kept going. **423 runs retained,
+2026-08-12 to 08-17**: 405 in batches, plus sixteen pilots, one run the
 provider aborted, and one voided by an operator mistake — all kept, because an
 invalid run is data about the scenario and a voided one is data about the
 operator.
@@ -35,7 +35,7 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | does taking the judgement call out of that rule help? | **yes on `m1` — 14/92 against 44/91, p = 0.0000014** | the one result here big enough to act on |
 | does that carry to a second scenario? | not shown at n=10 per arm — `r2` turn 3, 0/10 against 2/10, p = 0.47 | a null this size is not absence; `r2` also has no headroom outside turn 3, which the pre-registration said first |
 | can a resident clause be priced on what gets *delivered*? | **yes, the cell works** — 40 runs, zero invalid, the grader runs the shipped code | the first result-quality measure here; `q1`/`q2` could only ever grade a reply |
-| does deleting the verification clause make the delivered code worse? | no difference found — 20/20 against 20/20, arm B's lower bound 0.832 | and the reason is the finding: the trap was inside reading distance, so nobody needed to run anything |
+| does deleting the verification clause make the delivered code worse? | no difference found — 20/20 against 20/20 in three fixtures, arm B's lower bound 0.832 each | and the reasons differ: two traps were inside reading distance, the third was refactored out of existence |
 
 **Four hypotheses were built and refuted, three of them mine.** That is this
 directory's main output, and Part 7 explains why it had to be.
@@ -926,6 +926,56 @@ single-turn, answer-checkable task whose trap is readable, at n=20 per arm, with
 0.832 as the bound on harm. It does not license calling the clause useless — a
 ceiling hides everything below its resolution — and it does not license closing
 this line. The cell works. The fixture was too easy.
+
+### `v3`, and a second reason a ceiling happens
+
+If the trap must not be readable, put it somewhere reading cannot reach: not in
+the data at all. `v3` is five corrections, where turn 2 sets a midnight rule,
+turn 3 an exclusion, and turn 5 asks for a second function that invites its own
+code path. Nothing asks the two paths to agree and nothing fails loudly when
+they diverge — `by_worker` just returns numbers quietly wrong for eleven of
+twelve workers while the headline total stays right.
+
+```
+primary     both functions correct   arm A 20/20   arm B 20/20   p = 1.0000
+                                     arm B exact 95% interval [0.832, 1.000]
+secondary   final turn ran a check touching by_worker   15/20 against 15/20, p = 1.0000
+```
+
+Forty runs, zero invalid, and a secondary built to have room that came back
+exactly equal. **The finding is that the failure never had a chance to happen**:
+
+```
+by_worker recomputes the span itself, so it could regress    4 of 40
+by_worker reuses a shared helper, so it cannot               36 of 40
+                                          arm A 18/20, arm B 18/20
+```
+
+The model factors the duration logic into one function, which removes the
+divergence structurally — at the same rate in both arms, so refactoring has
+nothing to do with whether the contract asks for verification. All four runs
+that did carry two paths got it right, two per arm; n=4 says nothing about the
+clause, but it bounds what this fixture could ever have measured. A perfect
+instrument here acts on the 10% of runs where the hazard exists.
+
+So three ceilings, from two different causes:
+
+```
+v1, v2   the trap was inside reading distance   the model read instead of running
+v3       the hazard was designed out            the model wrote code needing no such check
+```
+
+The second is harder to escape than the first. A fixture can be made less
+readable; it cannot easily be made un-refactorable, and factoring shared logic
+is exactly what a strong model is good at. **Pricing a verification clause needs
+a hazard the model will not tidy away on its own**, and code structure is the
+thing it tidies best.
+
+**Across all three**: deleting the clause cost no measurable delivered
+correctness in any of them, 120 runs, zero invalid, arm B's lower bound 0.832
+each time. Still not a licence to call the clause useless, and still bounded to
+answer-checkable coding tasks. The criterion is sound; the hard part is a hazard
+that survives contact with the model.
 
 ---
 

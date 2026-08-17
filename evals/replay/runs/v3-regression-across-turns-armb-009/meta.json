@@ -1,0 +1,112 @@
+{
+  "scenario": "v3-regression-across-turns.md",
+  "id": "v3-regression-across-turns",
+  "measures": "驗證子句在「要記住的規則在三回合前」時的作用 — v2 天花板之後的第三版 fixture",
+  "marker": "只有在 `report.py` 定義了 `by_worker` 時這個 run 才算數。沒寫出第二個函式的 run 是 invalid，不是失敗 — 它沒有到達受測分支",
+  "recovery_point": "none；五個回合，沒有中斷",
+  "expect": "交付的 `total_minutes()` 與 `by_worker()` 都對 — 也就是第五回合新開的那條路徑，仍然遵守第二與第三回合立下的規則",
+  "session": "48d96aca-de39-4ec3-85a5-aee3ccc66634",
+  "fixture_files": [
+    "events.csv",
+    "report.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 3,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 4,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 5,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "96e8e425",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-5o6ayl6l",
+    "head -30 /private/tmp/replay-5o6ayl6l/events.csv; echo \"---TOTAL LINES---\"; wc -l /private/tmp/replay-5o6ayl6l/events.csv",
+    "python3 -c \"\nimport csv, collections\nrows=list(csv.DictReader(open('events.csv',newline='',encoding='utf-8')))\nprint('rows', len(rows))\nprint('fields', rows[0].keys())\nbad=[r for r in rows if not r['started_at'].strip() or not r['ended_at'].strip()]\nprint('blank times', len(bad))\nimport re\npat=re.compile(r'^\\d{2}:\\d{2}:\\d{2}\\$')\nmal=[r for r in rows if not pat.match(r['started_at'].strip()) or not pat.match(r['ended_at'].strip())]\nprint('malformed', mal[:5], len(mal))\neq=[r for r in rows if r['started_at'].strip()==r['ended_at'].strip()]\nprint('equal', len(eq))\nwrap=[r for r in rows if r['ended_at'].strip()<r['started_at'].strip()]\nprint('wrap', len(wrap), wrap[:3])\nws=[r for r in rows if r['started_at']!=r['started_at'].strip() or r['ended_at']!=r['ended_at'].strip()]\nprint('whitespace rows', len(ws))\nprint('blank worker', sum(1 for r in rows if not r['worker'].strip()))\nprint('None key rows', sum(1 for r in rows if None in r))\n\"\n",
+    "python3 -c \"\nimport report\nv = report.total_minutes()\nprint('total_minutes =', v, type(v).__name__)\n\n# independent cross-check: naive (no midnight wrap) vs wrapped\nimport csv\nrows = list(csv.DictReader(open('events.csv', newline='', encoding='utf-8')))\ndef s(t):\n    h,m,sec = map(int, t.strip().split(':'))\n    return h*3600+m*60+sec\nnaive = sum(s(r['ended_at']) - s(r['started_at']) for r in rows)\nprint('naive (negatives kept, no wrap) =', naive//60)\nprint('wrapped seconds total =', sum((s(r['ended_at'])-s(r['started_at'])) % 86400 for r in rows))\nprint('check floor:', sum((s(r['ended_at'])-s(r['started_at'])) % 86400 for r in rows)//60 == v)\n\"\n",
+    "python3 _check.py && rm _check.py",
+    "python3 _check_wrap.py && rm _check_wrap.py",
+    "python3 _check2.py && rm _check2.py",
+    "python3 _check3.py && rm _check3.py",
+    "python3 _check4.py && rm _check4.py"
+  ],
+  "commands_executed": [
+    "ls -la /private/tmp/replay-5o6ayl6l",
+    "head -30 /private/tmp/replay-5o6ayl6l/events.csv; echo \"---TOTAL LINES---\"; wc -l /private/tmp/replay-5o6ayl6l/events.csv",
+    "python3 -c \"\nimport csv, collections\nrows=list(csv.DictReader(open('events.csv',newline='',encoding='utf-8')))\nprint('rows', len(rows))\nprint('fields', rows[0].keys())\nbad=[r for r in rows if not r['started_at'].strip() or not r['ended_at'].strip()]\nprint('blank times', len(bad))\nimport re\npat=re.compile(r'^\\d{2}:\\d{2}:\\d{2}\\$')\nmal=[r for r in rows if not pat.match(r['started_at'].strip()) or not pat.match(r['ended_at'].strip())]\nprint('malformed', mal[:5], len(mal))\neq=[r for r in rows if r['started_at'].strip()==r['ended_at'].strip()]\nprint('equal', len(eq))\nwrap=[r for r in rows if r['ended_at'].strip()<r['started_at'].strip()]\nprint('wrap', len(wrap), wrap[:3])\nws=[r for r in rows if r['started_at']!=r['started_at'].strip() or r['ended_at']!=r['ended_at'].strip()]\nprint('whitespace rows', len(ws))\nprint('blank worker', sum(1 for r in rows if not r['worker'].strip()))\nprint('None key rows', sum(1 for r in rows if None in r))\n\"\n",
+    "python3 -c \"\nimport report\nv = report.total_minutes()\nprint('total_minutes =', v, type(v).__name__)\n\n# independent cross-check: naive (no midnight wrap) vs wrapped\nimport csv\nrows = list(csv.DictReader(open('events.csv', newline='', encoding='utf-8')))\ndef s(t):\n    h,m,sec = map(int, t.strip().split(':'))\n    return h*3600+m*60+sec\nnaive = sum(s(r['ended_at']) - s(r['started_at']) for r in rows)\nprint('naive (negatives kept, no wrap) =', naive//60)\nprint('wrapped seconds total =', sum((s(r['ended_at'])-s(r['started_at'])) % 86400 for r in rows))\nprint('check floor:', sum((s(r['ended_at'])-s(r['started_at'])) % 86400 for r in rows)//60 == v)\n\"\n",
+    "python3 _check.py && rm _check.py",
+    "python3 _check_wrap.py && rm _check_wrap.py",
+    "python3 _check2.py && rm _check2.py",
+    "python3 _check3.py && rm _check3.py",
+    "python3 _check4.py && rm _check4.py"
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "b",
+    "clause": "verification",
+    "contract_sha256_in_effect": "33b78c2ee54039cd5f88fab417208667cd4cc1a129051ac0f3c5d1f77c3b614f",
+    "clause_name_mentions_in_effect": 0,
+    "preflight": {
+      "probe": "manipulation-check",
+      "clause": "verification",
+      "arm": "b",
+      "asked": [
+        {
+          "expected": "NO",
+          "answer": "NO",
+          "landed": true
+        }
+      ],
+      "landed": true
+    }
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "/Users/siegfried/WorkSpace/agent-harness/evals/replay/runs/v3-regression-across-turns-armb-009/telemetry"
+}

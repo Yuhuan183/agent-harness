@@ -1,0 +1,107 @@
+{
+  "scenario": "v3-regression-across-turns.md",
+  "id": "v3-regression-across-turns",
+  "measures": "驗證子句在「要記住的規則在三回合前」時的作用 — v2 天花板之後的第三版 fixture",
+  "marker": "只有在 `report.py` 定義了 `by_worker` 時這個 run 才算數。沒寫出第二個函式的 run 是 invalid，不是失敗 — 它沒有到達受測分支",
+  "recovery_point": "none；五個回合，沒有中斷",
+  "expect": "交付的 `total_minutes()` 與 `by_worker()` 都對 — 也就是第五回合新開的那條路徑，仍然遵守第二與第三回合立下的規則",
+  "session": "94674736-e3d0-4a28-a4fb-90dc0defbdc4",
+  "fixture_files": [
+    "events.csv",
+    "report.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 3,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 4,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 5,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "96e8e425",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-w_td0xm4",
+    "/usr/bin/head -30 /private/tmp/replay-w_td0xm4/events.csv; echo \"---TOTAL LINES---\"; /usr/bin/wc -l /private/tmp/replay-w_td0xm4/events.csv",
+    "python3 -c \"\nimport csv, report\nrows = report.load_events()\nprint('rows:', len(rows))\nprint('blank worker rows:', sum(1 for r in rows if not r['worker'].strip()))\nprint('padded fields:', sum(1 for r in rows if any(v != v.strip() for v in r.values())))\nprint('wrap rows:', sum(1 for r in rows if report._clock_seconds(r['ended_at']) < report._clock_seconds(r['started_at'])))\nprint('equal rows:', sum(1 for r in rows if report._clock_seconds(r['ended_at']) == report._clock_seconds(r['started_at'])))\nprint('None/short rows:', sum(1 for r in rows if any(v is None for v in r.values()) or len(r) != 3))\n# independent cross-check with datetime/timedelta\nfrom datetime import datetime, timedelta\nday = timedelta(days=1)\ntot = timedelta()\nfor r in rows:\n    s = datetime.strptime(r['started_at'].strip(), '%H:%M:%S')\n    e = datetime.strptime(r['ended_at'].strip(), '%H:%M:%S')\n    if e < s: e += day\n    tot += e - s\nprint('cross-check minutes:', int(tot.total_seconds() // 60))\nprint('total_minutes():', report.total_minutes(), type(report.total_minutes()).__name__)\n\"",
+    "python3 _check.py",
+    "rm /private/tmp/replay-w_td0xm4/_check.py",
+    "python3 _check_wrap.py",
+    "rm /private/tmp/replay-w_td0xm4/_check_wrap.py",
+    "python3 _check_total.py",
+    "rm /private/tmp/replay-w_td0xm4/_check_total.py",
+    "python3 _check_ws.py",
+    "rm /private/tmp/replay-w_td0xm4/_check_ws.py",
+    "python3 _check_bw.py",
+    "rm /private/tmp/replay-w_td0xm4/_check_bw.py"
+  ],
+  "commands_executed": [
+    "ls -la /private/tmp/replay-w_td0xm4",
+    "/usr/bin/head -30 /private/tmp/replay-w_td0xm4/events.csv; echo \"---TOTAL LINES---\"; /usr/bin/wc -l /private/tmp/replay-w_td0xm4/events.csv",
+    "python3 -c \"\nimport csv, report\nrows = report.load_events()\nprint('rows:', len(rows))\nprint('blank worker rows:', sum(1 for r in rows if not r['worker'].strip()))\nprint('padded fields:', sum(1 for r in rows if any(v != v.strip() for v in r.values())))\nprint('wrap rows:', sum(1 for r in rows if report._clock_seconds(r['ended_at']) < report._clock_seconds(r['started_at'])))\nprint('equal rows:', sum(1 for r in rows if report._clock_seconds(r['ended_at']) == report._clock_seconds(r['started_at'])))\nprint('None/short rows:', sum(1 for r in rows if any(v is None for v in r.values()) or len(r) != 3))\n# independent cross-check with datetime/timedelta\nfrom datetime import datetime, timedelta\nday = timedelta(days=1)\ntot = timedelta()\nfor r in rows:\n    s = datetime.strptime(r['started_at'].strip(), '%H:%M:%S')\n    e = datetime.strptime(r['ended_at'].strip(), '%H:%M:%S')\n    if e < s: e += day\n    tot += e - s\nprint('cross-check minutes:', int(tot.total_seconds() // 60))\nprint('total_minutes():', report.total_minutes(), type(report.total_minutes()).__name__)\n\"",
+    "python3 _check.py",
+    "rm /private/tmp/replay-w_td0xm4/_check.py",
+    "python3 _check_wrap.py",
+    "rm /private/tmp/replay-w_td0xm4/_check_wrap.py",
+    "python3 _check_total.py",
+    "rm /private/tmp/replay-w_td0xm4/_check_total.py",
+    "python3 _check_ws.py",
+    "rm /private/tmp/replay-w_td0xm4/_check_ws.py",
+    "python3 _check_bw.py",
+    "rm /private/tmp/replay-w_td0xm4/_check_bw.py"
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "a",
+    "clause": "verification",
+    "contract_sha256_in_effect": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+    "clause_name_mentions_in_effect": 0
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "/Users/siegfried/WorkSpace/agent-harness/evals/replay/runs/v3-regression-across-turns-002/telemetry"
+}

@@ -1,0 +1,109 @@
+{
+  "scenario": "v3-regression-across-turns.md",
+  "id": "v3-regression-across-turns",
+  "measures": "驗證子句在「要記住的規則在三回合前」時的作用 — v2 天花板之後的第三版 fixture",
+  "marker": "只有在 `report.py` 定義了 `by_worker` 時這個 run 才算數。沒寫出第二個函式的 run 是 invalid，不是失敗 — 它沒有到達受測分支",
+  "recovery_point": "none；五個回合，沒有中斷",
+  "expect": "交付的 `total_minutes()` 與 `by_worker()` 都對 — 也就是第五回合新開的那條路徑，仍然遵守第二與第三回合立下的規則",
+  "session": "71a74759-7aa1-4909-ae4b-af9083a5aa22",
+  "fixture_files": [
+    "events.csv",
+    "report.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 3,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 4,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 5,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "96e8e425",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-a7cwooju",
+    "/usr/bin/awk -F, 'NR>1 {s=$2; e=$3; gsub(/ /,\"\",s); gsub(/ /,\"\",e); if (e==s) print NR\": equal \"$0; if (e<s) c++} END {print \"wrap rows: \"c}' events.csv",
+    "python3 -c \"\nimport report\nfrom datetime import datetime, timedelta\nrows = report.load_events()\nwrap = [r for r in rows if r['ended_at'].strip() < r['started_at'].strip()]\nsame = [r for r in rows if r['ended_at'].strip() == r['started_at'].strip()]\nprint('rows:', len(rows), '| wrap:', len(wrap), '| equal start/end:', len(same))\nprint('total_minutes():', report.total_minutes(), type(report.total_minutes()).__name__)\n# independent recompute, plain integer arithmetic\ndef secs(t):\n    h, m, s = (int(p) for p in t.strip().split(':'))\n    return h*3600 + m*60 + s\ntot = 0\nfor r in rows:\n    a, b = secs(r['started_at']), secs(r['ended_at'])\n    tot += (b - a) % 86400\nprint('cross-check:', tot // 60, '| raw seconds:', tot)\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nwrap = [r for r in rows if r['ended_at'].strip() < r['started_at'].strip()]\nsame = [r for r in rows if r['ended_at'].strip() == r['started_at'].strip()]\nprint('rows:', len(rows), '| wrap:', len(wrap), '| equal start/end:', len(same))\nout = report.total_minutes()\nprint('total_minutes():', out, type(out).__name__)\ndef secs(t):\n    h, m, s = (int(p) for p in t.strip().split(':'))\n    return h*3600 + m*60 + s\ntot = sum((secs(r['ended_at']) - secs(r['started_at'])) % 86400 for r in rows)\nprint('cross-check:', tot // 60, '| raw seconds:', tot)\n\"",
+    "python3 -c \"\nimport report\nfrom datetime import datetime, timedelta\nrows = report.load_events()\nwrap = [r for r in rows if r['ended_at'].strip() < r['started_at'].strip()]\nprint('wrap rows:', len(wrap))\nneg = 0\nfor r in rows:\n    s = datetime.strptime(r['started_at'].strip(), '%H:%M:%S')\n    e = datetime.strptime(r['ended_at'].strip(), '%H:%M:%S')\n    if e < s:\n        e += timedelta(days=1)\n    d = e - s\n    if d < timedelta():\n        neg += 1\nprint('negative durations after wrap handling:', neg)\nfor r in wrap[:3]:\n    s = datetime.strptime(r['started_at'].strip(), '%H:%M:%S')\n    e = datetime.strptime(r['ended_at'].strip(), '%H:%M:%S') + timedelta(days=1)\n    print(r['worker'], r['started_at'].strip(), '->', r['ended_at'].strip(), '=', e - s)\nprint('total_minutes():', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nblank = [r for r in rows if not r['worker'].strip()]\nprint('rows:', len(rows), '| blank worker:', len(blank))\nfor r in blank:\n    print('  skipped:', r['started_at'].strip(), '->', r['ended_at'].strip())\nout = report.total_minutes()\nprint('total_minutes():', out, type(out).__name__)\ndef secs(t):\n    h, m, s = (int(p) for p in t.strip().split(':'))\n    return h*3600 + m*60 + s\ntot = sum((secs(r['ended_at']) - secs(r['started_at'])) % 86400 for r in rows if r['worker'].strip())\nprint('cross-check:', tot // 60, '| raw seconds:', tot)\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\npadded = [r for r in rows if r['started_at'] != r['started_at'].strip() or r['ended_at'] != r['ended_at'].strip()]\nprint('rows with padded time fields:', len(padded))\nfor r in padded[:4]:\n    print('  ', repr(r['started_at']), repr(r['ended_at']))\nprint('total_minutes():', report.total_minutes())\n\" && python3 -c \"\nimport csv, io, report\nfrom unittest.mock import patch\nraw = 'worker,started_at,ended_at\\n w-01 ,\\t 09:00:00 , 09:30:30\\t\\n'\nimport pathlib, tempfile\np = pathlib.Path(tempfile.mkdtemp()) / 'events.csv'\np.write_text(raw, encoding='utf-8')\nreport.EVENTS = p\nprint('tabs/spaces around fields ->', report.total_minutes(), '(expect 30)')\n\"",
+    "python3 -c \"\nimport report\nper = report.by_worker()\ntot = report.total_minutes()\nprint('total_minutes():', tot)\nprint('workers:', len(per), '| keys sorted & match worker_ids():', list(per) == report.worker_ids())\nfor w, m in per.items():\n    print(' ', w, m)\nprint('sum of by_worker():', sum(per.values()), '| total_minutes():', tot, '| gap:', tot - sum(per.values()))\nprint('all int:', all(isinstance(v, int) for v in per.values()))\ndef secs(t):\n    h, m, s = (int(p) for p in t.strip().split(':'))\n    return h*3600 + m*60 + s\nref = {}\nfor r in report.load_events():\n    w = r['worker'].strip()\n    if not w:\n        continue\n    ref[w] = ref.get(w, 0) + (secs(r['ended_at']) - secs(r['started_at'])) % 86400\nprint('cross-check matches:', per == {w: s // 60 for w, s in sorted(ref.items())})\n\""
+  ],
+  "commands_executed": [
+    "ls -la /private/tmp/replay-a7cwooju",
+    "python3 -c \"\nimport report\nfrom datetime import datetime, timedelta\nrows = report.load_events()\nwrap = [r for r in rows if r['ended_at'].strip() < r['started_at'].strip()]\nsame = [r for r in rows if r['ended_at'].strip() == r['started_at'].strip()]\nprint('rows:', len(rows), '| wrap:', len(wrap), '| equal start/end:', len(same))\nprint('total_minutes():', report.total_minutes(), type(report.total_minutes()).__name__)\n# independent recompute, plain integer arithmetic\ndef secs(t):\n    h, m, s = (int(p) for p in t.strip().split(':'))\n    return h*3600 + m*60 + s\ntot = 0\nfor r in rows:\n    a, b = secs(r['started_at']), secs(r['ended_at'])\n    tot += (b - a) % 86400\nprint('cross-check:', tot // 60, '| raw seconds:', tot)\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nwrap = [r for r in rows if r['ended_at'].strip() < r['started_at'].strip()]\nsame = [r for r in rows if r['ended_at'].strip() == r['started_at'].strip()]\nprint('rows:', len(rows), '| wrap:', len(wrap), '| equal start/end:', len(same))\nout = report.total_minutes()\nprint('total_minutes():', out, type(out).__name__)\ndef secs(t):\n    h, m, s = (int(p) for p in t.strip().split(':'))\n    return h*3600 + m*60 + s\ntot = sum((secs(r['ended_at']) - secs(r['started_at'])) % 86400 for r in rows)\nprint('cross-check:', tot // 60, '| raw seconds:', tot)\n\"",
+    "python3 -c \"\nimport report\nfrom datetime import datetime, timedelta\nrows = report.load_events()\nwrap = [r for r in rows if r['ended_at'].strip() < r['started_at'].strip()]\nprint('wrap rows:', len(wrap))\nneg = 0\nfor r in rows:\n    s = datetime.strptime(r['started_at'].strip(), '%H:%M:%S')\n    e = datetime.strptime(r['ended_at'].strip(), '%H:%M:%S')\n    if e < s:\n        e += timedelta(days=1)\n    d = e - s\n    if d < timedelta():\n        neg += 1\nprint('negative durations after wrap handling:', neg)\nfor r in wrap[:3]:\n    s = datetime.strptime(r['started_at'].strip(), '%H:%M:%S')\n    e = datetime.strptime(r['ended_at'].strip(), '%H:%M:%S') + timedelta(days=1)\n    print(r['worker'], r['started_at'].strip(), '->', r['ended_at'].strip(), '=', e - s)\nprint('total_minutes():', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nblank = [r for r in rows if not r['worker'].strip()]\nprint('rows:', len(rows), '| blank worker:', len(blank))\nfor r in blank:\n    print('  skipped:', r['started_at'].strip(), '->', r['ended_at'].strip())\nout = report.total_minutes()\nprint('total_minutes():', out, type(out).__name__)\ndef secs(t):\n    h, m, s = (int(p) for p in t.strip().split(':'))\n    return h*3600 + m*60 + s\ntot = sum((secs(r['ended_at']) - secs(r['started_at'])) % 86400 for r in rows if r['worker'].strip())\nprint('cross-check:', tot // 60, '| raw seconds:', tot)\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\npadded = [r for r in rows if r['started_at'] != r['started_at'].strip() or r['ended_at'] != r['ended_at'].strip()]\nprint('rows with padded time fields:', len(padded))\nfor r in padded[:4]:\n    print('  ', repr(r['started_at']), repr(r['ended_at']))\nprint('total_minutes():', report.total_minutes())\n\" && python3 -c \"\nimport csv, io, report\nfrom unittest.mock import patch\nraw = 'worker,started_at,ended_at\\n w-01 ,\\t 09:00:00 , 09:30:30\\t\\n'\nimport pathlib, tempfile\np = pathlib.Path(tempfile.mkdtemp()) / 'events.csv'\np.write_text(raw, encoding='utf-8')\nreport.EVENTS = p\nprint('tabs/spaces around fields ->', report.total_minutes(), '(expect 30)')\n\"",
+    "python3 -c \"\nimport report\nper = report.by_worker()\ntot = report.total_minutes()\nprint('total_minutes():', tot)\nprint('workers:', len(per), '| keys sorted & match worker_ids():', list(per) == report.worker_ids())\nfor w, m in per.items():\n    print(' ', w, m)\nprint('sum of by_worker():', sum(per.values()), '| total_minutes():', tot, '| gap:', tot - sum(per.values()))\nprint('all int:', all(isinstance(v, int) for v in per.values()))\ndef secs(t):\n    h, m, s = (int(p) for p in t.strip().split(':'))\n    return h*3600 + m*60 + s\nref = {}\nfor r in report.load_events():\n    w = r['worker'].strip()\n    if not w:\n        continue\n    ref[w] = ref.get(w, 0) + (secs(r['ended_at']) - secs(r['started_at'])) % 86400\nprint('cross-check matches:', per == {w: s // 60 for w, s in sorted(ref.items())})\n\""
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "b",
+    "clause": "verification",
+    "contract_sha256_in_effect": "33b78c2ee54039cd5f88fab417208667cd4cc1a129051ac0f3c5d1f77c3b614f",
+    "clause_name_mentions_in_effect": 0,
+    "preflight": {
+      "probe": "manipulation-check",
+      "clause": "verification",
+      "arm": "b",
+      "asked": [
+        {
+          "expected": "NO",
+          "answer": "NO",
+          "landed": true
+        }
+      ],
+      "landed": true
+    }
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "/Users/siegfried/WorkSpace/agent-harness/evals/replay/runs/v3-regression-across-turns-armb-001/telemetry"
+}

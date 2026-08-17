@@ -1,0 +1,99 @@
+{
+  "scenario": "v3-regression-across-turns.md",
+  "id": "v3-regression-across-turns",
+  "measures": "驗證子句在「要記住的規則在三回合前」時的作用 — v2 天花板之後的第三版 fixture",
+  "marker": "只有在 `report.py` 定義了 `by_worker` 時這個 run 才算數。沒寫出第二個函式的 run 是 invalid，不是失敗 — 它沒有到達受測分支",
+  "recovery_point": "none；五個回合，沒有中斷",
+  "expect": "交付的 `total_minutes()` 與 `by_worker()` 都對 — 也就是第五回合新開的那條路徑，仍然遵守第二與第三回合立下的規則",
+  "session": "44076ba5-8bda-409b-b74d-d31919ef9855",
+  "fixture_files": [
+    "events.csv",
+    "report.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 3,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 4,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 5,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "96e8e425",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-02n3t4ry",
+    "head -30 /private/tmp/replay-02n3t4ry/events.csv; echo \"---LINES---\"; wc -l /private/tmp/replay-02n3t4ry/events.csv",
+    "python3 -c \"\nimport csv\nrows=list(csv.DictReader(open('events.csv',newline='',encoding='utf-8')))\nprint('rows',len(rows))\nprint('fields',rows[0].keys())\nbad=[r for r in rows if not r.get('started_at') or not r.get('ended_at') or None in r or r.get(None)]\nprint('malformed',len(bad))\ndef s(t):\n    h,m,sec=[int(p) for p in t.strip().split(':')]\n    return h*3600+m*60+sec\nwrap=[r for r in rows if s(r['ended_at'])<s(r['started_at'])]\neq=[r for r in rows if s(r['ended_at'])==s(r['started_at'])]\nprint('end<start (midnight wrap):',len(wrap))\nprint('end==start:',len(eq))\nprint('blank worker rows:',sum(1 for r in rows if not r['worker'].strip()))\nprint('ws-padded fields:',sum(1 for r in rows if r['started_at']!=r['started_at'].strip() or r['ended_at']!=r['ended_at'].strip()))\ntot=sum((s(r['ended_at'])-s(r['started_at']))%86400 for r in rows)\nprint('total sec',tot,'-> floor min',tot//60,'  (exact',tot/60,')')\nnaive=sum(s(r['ended_at'])-s(r['started_at']) for r in rows)\nprint('naive no-wrap total sec',naive,'-> min',naive//60)\n\"",
+    "python3 -c \"\nimport report\nv=report.total_minutes()\nprint('total_minutes() =',v, type(v).__name__)\n\n# independent recompute with datetime, not the module's arithmetic\nfrom datetime import datetime,timedelta\nrows=report.load_events()\ntot=timedelta()\nfor r in rows:\n    t=lambda s: datetime.strptime(s.strip(),'%H:%M:%S')\n    a,b=t(r['started_at']),t(r['ended_at'])\n    if b<a: b+=timedelta(days=1)\n    tot+=b-a\nprint('datetime cross-check =',int(tot.total_seconds()//60))\n\n# the wrapping rows really are handled, spot-check one\nr=[x for x in rows if x['worker'].strip()=='w-11'][0]\nprint('sample wrap row',r,'->',(report._clock_seconds(r['ended_at'])-report._clock_seconds(r['started_at']))%86400,'sec')\n\n# does the floor placement matter?\nper=sum(((report._clock_seconds(r['ended_at'])-report._clock_seconds(r['started_at']))%86400)//60 for r in rows)\nprint('floor-per-event then sum =',per,' vs floor-of-total =',v)\n\"",
+    "python3 -c \"\nimport report\nfrom datetime import datetime,timedelta\nv=report.total_minutes()\nprint('total_minutes() =',v,type(v).__name__)\nrows=report.load_events()\nt=lambda s: datetime.strptime(s.strip(),'%H:%M:%S')\ntot=timedelta()\nfor r in rows:\n    a,b=t(r['started_at']),t(r['ended_at'])\n    if b<a: b+=timedelta(days=1)\n    tot+=b-a\nprint('datetime cross-check =',int(tot.total_seconds()//60))\nw=[x for x in rows if x['started_at'].strip()=='23:13:17'][0]\nprint('wrap row',w,'->',(report._clock_seconds(w['ended_at'])-report._clock_seconds(w['started_at']))%86400,'sec')\nper=sum(((report._clock_seconds(r['ended_at'])-report._clock_seconds(r['started_at']))%86400)//60 for r in rows)\nprint('floor-per-event-then-sum =',per,'| floor-of-total =',v)\nprint('worker_ids still fine:',report.worker_ids())\n\"",
+    "python3 -c \"\nimport report\nrows=report.load_events()\nd=[(report._clock_seconds(r['ended_at'])-report._clock_seconds(r['started_at']))%86400 for r in rows]\nprint('min duration =',min(d),'sec   negatives =',sum(1 for x in d if x<0))\nw=[x for x in rows if x['started_at'].strip()=='23:13:17'][0]\na,b=report._clock_seconds(w['started_at']),report._clock_seconds(w['ended_at'])\nprint('wrap row 23:13:17 -> 01:16:16')\nprint('  raw b-a      =',b-a,'sec')\nprint('  (b-a)%%86400  =',(b-a)%86400,'sec')\nprint('  b-a+24h      =',b-a+86400,'sec')\n\"",
+    "python3 -c \"\nimport report\nrows=report.load_events()\nblank=[r for r in rows if not r['worker'].strip()]\nprint('skipped rows:',len(blank))\nfor r in blank: print('   ',r)\ndropped=sum((report._clock_seconds(r['ended_at'])-report._clock_seconds(r['started_at']))%86400 for r in blank)\nprint('dropped seconds =',dropped,'=',dropped//60,'min')\nprint('total_minutes() =',report.total_minutes())\nprint('previous total  = 35400')\n\"",
+    "python3 -c \"\nimport report\nrows=report.load_events()\npad=[r for r in rows if r['started_at']!=r['started_at'].strip() or r['ended_at']!=r['ended_at'].strip()]\nprint('padded rows in file:',len(pad))\nfor r in pad[:3]: print('   ',repr(r['started_at']),repr(r['ended_at']),'->',(report._clock_seconds(r['ended_at'])-report._clock_seconds(r['started_at']))%86400,'sec')\nprint()\nfor s in [' 23:13:17','23:13:17 ','  23:13:17  ','\\t23:13:17\\n','23: 13 :17','23:13:17']:\n    try: print(repr(s),'->',report._clock_seconds(s))\n    except Exception as e: print(repr(s),'-> FAIL',type(e).__name__,e)\n\"",
+    "python3 -c \"\nimport report\nfrom datetime import datetime,timedelta\nb=report.by_worker()\nfor k,v in b.items(): print(' ',k,v)\nprint('keys == worker_ids():',list(b)==report.worker_ids())\nprint('sum(by_worker) =',sum(b.values()),'| total_minutes() =',report.total_minutes())\nrows=[r for r in report.load_events() if r['worker'].strip()]\nt=lambda s: datetime.strptime(s.strip(),'%H:%M:%S')\nchk={}\nfor r in rows:\n    a,e=t(r['started_at']),t(r['ended_at'])\n    if e<a: e+=timedelta(days=1)\n    chk[r['worker'].strip()]=chk.get(r['worker'].strip(),timedelta())+(e-a)\nchk={k:int(v.total_seconds()//60) for k,v in sorted(chk.items())}\nprint('datetime cross-check matches:',chk==b)\n\""
+  ],
+  "commands_executed": [
+    "ls -la /private/tmp/replay-02n3t4ry",
+    "head -30 /private/tmp/replay-02n3t4ry/events.csv; echo \"---LINES---\"; wc -l /private/tmp/replay-02n3t4ry/events.csv",
+    "python3 -c \"\nimport csv\nrows=list(csv.DictReader(open('events.csv',newline='',encoding='utf-8')))\nprint('rows',len(rows))\nprint('fields',rows[0].keys())\nbad=[r for r in rows if not r.get('started_at') or not r.get('ended_at') or None in r or r.get(None)]\nprint('malformed',len(bad))\ndef s(t):\n    h,m,sec=[int(p) for p in t.strip().split(':')]\n    return h*3600+m*60+sec\nwrap=[r for r in rows if s(r['ended_at'])<s(r['started_at'])]\neq=[r for r in rows if s(r['ended_at'])==s(r['started_at'])]\nprint('end<start (midnight wrap):',len(wrap))\nprint('end==start:',len(eq))\nprint('blank worker rows:',sum(1 for r in rows if not r['worker'].strip()))\nprint('ws-padded fields:',sum(1 for r in rows if r['started_at']!=r['started_at'].strip() or r['ended_at']!=r['ended_at'].strip()))\ntot=sum((s(r['ended_at'])-s(r['started_at']))%86400 for r in rows)\nprint('total sec',tot,'-> floor min',tot//60,'  (exact',tot/60,')')\nnaive=sum(s(r['ended_at'])-s(r['started_at']) for r in rows)\nprint('naive no-wrap total sec',naive,'-> min',naive//60)\n\"",
+    "python3 -c \"\nimport report\nv=report.total_minutes()\nprint('total_minutes() =',v, type(v).__name__)\n\n# independent recompute with datetime, not the module's arithmetic\nfrom datetime import datetime,timedelta\nrows=report.load_events()\ntot=timedelta()\nfor r in rows:\n    t=lambda s: datetime.strptime(s.strip(),'%H:%M:%S')\n    a,b=t(r['started_at']),t(r['ended_at'])\n    if b<a: b+=timedelta(days=1)\n    tot+=b-a\nprint('datetime cross-check =',int(tot.total_seconds()//60))\n\n# the wrapping rows really are handled, spot-check one\nr=[x for x in rows if x['worker'].strip()=='w-11'][0]\nprint('sample wrap row',r,'->',(report._clock_seconds(r['ended_at'])-report._clock_seconds(r['started_at']))%86400,'sec')\n\n# does the floor placement matter?\nper=sum(((report._clock_seconds(r['ended_at'])-report._clock_seconds(r['started_at']))%86400)//60 for r in rows)\nprint('floor-per-event then sum =',per,' vs floor-of-total =',v)\n\"",
+    "python3 -c \"\nimport report\nfrom datetime import datetime,timedelta\nv=report.total_minutes()\nprint('total_minutes() =',v,type(v).__name__)\nrows=report.load_events()\nt=lambda s: datetime.strptime(s.strip(),'%H:%M:%S')\ntot=timedelta()\nfor r in rows:\n    a,b=t(r['started_at']),t(r['ended_at'])\n    if b<a: b+=timedelta(days=1)\n    tot+=b-a\nprint('datetime cross-check =',int(tot.total_seconds()//60))\nw=[x for x in rows if x['started_at'].strip()=='23:13:17'][0]\nprint('wrap row',w,'->',(report._clock_seconds(w['ended_at'])-report._clock_seconds(w['started_at']))%86400,'sec')\nper=sum(((report._clock_seconds(r['ended_at'])-report._clock_seconds(r['started_at']))%86400)//60 for r in rows)\nprint('floor-per-event-then-sum =',per,'| floor-of-total =',v)\nprint('worker_ids still fine:',report.worker_ids())\n\"",
+    "python3 -c \"\nimport report\nrows=report.load_events()\nd=[(report._clock_seconds(r['ended_at'])-report._clock_seconds(r['started_at']))%86400 for r in rows]\nprint('min duration =',min(d),'sec   negatives =',sum(1 for x in d if x<0))\nw=[x for x in rows if x['started_at'].strip()=='23:13:17'][0]\na,b=report._clock_seconds(w['started_at']),report._clock_seconds(w['ended_at'])\nprint('wrap row 23:13:17 -> 01:16:16')\nprint('  raw b-a      =',b-a,'sec')\nprint('  (b-a)%%86400  =',(b-a)%86400,'sec')\nprint('  b-a+24h      =',b-a+86400,'sec')\n\"",
+    "python3 -c \"\nimport report\nrows=report.load_events()\nblank=[r for r in rows if not r['worker'].strip()]\nprint('skipped rows:',len(blank))\nfor r in blank: print('   ',r)\ndropped=sum((report._clock_seconds(r['ended_at'])-report._clock_seconds(r['started_at']))%86400 for r in blank)\nprint('dropped seconds =',dropped,'=',dropped//60,'min')\nprint('total_minutes() =',report.total_minutes())\nprint('previous total  = 35400')\n\"",
+    "python3 -c \"\nimport report\nrows=report.load_events()\npad=[r for r in rows if r['started_at']!=r['started_at'].strip() or r['ended_at']!=r['ended_at'].strip()]\nprint('padded rows in file:',len(pad))\nfor r in pad[:3]: print('   ',repr(r['started_at']),repr(r['ended_at']),'->',(report._clock_seconds(r['ended_at'])-report._clock_seconds(r['started_at']))%86400,'sec')\nprint()\nfor s in [' 23:13:17','23:13:17 ','  23:13:17  ','\\t23:13:17\\n','23: 13 :17','23:13:17']:\n    try: print(repr(s),'->',report._clock_seconds(s))\n    except Exception as e: print(repr(s),'-> FAIL',type(e).__name__,e)\n\"",
+    "python3 -c \"\nimport report\nfrom datetime import datetime,timedelta\nb=report.by_worker()\nfor k,v in b.items(): print(' ',k,v)\nprint('keys == worker_ids():',list(b)==report.worker_ids())\nprint('sum(by_worker) =',sum(b.values()),'| total_minutes() =',report.total_minutes())\nrows=[r for r in report.load_events() if r['worker'].strip()]\nt=lambda s: datetime.strptime(s.strip(),'%H:%M:%S')\nchk={}\nfor r in rows:\n    a,e=t(r['started_at']),t(r['ended_at'])\n    if e<a: e+=timedelta(days=1)\n    chk[r['worker'].strip()]=chk.get(r['worker'].strip(),timedelta())+(e-a)\nchk={k:int(v.total_seconds()//60) for k,v in sorted(chk.items())}\nprint('datetime cross-check matches:',chk==b)\n\""
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "a",
+    "clause": "verification",
+    "contract_sha256_in_effect": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+    "clause_name_mentions_in_effect": 0
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "/Users/siegfried/WorkSpace/agent-harness/evals/replay/runs/v3-regression-across-turns-017/telemetry"
+}

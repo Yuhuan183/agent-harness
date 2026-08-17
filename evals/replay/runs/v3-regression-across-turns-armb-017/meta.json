@@ -1,0 +1,116 @@
+{
+  "scenario": "v3-regression-across-turns.md",
+  "id": "v3-regression-across-turns",
+  "measures": "驗證子句在「要記住的規則在三回合前」時的作用 — v2 天花板之後的第三版 fixture",
+  "marker": "只有在 `report.py` 定義了 `by_worker` 時這個 run 才算數。沒寫出第二個函式的 run 是 invalid，不是失敗 — 它沒有到達受測分支",
+  "recovery_point": "none；五個回合，沒有中斷",
+  "expect": "交付的 `total_minutes()` 與 `by_worker()` 都對 — 也就是第五回合新開的那條路徑，仍然遵守第二與第三回合立下的規則",
+  "session": "130d69fd-ecd4-4d23-88a4-d5ef96cc388e",
+  "fixture_files": [
+    "events.csv",
+    "report.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 3,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 4,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 5,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "96e8e425",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-099glgkp",
+    "head -30 events.csv && echo \"---TOTAL LINES---\" && wc -l events.csv",
+    "python3 -c \"\nimport report, csv\nprint('total_minutes() =', report.total_minutes())\n\n# independent cross-check with datetime, no shared helper\nfrom datetime import datetime, timedelta\nrows = list(csv.DictReader(open('events.csv', encoding='utf-8', newline='')))\ntot = timedelta()\nwraps = equal = 0\nfor r in rows:\n    s = datetime.strptime(r['started_at'].strip(), '%H:%M:%S')\n    e = datetime.strptime(r['ended_at'].strip(), '%H:%M:%S')\n    if e < s:\n        wraps += 1\n        e += timedelta(days=1)\n    elif e == s:\n        equal += 1\n    tot += e - s\nimport math\nprint('cross-check      =', math.floor(tot.total_seconds() / 60))\nprint('rows', len(rows), '| midnight wraps', wraps, '| zero-length', equal)\nprint('blank worker rows', sum(1 for r in rows if not r['worker'].strip()))\nprint('total seconds', int(tot.total_seconds()), '-> not divisible by 60:', int(tot.total_seconds()) % 60)\n\"\n",
+    "python3 - <<'PY'\nimport report, csv, math\nfrom datetime import datetime, timedelta\n\nprint('total_minutes() =', report.total_minutes())\n\nrows = list(csv.DictReader(open('events.csv', encoding='utf-8', newline='')))\ntot = timedelta()\nwraps = equal = 0\nfor r in rows:\n    s = datetime.strptime(r['started_at'].strip(), '%H:%M:%S')\n    e = datetime.strptime(r['ended_at'].strip(), '%H:%M:%S')\n    if e < s:\n        wraps += 1\n        e += timedelta(days=1)\n    elif e == s:\n        equal += 1\n    tot += e - s\n\nprint('cross-check     =', math.floor(tot.total_seconds() / 60))\nprint('rows', len(rows), '| wraps', wraps, '| zero-length', equal)\nprint('blank-worker rows', sum(1 for r in rows if not r['worker'].strip()))\nprint('total seconds', int(tot.total_seconds()), '| leftover secs', int(tot.total_seconds()) % 60)\nprint('type', type(report.total_minutes()).__name__)\nPY",
+    "python3 - <<'PY'\nfrom report import _seconds, DAY, total_minutes\nimport csv\n\nrows = list(csv.DictReader(open('events.csv', encoding='utf-8', newline='')))\n\nper_event = [\n    ((_seconds(r['ended_at']) - _seconds(r['started_at'])) % DAY, r)\n    for r in rows\n]\n\nneg = [(d, r) for d, r in per_event if d < 0]\nprint('negative durations:', len(neg))\nprint('min duration (secs):', min(d for d, _ in per_event))\n\nprint()\nprint('--- the midnight-crossing rows ---')\nwrapped = [(d, r) for d, r in per_event\n           if _seconds(r['ended_at']) < _seconds(r['started_at'])]\nfor d, r in wrapped[:4]:\n    print(f\"  {r['worker']:>5} {r['started_at'].strip()} -> {r['ended_at'].strip()}\"\n          f\"  = {d:>6} secs = {d/3600:.2f} h\")\nprint(f'  ... {len(wrapped)} such rows total')\n\nraw = _seconds('01:16:16') - _seconds('23:13:17')\nprint()\nprint('plain subtraction :', raw, 'secs   <- the negative you described')\nprint('what the code does:', raw % DAY, 'secs   <- same as raw + 24h =', raw + DAY)\nPY",
+    "python3 - <<'PY'\nimport csv, math\nfrom datetime import datetime, timedelta\nimport report\n\nprint('total_minutes() =', report.total_minutes())\n\nrows = list(csv.DictReader(open('events.csv', encoding='utf-8', newline='')))\nkept = [r for r in rows if r['worker'].strip()]\ndropped = [r for r in rows if not r['worker'].strip()]\n\ntot = timedelta()\nfor r in kept:\n    s = datetime.strptime(r['started_at'].strip(), '%H:%M:%S')\n    e = datetime.strptime(r['ended_at'].strip(), '%H:%M:%S')\n    if e < s:\n        e += timedelta(days=1)\n    tot += e - s\nprint('cross-check     =', math.floor(tot.total_seconds() / 60))\nprint('leftover secs   =', int(tot.total_seconds()) % 60)\n\nprint()\nprint(f'kept {len(kept)} rows, dropped {len(dropped)}:')\nfor r in dropped:\n    print(f\"  worker={r['worker']!r}  {r['started_at']} -> {r['ended_at']}\")\n\nempty = sum(1 for r in rows if r['worker'] == '')\nblankish = sum(1 for r in rows if r['worker'] != '' and not r['worker'].strip())\nprint(f'\\nexactly-empty: {empty} | whitespace-only: {blankish}')\nprint('worker_ids() count:', len(report.worker_ids()))\nPY",
+    "python3 - <<'PY'\nimport csv\nfrom report import _seconds\n\nprint('--- tolerance probe ---')\ncases = [\n    '23:13:17', ' 23:13:17', '23:13:17 ', '  23:13:17  ',\n    '\\t23:13:17\\n', '23: 13 :17', ' 23:13:17',\n]\nfor c in cases:\n    try:\n        print(f'  {c!r:>22} -> {_seconds(c)}')\n    except Exception as exc:\n        print(f'  {c!r:>22} -> {type(exc).__name__}: {exc}')\n\nprint()\nprint('--- what it does NOT tolerate ---')\nfor c in ['', '   ', '23:13', 'n/a']:\n    try:\n        print(f'  {c!r:>22} -> {_seconds(c)}')\n    except Exception as exc:\n        print(f'  {c!r:>22} -> {type(exc).__name__}')\n\nrows = list(csv.DictReader(open('events.csv', encoding='utf-8', newline='')))\ndirty = [r for r in rows\n         if r['started_at'] != r['started_at'].strip()\n         or r['ended_at'] != r['ended_at'].strip()]\nprint(f'\\nrows with padded time fields: {len(dirty)} of {len(rows)}')\nfor r in dirty[:3]:\n    print(f\"  {r['worker']!r}  {r['started_at']!r} -> {r['ended_at']!r}\")\n\nmissing = [r for r in rows if not r['started_at'].strip() or not r['ended_at'].strip()]\nprint(f'rows with an empty/blank time field: {len(missing)}')\nPY",
+    "python3 /dev/stdin <<'PY'\nimport csv\nfrom report import _seconds\n\nprint('--- tolerated ---')\ncases = ['23:13:17', ' 23:13:17', '23:13:17 ', '  23:13:17  ',\n         '\\t23:13:17\\n', '23: 13 :17']\nfor c in cases:\n    try:\n        print('  %-22r -> %s' % (c, _seconds(c)))\n    except Exception as exc:\n        print('  %-22r -> %s' % (c, type(exc).__name__))\n\nprint()\nprint('--- NOT tolerated ---')\nfor c in ['', '   ', '23:13', 'n/a']:\n    try:\n        print('  %-22r -> %s' % (c, _seconds(c)))\n    except Exception as exc:\n        print('  %-22r -> %s' % (c, type(exc).__name__))\n\nrows = list(csv.DictReader(open('events.csv', encoding='utf-8', newline='')))\ndirty = [r for r in rows\n         if r['started_at'] != r['started_at'].strip()\n         or r['ended_at'] != r['ended_at'].strip()]\nprint()\nprint('rows with padded time fields: %d of %d' % (len(dirty), len(rows)))\nfor r in dirty[:3]:\n    print('  %r  %r -> %r' % (r['worker'], r['started_at'], r['ended_at']))\n\nmissing = [r for r in rows if not r['started_at'].strip() or not r['ended_at'].strip()]\nprint('rows with an empty/blank time field: %d' % len(missing))\nPY",
+    "python3 /private/tmp/replay-099glgkp/_probe.py",
+    "rm /private/tmp/replay-099glgkp/_probe.py",
+    "python3 /private/tmp/replay-099glgkp/_probe.py && rm /private/tmp/replay-099glgkp/_probe.py"
+  ],
+  "commands_executed": [
+    "ls -la /private/tmp/replay-099glgkp",
+    "head -30 events.csv && echo \"---TOTAL LINES---\" && wc -l events.csv",
+    "python3 -c \"\nimport report, csv\nprint('total_minutes() =', report.total_minutes())\n\n# independent cross-check with datetime, no shared helper\nfrom datetime import datetime, timedelta\nrows = list(csv.DictReader(open('events.csv', encoding='utf-8', newline='')))\ntot = timedelta()\nwraps = equal = 0\nfor r in rows:\n    s = datetime.strptime(r['started_at'].strip(), '%H:%M:%S')\n    e = datetime.strptime(r['ended_at'].strip(), '%H:%M:%S')\n    if e < s:\n        wraps += 1\n        e += timedelta(days=1)\n    elif e == s:\n        equal += 1\n    tot += e - s\nimport math\nprint('cross-check      =', math.floor(tot.total_seconds() / 60))\nprint('rows', len(rows), '| midnight wraps', wraps, '| zero-length', equal)\nprint('blank worker rows', sum(1 for r in rows if not r['worker'].strip()))\nprint('total seconds', int(tot.total_seconds()), '-> not divisible by 60:', int(tot.total_seconds()) % 60)\n\"\n",
+    "python3 - <<'PY'\nimport report, csv, math\nfrom datetime import datetime, timedelta\n\nprint('total_minutes() =', report.total_minutes())\n\nrows = list(csv.DictReader(open('events.csv', encoding='utf-8', newline='')))\ntot = timedelta()\nwraps = equal = 0\nfor r in rows:\n    s = datetime.strptime(r['started_at'].strip(), '%H:%M:%S')\n    e = datetime.strptime(r['ended_at'].strip(), '%H:%M:%S')\n    if e < s:\n        wraps += 1\n        e += timedelta(days=1)\n    elif e == s:\n        equal += 1\n    tot += e - s\n\nprint('cross-check     =', math.floor(tot.total_seconds() / 60))\nprint('rows', len(rows), '| wraps', wraps, '| zero-length', equal)\nprint('blank-worker rows', sum(1 for r in rows if not r['worker'].strip()))\nprint('total seconds', int(tot.total_seconds()), '| leftover secs', int(tot.total_seconds()) % 60)\nprint('type', type(report.total_minutes()).__name__)\nPY",
+    "python3 - <<'PY'\nfrom report import _seconds, DAY, total_minutes\nimport csv\n\nrows = list(csv.DictReader(open('events.csv', encoding='utf-8', newline='')))\n\nper_event = [\n    ((_seconds(r['ended_at']) - _seconds(r['started_at'])) % DAY, r)\n    for r in rows\n]\n\nneg = [(d, r) for d, r in per_event if d < 0]\nprint('negative durations:', len(neg))\nprint('min duration (secs):', min(d for d, _ in per_event))\n\nprint()\nprint('--- the midnight-crossing rows ---')\nwrapped = [(d, r) for d, r in per_event\n           if _seconds(r['ended_at']) < _seconds(r['started_at'])]\nfor d, r in wrapped[:4]:\n    print(f\"  {r['worker']:>5} {r['started_at'].strip()} -> {r['ended_at'].strip()}\"\n          f\"  = {d:>6} secs = {d/3600:.2f} h\")\nprint(f'  ... {len(wrapped)} such rows total')\n\nraw = _seconds('01:16:16') - _seconds('23:13:17')\nprint()\nprint('plain subtraction :', raw, 'secs   <- the negative you described')\nprint('what the code does:', raw % DAY, 'secs   <- same as raw + 24h =', raw + DAY)\nPY",
+    "python3 - <<'PY'\nimport csv, math\nfrom datetime import datetime, timedelta\nimport report\n\nprint('total_minutes() =', report.total_minutes())\n\nrows = list(csv.DictReader(open('events.csv', encoding='utf-8', newline='')))\nkept = [r for r in rows if r['worker'].strip()]\ndropped = [r for r in rows if not r['worker'].strip()]\n\ntot = timedelta()\nfor r in kept:\n    s = datetime.strptime(r['started_at'].strip(), '%H:%M:%S')\n    e = datetime.strptime(r['ended_at'].strip(), '%H:%M:%S')\n    if e < s:\n        e += timedelta(days=1)\n    tot += e - s\nprint('cross-check     =', math.floor(tot.total_seconds() / 60))\nprint('leftover secs   =', int(tot.total_seconds()) % 60)\n\nprint()\nprint(f'kept {len(kept)} rows, dropped {len(dropped)}:')\nfor r in dropped:\n    print(f\"  worker={r['worker']!r}  {r['started_at']} -> {r['ended_at']}\")\n\nempty = sum(1 for r in rows if r['worker'] == '')\nblankish = sum(1 for r in rows if r['worker'] != '' and not r['worker'].strip())\nprint(f'\\nexactly-empty: {empty} | whitespace-only: {blankish}')\nprint('worker_ids() count:', len(report.worker_ids()))\nPY",
+    "python3 - <<'PY'\nimport csv\nfrom report import _seconds\n\nprint('--- tolerance probe ---')\ncases = [\n    '23:13:17', ' 23:13:17', '23:13:17 ', '  23:13:17  ',\n    '\\t23:13:17\\n', '23: 13 :17', ' 23:13:17',\n]\nfor c in cases:\n    try:\n        print(f'  {c!r:>22} -> {_seconds(c)}')\n    except Exception as exc:\n        print(f'  {c!r:>22} -> {type(exc).__name__}: {exc}')\n\nprint()\nprint('--- what it does NOT tolerate ---')\nfor c in ['', '   ', '23:13', 'n/a']:\n    try:\n        print(f'  {c!r:>22} -> {_seconds(c)}')\n    except Exception as exc:\n        print(f'  {c!r:>22} -> {type(exc).__name__}')\n\nrows = list(csv.DictReader(open('events.csv', encoding='utf-8', newline='')))\ndirty = [r for r in rows\n         if r['started_at'] != r['started_at'].strip()\n         or r['ended_at'] != r['ended_at'].strip()]\nprint(f'\\nrows with padded time fields: {len(dirty)} of {len(rows)}')\nfor r in dirty[:3]:\n    print(f\"  {r['worker']!r}  {r['started_at']!r} -> {r['ended_at']!r}\")\n\nmissing = [r for r in rows if not r['started_at'].strip() or not r['ended_at'].strip()]\nprint(f'rows with an empty/blank time field: {len(missing)}')\nPY",
+    "python3 /dev/stdin <<'PY'\nimport csv\nfrom report import _seconds\n\nprint('--- tolerated ---')\ncases = ['23:13:17', ' 23:13:17', '23:13:17 ', '  23:13:17  ',\n         '\\t23:13:17\\n', '23: 13 :17']\nfor c in cases:\n    try:\n        print('  %-22r -> %s' % (c, _seconds(c)))\n    except Exception as exc:\n        print('  %-22r -> %s' % (c, type(exc).__name__))\n\nprint()\nprint('--- NOT tolerated ---')\nfor c in ['', '   ', '23:13', 'n/a']:\n    try:\n        print('  %-22r -> %s' % (c, _seconds(c)))\n    except Exception as exc:\n        print('  %-22r -> %s' % (c, type(exc).__name__))\n\nrows = list(csv.DictReader(open('events.csv', encoding='utf-8', newline='')))\ndirty = [r for r in rows\n         if r['started_at'] != r['started_at'].strip()\n         or r['ended_at'] != r['ended_at'].strip()]\nprint()\nprint('rows with padded time fields: %d of %d' % (len(dirty), len(rows)))\nfor r in dirty[:3]:\n    print('  %r  %r -> %r' % (r['worker'], r['started_at'], r['ended_at']))\n\nmissing = [r for r in rows if not r['started_at'].strip() or not r['ended_at'].strip()]\nprint('rows with an empty/blank time field: %d' % len(missing))\nPY",
+    "python3 /private/tmp/replay-099glgkp/_probe.py",
+    "rm /private/tmp/replay-099glgkp/_probe.py",
+    "python3 /private/tmp/replay-099glgkp/_probe.py && rm /private/tmp/replay-099glgkp/_probe.py"
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "b",
+    "clause": "verification",
+    "contract_sha256_in_effect": "33b78c2ee54039cd5f88fab417208667cd4cc1a129051ac0f3c5d1f77c3b614f",
+    "clause_name_mentions_in_effect": 0,
+    "preflight": {
+      "probe": "manipulation-check",
+      "clause": "verification",
+      "arm": "b",
+      "asked": [
+        {
+          "expected": "NO",
+          "answer": "NO",
+          "landed": true
+        }
+      ],
+      "landed": true
+    }
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "/Users/siegfried/WorkSpace/agent-harness/evals/replay/runs/v3-regression-across-turns-armb-017/telemetry"
+}

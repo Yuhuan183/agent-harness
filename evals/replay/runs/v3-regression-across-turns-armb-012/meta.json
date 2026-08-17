@@ -1,0 +1,112 @@
+{
+  "scenario": "v3-regression-across-turns.md",
+  "id": "v3-regression-across-turns",
+  "measures": "驗證子句在「要記住的規則在三回合前」時的作用 — v2 天花板之後的第三版 fixture",
+  "marker": "只有在 `report.py` 定義了 `by_worker` 時這個 run 才算數。沒寫出第二個函式的 run 是 invalid，不是失敗 — 它沒有到達受測分支",
+  "recovery_point": "none；五個回合，沒有中斷",
+  "expect": "交付的 `total_minutes()` 與 `by_worker()` 都對 — 也就是第五回合新開的那條路徑，仍然遵守第二與第三回合立下的規則",
+  "session": "4c2a1497-44b5-42cc-83a4-edf42af57864",
+  "fixture_files": [
+    "events.csv",
+    "report.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 2,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 3,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 4,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    },
+    {
+      "turn": 5,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 30
+    }
+  ],
+  "interrupt": {},
+  "surface": "96e8e425",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-8n90koz_",
+    "head -30 /private/tmp/replay-8n90koz_/events.csv; echo \"---WC---\"; wc -l /private/tmp/replay-8n90koz_/events.csv",
+    "python3 -c \"\nimport csv\nrows=list(csv.DictReader(open('events.csv',newline='',encoding='utf-8')))\nprint('rows', len(rows))\nbad=[r for r in rows if not r['started_at'].strip() or not r['ended_at'].strip()]\nprint('blank times', len(bad))\nws=[r for r in rows if r['started_at']!=r['started_at'].strip() or r['ended_at']!=r['ended_at'].strip()]\nprint('padded times', len(ws))\ndef s(t):\n    h,m,x=map(int,t.strip().split(':')); return h*3600+m*60+x\nwrap=[r for r in rows if s(r['ended_at'])<s(r['started_at'])]\neq=[r for r in rows if s(r['ended_at'])==s(r['started_at'])]\nprint('wrap past midnight', len(wrap), 'zero-length', len(eq))\nprint('blank worker', sum(1 for r in rows if not r['worker'].strip()))\n\"",
+    "python3 -c \"\nimport report\nprint('total_minutes ->', report.total_minutes())\nprint('type', type(report.total_minutes()))\nprint('sanity: 300 events, avg min/event =', report.total_minutes()/300)\n\"",
+    "python3 -c \"\nimport report\n# every row that reads as ending 'earlier' on the clock than it starts\nrows = report.load_events()\nneg = 0\nfor r in rows:\n    s = report._clock_seconds(r['started_at']); e = report._clock_seconds(r['ended_at'])\n    length = (e - s) % report.DAY\n    if e < s:\n        neg += 1\n        if neg <= 3:\n            print(f\\\"{r['worker'].strip():5} {r['started_at'].strip()} -> {r['ended_at'].strip()}  raw={e-s:>7}s  credited={length:>6}s = {length/3600:.2f}h\\\")\nprint('wrap rows:', neg)\nlengths = [ (report._clock_seconds(r['ended_at']) - report._clock_seconds(r['started_at'])) % report.DAY for r in rows ]\nprint('min length seconds:', min(lengths), '| any negative:', any(l < 0 for l in lengths))\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nshown = 0\nlengths = []\nfor r in rows:\n    s = report._clock_seconds(r['started_at']); e = report._clock_seconds(r['ended_at'])\n    length = (e - s) % report.DAY\n    lengths.append(length)\n    if e < s and shown < 3:\n        shown += 1\n        print(f\\\"{r['worker'].strip():5} {r['started_at'].strip()} -> {r['ended_at'].strip()}  raw={e-s:>7}s  credited={length:>6}s = {length/3600:.2f}h\\\")\nprint('wrap rows:', sum(1 for r in rows if report._clock_seconds(r['ended_at']) < report._clock_seconds(r['started_at'])))\nprint('min length seconds:', min(lengths), 'any negative:', any(l < 0 for l in lengths))\nprint('total_minutes:', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nblank = [r for r in rows if not r['worker'].strip()]\nprint('dropped rows:', len(blank))\nfor r in blank:\n    s = report._clock_seconds(r['started_at']); e = report._clock_seconds(r['ended_at'])\n    print('  ', r['started_at'].strip(), '->', r['ended_at'].strip(), (e-s) % report.DAY // 60, 'min')\nprint('counted events:', len(rows) - len(blank))\nprint('total_minutes:', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\npadded = [r for r in rows if r['started_at'] != r['started_at'].strip() or r['ended_at'] != r['ended_at'].strip()]\nprint('padded rows:', len(padded))\nfor r in padded[:4]:\n    s = report._clock_seconds(r['started_at']); e = report._clock_seconds(r['ended_at'])\n    print(f\\\"  {r['worker'].strip():5} {r['started_at']!r:>12} -> {r['ended_at']!r:<12} parsed ok, {(e-s)%report.DAY//60} min\\\")\nprint()\nprint('direct probe:', report._clock_seconds('  07:30:15  '), '==', report._clock_seconds('07:30:15'))\nprint('total_minutes:', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\nper = report.by_worker()\nfor w, m in per.items():\n    print(f'  {w}  {m:>6} min')\nprint('workers:', len(per), '| keys match worker_ids():', list(per) == report.worker_ids())\nprint('sum(by_worker):', sum(per.values()), '| total_minutes:', report.total_minutes())\n\""
+  ],
+  "commands_executed": [
+    "ls -la /private/tmp/replay-8n90koz_",
+    "head -30 /private/tmp/replay-8n90koz_/events.csv; echo \"---WC---\"; wc -l /private/tmp/replay-8n90koz_/events.csv",
+    "python3 -c \"\nimport csv\nrows=list(csv.DictReader(open('events.csv',newline='',encoding='utf-8')))\nprint('rows', len(rows))\nbad=[r for r in rows if not r['started_at'].strip() or not r['ended_at'].strip()]\nprint('blank times', len(bad))\nws=[r for r in rows if r['started_at']!=r['started_at'].strip() or r['ended_at']!=r['ended_at'].strip()]\nprint('padded times', len(ws))\ndef s(t):\n    h,m,x=map(int,t.strip().split(':')); return h*3600+m*60+x\nwrap=[r for r in rows if s(r['ended_at'])<s(r['started_at'])]\neq=[r for r in rows if s(r['ended_at'])==s(r['started_at'])]\nprint('wrap past midnight', len(wrap), 'zero-length', len(eq))\nprint('blank worker', sum(1 for r in rows if not r['worker'].strip()))\n\"",
+    "python3 -c \"\nimport report\nprint('total_minutes ->', report.total_minutes())\nprint('type', type(report.total_minutes()))\nprint('sanity: 300 events, avg min/event =', report.total_minutes()/300)\n\"",
+    "python3 -c \"\nimport report\n# every row that reads as ending 'earlier' on the clock than it starts\nrows = report.load_events()\nneg = 0\nfor r in rows:\n    s = report._clock_seconds(r['started_at']); e = report._clock_seconds(r['ended_at'])\n    length = (e - s) % report.DAY\n    if e < s:\n        neg += 1\n        if neg <= 3:\n            print(f\\\"{r['worker'].strip():5} {r['started_at'].strip()} -> {r['ended_at'].strip()}  raw={e-s:>7}s  credited={length:>6}s = {length/3600:.2f}h\\\")\nprint('wrap rows:', neg)\nlengths = [ (report._clock_seconds(r['ended_at']) - report._clock_seconds(r['started_at'])) % report.DAY for r in rows ]\nprint('min length seconds:', min(lengths), '| any negative:', any(l < 0 for l in lengths))\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nshown = 0\nlengths = []\nfor r in rows:\n    s = report._clock_seconds(r['started_at']); e = report._clock_seconds(r['ended_at'])\n    length = (e - s) % report.DAY\n    lengths.append(length)\n    if e < s and shown < 3:\n        shown += 1\n        print(f\\\"{r['worker'].strip():5} {r['started_at'].strip()} -> {r['ended_at'].strip()}  raw={e-s:>7}s  credited={length:>6}s = {length/3600:.2f}h\\\")\nprint('wrap rows:', sum(1 for r in rows if report._clock_seconds(r['ended_at']) < report._clock_seconds(r['started_at'])))\nprint('min length seconds:', min(lengths), 'any negative:', any(l < 0 for l in lengths))\nprint('total_minutes:', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\nblank = [r for r in rows if not r['worker'].strip()]\nprint('dropped rows:', len(blank))\nfor r in blank:\n    s = report._clock_seconds(r['started_at']); e = report._clock_seconds(r['ended_at'])\n    print('  ', r['started_at'].strip(), '->', r['ended_at'].strip(), (e-s) % report.DAY // 60, 'min')\nprint('counted events:', len(rows) - len(blank))\nprint('total_minutes:', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\nrows = report.load_events()\npadded = [r for r in rows if r['started_at'] != r['started_at'].strip() or r['ended_at'] != r['ended_at'].strip()]\nprint('padded rows:', len(padded))\nfor r in padded[:4]:\n    s = report._clock_seconds(r['started_at']); e = report._clock_seconds(r['ended_at'])\n    print(f\\\"  {r['worker'].strip():5} {r['started_at']!r:>12} -> {r['ended_at']!r:<12} parsed ok, {(e-s)%report.DAY//60} min\\\")\nprint()\nprint('direct probe:', report._clock_seconds('  07:30:15  '), '==', report._clock_seconds('07:30:15'))\nprint('total_minutes:', report.total_minutes())\n\"",
+    "python3 -c \"\nimport report\nper = report.by_worker()\nfor w, m in per.items():\n    print(f'  {w}  {m:>6} min')\nprint('workers:', len(per), '| keys match worker_ids():', list(per) == report.worker_ids())\nprint('sum(by_worker):', sum(per.values()), '| total_minutes:', report.total_minutes())\n\""
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "b",
+    "clause": "verification",
+    "contract_sha256_in_effect": "33b78c2ee54039cd5f88fab417208667cd4cc1a129051ac0f3c5d1f77c3b614f",
+    "clause_name_mentions_in_effect": 0,
+    "preflight": {
+      "probe": "manipulation-check",
+      "clause": "verification",
+      "arm": "b",
+      "asked": [
+        {
+          "expected": "NO",
+          "answer": "NO",
+          "landed": true
+        }
+      ],
+      "landed": true
+    }
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": null,
+  "expect_skill": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "/Users/siegfried/WorkSpace/agent-harness/evals/replay/runs/v3-regression-across-turns-armb-012/telemetry"
+}
