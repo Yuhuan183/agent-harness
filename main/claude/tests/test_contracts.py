@@ -1635,5 +1635,61 @@ class DocumentationBudgetTests(unittest.TestCase):
                     f"${skill.name}", prompt.group(1),
                     f"{skill.name}: default_prompt invokes a different skill")
 
+    # `speak-human-tw` identifies its upstream by tag alone (v1.4.0). Left as
+    # it is on purpose: retro-fitting a SHA means resolving what that tag
+    # pointed at when the skill was distilled, which nobody can do from here.
+    # It is grandfathered, not exempt - the ceiling is one entry and shrinks.
+    ATTRIBUTION_WITHOUT_A_COMMIT = {"speak-human-tw"}
+
+    def test_every_derived_skill_pins_a_commit_and_carries_its_licence(self) -> None:
+        """A version string is not an identifier, and a licence name is not a licence.
+
+        Both halves come from things that went wrong rather than from a policy.
+        The first: upstream `mattpocock/skills` moved twelve commits under an
+        unchanged `v1.2.3` while the marketplace pin followed along, so an
+        attribution naming only the release records a number that was true of
+        two different bodies of text. The SHA is the only part that says what
+        was read.
+
+        The second: MIT and CC BY both require the notice to travel with
+        substantial portions, so `- Licence: MIT` satisfies the sentence and not
+        the obligation. This asserts a clause from the body of the licence, not
+        its name, which is the difference between citing it and shipping it.
+
+        What this does *not* check is whether the attribution classifies its
+        borrowings correctly - a 2026-08-17 review found `evidence-debugging`
+        listing one substantial portion where there were two, and no mechanical
+        check could have caught that without upstream's text in the tree. That
+        stays a review step, and it is written into each ATTRIBUTION's own
+        recheck section. Reading this test as covering it would be the same
+        mistake the redaction section made: a check keyed on the shape of the
+        artifact standing in for its substance.
+        """
+        derived = [
+            skill
+            for skill in sorted((ROOT / "main/.agents/skills").iterdir())
+            if skill.is_dir() and (skill / "ATTRIBUTION.md").exists()]
+        self.assertTrue(derived, "no derived skills found")
+        for skill in derived:
+            with self.subTest(skill=skill.name):
+                text = (skill / "ATTRIBUTION.md").read_text(encoding="utf-8")
+                self.assertRegex(
+                    text, r"https?://\S*github\.com/\S+",
+                    f"{skill.name}: attribution names no upstream source")
+                # One clause from the operative text of each licence this repo
+                # actually derives from. Present means the notice shipped.
+                self.assertTrue(
+                    "WITHOUT WARRANTY OF ANY KIND" in text
+                    or "creativecommons.org/licenses" in text,
+                    f"{skill.name}: attribution names a licence but does not "
+                    "carry its text, which is what the licence requires")
+                if skill.name in self.ATTRIBUTION_WITHOUT_A_COMMIT:
+                    continue
+                self.assertRegex(
+                    text, r"\b[0-9a-f]{40}\b",
+                    f"{skill.name}: attribution pins no commit, so a later "
+                    "reader cannot tell which upstream text was distilled")
+
+
 if __name__ == '__main__':
     unittest.main()
