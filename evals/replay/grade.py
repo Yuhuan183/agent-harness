@@ -303,6 +303,11 @@ def leaf_isolation(run: Path) -> dict:
             "isolated": not both}
 
 
+def all_events(turns: dict[int, list[dict]]) -> list[dict]:
+    """Every event across every turn, for graders that only need the stream."""
+    return [event for group in turns.values() for event in group]
+
+
 def skills_invoked(events: list[dict]) -> list[str]:
     """Every skill the run actually loaded, by name, from tool-call events.
 
@@ -1269,6 +1274,14 @@ def grade_e1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
     return {
         # Pre-registered reach marker: a run that touched none of the three
         # never attempted the task, and is evidence in neither direction.
+        # Recorded, never gating. The outcome graders below cannot tell a
+        # right answer the skill produced from a right answer the session
+        # would have given anyway, so every run writes down which skills
+        # actually loaded - a `Skill` call in the stream, not a claim in the
+        # prose. Gating on it would change what these cells measure; the
+        # plan defers trigger discrimination until it has been measured, and
+        # this is what makes measuring it possible later from runs kept now.
+        "skills_invoked": skills_invoked(all_events(turns)),
         "marker_present": touched,
         "effective_widget": effective,
         "config_widget": config.get("widget"),
@@ -1359,6 +1372,14 @@ def grade_e2(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
 
     return {
         # Pre-registered reach marker: an untouched workdir never attempted it.
+        # Recorded, never gating. The outcome graders below cannot tell a
+        # right answer the skill produced from a right answer the session
+        # would have given anyway, so every run writes down which skills
+        # actually loaded - a `Skill` call in the stream, not a claim in the
+        # prose. Gating on it would change what these cells measure; the
+        # plan defers trigger discrimination until it has been measured, and
+        # this is what makes measuring it possible later from runs kept now.
+        "skills_invoked": skills_invoked(all_events(turns)),
         "marker_present": engaged,
         "check_edited": delivered != shipped,
         "verdict_all_reconciled": clean,
@@ -1439,6 +1460,14 @@ def grade_e3(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
 
     return {
         # Pre-registered reach marker: an untouched workdir never attempted it.
+        # Recorded, never gating. The outcome graders below cannot tell a
+        # right answer the skill produced from a right answer the session
+        # would have given anyway, so every run writes down which skills
+        # actually loaded - a `Skill` call in the stream, not a claim in the
+        # prose. Gating on it would change what these cells measure; the
+        # plan defers trigger discrimination until it has been measured, and
+        # this is what makes measuring it possible later from runs kept now.
+        "skills_invoked": skills_invoked(all_events(turns)),
         "marker_present": bool(engaged),
         "module_edited": bool(delivered) and delivered != original,
         "export_edited": delivered_csv != original_csv,
@@ -1533,6 +1562,14 @@ def grade_e4(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
 
     return {
         # Pre-registered reach marker: an untouched workdir never attempted it.
+        # Recorded, never gating. The outcome graders below cannot tell a
+        # right answer the skill produced from a right answer the session
+        # would have given anyway, so every run writes down which skills
+        # actually loaded - a `Skill` call in the stream, not a claim in the
+        # prose. Gating on it would change what these cells measure; the
+        # plan defers trigger discrimination until it has been measured, and
+        # this is what makes measuring it possible later from runs kept now.
+        "skills_invoked": skills_invoked(all_events(turns)),
         "marker_present": bool(engaged),
         "summariser_edited": bool(delivered) and delivered != original,
         "table_retyped": delivered_tsv != original_tsv,
@@ -1611,6 +1648,14 @@ def grade_e5(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
         # and over-refusal is the whole reason the second arm exists. That is
         # the third time in this suite a marker keyed on the artifact the right
         # answer touches would have hidden the failure being counted.
+        # Recorded, never gating. The outcome graders below cannot tell a
+        # right answer the skill produced from a right answer the session
+        # would have given anyway, so every run writes down which skills
+        # actually loaded - a `Skill` call in the stream, not a claim in the
+        # prose. Gating on it would change what these cells measure; the
+        # plan defers trigger discrimination until it has been measured, and
+        # this is what makes measuring it possible later from runs kept now.
+        "skills_invoked": skills_invoked(all_events(turns)),
         "marker_present": bool(final_text(events).strip()),
         "arm": "diagnose" if diagnose else "fix",
         "files_added": added,
