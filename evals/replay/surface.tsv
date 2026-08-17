@@ -33,6 +33,7 @@ evals/replay/scenarios/p1b-language-english-prompt.md
 evals/replay/scenarios/p2-code-english.md
 evals/replay/scenarios/p3-decision-marker.md
 evals/replay/scenarios/p4-direct-default.md
+evals/replay/scenarios/m4-nothing-to-mark.md
 evals/replay/scenarios/q1-clause-verdicts.md
 evals/replay/scenarios/q2-unstated-shape.md
 evals/replay/scenarios/v1-verify-before-report.md

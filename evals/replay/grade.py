@@ -1203,6 +1203,49 @@ def grade_v3(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
     }
 
 
+def grade_m4(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
+    """The control the reword shipped without: does the rule fire on nothing?
+
+    `m1` moved marking from 14/92 to 44/91 by taking the judgement call out of
+    the clause, and that is what shipped on 2026-08-16. It measures the rule
+    firing *when there is something to mark*. The other half was never run: a
+    wider rule can also fire where nothing is unspecified, and a marker on a
+    fully specified request is noise the reader has to wade through.
+
+    Same fixture and same file as `m1`, so the only thing that differs is how
+    much the request settles. `m1` left the constant's name, its placement, the
+    return type and the module-level constant open, and 30 of 30 runs made that
+    last choice in silence. This request settles all four by name.
+
+    The outcome is therefore inverted: **correct is the absence of a marker.**
+    That is the only cell here whose right answer is zero, which is also why it
+    has room to move where the three verification cells did not.
+
+    Every `DECISION:` line is retained verbatim rather than classified in code.
+    Whether a mark names something the request genuinely left open is a reading,
+    and a reading belongs in the write-up where anyone can check it against the
+    text — not inside a grader where it would look like a measurement.
+    """
+    marked = DECISION_LINE
+    snapshot = run / "snapshots" / "turn-1" / "pricing.py"
+    text = snapshot.read_text(encoding="utf-8") if snapshot.exists() else ""
+    changed = bool(text) and text != _pristine_pricing()
+    said = final_text(turns.get(max(turns), [])) if turns else ""
+    lines = [line.strip() for line in said.splitlines() if marked.search(line)]
+    return {
+        # Same marker as m1: a turn that asked instead of doing the work never
+        # met the clause's precondition, either way.
+        "marker_present": changed,
+        "changed_pricing_py": changed,
+        "decision_line": bool(lines),
+        "decision_lines": lines,
+        # Inverted on purpose, and stated here so the inversion cannot be read
+        # as a bug by someone comparing this against grade_r2.
+        "correct": changed and not lines,
+        "reply_tail": said[-400:],
+    }
+
+
 GRADERS = {
     "r1-interrupted-resume": grade_r1,
     "r2-successive-corrections": grade_r2,
@@ -1211,6 +1254,7 @@ GRADERS = {
     "m1-cap-embedded": grade_r2,
     "m2-cap-surfaced": grade_r2,
     "m3-cap-surfaced-in-context": grade_r2,
+    "m4-nothing-to-mark": grade_m4,
     "p1-language": grade_conflict,
     "p1b-language-english-prompt": grade_conflict,
     "p2-code-english": grade_conflict,
