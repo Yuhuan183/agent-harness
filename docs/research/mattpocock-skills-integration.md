@@ -219,6 +219,69 @@ flowchart LR
 repo 反覆在別的載體上重新發現的同一件事 (帶日期的查核宣稱, trap 結果列的指紋), 而上游把它
 寫成了 debugging 的進場條件.
 
+## 逐段對標 (2026-08-17, 重新抓取上游後)
+
+前面那節的精讀是在 pin `068b6e0` 上做的, 但當時是**讀過就寫**, 沒有留下逐段對照.
+這節是把上游四份檔案重新抓下來 (同一個 SHA) 之後做的比對, 也是 ATTRIBUTION 的 Rechecking
+段要求的動作 —— 「必須重新抓上游, 重讀那份檔案不算 recheck」.
+
+先驗工具本身: 抓到的四份大小是 8614 / 3578 / 2214 / 1481 bytes, **與前面那節記的完全一致**,
+所以那次精讀的量測可信. 但路徑記錯了 —— reference 在 `tdd/tests.md` 與 `tdd/mocking.md`,
+不在 `references/` 底下.
+
+### `diagnosing-bugs` → `evidence-debugging`
+
+| 上游元素 | 我們的處置 | ATTRIBUTION 有沒有記 |
+|---|---|---|
+| frontmatter 的觸發語 (broken/throwing/failing/slow) | 沿用同一組詞 | **沒有** — 描述本身是近似改寫, 未列名 |
+| `CONTEXT.md` + ADR 開場 | 刪除, 改指既有 owner | 有 |
+| **Redact** 一節 | 近乎逐字 | 有 (substantial portion 2) |
+| Phase 1「這就是這個 skill」+ 十種建構迴圈的方法 | 濃縮成八種, 刪掉 HITL | 部分 — HITL 有記, 清單本身當成概念重寫 |
+| **完成判準** (red-capable / deterministic / fast / agent-runnable + 停下來) | 近乎逐字 | 有 (substantial portion 1) |
+| **Tighten the loop** (更快 / 訊號更利 / 更確定) | **整節刪掉** | **沒有** |
+| 非確定性 bug 要提高重現率 | 改寫成「量到的重現率, 前後都要引用」 | 概念重寫 |
+| Phase 2「錯的 bug = 錯的修復」「每個剩下的元素都要承重」 | 兩條都在, 措辭接近 | 概念重寫 |
+| Phase 3 三到五個排序假設 + 可證偽 + 展示但不阻塞 | 四點全在 | 概念重寫 |
+| Phase 4 一次一變因 / debugger 優於十條 log / 加前綴 / 效能先量基線 | 全在 | 概念重寫 |
+| Phase 5「沒有正確的 seam, 那件事本身就是發現」 | 近乎逐字 | 有 (列在概念重寫裡, 措辭其實更接近逐字) |
+| Phase 6 清理清單 | 濃縮成一句 | 概念重寫 |
+
+### `tdd` → `test-first-change`
+
+| 上游元素 | 我們的處置 | ATTRIBUTION 有沒有記 |
+|---|---|---|
+| **seam 定義**「你在那裡測的公開邊界: 觀察行為而不伸手進去的介面」 | 我們的是「檢查可以呼叫而不伸手進被測物的邊界」—— **近似改寫** | **記錯了** — 寫成「這一節不欠上游任何東西, 只欠它留下的缺口」 |
+| 「只在事先議定的 seam 測 … 未確認的 seam 不寫測試」 | 刪除, 換成從程式碼推導 | 有 |
+| `codebase-design` 指標 | 刪除 | 有 |
+| 反模式 **Tautological**「用程式碼自己的算法重算期望值, 因此由建構保證通過」 | 我們拆成第 1 與第 2 類 | **記錯了** — 寫成「上游兩類都有」, 上游其實只有**一類** |
+| 「期望值必須來自獨立的真相來源 —— 已知的字面值, 算過的例子, 規格」 | 我們: 「取自獨立於程式碼的來源 —— 已知字面值, 算過的例子, 規格」**近乎逐字** | **沒有** |
+| 反模式 **Implementation-coupled** | 由 mocking 與 seam 規則覆蓋, 沒有獨立分類 | 沒有記 (既非採用也非刪除) |
+| 反模式 **Horizontal slicing** + **vertical slices** + tracer bullet | 只留否定面 (不要一次寫完所有檢查) | 概念重寫 — 但**垂直切片這條正面規則被丟掉了** |
+| 「Red before green … 只寫剛好夠通過的碼, 不預先做未來的功能」 | 步驟 3 | 概念重寫 |
+| **「Refactoring 不屬於這個迴圈」** | tuning: 「Refactoring is not part of the red-green loop」**近乎逐字** | **沒有** |
+| `mocking.md` 上半 (只在系統邊界 mock; 不要 mock 自己的東西) | 近似 | 有 (substantial portion 2) |
+| `mocking.md` 下半 (dependency injection, SDK 式介面) | **刪除** | **沒有** |
+
+### 五處要修
+
+四處是**少算上游**, 一處是路徑錯. 少算是計畫明說唯一不能弄錯的方向.
+
+1. seam 定義說成「不欠上游任何東西」—— 實際是近似改寫;
+2. 「上游兩類都有」—— 上游只有一類, 第二類是我們拆出來的;
+3. 期望值那句近乎逐字, 未列名;
+4. 「Refactoring 不屬於迴圈」近乎逐字, 未列名;
+5. reference 路徑寫成 `references/tests.md`, 實際是 `tdd/tests.md`.
+
+另外兩處是**刪除未記錄**: `diagnosing-bugs` 的 Tighten the loop, `mocking.md` 的 DI/SDK 半節.
+
+### 一個影響 M6 判斷的發現
+
+我在 M6 判定裡寫「垂直切片是 `change-shaping` 唯一會帶來的新東西」. **那是錯的** ——
+垂直切片就寫在 `tdd` 的反模式一節裡, 也就是我們已經蒸餾過的那個 skill, 而我們只留了它的
+否定面 (不要一次寫完所有檢查), 把正面規則丟掉了.
+
+所以那條規則的正確歸屬不是「未來某個 skill 的唯一價值」, 而是**這次蒸餾漏掉的一條**.
+
 ## 本機證據: CCR 事件同時檢驗了這兩個 skill
 
 2026-08-17 處理 Headroom 0.35 CCR 失效的整個過程, 事後對照這兩個 skill **兩邊都不及格**.

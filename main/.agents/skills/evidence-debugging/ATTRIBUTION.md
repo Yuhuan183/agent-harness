@@ -27,10 +27,15 @@ Derived from Matt Pocock's agent skills.
    quoting only the lines that carry signal, and stopping to ask when the
    redacted output no longer supports a diagnosis.
 
+3. **The trigger vocabulary** (`SKILL.md` frontmatter). Upstream fires on
+   *"diagnose"/"debug this", or reports something broken/throwing/failing/slow*;
+   ours keeps that set and adds zh-TW equivalents. Adapted, not invented.
+
 A 2026-08-17 review found this file listing only the first and describing the
 second under what it *added*, which is the one direction the distillation plan
-says not to get wrong: calling a substantial portion a concept rewrite. Both are
-named here, and the full licence below covers both.
+says not to get wrong: calling a substantial portion a concept rewrite. A
+re-fetch of the pinned upstream later the same day added the third. All are named
+here, and the full licence below covers them.
 
 **Rewritten concepts.** The phase sequence, the feedback-loop constructions, the
 ranked-and-falsifiable hypothesis rule, one-variable probing, tagged temporary
@@ -45,6 +50,13 @@ the finding", and the cleanup gate are upstream's ideas in this repo's words.
 - The opening instruction to read `CONTEXT.md` and consult ADRs. This repo does
   not have those and the plan forbids creating them; `AGENTS.md` and
   `docs/architecture.md` already own that role.
+- **"Tighten the loop"** — upstream's instruction to treat the loop as a product
+  and keep improving it: faster, sharper signal, more deterministic. Found missing
+  by the 2026-08-17 re-fetch. This skill's gate requires a loop that is *already*
+  fast and deterministic; it never asks anyone to make an existing one better, and
+  that is a real omission rather than a decision. Left out for now rather than
+  added late without a place earned for it, and recorded in
+  `docs/research/upstream-distillation-ledger.md` with its cost.
 
 **Added, with no upstream counterpart.**
 
@@ -61,6 +73,10 @@ the finding", and the cleanup gate are upstream's ideas in this repo's words.
   incident actually made.
 
 ## Rechecking
+
+`scripts/upstream-recheck.sh` re-fetches the pinned files and checks them
+against the hashes the ledger was written against; the per-section disposition is
+in `docs/research/upstream-distillation-ledger.md`. Start there.
 
 Resolve the current marketplace pin before comparing — do not assume this SHA is
 still what the marketplace serves. Compare only `diagnosing-bugs`. Classify each

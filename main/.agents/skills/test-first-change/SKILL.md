@@ -85,7 +85,9 @@ report it instead of a green that bypassed the code.
    example, the spec.
 2. **Watch it fail**, against the gate above.
 3. **Implement the smallest change that turns it green.** Not the general
-   version — the next check earns that.
+   version — the next check earns that. One check, one implementation, then
+   repeat: each slice is a tracer bullet that answers what the last one taught,
+   and a slice that delivers no observable behaviour is half a layer, not a slice.
 4. **Re-run the narrow suite**, then the wider one this change could reach.
 5. **Keep the check**, in the repo's existing conventions rather than a parallel
    style of your own.

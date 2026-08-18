@@ -1,6 +1,8 @@
 # Harness engineering 研究總結
 
-工程工作流 skill 的分題研究見 [Matt Pocock skills 導入研究](mattpocock-skills-integration.md),
+工程工作流 skill 的分題研究見 [Matt Pocock skills 導入研究](mattpocock-skills-integration.md);
+上游每一節蒸餾到哪裡, 捨棄了什麼, 以及可重跑的雜湊覆核, 見
+[蒸餾帳本](upstream-distillation-ledger.md) (`scripts/upstream-recheck.sh`),
 已核准的後續範圍, 驗收與停止條件見
 [蒸餾實作計畫](../plans/engineering-workflow-distillation.md).
 

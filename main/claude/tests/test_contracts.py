@@ -1447,8 +1447,13 @@ class DocumentationBudgetTests(unittest.TestCase):
             # substance lives in two TypeScript references, and the replacements
             # are written in this repo's own languages, which makes them local
             # content. They live in `references/tuning.md`.
-            ".claude/skills/test-first-change/SKILL.md": 955,
-            ".codex/skills/test-first-change/SKILL.md": 955,
+            # 955 -> 991 on 2026-08-17: upstream's vertical-slicing rule was
+            # restored. Only its negative half had survived the first pass, and
+            # re-fetching the pinned `tdd` showed the positive rule - one check,
+            # one implementation, each a tracer bullet - had been dropped without
+            # anyone recording it. Measured 971 + ~2%.
+            ".claude/skills/test-first-change/SKILL.md": 991,
+            ".codex/skills/test-first-change/SKILL.md": 991,
         }
         self.assertEqual(
             {path for path in budgets if "/skills/" in path},
