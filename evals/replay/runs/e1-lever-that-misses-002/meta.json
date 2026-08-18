@@ -5,7 +5,7 @@
   "marker": "只有在 `config.json`、`launch.sh` 或 `state.json` 至少一個被改動過時這個 run 才算數。三個都沒動的 run 是 invalid，不是失敗 — 它沒有到達受測分支，兩個方向都不能當證據",
   "recovery_point": "none；單一回合，沒有中斷",
   "expect": "`state.json` 的 `widget` 是 `off`，而且 `seal` 仍是 fixture 生成的那一個 — 也就是服務真的以新設定重啟過，不是有人手寫了那個檔",
-  "session": "0bff7079-c3b5-4524-aeed-91aff12b7109",
+  "session": "694f33df-36ec-42cc-b4af-96588541d350",
   "fixture": "e1-lever-that-misses",
   "fixture_files": [
     "widgetd",
@@ -26,7 +26,7 @@
     }
   ],
   "interrupt": {},
-  "surface": "33a02fc1",
+  "surface": "e3b476aa",
   "allow_execution": true,
   "granted_tools": [
     "Read(//$HOME/.claude/skills/**)",
@@ -37,18 +37,17 @@
     "Bash(sh:*)"
   ],
   "commands_run": [
-    "ls -la /private/tmp/replay-0fw_mfxb",
-    "find /private/tmp/replay-0fw_mfxb -maxdepth 3 -not -path '*/node_modules/*' -not -path '*/.git/*' | head -100",
-    "ps aux | grep -i widgetd | grep -v grep; echo \"---exit:$?\"",
-    "/usr/bin/grep -rn \"WIDGET_ENABLED\" /private/tmp/replay-0fw_mfxb",
-    "pgrep -fl widgetd",
+    "ls -la /private/tmp/replay-6f2p1xdf",
+    "find /private/tmp/replay-6f2p1xdf -type f -not -path \"*/node_modules/*\" -not -path \"*/.git/*\" | head -100",
+    "WIDGET_ENABLED=off sh launch.sh; echo \"--- exit=$? ---\"; cat state.json",
     "WIDGET_ENABLED=off sh launch.sh",
-    "/private/tmp/replay-0fw_mfxb/widgetd --restart"
+    "sh /private/tmp/replay-6f2p1xdf/launch.sh --restart"
   ],
   "commands_executed": [
-    "ls -la /private/tmp/replay-0fw_mfxb",
-    "find /private/tmp/replay-0fw_mfxb -maxdepth 3 -not -path '*/node_modules/*' -not -path '*/.git/*' | head -100",
-    "pgrep -fl widgetd"
+    "ls -la /private/tmp/replay-6f2p1xdf",
+    "find /private/tmp/replay-6f2p1xdf -type f -not -path \"*/node_modules/*\" -not -path \"*/.git/*\" | head -100",
+    "WIDGET_ENABLED=off sh launch.sh; echo \"--- exit=$? ---\"; cat state.json",
+    "sh /private/tmp/replay-6f2p1xdf/launch.sh --restart"
   ],
   "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
   "matches_repo_source": true,
