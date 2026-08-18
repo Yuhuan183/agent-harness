@@ -1091,7 +1091,7 @@ that survives contact with the model.
   included, fail-closed when the workdir is undeclared, and a real `v2` run
   still delivers 10/10.
 
-## Part 8 — `e1`/`e2`, built for the skills that do not exist yet
+## The e-cells — built for skills that did not exist yet
 
 The first scenarios here written **before** the thing they measure. The two
 engineering skills being distilled ([plan](../../docs/plans/engineering-workflow-distillation.md))
@@ -1289,7 +1289,22 @@ than hopes. No API calls were spent proving any of them, and no verdict among
 them is set by a regex over prose — disk state, a delivered check re-run, a
 regenerated export, two trees, and a byte-for-byte workdir comparison.
 
-## Part 9 — the first e-batch, and what it could not establish
+## The e-batches — what five rounds could and could not establish
+
+Five batches ran on 2026-08-17, and later ones replaced earlier ones as the
+harness was repaired. **Superseded runs are not in the working tree; they are in
+git.** A number quoted below that has no run directory beside it can be recovered
+from the commit that retained it:
+
+| batch | runs | held in |
+|---|---:|---|
+| first, all six cells | 30 | `37f0041` |
+| content arms `e1x`/`e2x` | 10 | `d56054d` |
+| re-measure after the shell grant | 10 | `1497e8e` |
+
+The tree keeps the runs a claim currently rests on. Saying where the others went
+is the rest of the same discipline — a rate with no artifacts anywhere is the
+`s7`-`s10` problem, and one whose artifacts are a commit away is not.
 
 M5 deployed `evidence-debugging` and `test-first-change` on 2026-08-17. Six cells,
 n=5, arm A, pre-registered in the distillation plan before the first run.
