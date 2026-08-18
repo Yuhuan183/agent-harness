@@ -1,6 +1,6 @@
 ---
 name: test-first-change
-description: Add or change behaviour by writing the check that fails first, at a seam that reaches the observable result. Invoke when the request asks to implement, add, change or extend behaviour, to write or repair a test, or names TDD or test-first. Do not use for an unexplained defect (diagnose it first with evidence-debugging), for formatting or documentation-only edits, or for a change nothing could have failed on beforehand.
+description: Add or change behaviour by writing the check that fails first, at a seam that reaches the observable result. Invoke when the request asks to implement, add, change or extend behaviour, to write or repair a test, or names TDD or test-first — and in zh-TW: 實作, 加上, 改掉, 擴充, 補測試, 修測試. Do not use for an unexplained defect (diagnose it first with evidence-debugging), for formatting or documentation-only edits, or for a change nothing could have failed on beforehand.
 ---
 
 # Test-First Change

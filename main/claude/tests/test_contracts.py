@@ -1116,7 +1116,20 @@ class DocumentationBudgetTests(unittest.TestCase):
         # twice, at 61 and then 70, because comparing it against the plan's own
         # contract section found an exclusion missing from it. A number set
         # before that comparison would have been the one that stuck.
-        metadata_budgets = {"claude": 730, "codex": 650}
+        # 730/650 -> 790/710 on 2026-08-17, measured at 787/707. Both new
+        # skills state their triggers in zh-TW as well as English now, which cost
+        # 37 and 25 words. The reason is a measurement, not a preference: across
+        # five replay batches these two loaded in 5 of 30 runs, and they were the
+        # only two deployed skills whose descriptions carried no Chinese at all -
+        # speak-human-tw 121 characters of it, headroom-protocol 48,
+        # experience-ledger 32, task-observer 15, these two zero - in a project
+        # whose requests arrive in Chinese. speak-human-tw is 176 words wide for
+        # exactly this reason and has been since it landed.
+        #
+        # Whether skill selection is lexical is a hypothesis, not something this
+        # repo has established. `skills_invoked` moving off 0 of 5 on `e1` is what
+        # would support it; nothing here assumes it in advance.
+        metadata_budgets = {"claude": 790, "codex": 710}
         # The widest legitimate description today is speak-human-tw at 176: it
         # states its triggers twice, in zh-TW and English, because it is the
         # one skill invoked by users in either language.
@@ -1422,15 +1435,20 @@ class DocumentationBudgetTests(unittest.TestCase):
             # never re-read; a number recorded next to what it measured is only
             # worth anything if it can be recomputed from the file, which this one
             # could not. Not a refill: nothing needed to fit.
-            ".claude/skills/evidence-debugging/SKILL.md": 947,
-            ".codex/skills/evidence-debugging/SKILL.md": 947,
+            # 947 -> 984 and 931 -> 955 on 2026-08-17: the bilingual trigger
+            # lists are in the frontmatter, and these ceilings cover the whole
+            # deployed file. Measured 965 and 937 + ~2%, the same rule as the
+            # tier above. The resident half of that cost is priced separately
+            # in `metadata_budgets`, where the reason is recorded.
+            ".claude/skills/evidence-debugging/SKILL.md": 984,
+            ".codex/skills/evidence-debugging/SKILL.md": 984,
             # Same single source, same reasoning. Measured 913 + ~2%. Its worked
             # examples are not in here: upstream `tdd` is 38 lines of index whose
             # substance lives in two TypeScript references, and the replacements
             # are written in this repo's own languages, which makes them local
             # content. They live in `references/tuning.md`.
-            ".claude/skills/test-first-change/SKILL.md": 931,
-            ".codex/skills/test-first-change/SKILL.md": 931,
+            ".claude/skills/test-first-change/SKILL.md": 955,
+            ".codex/skills/test-first-change/SKILL.md": 955,
         }
         self.assertEqual(
             {path for path in budgets if "/skills/" in path},
