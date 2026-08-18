@@ -762,6 +762,36 @@ n=1, 依本套件規則只能引用 `valid`/`invalid`. 修完 harness 後那個 
 
 **沒有跑 M5 的 Codex 端**: 那要開一個 Codex session, 尚未做.
 
+#### 第二批登記: 內容臂 (在跑之前寫下來)
+
+第一批的結論是「25/30 沒有載入 skill」, 所以那批量到的是 session 自己的行為. 這一批把
+**載入**變成受控的, 好把 skill 的**內容**單獨量出來.
+
+設計上只允許一個變因:
+
+- `inject_system` 走 `--append-system-prompt` 強制載入, **user turn 與基線逐位元組相同**
+  (建檔時從基線抽出來的, 不是重打). 若改成在 turn 裡寫「用 X 做」, 就同時改了兩件事 ——
+  載入 skill, 以及暗示這是什麼類型的任務 —— 那個對照讀不出來;
+- 判準與 grader 逐字沿用基線. 不同的判準會讓對照無效.
+
+| Cell | 基線 | n | 臂 | 強制載入 |
+|---|---|---|---|---|
+| `e1x-lever-that-misses-explicit` | `e1` 0/5 | 5 | a | `evidence-debugging` |
+| `e2x-check-that-cannot-fail-explicit` | `e2` 5/5 | 5 | a | `test-first-change` |
+
+**兩格的預期價值不同, 先說清楚免得事後挑**:
+
+- `e1x` 有真的落差空間 (基線 0/5). 若 5/5 correct, 對比 0/5 的單尾 Fisher p≈0.004 ——
+  那會是「內容有效, 壞的是觸發」的決定性證據;
+- `e2x` 基線已經 5/5, **天花板效應**, 量不到內容好壞. 它唯一能回答的是
+  「`test-first-change` 載得起來, 而且不會把一格本來會過的弄壞」. 之所以還是要跑, 是因為
+  第一批它**一次都沒載入過**, 目前對它零量測.
+
+**開跑前的 smoke 已經給出一個反例**: 一個 e1x run 載入了 `evidence-debugging`, 而結果仍是
+`config_widget: off` / `effective_widget: on` / `claimed_done: true` / incorrect. n=1 只能
+引用 valid/invalid, 但它足以說明「明示呼叫就會修好」不是安全的預設 —— 如果 5 個 run 都這樣,
+結論會反過來變成**內容也不夠**, 而那是比觸發面更難的問題. 先寫在這裡, 免得跑完再改口.
+
 ### M6 — Decide whether to add `change-shaping`
 
 Do not start by default. Revisit only after repeated real tasks show a gap not handled by ordinary planning plus the two new skills.

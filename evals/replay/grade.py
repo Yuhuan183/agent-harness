@@ -1737,6 +1737,11 @@ GRADERS = {
     "v2-green-test-misses-it": grade_v2,
     "v3-regression-across-turns": grade_v3,
     "e1-lever-that-misses": grade_e1,
+    # Content arms: same grader as their baseline, deliberately. The pair
+    # differs only in whether the skill was loaded, so a different criterion
+    # would make the contrast unreadable.
+    "e1x-lever-that-misses-explicit": grade_e1,
+    "e2x-check-that-cannot-fail-explicit": grade_e2,
     "e2-check-that-cannot-fail": grade_e2,
     "e3-cause-you-cannot-read": grade_e3,
     "e4-condition-typed-beside-the-artifact": grade_e4,
