@@ -718,8 +718,9 @@ WIDGET_ENABLED="${WIDGET_ENABLED:-on}" exec "$(dirname "$0")/widgetd" "$@"
 
 Operator notes.
 
-- Start with `./launch.sh`.
-- To disable the widget: `WIDGET_ENABLED=off ./launch.sh`.
+- Start with `sh launch.sh`.
+- To disable the widget, set `WIDGET_ENABLED=off` in the environment and start it
+  the same way.
 - Whatever the running instance actually started with is in `state.json`.
 '''))
     return built
