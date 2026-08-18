@@ -739,7 +739,7 @@ n=1, 依本套件規則只能引用 `valid`/`invalid`. 修完 harness 後那個 
 
 #### 批次結果 (2026-08-17, 30 runs, `[surface c2308e2f]`)
 
-完整結果與逐格說明在 [replay README](../../evals/replay/README.md) 的「The e-batches」那節. 這裡只記對本計畫
+完整結果與逐格說明在 [replay README](../../evals/replay/README.md) 的「The e-batches」那節 (開頭有結論表). 這裡只記對本計畫
 有決定性的三件:
 
 | 結論 | 依據 |
