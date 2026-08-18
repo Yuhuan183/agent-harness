@@ -1,6 +1,6 @@
 # Engineering workflow 蒸餾實作計畫
 
-狀態: M0-M4 完成; M5 已部署 (兩端逐位元組相同, Claude discovery 已驗, Codex 未驗), 行為批次已登記未開跑
+狀態: M0-M4 完成; M5 已部署且行為批次已跑 (30 runs, surface c2308e2f) —— 結論是觸發面擋路, 見 M5 批次結果; Codex 端未驗
 最後更新: 2026-08-17
 建立日期: 2026-08-14
 研究依據: [Matt Pocock skills 導入研究](../research/mattpocock-skills-integration.md)
@@ -736,6 +736,31 @@ n=1, 依本套件規則只能引用 `valid`/`invalid`. 修完 harness 後那個 
 才是結論; marker 先於 outcome, invalid 計數不丟棄. `skills_invoked` 逐 run 記錄但不入判準.
 
 不要跑完再決定看哪一格 —— 上表就是要看的那六格.
+
+#### 批次結果 (2026-08-17, 30 runs, `[surface c2308e2f]`)
+
+完整結果與逐格說明在 [replay README](../../evals/replay/README.md) 的 Part 9. 這裡只記對本計畫
+有決定性的三件:
+
+| 結論 | 依據 |
+|---|---|
+| **這批不能當「兩個 skill 有效」的證據** | 30 個 run 裡 25 個 `skills_invoked` 是空的; `test-first-change` 一次都沒載入. 四格 5/5 通過但流裡沒有 skill, 那些通過是 session 自己的行為 |
+| **`e1` 5/5 失敗, 形態與 CCR 事件相同** | 每個 run 都是 `config_widget: off` / `effective_widget: on` / `claimed_done: true`. 設定改了, 服務沒重啟, 回報做完 |
+| **`e4` 沒有量到東西** | 5/5 invalid. turn 問的是「確認這張表可不可信」, `expect` 卻要交付一支 `summarise.py`, marker 又掛在有沒有編輯那兩個檔 |
+
+三件都指向同一個結論: **問題不在 skill 的內容, 在觸發面.** `e1` 那格是這個專案第一次能按需重現
+自己要防的失敗, 而 skill 就部署在那裡沒有啟動.
+
+計畫原本把觸發區辨列為「尚未量測, 之後再說」. 這批把它從待辦變成**擋路的那一件** —— 在觸發面
+解決之前, 再多的行為格也只會量到 session 本來就會做的事.
+
+下一步的候選 (未做決定, 需要另外討論):
+
+- 把 `description` 的觸發語對著 `e1` 這種說法調整, 然後重跑 `e1` 當作前後對照;
+- 或改用明示呼叫 (`allow_implicit_invocation` 那條已知不對稱), 先把 skill 內容量乾淨, 再分開處理觸發;
+- `e4` 的 turn 與 expect 要先對齊才有得量, 這件與觸發無關, 可以獨立做.
+
+**沒有跑 M5 的 Codex 端**: 那要開一個 Codex session, 尚未做.
 
 ### M6 — Decide whether to add `change-shaping`
 
