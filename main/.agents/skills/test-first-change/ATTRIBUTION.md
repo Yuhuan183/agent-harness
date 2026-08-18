@@ -3,8 +3,10 @@
 Derived from Matt Pocock's agent skills.
 
 - **Source**: <https://github.com/mattpocock/skills>
-- **Upstream skill**: `skills/engineering/tdd/SKILL.md` plus its two references,
-  `references/tests.md` and `references/mocking.md`
+- **Upstream skill**: `skills/engineering/tdd/SKILL.md` plus `tdd/tests.md` and
+  `tdd/mocking.md`. The first version of this file said `references/tests.md`;
+  they are not in a subdirectory, and the path was written from memory rather
+  than from the tree.
 - **Reviewed release**: `v1.2.3` (2026-08-06)
 - **Reviewed commit**: `068b6e0c62393147daf03530149cdce209c93da8` — the Claude
   marketplace pin resolved on 2026-08-17, not the release tag. The two disagree
@@ -12,29 +14,45 @@ Derived from Matt Pocock's agent skills.
   only thing that identifies what was read.
 - **Licence**: MIT, Copyright (c) 2026 Matt Pocock. Full text below.
 
-Upstream's text is not vendored into this repo, so the classification below rests
-on the verbatim reading recorded the same day under "第一批兩個 skill 的原始碼精讀"
-in `docs/research/mattpocock-skills-integration.md`, not on a diff performed
-against files present here. Named rather than linked, like every other pointer in
-this skill: these files deploy outside the repo, where no relative path reaches
-that tree. A recheck must re-fetch upstream; re-reading this file is not a
-recheck.
+Upstream's text is not vendored here. The first version of this file classified
+from a same-day reading held in memory, and a 2026-08-17 re-fetch of the pinned
+files found four sections that under-credited upstream. The classification below
+is written against the fetched bytes, and the per-section disposition with
+upstream's hashes is in `docs/research/upstream-distillation-ledger.md`. Named
+rather than linked, like every other pointer in this skill: these files deploy
+outside the repo, where no relative path reaches that tree. A recheck must
+re-fetch upstream; re-reading this file is not a recheck.
 
 ## What was taken, and how
 
 Upstream `tdd` is 38 lines and mostly an index: it outsources what makes a good
-test to `references/tests.md`, mock boundaries to `references/mocking.md`, and
+test to `tdd/tests.md`, mock boundaries to `tdd/mocking.md`, and
 the seam vocabulary to a separate `codebase-design` skill. Distilling it is
 therefore three decisions about who inherits each, not a rewrite of 38 lines.
 
 **Substantial portions.**
 
-1. **The two categories of assertion that cannot fail** (`SKILL.md` → "Four ways
-   an assertion cannot fail", items 1 and 2). Upstream's `tests.md` names both:
-   an assertion that recomputes the code's own logic, and one the setup
-   guarantees. The category boundary and the reason it matters are upstream's;
-   the wording and both illustrations here are local.
-2. **The mock boundary** (`SKILL.md` → "Mocking"). Close in substance to
+1. **The tautological category** (`SKILL.md` → "Four ways an assertion cannot
+   fail", items 1 and 2). Upstream names **one** category — an assertion that
+   recomputes the expected value the way the code does, and therefore "passes by
+   construction". Splitting that into two is local; the category itself, and the
+   reason it matters, are upstream's. The first version of this file claimed
+   upstream named both, which credited it with a distinction it does not draw.
+2. **The independent source of truth** (`SKILL.md` → "Then", step 1). Upstream:
+   *"Expected values must come from an independent source of truth — a known-good
+   literal, a worked example, the spec."* Ours keeps the list and nearly the
+   sentence. It was unlisted here until the 2026-08-17 re-fetch.
+3. **The seam definition** (`SKILL.md` → "Seam, defined here", first paragraph).
+   Upstream: *"the public boundary you test at: the interface where you observe
+   behavior without reaching inside."* A close adaptation, not an original. The
+   first version of this file said the section *"owes upstream nothing but the
+   gap it left"*, which is the one direction the distillation plan says not to get
+   wrong — and it was wrong because the classification was written from memory
+   rather than against the file.
+4. **"Refactoring is not part of the loop"** (`references/tuning.md` →
+   Authority). Nearly verbatim from upstream's rules of the loop, and unlisted
+   until the same re-fetch.
+5. **The mock boundary** (`SKILL.md` → "Mocking"). Close in substance to
    `mocking.md`: mock what you neither own nor can run, never the thing under
    test, and treat "only testable with the failing path mocked out" as a finding
    rather than a workaround.
@@ -44,11 +62,12 @@ before it passes, one behaviour per check, smallest change that turns it green,
 and don't introduce a parallel test style are upstream's ideas in this repo's
 words.
 
-**Written locally, because upstream outsourced it.** The whole of "Seam, defined
-here", including the reach-versus-observability split. Upstream sends the agent
-to `codebase-design` for this vocabulary; that skill is not imported, was not
-read, and leaving a pointer to it would be a dangling instruction. So this
-section owes upstream nothing but the gap it left.
+**Written locally, on top of upstream's one sentence.** The
+reach-versus-observability split, and the list of what is not a seam. Upstream
+defines a seam in one line and sends the agent to `codebase-design` for the rest
+of the vocabulary — module, depth, adapter, leverage, locality. That skill is not
+imported and was not read, so everything past the definition is local; the
+definition itself is listed above as adapted.
 
 **Every worked example is local.** `references/tuning.md` carries the good and
 bad pairs. Upstream's are TypeScript and Jest; this repo verifies with Python
@@ -69,6 +88,15 @@ shipped rather than translated.
 - The opening instruction to read `CONTEXT.md` and consult ADRs. This repo does
   not have those and the plan forbids creating them; `AGENTS.md` and
   `docs/architecture.md` already own that role.
+- **`mocking.md`'s second half** — dependency injection and SDK-style interfaces,
+  i.e. how to design something so it is easy to mock. That is a design concern
+  rather than a testing criterion and sits outside this skill's boundary, but the
+  first version dropped it without recording the judgement.
+- **Upstream's vertical-slicing rule was dropped and has been restored.** Only
+  its negative half survived the first pass ("do not write every check up front").
+  The positive rule — one check, one implementation, each a tracer bullet
+  answering what the last cycle taught — is upstream's and is now in "Then",
+  step 3.
 
 **Added, with no upstream counterpart.**
 
@@ -88,9 +116,13 @@ shipped rather than translated.
 
 ## Rechecking
 
+`scripts/upstream-recheck.sh` re-fetches the pinned files and checks them
+against the hashes the ledger was written against; the per-section disposition is
+in `docs/research/upstream-distillation-ledger.md`. Start there.
+
 Resolve the current marketplace pin before comparing — do not assume this SHA is
 still what the marketplace serves, and fetch upstream rather than working from
-this file. Compare `tdd`, `references/tests.md` and `references/mocking.md`;
+this file. Compare `tdd/SKILL.md`, `tdd/tests.md` and `tdd/mocking.md`;
 comparing only `SKILL.md` reads 38 lines of index and misses where the content
 lives. Re-classify **every** section, not only the ones already listed here: the
 failure this project has actually made is calling a substantial portion a

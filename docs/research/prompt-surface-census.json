@@ -67,13 +67,13 @@
           "words": 29
         },
         {
-          "bytes": 4953,
-          "file_bytes": 5493,
-          "file_sha256": "fbd845852b3dc1472594641739ece2013e9d1526b39a282b326dff6a5777d112",
+          "bytes": 5152,
+          "file_bytes": 5692,
+          "file_sha256": "ad9b8ad6be22ea8b1663c20690947547436b5f0090e2d84796a8ea7f31a59bb2",
           "kind": "skill-body",
           "path": "main/claude/skills/test-first-change/SKILL.md",
-          "sha256": "90012ca534c5221d9e7870b36b88c835d52c6bbc2671ec20f3b1744ff4eb784e",
-          "words": 839
+          "sha256": "5e25e1d13024e251f23eefae83ea472552bf60191a81b98f4be861a859867e6d",
+          "words": 873
         }
       ],
       "resident": [
@@ -148,8 +148,8 @@
         },
         {
           "bytes": 511,
-          "file_bytes": 5493,
-          "file_sha256": "fbd845852b3dc1472594641739ece2013e9d1526b39a282b326dff6a5777d112",
+          "file_bytes": 5692,
+          "file_sha256": "ad9b8ad6be22ea8b1663c20690947547436b5f0090e2d84796a8ea7f31a59bb2",
           "kind": "skill-metadata",
           "path": "main/claude/skills/test-first-change/SKILL.md",
           "sha256": "0f40c1dac801b6ec136dd84e53f690bd19ff05e012ac7feb18875d4e55e4459f",
@@ -335,13 +335,13 @@
           "words": 647
         },
         {
-          "bytes": 4953,
-          "file_bytes": 5493,
-          "file_sha256": "fbd845852b3dc1472594641739ece2013e9d1526b39a282b326dff6a5777d112",
+          "bytes": 5152,
+          "file_bytes": 5692,
+          "file_sha256": "ad9b8ad6be22ea8b1663c20690947547436b5f0090e2d84796a8ea7f31a59bb2",
           "kind": "skill-body",
           "path": "main/codex/skills/test-first-change/SKILL.md",
-          "sha256": "90012ca534c5221d9e7870b36b88c835d52c6bbc2671ec20f3b1744ff4eb784e",
-          "words": 839
+          "sha256": "5e25e1d13024e251f23eefae83ea472552bf60191a81b98f4be861a859867e6d",
+          "words": 873
         }
       ],
       "resident": [
@@ -407,8 +407,8 @@
         },
         {
           "bytes": 511,
-          "file_bytes": 5493,
-          "file_sha256": "fbd845852b3dc1472594641739ece2013e9d1526b39a282b326dff6a5777d112",
+          "file_bytes": 5692,
+          "file_sha256": "ad9b8ad6be22ea8b1663c20690947547436b5f0090e2d84796a8ea7f31a59bb2",
           "kind": "skill-metadata",
           "path": "main/codex/skills/test-first-change/SKILL.md",
           "sha256": "0f40c1dac801b6ec136dd84e53f690bd19ff05e012ac7feb18875d4e55e4459f",
@@ -542,9 +542,9 @@
   "totals": {
     "claude": {
       "dispatch": {
-        "bytes": 40988,
-        "payload_sha256": "c144130bfb0161231a14137289f5288caf9007004bc2ec60894130efd24229a9",
-        "words": 6858
+        "bytes": 41187,
+        "payload_sha256": "5a21ec72103123cd1dab921d1a8b83669c254331c6c1423dbb12baff823aec65",
+        "words": 6892
       },
       "resident": {
         "bytes": 8002,
@@ -559,9 +559,9 @@
     },
     "codex": {
       "dispatch": {
-        "bytes": 37161,
-        "payload_sha256": "010a20e44f706eeb18dfc2b9db878b7a969f70fe68b928b3125e9d290f304e9c",
-        "words": 6289
+        "bytes": 37360,
+        "payload_sha256": "5569513a6bd5f1edf7e542e0792babbe934b7b3621da5b0353edd80fb4a8ddeb",
+        "words": 6323
       },
       "resident": {
         "bytes": 7976,
