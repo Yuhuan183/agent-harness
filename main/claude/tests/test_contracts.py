@@ -1744,6 +1744,66 @@ class DocumentationBudgetTests(unittest.TestCase):
     # It is grandfathered, not exempt - the ceiling is one entry and shrinks.
     ATTRIBUTION_WITHOUT_A_COMMIT = {"speak-human-tw"}
 
+    # Files that state which upstream commit the distillation was made against.
+    # Adding one here is how a new document joins the set that must move together
+    # when upstream does; the test below is what makes forgetting it visible.
+    UPSTREAM_PIN_SITES = (
+        "main/.agents/skills/evidence-debugging/ATTRIBUTION.md",
+        "main/.agents/skills/test-first-change/ATTRIBUTION.md",
+        "docs/research/upstream-distillation-ledger.md",
+        "docs/research/mattpocock-skills-integration.md",
+        "docs/research/README.md",
+        "docs/plans/engineering-workflow-distillation.md",
+        "scripts/upstream-recheck.sh",
+    )
+
+    def test_every_document_naming_the_upstream_pin_names_the_same_one(self) -> None:
+        """Seven files state which upstream commit this was distilled against.
+
+        Two ATTRIBUTIONs, the ledger, the research doc, the research index, the
+        plan and the recheck script's default. When upstream moves they all move;
+        update six and the seventh goes on describing a different body of text
+        silently - the exact failure a pin exists to prevent.
+
+        A single source is not available. The ATTRIBUTIONs deploy outside this
+        repo and have to stand alone, and the script needs a default it can run
+        with. So the sites are checked for agreement instead.
+
+        Checked as presence rather than by hunting for wrong values, because the
+        first draft did the latter and flagged three legitimate entries: the
+        superseded mattpocock pin recorded as history, Pilotfish's tag commit, and
+        one of this repo's own commit SHAs. Hex is a shared alphabet; "does every
+        site carry the current pin" is the question that has one answer.
+        """
+        reviewed = re.search(
+            r"\*\*Reviewed commit\*\*: `([0-9a-f]{40})`",
+            read(".agents/skills/evidence-debugging/ATTRIBUTION.md"))
+        self.assertIsNotNone(reviewed, "the attribution states no reviewed commit")
+        pin = reviewed.group(1)
+
+        missing = []
+        for name in self.UPSTREAM_PIN_SITES:
+            path = ROOT / name
+            self.assertTrue(path.is_file(), f"{name}: a pin site that no longer exists")
+            text = path.read_text(encoding="utf-8")
+            if not any(pin.startswith(token) and len(token) >= 7
+                       for token in re.findall(r"\b[0-9a-f]{7,40}\b", text)):
+                missing.append(name)
+        self.assertEqual(
+            [], missing,
+            f"these state no upstream pin matching {pin[:12]}; when it moves, "
+            "every site in UPSTREAM_PIN_SITES moves with it")
+
+        # The two ATTRIBUTIONs carry the licence obligation, so theirs is the
+        # full SHA and has to be identical, not merely a compatible prefix.
+        for skill in ("evidence-debugging", "test-first-change"):
+            with self.subTest(skill=skill):
+                found = re.search(
+                    r"\*\*Reviewed commit\*\*: `([0-9a-f]{40})`",
+                    read(f".agents/skills/{skill}/ATTRIBUTION.md"))
+                self.assertIsNotNone(found, f"{skill}: no full reviewed commit")
+                self.assertEqual(pin, found.group(1))
+
     def test_every_derived_skill_pins_a_commit_and_carries_its_licence(self) -> None:
         """A version string is not an identifier, and a licence name is not a licence.
 
