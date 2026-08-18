@@ -2586,6 +2586,14 @@ class TrapSurfaceTests(unittest.TestCase):
                 path.name
                 for path in (ROOT / "main/claude/skills").iterdir()
                 if (path / "SKILL.md").is_file())}
+        # Every shim under `sandbox/` too. A run executes whatever is there, and
+        # `sandbox/sh` was added on 2026-08-17 beside a `python3` that had been
+        # listed since the directory existed - the same omission-by-hand this
+        # test exists for, one file over.
+        required |= {
+            path.relative_to(ROOT).as_posix()
+            for path in (ROOT / "evals/replay/sandbox").iterdir()
+            if path.is_file()}
         self.assertEqual(
             set(), required - declared,
             "a replay run reads these and its stamps would not cover them")
@@ -2708,6 +2716,43 @@ class ReplayScenarioTests(unittest.TestCase):
 
     def _scenarios(self) -> list[Path]:
         return sorted((self.REPLAY / "scenarios").glob("*.md"))
+
+    def test_a_run_records_the_grants_it_was_given(self) -> None:
+        """`allow_execution: true` is a boolean whose meaning changed on 2026-08-17.
+
+        Until then the execute grant was `Bash(python3:*)` alone; it now also
+        carries `Bash(sh:*)`, because no shell invocation ran at all and two
+        cells' fixtures are shell scripts. `allowed_tools` already warned about
+        this in its own comment - a harness that widens its grants makes new runs
+        incomparable to old ones with nothing in a `meta.json` saying so - and
+        then recorded only the boolean, which is exactly the shape the warning
+        describes.
+
+        So a run records the list, and this checks the list it recorded against
+        the one the code would produce for that run's flag. A key that merely
+        exists would pass while holding last month's grants.
+        """
+        module = load_module("replay_run", self.REPLAY / "run.py")
+        recorded = 0
+        for meta in sorted((self.REPLAY / "runs").glob("*/meta.json")):
+            data = json.loads(meta.read_text(encoding="utf-8"))
+            if "granted_tools" not in data:
+                continue  # measured before the list was recorded
+            recorded += 1
+            with self.subTest(run=meta.parent.name):
+                self.assertEqual(
+                    sorted(module.allowed_tools(bool(data["allow_execution"]))),
+                    sorted(data["granted_tools"]),
+                    "this run recorded grants the harness no longer issues")
+        # `recorded` is 0 until the first run under this change, so the producer
+        # is checked directly rather than waiting for a run to exist. Both halves
+        # are needed: this one catches the key being dropped, the loop above
+        # catches it holding last month's grants.
+        source = (self.REPLAY / "run.py").read_text(encoding="utf-8")
+        self.assertIn(
+            '"granted_tools": allowed_tools(', source,
+            "meta.json stops recording the grant list, leaving the boolean as "
+            "the only record of what an execution grant meant that day")
 
     def test_every_key_a_grader_reads_is_a_key_a_run_records(self) -> None:
         """`run.py` writes `meta.json`; `grade.py` reads it. Nothing compared the two.
@@ -3064,13 +3109,33 @@ class ReplayScenarioTests(unittest.TestCase):
         # default widened, new runs of the old scenarios would silently stop
         # being comparable to the ones already in `runs/`, and nothing in a
         # meta.json would say so.
+        #
+        # Widened deliberately on 2026-08-17, from `["Bash(python3:*)"]` to
+        # `["Bash(python3:*)", "Bash(sh:*)"]`, and this assertion is the reason
+        # that had to be a decision rather than an edit. `e1` and `e2` ship shell
+        # fixtures and no shell invocation ran at all: `./x.sh`, `sh x.sh` and a
+        # PATH-resolved shebang were each denied 0 of 2 under the old set. So
+        # `e1` could not be passed and `e2` could only be passed by editing a
+        # check nobody could run.
+        #
+        # The grant alone reproduced the python hole one interpreter over -
+        # `sh escape.sh` wrote outside the workdir 2 of 2 - so `sandbox/sh`
+        # landed in the same change, and the same probe then escaped 0 of 2.
+        # Runs before and after stay comparable because `meta.json` now carries
+        # the list, checked by `test_a_run_records_the_grants_it_was_given`.
         module = load_module("replay_run", self.REPLAY / "run.py")
         default = module.allowed_tools()
         self.assertEqual(4, len(default))
         self.assertFalse([g for g in default if "python3" in g])
         widened = module.allowed_tools(True)
         self.assertEqual(default, widened[:4])
-        self.assertEqual(["Bash(python3:*)"], widened[4:])
+        self.assertEqual(["Bash(python3:*)", "Bash(sh:*)"], widened[4:])
+        # Each granted interpreter has a shim under it. A grant added without one
+        # is the hole this pair of changes exists to close.
+        for interpreter in ("python3", "sh"):
+            shim = self.REPLAY / "sandbox" / interpreter
+            self.assertTrue(shim.is_file(), f"{interpreter} granted with no shim")
+            self.assertIn("sandbox-exec", shim.read_text(encoding="utf-8"))
 
     def test_a_denied_command_is_not_counted_as_one_that_ran(self) -> None:
         # `commands_run` reads tool_use blocks, which are requests. A v3 pilot

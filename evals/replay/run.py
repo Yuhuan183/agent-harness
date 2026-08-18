@@ -221,6 +221,28 @@ def allowed_tools(execute: bool = False) -> list[str]:
         # PATH. Re-measured after: writing outside is denied, child processes
         # included, and a real `v2` run still delivers 10/10.
         grants.append("Bash(python3:*)")
+        # `Bash(sh:*)` added 2026-08-17, and the shim under it in the same change.
+        #
+        # Two cells ship shell fixtures — `e1`'s `launch.sh`, `e2`'s `check.sh` —
+        # and the grant above never let either run. Measured with `sh-probe.sh`:
+        # under the python-only grant, `./x.sh`, `sh x.sh` and a PATH-resolved
+        # shebang were all denied, 0 of 2 each. So `e1` could not be passed at
+        # all (its expectation needs a real restart) and `e2` could only be
+        # passed by editing a check nobody was allowed to run — which is the one
+        # thing `test-first-change` forbids, and five of five sessions with that
+        # skill loaded refused and said why.
+        #
+        # Granting it bare reproduces the python hole one interpreter over: with
+        # `Bash(sh:*)` and no shim, `sh escape.sh` wrote outside the workdir in 2
+        # probes of 2. With `sandbox/sh` first on PATH, the same probe runs 2 of 2
+        # and escapes 0 of 2. Containment under the interpreter, not in front of
+        # it, exactly as for `python3`.
+        #
+        # `./x.sh` stays denied: the matcher keys on the leading token, so it
+        # would need its own grant, and the session can reach the same script
+        # through `sh x.sh`. One working idiom is enough, and it is the one the
+        # transcripts already reach for.
+        grants.append("Bash(sh:*)")
     return grants
 
 
@@ -579,6 +601,11 @@ def main() -> int:
         "interrupt": interrupt_state,
         "surface": surface_fingerprint(),
         "allow_execution": str(spec.get("allow_execution", "")).lower() == "true",
+        # The boolean alone cannot say what an execution grant meant on the day,
+        # and the grant set has already changed once. The list travels with the
+        # run so old and new stay comparable.
+        "granted_tools": allowed_tools(
+            str(spec.get("allow_execution", "")).lower() == "true"),
         "commands_run": commands_run(events),
         "commands_executed": commands_executed(events),
         "deployed_contract_sha256": sha(DEPLOYED) if DEPLOYED.exists() else None,

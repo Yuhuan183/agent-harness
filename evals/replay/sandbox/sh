@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# `sh` for a replay run: the real shell, unable to write outside the run's own
+# workdir. Sibling of `python3` here, and for the same measured reason.
+#
+# A grant of `Bash(sh:*)` bounds which command may run and says nothing about
+# what it may do. Measured 2026-08-17 with `sh-probe.sh`: with that grant and no
+# shim, a session ran `sh escape.sh` and wrote outside its workdir in 2 probes of
+# 2 — the same result the bare `python3` grant produced, one interpreter over.
+#
+# Named `sh` and placed first on the child's PATH so the session types what it
+# would have typed anyway, keeping the grant string and the `commands_run` audit
+# byte-identical to what a real invocation looks like.
+#
+# Fail closed. A wrapper that silently stops confining is worse than none,
+# because the audit still says the command ran under one.
+set -u
+
+if [ -z "${REPLAY_WORKDIR:-}" ]; then
+  echo "sandboxed sh: REPLAY_WORKDIR is unset; refusing to run unconfined" >&2
+  exit 70
+fi
+if [ ! -d "$REPLAY_WORKDIR" ]; then
+  echo "sandboxed sh: REPLAY_WORKDIR=$REPLAY_WORKDIR is not a directory" >&2
+  exit 70
+fi
+if [ ! -x /usr/bin/sandbox-exec ]; then
+  echo "sandboxed sh: /usr/bin/sandbox-exec is missing; refusing to run" >&2
+  exit 70
+fi
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# macOS /tmp is a symlink into /private/tmp, and an unresolved path matches
+# nothing in the profile — which reads exactly like a working sandbox.
+REAL_WORKDIR="$(cd "$REPLAY_WORKDIR" && pwd -P)"
+
+# The real shell, by absolute path. Consulting PATH here would find this shim.
+for candidate in /bin/sh /usr/bin/sh; do
+  [ -x "$candidate" ] && SHELL_BIN="$candidate" && break
+done
+if [ -z "${SHELL_BIN:-}" ]; then
+  echo "sandboxed sh: no shell found outside the shim" >&2
+  exit 70
+fi
+
+exec /usr/bin/sandbox-exec -f "$HERE/workdir-only.sb" \
+     -D WORKDIR="$REAL_WORKDIR" "$SHELL_BIN" "$@"
