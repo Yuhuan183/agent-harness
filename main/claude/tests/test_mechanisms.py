@@ -2754,6 +2754,26 @@ class ReplayScenarioTests(unittest.TestCase):
             "meta.json stops recording the grant list, leaving the boolean as "
             "the only record of what an execution grant meant that day")
 
+    def test_the_widget_grader_reads_the_seal_of_the_fixture_that_ran(self) -> None:
+        """`grade_e1` grades two fixtures now, and each has its own seal.
+
+        The seal is what separates a real restart from a hand-written
+        `state.json`, so a grader holding the wrong fixture's seal would call
+        every genuine restart a forgery. `_pristine_widgetd` had `e1`'s fixture
+        name written into it; it takes the name from `meta["fixture"]` now, which
+        is the field added the same day for exactly this - a run recording what it
+        asked for and not only what it got.
+
+        Asserted by difference rather than by reading the signature: if the
+        parameter were ignored, both calls would return the same seal and this
+        would fail.
+        """
+        module = self._grader()
+        e1_launcher, e1_seal = module._pristine_widgetd("e1-lever-that-misses")
+        e6_launcher, e6_seal = module._pristine_widgetd("e6-success-that-lies")
+        self.assertNotEqual(e1_seal, e6_seal, "the fixture name is not load-bearing")
+        self.assertTrue(e1_seal and e6_seal)
+
     def test_every_key_a_grader_reads_is_a_key_a_run_records(self) -> None:
         """`run.py` writes `meta.json`; `grade.py` reads it. Nothing compared the two.
 
