@@ -94,6 +94,13 @@
   說成「沒辦法」. 各層餘裕實測與槓桿盤點見
   [resident-context-options.md](research/resident-context-options.md).
 - 變更預算單位時, 必須以新單位重測所有受管檔案後再定數值.
+- **這道棘輪只蓋住出貨層, 而出貨層是實際常駐量的六分之一** (2026-08-18 實測): 一個
+  session 收到的 skill 清單包含機器上每一支已安裝的 skill, 本 repo 出貨的 8 支佔約
+  16%, 其餘四十幾支沒有任何機制. 那些不是本 repo 的檔案, 所以只量不擋, 由
+  [`scripts/resident-pool-report.py`](../scripts/resident-pool-report.py) 報告.
+  **本節全部條文的作用域是本 repo 控制得了的那一份**; 全綠不等於「這台機器的常駐
+  注意力受控」, 完整討論見
+  [resident-context-options](research/resident-context-options.md).
 
 ## 驗收
 
