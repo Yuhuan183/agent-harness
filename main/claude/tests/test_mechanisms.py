@@ -2790,6 +2790,30 @@ class ReplayScenarioTests(unittest.TestCase):
             '"resident_skills": resident_skills()', source,
             "a run stops recording the pool its selection competed in")
 
+    @staticmethod
+    def _home_agnostic(grants: list[str]) -> list[str]:
+        """The same grants, with whichever `$HOME` produced them folded away.
+
+        Three of the four base grants are built from `Path.home()`, so a run
+        recorded on one machine compares equal only on that machine - the
+        `e1`/`e1x`/`e2`/`e6` batches were recorded under a different one and
+        failed here for that reason alone. The drift the caller is looking for
+        is in the grant *set*, `Bash(sh:*)` appearing or vanishing, which is
+        machine-independent; the home is normalised out of both sides instead
+        of being asserted on. The `~`-spelled twin is left alone, so folding
+        the absolute one to a distinct token keeps the pair distinguishable.
+        """
+        ledger = ".agents/skills/experience-ledger/scripts/experience-log"
+        suffix = f"/{ledger}:*)"
+        homes = {grant[len("Bash("):-len(suffix)] for grant in grants
+                 if grant.startswith("Bash(/") and grant.endswith(suffix)}
+        normalised = []
+        for grant in grants:
+            for home in homes:
+                grant = grant.replace(home, "$HOME")
+            normalised.append(grant)
+        return sorted(normalised)
+
     def test_a_run_records_the_grants_it_was_given(self) -> None:
         """`allow_execution: true` is a boolean whose meaning changed on 2026-08-17.
 
@@ -2814,8 +2838,9 @@ class ReplayScenarioTests(unittest.TestCase):
             recorded += 1
             with self.subTest(run=meta.parent.name):
                 self.assertEqual(
-                    sorted(module.allowed_tools(bool(data["allow_execution"]))),
-                    sorted(data["granted_tools"]),
+                    self._home_agnostic(
+                        module.allowed_tools(bool(data["allow_execution"]))),
+                    self._home_agnostic(data["granted_tools"]),
                     "this run recorded grants the harness no longer issues")
         # `recorded` is 0 until the first run under this change, so the producer
         # is checked directly rather than waiting for a run to exist. Both halves
