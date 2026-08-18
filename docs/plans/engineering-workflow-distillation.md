@@ -1,6 +1,6 @@
 # Engineering workflow 蒸餾實作計畫
 
-狀態: M0-M5 完成. 兩個 skill 已部署且驗證; 行為驗收七批 75 runs **量不出效果** —— 三個假設 (語言/格子鈍度/排擠) 全部推翻, 而「沒有 skill 就會做錯」的題目造不出來. 驗收改走 task-observer 在真實工作裡累積; Codex 端未驗
+狀態: **M0-M5 全部完成**. 兩個 skill 已部署, 兩端 discovery 皆驗過 (Codex 為明示呼叫制). 行為驗收七批 75 runs 量不出效果 —— 三個假設全部推翻, 而「沒有 skill 就會做錯」的題目造不出來. 後續判斷交由 task-observer 在真實工作裡累積; M6 待決
 最後更新: 2026-08-17
 建立日期: 2026-08-14
 研究依據: [Matt Pocock skills 導入研究](../research/mattpocock-skills-integration.md)
@@ -1066,6 +1066,39 @@ replay 量不出來的原因是它需要一個「模型會做錯」的題目, �
   屆時討論要不要退役, 而不是繼續加測.
 
 不設時程, 因為證據來自實際遇到什麼, 不來自排程.
+
+## Codex 端 discovery: 驗過了 (2026-08-17)
+
+M5 最後一項. 用 `codex exec` 非互動跑, 要它把描述逐字抄回來 —— 抄得回來才算載入, 說「有」不算.
+
+| 檢查 | 結果 |
+|---|---|
+| 兩個 skill 出現在 Codex 的 skill 清單 | **沒有** |
+| `$evidence-debugging` 明示呼叫 | **載入**, 第一句逐字正確 |
+| `$test-first-change` 明示呼叫 | **載入**, 第一句逐字正確 |
+
+**「不在清單裡」是設計如此, 不是缺陷.** 兩個 skill 的 `openai.yaml` 設了
+`allow_implicit_invocation: false`, 而 skill-creator 的 `references/openai_yaml.md` 寫著:
+false 時「不預設注入 context, 但仍可用 `$skill` 明示呼叫」. 部署的 9 個 codex skill 裡,
+設 false 的正好是這兩個, 其餘 7 個不是沒有這個鍵就是 true —— 而那 7 個全部出現在清單裡.
+相關性 9/9.
+
+### 我差點報出第四個假缺陷
+
+第一次探測寫的是「Use $evidence-debugging. …」, 回覆 **DID NOT LOAD**. 當下的解讀是
+「這個 skill 在 Codex 上根本不能用, 而 tuning 裡那句『Codex 需要明示呼叫』是我從設定鍵的名字
+讀出來的, 從沒跑過」—— 那個解讀本來會變成一個嚴重缺陷回報.
+
+**對照組擋下了它**: 用同樣句式試一個看得見的 skill (`$speak-human-tw` 放句首) 成功, 於是變因
+指向句式而非政策. 把 `$evidence-debugging` 移到句首再試, 載入了.
+
+所以真正的發現是一條**使用上的細節**: `$name` 要在句首, 寫成「Use $name.」叫不動. 記在這裡
+而不是改 tuning —— tuning 那句是對的, 而改它要再走一次部署, 為一個使用細節不值得.
+
+### M5 全部完成
+
+七批 75 runs, 三個假設全部推翻, 兩端部署與 discovery 都驗過. 剩下的判斷交給
+`task-observer` 在真實工作裡累積.
 
 #### 第二批登記: 內容臂 (在跑之前寫下來)
 
