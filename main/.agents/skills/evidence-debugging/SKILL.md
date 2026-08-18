@@ -1,6 +1,6 @@
 ---
 name: evidence-debugging
-description: Diagnose a reported defect from a reproduction you have actually run, and stop at the root cause unless repair was asked for. Invoke when the request says something is broken, failing, throwing, flaky, wrong, or slow, or asks to diagnose or debug. Do not use for explaining code, reviewing a diff, refactoring, or writing a test for behaviour that already works.
+description: Diagnose a reported defect from a reproduction you have actually run, and stop at the root cause unless repair was asked for. Invoke when the request says something is broken, failing, throwing, flaky, wrong, or slow, or asks to diagnose or debug — and in zh-TW: 出問題, 壞了, 掛了, 不會動, 有 bug, 很慢, 為什麼會, 查一下, 幫我看. Do not use for explaining code, reviewing a diff, refactoring, or writing a test for behaviour that already works.
 ---
 
 # Evidence Debugging

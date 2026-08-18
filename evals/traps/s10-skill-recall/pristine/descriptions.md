@@ -12,7 +12,7 @@ Decide the dispatch shape — direct, one agent, bounded parallel, workflow, or 
 
 ## evidence-debugging
 
-Diagnose a reported defect from a reproduction you have actually run, and stop at the root cause unless repair was asked for. Invoke when the request says something is broken, failing, throwing, flaky, wrong, or slow, or asks to diagnose or debug. Do not use for explaining code, reviewing a diff, refactoring, or writing a test for behaviour that already works.
+Diagnose a reported defect from a reproduction you have actually run, and stop at the root cause unless repair was asked for. Invoke when the request says something is broken, failing, throwing, flaky, wrong, or slow, or asks to diagnose or debug — and in zh-TW: 出問題, 壞了, 掛了, 不會動, 有 bug, 很慢, 為什麼會, 查一下, 幫我看. Do not use for explaining code, reviewing a diff, refactoring, or writing a test for behaviour that already works.
 
 ## experience-ledger
 
@@ -45,4 +45,4 @@ Capture and review reusable skill-improvement observations. Invoke after skill-a
 
 ## test-first-change
 
-Add or change behaviour by writing the check that fails first, at a seam that reaches the observable result. Invoke when the request asks to implement, add, change or extend behaviour, to write or repair a test, or names TDD or test-first. Do not use for an unexplained defect (diagnose it first with evidence-debugging), for formatting or documentation-only edits, or for a change nothing could have failed on beforehand.
+Add or change behaviour by writing the check that fails first, at a seam that reaches the observable result. Invoke when the request asks to implement, add, change or extend behaviour, to write or repair a test, or names TDD or test-first — and in zh-TW: 實作, 加上, 改掉, 擴充, 補測試, 修測試. Do not use for an unexplained defect (diagnose it first with evidence-debugging), for formatting or documentation-only edits, or for a change nothing could have failed on beforehand.
