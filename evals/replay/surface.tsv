@@ -68,3 +68,4 @@ evals/replay/scenarios/e5-authority-diagnose.md
 evals/replay/scenarios/e5b-authority-fix.md
 evals/replay/scenarios/e1x-lever-that-misses-explicit.md
 evals/replay/scenarios/e2x-check-that-cannot-fail-explicit.md
+evals/replay/scenarios/e6-success-that-lies.md
