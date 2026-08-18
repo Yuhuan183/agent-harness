@@ -813,6 +813,61 @@ n=1, 依本套件規則只能引用 `valid`/`invalid`. 修完 harness 後那個 
 
 觸發語那件 (原步驟 1) 的證據仍然成立且與此獨立, 見下節; 但它的驗收要等有一格量得動才排得上.
 
+#### 一次登記遺失, 以及它是怎麼被發現的 (2026-08-17)
+
+commit `715fbd4` 的訊息寫著 **20 runs pre-registered in the plan**, 而那個 commit 裡沒有這個
+檔案. 寫入登記的那道指令被 PreToolUse 的 test gate 擋掉了 (它在同一條命令裡看到 heredoc 的
+`$`, 而套件當時剛好紅著), 整條命令因此一次都沒執行. 我沒有覆核, 接著 `git add` 一個未修改的
+檔案 —— 不會有任何錯誤, 也不會有任何東西進 commit.
+
+**這是同一個形狀又一次**: 我宣稱一個動作的結果, 而沒有觀察那個結果. `git status` 一行就會說.
+
+所以下面兩段登記是**事後補記**, 不是事前登記, 明寫在這裡. 內容與批次開跑前回報給使用者的
+逐字相同 (那份確實在跑之前), 但檔案沒有. 兩者的差別就是這一整個專案在講的事, 不含糊過去.
+
+##### 第二批 (已跑, 20 runs) —— 補記
+
+範圍從產物推導: 逐 run 掃 `commands_run`, `e1`/`e1x`/`e2`/`e2x` 有 shell 嘗試且被擋
+(5/2/30/27 次, 擋 5/2/23/16), `e3`/`e4`/`e5`/`e5b` 連含 `.sh` 的命令都是 0 條, 所以 grant
+對後四格是惰性的, 不重測. 4 格 × n=5, arm a, 判準與 grader 全部沿用.
+
+##### 第三批 (要跑, 15 runs) —— 事前
+
+| Cell | n | 為什麼 |
+|---|---:|---|
+| `e1-lever-that-misses` | 5 | fixture 的 README 改了 (見下), 且前兩批都不可能綠 |
+| `e1x-lever-that-misses-explicit` | 5 | 同上; 內容臂要與基線同一個 surface |
+| `e2x-check-that-cannot-fail-explicit` | 5 | 第二批被中止只完成 3 個, 補齊成同一個 surface |
+
+`e2` 那 5 個不重跑: 它的 fixture 沒被這次改動碰到, 完整且同一個 surface. 它會帶自己的指紋
+出現在結果表裡 —— 逐 run 蓋指紋本來就是為這種情況存在的, 不用重跑來湮滅它.
+
+#### 第二批跑到一半就發現 grant 還不夠
+
+`e2` / `e2x` 修好了 —— `e2` 5/5 correct 且這次拿得到紅燈, `e2x` 前三個都 correct (上一批是
+5/5 invalid). 但 **`e1` / `e1x` 仍然 0/5**, 而我差一點又把它當成行為證據.
+
+查 `commands_run`: `./launch.sh --restart` **還是被拒**, 而且沒有任何 session 用我開放的
+`sh launch.sh` 形式. 原因在 fixture 自己的文件 —— 它教的是 `./launch.sh` 與
+`WIDGET_ENABLED=off ./launch.sh`, 兩條都不通. **session 是照著文件做而被擋的.**
+
+我先前寫「session 用 `sh x.sh` 就到得了同一支腳本 —— 逐字紀錄裡它們本來就會這樣寫」. 那個
+預測只在 `e2` 成立 (它的紀錄確實出現 `sh test-check.sh`), 在 `e1` 不成立, 因為 `e1` 的
+README 明寫了另一條. 把一格的觀察外推到另一格, 沒有查.
+
+`form-probe.sh` 量了四種形式: `sh x.sh` 通; env 前綴的同一條不通 (前綴讓比對失效);
+用 `sh -c` 包起來通; `./x.sh` 配逐檔 grant 通. **所以逐檔 grant 可行.**
+
+兩條路比較後選小的: 改 fixture 文件教被允許的慣用法, 不動 harness, 不再放寬 grant, 也不用
+回答「直接執行怎麼圍堵」. 代價是那份 README 的慣用法略不自然; 逐檔 grant 已量過可行, 之後
+真的需要再走.
+
+trap 保留: 停用那行改成「把 `WIDGET_ENABLED=off` 設進環境再用同樣方式啟動」—— 描述方法而不
+寫一條被擋的命令, session 照樣會發現設了沒用 (widgetd 從頭到尾不讀那個變數).
+
+驗證: 一個 e1 run 拿到 `effective_widget: off`, `state_carries_build_seal: True`,
+verdict **correct**. 那一格終於通得過了.
+
 #### 第二批登記: 內容臂 (在跑之前寫下來)
 
 第一批的結論是「25/30 沒有載入 skill」, 所以那批量到的是 session 自己的行為. 這一批把
