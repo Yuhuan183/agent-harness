@@ -1,6 +1,6 @@
 # Engineering workflow 蒸餾實作計畫
 
-狀態: **M0-M5 全部完成**. 兩個 skill 已部署, 兩端 discovery 皆驗過 (Codex 為明示呼叫制). 行為驗收七批 75 runs 量不出效果 —— 三個假設全部推翻, 而「沒有 skill 就會做錯」的題目造不出來. 後續判斷交由 task-observer 在真實工作裡累積; M6 待決
+狀態: **M0-M5 全部完成**. 兩個 skill 已部署, 兩端 discovery 皆驗過 (Codex 為明示呼叫制). 行為驗收七批 75 runs 量不出效果 —— 三個假設全部推翻, 而「沒有 skill 就會做錯」的題目造不出來. 後續判斷交由 task-observer 在真實工作裡累積; M6 判定不做, 垂直切片那條規則保留在計畫裡
 最後更新: 2026-08-17
 建立日期: 2026-08-14
 研究依據: [Matt Pocock skills 導入研究](../research/mattpocock-skills-integration.md)
@@ -1130,7 +1130,54 @@ false 時「不預設注入 context, 但仍可用 `$skill` 明示呼叫」. 部�
 引用 valid/invalid, 但它足以說明「明示呼叫就會修好」不是安全的預設 —— 如果 5 個 run 都這樣,
 結論會反過來變成**內容也不夠**, 而那是比觸發面更難的問題. 先寫在這裡, 免得跑完再改口.
 
-### M6 — Decide whether to add `change-shaping`
+### M6 — 決定: **不做** (2026-08-17)
+
+判定不新增 `change-shaping`. 理由是查出來的, 不是預算考量.
+
+#### 它會是什麼
+
+上游前半段的蒸餾: `grill-with-docs` (逼問需求) → `to-spec` (寫成規格) →
+`to-tickets` (切成 agent 拿得起來的票).
+
+`to-tickets` 的後半段假設有 issue tracker 可寫, 而本計畫的非目標明寫不依賴任何 tracker,
+所以那一段整個要刪掉.
+
+#### 扣掉本 repo 已經有的, 只剩一條
+
+| 候選規則 | 現況 |
+|---|---|
+| 不問 repo 已經回答的事 | **已有** — `evidence-debugging` 的 tuning |
+| 一次只問一個阻斷問題 | **已有** — 兩個 skill 各一處 |
+| 外部寫入要明確授權 | **已有** — 兩個 skill 的 tuning 與全域契約 |
+| 計畫寫在本地可核的地方 | **已有** — `docs/plans/`, 而本計畫這次建立的預先登記實務比上游 `to-spec` 更嚴 |
+| **垂直切片** | **沒有** |
+
+五條裡四條已經在. 真正新增的只有垂直切片一條, 而一個 skill 的最低成本是常駐約 95 字加三層
+檔案加 attribution 加部署加測試 —— 為一條規則付這個代價不成比例.
+
+再加上 M5 量到的: 這台機器 49 個 skill 裡只有兩個曾被自主選中過, 第三個上去最可能的結果是
+再得到一組 0/5.
+
+#### 那條規則保留在這裡
+
+**垂直切片**: 每一刀要交付一個可觀察的行為, 不是一層架構. 判準與 `test-first-change` 的
+seam 規則是同一件事的兩面 —— 一刀切完若沒有東西可以從外面觀察到, 那它就不是一刀,
+是半層.
+
+放在計畫而不是進 skill: 進 skill 要再走一次部署與常駐預算, 而這條規則的讀者是規劃工作的人,
+不是執行中的 agent.
+
+#### 重開的條件
+
+原本的門檻不變, 但要加上 M5 的結果. 三條同時成立才重開:
+
+- 三個以上實質類似的任務反覆需要澄清需求或垂直切票;
+- 缺口不只是缺產品脈絡;
+- **而且**已經有證據顯示 skill 在這台機器上會被選中 —— 否則新增的是第三個量不出效果的東西.
+
+---
+
+以下是原始的 M6 評估, 保留作為決定的依據.
 
 Do not start by default. Revisit only after repeated real tasks show a gap not handled by ordinary planning plus the two new skills.
 
