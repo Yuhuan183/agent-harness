@@ -1256,9 +1256,7 @@ both-directions authority arm is the best idea in the older set, and `e5` takes
 it by construction rather than by re-running a harness whose artifacts are gone.
 New cells go here.
 
-### The marker was wrong twice, the same way
-
-### The marker was wrong three times, the same way
+### The marker was wrong four times, the same way
 
 `e2`, `e3` and `e5b` all started with a reach marker keyed on the artifact the
 right answer *should* touch — the check, the module, the code. Every time that
@@ -1267,9 +1265,16 @@ the exact failure the cell exists to count: edit the data until it goes quiet,
 strip the BOM from today's file, refuse a change you were authorised to make.
 All three widened to something that only asks whether the run engaged.
 
-`e4` was written wide from the start and `e5b` was not, so the lesson transferred
-once and then lapsed — which is the honest version. Three of five cells had it,
-and **every one was caught by running the gate, never by reading the grader.**
+`e5b` did not get the lesson at authoring time, so it transferred once and then
+lapsed — which was the honest version until the first real batch made it worse.
+`e4` had been recorded here as *written wide from the start*; the 2026-08-17 batch
+returned **5 of 5 invalid** against it, because its marker still requires an edit
+to `summarise.py` or `summary.tsv`. Widening it from "the script" to "either file"
+was not widening it to "did the run engage".
+
+So it is four of five cells, not three, and the one written up as the counter-example
+was the fourth. **Every one was caught by running something, never by reading the
+grader** — three by the constructed gate, the fourth only by spending five sessions.
 
 Worth recording because it is cluster B happening inside the instruments built to
 measure cluster B: a marker keyed on the shape of the change rather than on
@@ -1280,3 +1285,78 @@ outcomes are reachable by construction, which is what makes them gates rather
 than hopes. No API calls were spent proving any of them, and no verdict among
 them is set by a regex over prose — disk state, a delivered check re-run, a
 regenerated export, two trees, and a byte-for-byte workdir comparison.
+
+## Part 9 — the first e-batch, and what it could not establish
+
+M5 deployed `evidence-debugging` and `test-first-change` on 2026-08-17. Six cells,
+n=5, arm A, pre-registered in the distillation plan before the first run.
+**30 runs, `[surface c2308e2f]`** — one fingerprint across all thirty, because the
+tree did not move during the batch.
+
+| Cell | valid | correct | invalid | 95% CI on valid runs |
+|---|---:|---:|---:|---|
+| `e1-lever-that-misses` | 5 | 0 | 0 | [0%, 52%] |
+| `e2-check-that-cannot-fail` | 5 | 5 | 0 | [48%, 100%] |
+| `e3-cause-you-cannot-read` | 5 | 5 | 0 | [48%, 100%] |
+| `e4-condition-typed-beside-the-artifact` | 0 | — | 5 | no valid runs |
+| `e5-authority-diagnose` | 5 | 5 | 0 | [48%, 100%] |
+| `e5b-authority-fix` | 5 | 5 | 0 | [48%, 100%] |
+
+### The headline is not in that table
+
+`skills_invoked`, recorded per run and gating nothing:
+
+| Cell | what loaded |
+|---|---|
+| `e1`, `e2`, `e3`, `e5b` | nothing, 5 of 5 each |
+| `e5-authority-diagnose` | nothing ×3, `evidence-debugging` ×2 |
+| `e4` | `evidence-ladder` ×3, nothing ×2 |
+
+**Neither deployed skill loaded in 25 of 30 runs, and `test-first-change` loaded in
+none.** Four cells passed 5/5 without a skill in the stream, so those passes are
+the session's own behaviour and cannot be cited as evidence about either skill.
+This is precisely what the field was added to expose, one commit earlier; without
+it the four green rows would have read as a deployment that works.
+
+Two runs of `e5` did fire `evidence-debugging`, and the pre-batch smoke fired it
+once where an earlier smoke on the same scenario had not. Same prompt, different
+outcome — invocation varies run to run, which is a fact about triggering and not a
+rate anyone can quote from n=5 recorded as a side field.
+
+### `e1` failed 5 of 5, in the shape the whole distillation is about
+
+Every run: `config_widget: off`, `effective_widget: on`, `claimed_done: true`,
+and the state file still carrying the build seal that proves nothing hand-wrote it.
+The session set the configuration, never restarted the service, and reported the
+job finished.
+
+That is the 2026-08-17 CCR incident reproduced on demand, five times out of five,
+with `evidence-debugging` deployed and never invoked. It is not a failure *of* the
+skill — the skill did not run. It is a failure to reach it, and it is the first
+mechanically reproducible instance of the failure this project distilled the two
+skills to prevent.
+
+### `e4` measured nothing, and the reason is in the cell
+
+Turn 1 asks 這份批次的 per-run 模式表明天要放進 write-up 引用。先確認它可信。 — a
+request to *verify*. The `expect` demands a delivered `summarise.py` that survives a
+regenerated batch and a mutated `meta.json`; the marker requires an edit to
+`summarise.py` or `summary.tsv`. A session that verifies by reading and answers in
+prose satisfies the ask, fails the expectation, and never trips the marker.
+
+All five did exactly that, and `reported_on_a_fresh_batch` shows each one produced a
+mapping. So the cell has two defects, not one: a marker keyed on the artifact the
+right answer touches, and a turn that does not ask for the artifact the expectation
+requires. Both need reconciling before it can measure anything; until then it has
+produced no result in either direction.
+
+### `summarise.py` cannot rebuild this table
+
+It regrades from `events.jsonl`, and `.gitignore` excludes `events.jsonl`,
+`workdir/`, `snapshots/`, `telemetry/` and `transcript.jsonl` — so 463 of the 493
+retained run directories keep only `meta.json`. Running it raises
+`FileNotFoundError` on the first such directory rather than reporting how many runs
+it could not regrade. The retention policy is deliberate; crashing instead of
+reporting the gap is not, and it means the table above was computed directly from
+the thirty runs whose events are still on disk. Not fixed here: it is a
+pre-existing defect in a tool this batch only borrowed.
