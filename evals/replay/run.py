@@ -109,6 +109,44 @@ def surface_fingerprint() -> str | None:
         return None
 
 
+def drift_sources() -> dict[str, Path]:
+    """Every deployed thing this suite fingerprints, mapped to where it deploys.
+
+    The drift warning used to name one file. Skills joined the surface on
+    2026-08-17, and a session reads them from `~/.claude/skills`, an rsync copy
+    with its own inode - so a description edited in the repo moves the
+    fingerprint while the session keeps reading the old body, silently. The
+    surface decides what belongs here, so adding a deployed file to `surface.tsv`
+    cannot leave its drift unchecked.
+    """
+    mapping: dict[str, Path] = {"main/claude/CLAUDE.contract.md": DEPLOYED}
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "trap_surface", ROOT / "evals" / "scripts" / "trap-surface.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        listed = module.surface_paths("replay")
+    except Exception:                       # never let bookkeeping fail a run
+        return mapping
+    for path in listed:
+        if path.startswith("main/claude/skills/"):
+            name = Path(path).parent.name
+            mapping[path] = Path.home() / ".claude" / "skills" / name / "SKILL.md"
+    return mapping
+
+
+def drifted() -> list[str]:
+    """Sources whose deployed copy differs, or is missing."""
+    out = []
+    for source, deployed in drift_sources().items():
+        origin = ROOT / source
+        if not origin.exists():
+            continue
+        if not deployed.exists() or sha(deployed) != sha(origin):
+            out.append(source)
+    return out
+
+
 def parse_scenario(path: Path) -> tuple[dict, list[str]]:
     """Frontmatter plus the turns, in order.
 
@@ -493,11 +531,12 @@ def main() -> int:
     if str(spec.get("allow_execution", "")).lower() == "true":
         env = child_env(run_dir, work)
 
-    drift = DEPLOYED.exists() and sha(DEPLOYED) != sha(SOURCE)
+    stale = drifted()
+    drift = bool(stale)
     if drift:
-        print("WARNING: deployed contract differs from repo source; this run's "
-              "surface fingerprint will not describe what the agent read",
-              file=sys.stderr)
+        print("WARNING: the deployed copy differs from repo source for "
+              + ", ".join(stale) + "; this run's surface fingerprint will not "
+              "describe what the agent read", file=sys.stderr)
 
     with contract_arm(args.clause, args.arm) as arm_state:
         if args.preflight:
