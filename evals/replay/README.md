@@ -1289,10 +1289,27 @@ than hopes. No API calls were spent proving any of them, and no verdict among
 them is set by a regex over prose — disk state, a delivered check re-run, a
 regenerated export, two trees, and a byte-for-byte workdir comparison.
 
-## The e-batches — what five rounds could and could not establish
+## The e-batches — what seven rounds could and could not establish
 
-Five batches ran on 2026-08-17, and later ones replaced earlier ones as the
-harness was repaired. **Superseded runs are not in the working tree; they are in
+**Read this first; everything below it is the record of how it was arrived at.**
+
+Seven batches ran on 2026-08-17 against the two distilled skills. The position at
+the end:
+
+| Question | Answer |
+|---|---|
+| Do the skills improve the outcome? | **Unknown.** No task was ever built that the session got wrong without them. |
+| Did any red result show a behavioural failure? | **No.** Every one was a command the permission layer refused. |
+| Are the descriptions' English-only triggers why they rarely load? | **No.** Bilingual triggers: 0 of 5 before, 0 of 5 after, two cells. |
+| Was the cell too easy because the wrong answer announced itself? | **No.** `e6` removed that and got easier, 5 of 5. |
+| Was a near-duplicate competitor (`debug-issue`) winning? | **No.** Removed it; still 0 of 5. |
+| Is rare invocation specific to these skills? | **No.** Across 35 unforced runs, 5 loaded any skill at all. Of 49 installed, only `evidence-ladder` and `evidence-debugging` have ever been chosen. |
+
+Forty runs are retained, five per cell across eight cells. What they establish is
+the behaviour of this harness, not of the skills. Acceptance moved to
+`task-observer` on real work; the plan carries the criterion.
+
+Later batches replaced earlier ones as the harness was repaired. **Superseded runs are not in the working tree; they are in
 git.** A number quoted below that has no run directory beside it can be recovered
 from the commit that retained it:
 
@@ -1341,7 +1358,7 @@ once where an earlier smoke on the same scenario had not. Same prompt, different
 outcome — invocation varies run to run, which is a fact about triggering and not a
 rate anyone can quote from n=5 recorded as a side field.
 
-### `e1` failed 5 of 5 — and the cell cannot be passed
+### `e1` failed 5 of 5 — and at the time the cell could not be passed
 
 **This section replaces a wrong one.** It first read the 0/5 as the CCR failure
 reproduced on demand: configuration set, service never restarted, job reported
@@ -1479,6 +1496,26 @@ same trap as a flag, which runs.
 Every `e*` verdict now carries `commands_denied`. It gates nothing, since a
 blocked run can also be wrong, but a rate can no longer be quoted without it in
 view, which is the one thing that would have caught all three instances.
+
+### The crowding test, and the third refutation
+
+`debug-issue` — "systematically debug issues using graph-powered code navigation"
+— is installed on this machine as an unmanaged symlink, and it is a near-duplicate
+of `evidence-debugging`. If selection is a contest, that is the competitor to
+remove.
+
+Removed it, re-ran `e1` at n=5, restored it afterwards and verified the pool back
+at 49. Every run recorded the 48 names it competed against, `evidence-debugging`
+among them.
+
+**0 of 5 loaded. 5 of 5 correct.** Crowding is refuted too.
+
+That closes the third and last hypothesis. What remains is the simplest reading:
+this task sits inside the model's default competence, so it does not reach for a
+skill, and none of description wording, cell difficulty or competition changes
+that. `run.py` records `resident_skills` on every run now — the pool is machine
+state and `surface.tsv` fingerprints repo files, so without it a manipulated batch
+would be stamped exactly like the one before it.
 
 ### The trigger change, and its refutation
 
