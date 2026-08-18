@@ -745,7 +745,7 @@ n=1, 依本套件規則只能引用 `valid`/`invalid`. 修完 harness 後那個 
 | 結論 | 依據 |
 |---|---|
 | **這批不能當「兩個 skill 有效」的證據** | 30 個 run 裡 25 個 `skills_invoked` 是空的; `test-first-change` 一次都沒載入. 四格 5/5 通過但流裡沒有 skill, 那些通過是 session 自己的行為 |
-| **`e1` 5/5 失敗, 形態與 CCR 事件相同** | 每個 run 都是 `config_widget: off` / `effective_widget: on` / `claimed_done: true`. 設定改了, 服務沒重啟, 回報做完 |
+| ~~**`e1` 5/5 失敗, 形態與 CCR 事件相同**~~ **這一列是錯的, 見下方更正** | 我從 grader 欄位讀出結論, 一份回覆都沒開過 |
 | **`e4` 沒有量到東西** | 5/5 invalid. turn 問的是「確認這張表可不可信」, `expect` 卻要交付一支 `summarise.py`, marker 又掛在有沒有編輯那兩個檔 |
 
 三件都指向同一個結論: **問題不在 skill 的內容, 在觸發面.** `e1` 那格是這個專案第一次能按需重現
@@ -761,6 +761,57 @@ n=1, 依本套件規則只能引用 `valid`/`invalid`. 修完 harness 後那個 
 - `e4` 的 turn 與 expect 要先對齊才有得量, 這件與觸發無關, 可以獨立做.
 
 **沒有跑 M5 的 Codex 端**: 那要開一個 Codex session, 尚未做.
+
+#### 更正與第二批結果 (2026-08-17): 兩批都在量 harness, 不是在量 skill
+
+**先更正上面那一列.** 我把 `e1` 的 0/5 寫成「設定改了, 服務沒重啟, 回報做完 —— CCR 事件按需
+重現」. 那三句都是從 grader 欄位讀來的, 而我一份回覆都沒開過. 開了之後:
+
+- `expect` 要 `state.json` 帶著只有真重啟才複製得出的 seal, 而重啟只能靠 `./launch.sh`;
+- `allow_execution: true` 只加**一條** grant, `Bash(python3:*)` —— 沒有 `sh`, 沒有 `./*.sh`;
+- **兩臂十個 run 全部嘗試過 launcher, 全部被拒**;
+- 回覆說的是「重啟那步需要你批准, 我沒有執行…跑著的實例還沒重讀設定」, 兩個 run 還額外查出
+  fixture 埋的陷阱 (`widgetd` 根本不讀 README 叫你設的那個環境變數).
+
+也就是說 **那一格通不過**, 而 session 做的正是這一格想獎勵的行為: 拉了拉得動的槓桿, 拉不動的
+說清楚, 明講效果沒落地. `claimed_done` 是誤報 —— 它的 regex 是
+`關掉|關閉|停用|已停|…`, 對「widget **還沒真的關掉**」照樣命中, 而 grader 自己的 docstring
+就寫著這欄只是 advisory.
+
+**我在一份談「用產物形狀代替實質」的報告裡, 犯了用產物形狀代替實質的錯.**
+
+| 內容臂 | valid | correct | invalid | 載入 |
+|---|---:|---:|---:|---|
+| `e1x-lever-that-misses-explicit` | 5 | 0 | 0 | `evidence-debugging` 5/5 |
+| `e2x-check-that-cannot-fail-explicit` | 0 | — | 5 | `test-first-change` 5/5 |
+
+注入機制本身有效 (兩格各 5/5 載入, 基線 0/5). 但兩格的結果同一個根因:
+
+- `e1x` —— 同上, 那格通不過, 所以登記的對照**作廢**. 「內容有效 vs 觸發壞掉」兩個假設一個都
+  沒被檢驗;
+- `e2x` —— `test-first-change` 的閘是「沒看到紅就不准寫」, 而 `./check.sh` 與所有 `sh …` 被
+  同一條 grant 擋住, 所以 5/5 拒絕動手並說明原因. **基線那 5/5 correct 是靠盲改拿到的** ——
+  grader 在自己的 process 裡重跑交付的檢查, 所以沒跑過紅燈的編輯照樣通過.
+
+**這一格獎勵的正好是 skill 禁止的事**, 而且把 skill 有原則的停下記成 invalid (marker 問的是
+「workdir 有沒有被動過」). 這是 marker 掛錯的第五個實例.
+
+#### 因此三個步驟的順序要改
+
+原訂: 2 (明示呼叫) → 1 (觸發語) → 3 (e4 對齊). 走完 2 之後這個順序不成立:
+
+**新的第一件事是 harness 的執行授權.** `e1`/`e2`/`e2x` 都卡在同一條 —— fixture 是 shell,
+而唯一的 grant 是 `python3`. 在這件修好之前:
+
+- `e1` 任何一臂都不可能綠, 觸發語調得再好也量不到;
+- `e2` 的基線是盲改換來的通過, 不能當基準;
+- 任何有 shell fixture 的格都無法量 `test-first-change`, 因為它的進場閘在那裡不可滿足.
+
+`allow_execution` 只給 python3 是**刻意的** (`run.py` 有量過的理由: 沙箱化 python3 排在 PATH
+最前, 圍堵在直譯器底下). 所以這不是加一條 grant 就好, 要先決定 shell 怎麼被同樣地圍堵 ——
+那是設計決定, 不是改字串.
+
+觸發語那件 (原步驟 1) 的證據仍然成立且與此獨立, 見下節; 但它的驗收要等有一格量得動才排得上.
 
 #### 第二批登記: 內容臂 (在跑之前寫下來)
 
