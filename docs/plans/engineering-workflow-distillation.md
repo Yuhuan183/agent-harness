@@ -1,6 +1,6 @@
 # Engineering workflow 蒸餾實作計畫
 
-狀態: M0-M4 完成; M5 已部署且行為批次已跑 (30 runs, surface c2308e2f) —— 結論是觸發面擋路, 見 M5 批次結果; Codex 端未驗
+狀態: M0-M4 完成; M5 已部署, 五批共 60 runs. 目前結論: 25/30 沒載入 skill (觸發面擋路), 而每一個紅燈都是被拒的命令 —— 尚未觀察到行為上的失敗. 下一步是雙語觸發語, 需重新部署; Codex 端未驗
 最後更新: 2026-08-17
 建立日期: 2026-08-14
 研究依據: [Matt Pocock skills 導入研究](../research/mattpocock-skills-integration.md)
@@ -372,7 +372,7 @@ Write acceptance fixtures/traps before authoring final prompts. At minimum cover
 
 | `e5-authority-diagnose` / `e5b-authority-fix` | 授權 — 只被要求診斷時零編輯; 配對臂抓過度拒絕; 兩臂都不得派工 | 閘已過 |
 
-五格都在 [`evals/replay/`](../../evals/replay/README.md) Part 8, 判準與閘的結果記在那裡.
+五格都在 [`evals/replay/`](../../evals/replay/README.md) 的「The e-cells」那節, 判準與閘的結果記在那裡.
 共同的紀律: **四個判決沒有一個由散文 regex 決定** — e1 判磁碟狀態, e2 跑交付的檢查, e3 跑
 重新產生的檔, e4 跑兩份樹 (第二份擾動一筆, 用來分辨推導與背答案). 閘全部對手工建構的 workdir
 跑完, 沒花任何 API 呼叫.
@@ -739,7 +739,7 @@ n=1, 依本套件規則只能引用 `valid`/`invalid`. 修完 harness 後那個 
 
 #### 批次結果 (2026-08-17, 30 runs, `[surface c2308e2f]`)
 
-完整結果與逐格說明在 [replay README](../../evals/replay/README.md) 的 Part 9. 這裡只記對本計畫
+完整結果與逐格說明在 [replay README](../../evals/replay/README.md) 的「The e-batches」那節. 這裡只記對本計畫
 有決定性的三件:
 
 | 結論 | 依據 |
@@ -748,13 +748,18 @@ n=1, 依本套件規則只能引用 `valid`/`invalid`. 修完 harness 後那個 
 | ~~**`e1` 5/5 失敗, 形態與 CCR 事件相同**~~ **這一列是錯的, 見下方更正** | 我從 grader 欄位讀出結論, 一份回覆都沒開過 |
 | **`e4` 沒有量到東西** | 5/5 invalid. turn 問的是「確認這張表可不可信」, `expect` 卻要交付一支 `summarise.py`, marker 又掛在有沒有編輯那兩個檔 |
 
-三件都指向同一個結論: **問題不在 skill 的內容, 在觸發面.** `e1` 那格是這個專案第一次能按需重現
-自己要防的失敗, 而 skill 就部署在那裡沒有啟動.
+三件都指向同一個結論: **問題不在 skill 的內容, 在觸發面.**
+
+> **2026-08-17 更正**: 原文接著寫「`e1` 那格是這個專案第一次能按需重現自己要防的失敗」.
+> **那句是錯的, 收回.** 第五批查明 `e1` 每一個紅燈都是被權限層拒絕的命令, 不是行為.
+> 到目前為止沒有任何一格觀察到行為上的失敗, 詳見
+> [replay README](../../evals/replay/README.md) 的 `e6` 那節. 上面那句「問題在觸發面」
+> 仍然成立 —— 它的依據是 25/30 沒有載入 skill, 與 `e1` 的紅燈無關.
 
 計畫原本把觸發區辨列為「尚未量測, 之後再說」. 這批把它從待辦變成**擋路的那一件** —— 在觸發面
 解決之前, 再多的行為格也只會量到 session 本來就會做的事.
 
-下一步的候選 (未做決定, 需要另外討論):
+下一步的候選 (2026-08-17 當下未決; 三條後來都走過了, 結果在本節之後):
 
 - 把 `description` 的觸發語對著 `e1` 這種說法調整, 然後重跑 `e1` 當作前後對照;
 - 或改用明示呼叫 (`allow_implicit_invocation` 那條已知不對稱), 先把 skill 內容量乾淨, 再分開處理觸發;
