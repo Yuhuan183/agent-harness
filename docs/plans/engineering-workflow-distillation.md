@@ -946,6 +946,60 @@ p≈0.004 已經決定性, **但 0/5 → 2/5 之類的部分結果在單一格 n
 
 決定權在使用者. 若要撤回, 撤的是 description 那兩行與四個預算, 其餘不受影響.
 
+#### 為什麼沒啟動: 查到了, 而且推翻我先前的整個框架
+
+用相同旗標起一個 session 直接問它看得到什麼. **它看得到** —— `evidence-debugging` 與
+`test-first-change` 都在它列出的清單裡. 所以不是投遞問題, 是看到了沒選.
+
+**但它不是在 8 個裡面選, 是在 49 個裡面選.**
+
+```
+一個 session 實際帶著的 skill : 49
+其中這個 repo 管的           :  8
+```
+
+另外 41 個來自別處 (`lark-*` 二十多個, `orca-*`, `ppt-master`, code-review-graph 那組,
+`evidence-ladder`, `computer-use` …), 而其中有一個**直接競爭者**:
+
+| skill | description |
+|---|---|
+| `debug-issue` | Systematically debug issues using graph-powered code navigation |
+| `evidence-debugging` | 本 repo 蒸餾的那個 |
+
+`debug-issue` 是 symlink, 非 repo 管理 (manifest 與 `INSTALLED.txt` 都是 0).
+
+**我一直把它當成「描述寫得對不對」, 所以去調觸發語. 實際上是排擠.** 前一批那 10 次量到的是
+「我們的描述打不贏 `debug-issue`」, 不是「觸發語沒有用」. e4 有三次選了 `evidence-ladder`,
+同一回事 —— 另一個競爭者贏了.
+
+##### 順帶: 常駐預算只覆蓋 15%
+
+| | 字數 |
+|---|---:|
+| 一個 session 常駐帶著的 skill 描述 | **5324** |
+| 預算機制管到的 (本 repo 的 8 個) | 814 |
+
+為了 +60 字抬預算, 量測, 寫理由的那一整套, 管的是實際常駐量的 15%. 另外 85% 沒有任何機制在管.
+這不表示預算沒用 —— 它管的是這個 repo 控制得了的部分 —— 但「常駐成本受控」這個認知是錯的.
+這件與蒸餾無關, 記在這裡因為它比蒸餾的結論要緊.
+
+#### 第六批登記: 排擠假設 (跑之前寫)
+
+把 `~/.claude/skills/debug-issue` 這條 symlink 暫時移除, 重跑 `e1` n=5.
+
+| | 條件 | 判準 |
+|---|---|---|
+| 基線 | 49 個 skill, 含 `debug-issue` | `skills_invoked` 0/5 (已量, 兩批) |
+| 操縱 | 48 個, 移除 `debug-issue` | `skills_invoked` 是否離開 0/5 |
+
+**單一變因**: 只移那一條 symlink, 不碰目標目錄, 不動其他 40 個. 跑完立即還原並覆核.
+
+`run.py` 現在把 `resident_skills` 寫進 `meta.json` —— 否則操縱過的 run 會蓋著與基線一樣的
+指紋 (`surface.tsv` 指紋的是 repo 檔案, 而 skill 池是機器狀態, 它涵蓋不到).
+
+先寫下可能的結論: 若移除競爭者後仍是 0/5, **排擠假設也被推翻**, 那就要接受「這個 prompt 在
+這台機器上就是不會選中它」, 並改用明示呼叫只量內容.
+
 #### 第二批登記: 內容臂 (在跑之前寫下來)
 
 第一批的結論是「25/30 沒有載入 skill」, 所以那批量到的是 session 自己的行為. 這一批把
