@@ -147,6 +147,23 @@ def drifted() -> list[str]:
     return out
 
 
+def resident_skills() -> list[str]:
+    """Every skill installed for the session, not only the ones this repo ships.
+
+    Selection happens across the whole pool. On 2026-08-17 that was 49 skills of
+    which this repo manages 8, and one of the other 41 - `debug-issue`,
+    "systematically debug issues using graph-powered code navigation" - is a near
+    duplicate of `evidence-debugging`. A batch that removes a competitor to test
+    for crowding has to be distinguishable afterwards from one that did not, and
+    `surface.tsv` cannot do it: the surface fingerprints repo files and the pool
+    is machine state. So the run writes it down.
+    """
+    root = Path.home() / ".claude" / "skills"
+    if not root.is_dir():
+        return []
+    return sorted(d.name for d in root.iterdir() if (d / "SKILL.md").is_file())
+
+
 def parse_scenario(path: Path) -> tuple[dict, list[str]]:
     """Frontmatter plus the turns, in order.
 
@@ -643,6 +660,7 @@ def main() -> int:
         # The boolean alone cannot say what an execution grant meant on the day,
         # and the grant set has already changed once. The list travels with the
         # run so old and new stay comparable.
+        "resident_skills": resident_skills(),
         "granted_tools": allowed_tools(
             str(spec.get("allow_execution", "")).lower() == "true"),
         "commands_run": commands_run(events),

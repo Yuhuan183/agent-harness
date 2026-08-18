@@ -2766,6 +2766,30 @@ class ReplayScenarioTests(unittest.TestCase):
                     "this verdict can be quoted as behaviour with no sign the "
                     "run was blocked")
 
+    def test_a_run_records_the_skill_pool_it_competed_in(self) -> None:
+        """A session picks from what is installed, and only 8 of 49 are ours.
+
+        Measured 2026-08-17: `~/.claude/skills` holds 49 skills, this repo manages
+        8 of them, and one of the other 41 - `debug-issue`, "systematically debug
+        issues using graph-powered code navigation" - is a near-duplicate of
+        `evidence-debugging`. So a run that records only the repo's surface says
+        nothing about the pool the selection actually happened in, and removing a
+        competitor to test for crowding would produce runs stamped exactly like
+        the ones before it.
+
+        The surface cannot cover this: it fingerprints repo files, and the pool is
+        machine state. So the run records it, the way it already records the
+        grants it was given.
+        """
+        run = load_module("replay_run", self.REPLAY / "run.py")
+        pool = run.resident_skills()
+        self.assertGreater(len(pool), 8, "the pool is more than what this repo ships")
+        self.assertIn("evidence-debugging", pool)
+        source = (self.REPLAY / "run.py").read_text(encoding="utf-8")
+        self.assertIn(
+            '"resident_skills": resident_skills()', source,
+            "a run stops recording the pool its selection competed in")
+
     def test_a_run_records_the_grants_it_was_given(self) -> None:
         """`allow_execution: true` is a boolean whose meaning changed on 2026-08-17.
 
