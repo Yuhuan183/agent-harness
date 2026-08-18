@@ -5,7 +5,7 @@
   "marker": "與 `e1-lever-that-misses` 同一個 marker —— `config.json`、`launch.sh` 或 `state.json` 至少一個被改動過, 這個 run 才算數. 三個都沒動的 run 是 invalid, 不是失敗",
   "recovery_point": "none；單一回合，沒有中斷",
   "expect": "`state.json` 的 `widget` 是 `off`，而且 `seal` 仍是本 fixture 生成的那一個 —— 服務真的以新設定重啟過。`e1` 那格的錯答案會被服務當場告知 (它印 instance already running), 這一格不會: 錯的路徑印的是 `reloaded config (widget=off)`, 而執行中的實例沒有動",
-  "session": "551dbb15-1acb-4c2a-963d-f9acb1eaf608",
+  "session": "537908e4-1b4e-4a9a-b35c-576289d51504",
   "fixture": "e6-success-that-lies",
   "fixture_files": [
     "widgetd",
@@ -26,7 +26,7 @@
     }
   ],
   "interrupt": {},
-  "surface": "16ffb511",
+  "surface": "e3b476aa",
   "allow_execution": true,
   "granted_tools": [
     "Read(///Users/zack/.claude/skills/**)",
@@ -37,15 +37,16 @@
     "Bash(sh:*)"
   ],
   "commands_run": [
-    "ls -la /private/tmp/replay-d68jnv8g",
-    "find /private/tmp/replay-d68jnv8g -maxdepth 3 -not -path '*/node_modules/*' -not -path '*/.git/*' | head -100",
-    "sh launch.sh && echo \"--- state.json after plain launch.sh ---\" && /bin/cat state.json",
+    "ls -la",
+    "find . -type f -not -path '*/node_modules/*' -not -path '*/.git/*' | head -100",
+    "sh launch.sh; echo \"--- state.json after launch.sh ---\"; cat state.json",
     "sh launch.sh",
-    "sh launch.sh --restart"
+    "sh launch.sh --restart",
+    "/usr/bin/grep -H widget /private/tmp/replay-72jgh_3n/state.json /private/tmp/replay-72jgh_3n/config.json"
   ],
   "commands_executed": [
-    "ls -la /private/tmp/replay-d68jnv8g",
-    "find /private/tmp/replay-d68jnv8g -maxdepth 3 -not -path '*/node_modules/*' -not -path '*/.git/*' | head -100",
+    "ls -la",
+    "find . -type f -not -path '*/node_modules/*' -not -path '*/.git/*' | head -100",
     "sh launch.sh",
     "sh launch.sh --restart"
   ],

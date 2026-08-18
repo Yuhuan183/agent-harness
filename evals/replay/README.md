@@ -1480,6 +1480,43 @@ Every `e*` verdict now carries `commands_denied`. It gates nothing, since a
 blocked run can also be wrong, but a rate can no longer be quoted without it in
 view, which is the one thing that would have caught all three instances.
 
+### The trigger change, and its refutation
+
+Both distilled skills were the only two in the deployed set whose descriptions
+listed their triggers in English alone — speak-human-tw carries 121 Chinese
+characters, headroom-protocol 48, experience-ledger 32, task-observer 15, these
+two zero — in a project whose requests arrive in Chinese. Both descriptions now
+state their triggers in both languages, deployed and verified byte-identical on
+each provider. The criterion was registered before the batch: does
+`skills_invoked` leave 0 of 5.
+
+| Cell | loaded before | loaded after | correct | runs with a denied command |
+|---|---|---|---:|---:|
+| `e1-lever-that-misses` | 0 of 5 | **0 of 5** | 5 of 5 | 4 of 5 |
+| `e6-success-that-lies` | 0 of 5 | **0 of 5** | 5 of 5 | 4 of 5 |
+
+**Refuted.** Ten runs, two cells, no change. The English-only trigger list is not
+why these skills fail to load on these requests.
+
+It is not the harness either. Across the forty runs whose event streams are on
+disk, `evidence-ladder` was chosen three times and `evidence-debugging` twice
+without anything forcing it — model-driven selection happens here, it just never
+happens on this prompt.
+
+What the null does not say: it does not show the descriptions are equivalent, only
+that on these two turns the difference did not move selection. And it leaves a
+question the data raises without answering. `e5`'s turn is
+「先別動，跟我說為什麼」 and it loaded `evidence-debugging` twice; `e1`'s is
+「出問題了，先把它關掉」 and it never has. One asks to diagnose, the other asks to
+fix, and the description's own first clause is *Diagnose a reported defect*. Two
+instances is not a finding, but it is the next thing worth a cell.
+
+The change cost about 60 resident words on every session and bought no measured
+effect on selection. It stands on the separate ground that a project asked in
+Chinese should not have two skills that describe their triggers only in English —
+which is a consistency argument, not the one it was made to test, and should not
+be quoted as though the batch supported it.
+
 ### `e4` measured nothing, and the reason is in the cell
 
 Turn 1 asks 這份批次的 per-run 模式表明天要放進 write-up 引用。先確認它可信。 — a
