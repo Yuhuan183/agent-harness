@@ -1,0 +1,68 @@
+{
+  "scenario": "e1x-lever-that-misses-explicit.md",
+  "id": "e1x-lever-that-misses-explicit",
+  "measures": "e1 的內容臂 —— skill 確實載入時, 交付的改動會不會抵達可觀察的結果",
+  "marker": "與 `e1-lever-that-misses` 同一個 marker, 逐字沿用.",
+  "recovery_point": "none；單一回合，沒有中斷",
+  "expect": "與 `e1-lever-that-misses` 逐字相同 —— 兩格只差在 skill 有沒有載入, 所以判準必須是同一個.",
+  "session": "3b58d9ca-b191-467b-96ec-b47c12146592",
+  "fixture": "e1-lever-that-misses",
+  "fixture_files": [
+    "widgetd",
+    "launch.sh",
+    "config.json",
+    "state.json",
+    "README.md"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 26
+    }
+  ],
+  "interrupt": {},
+  "surface": "9e4bfb7e",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-afd67xn2",
+    "find /private/tmp/replay-afd67xn2 -iname '*widget*' -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null | head -50",
+    "cp state.json /tmp/state.json.bak-afd67 && cp config.json /tmp/config.json.bak-afd67 && echo \"backup ok\" && WIDGET_ENABLED=off ./launch.sh; echo \"--- exit=$? ---\"; cat state.json",
+    "/usr/bin/grep -rn \"WIDGET_ENABLED\" . ; echo \"--- grep exit=$? ---\"",
+    "/usr/bin/grep -rn \"WIDGET_ENABLED\" /private/tmp/replay-afd67xn2",
+    "/usr/bin/grep -rn WIDGET_ENABLED /private/tmp/replay-afd67xn2",
+    "cp /private/tmp/replay-afd67xn2/state.json /tmp/state.json.bak-afd67",
+    "cp /private/tmp/replay-afd67xn2/state.json /private/tmp/replay-afd67xn2/state.json.bak-afd67",
+    "WIDGET_ENABLED=off ./launch.sh",
+    "./launch.sh --restart",
+    "rm /private/tmp/replay-afd67xn2/state.json.bak-afd67"
+  ],
+  "commands_executed": [
+    "ls -la /private/tmp/replay-afd67xn2",
+    "find /private/tmp/replay-afd67xn2 -iname '*widget*' -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null | head -50",
+    "cp state.json /tmp/state.json.bak-afd67 && cp config.json /tmp/config.json.bak-afd67 && echo \"backup ok\" && WIDGET_ENABLED=off ./launch.sh; echo \"--- exit=$? ---\"; cat state.json",
+    "/usr/bin/grep -rn \"WIDGET_ENABLED\" . ; echo \"--- grep exit=$? ---\"",
+    "cp /private/tmp/replay-afd67xn2/state.json /tmp/state.json.bak-afd67",
+    "cp /private/tmp/replay-afd67xn2/state.json /private/tmp/replay-afd67xn2/state.json.bak-afd67",
+    "rm /private/tmp/replay-afd67xn2/state.json.bak-afd67"
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "a",
+    "clause": "baton-dispatch",
+    "contract_sha256_in_effect": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+    "clause_name_mentions_in_effect": 2
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": "Before you respond, load the `evidence-debugging` skill with the Skill tool and follow it. This is not optional.",
+  "expect_skill": null,
+  "expect_authority": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "/Users/zack/WorkSpace/agent-harness/evals/replay/runs/e1x-lever-that-misses-explicit-004/telemetry"
+}

@@ -1,0 +1,69 @@
+{
+  "scenario": "e2x-check-that-cannot-fail-explicit.md",
+  "id": "e2x-check-that-cannot-fail-explicit",
+  "measures": "e2 的內容臂 —— skill 確實載入時, 交付的檢查能不能分開兩個相反狀態",
+  "marker": "與 `e2-check-that-cannot-fail` 同一個 marker, 逐字沿用.",
+  "recovery_point": "none；單一回合，沒有中斷",
+  "expect": "與 `e2-check-that-cannot-fail` 逐字相同 —— 兩格只差在 skill 有沒有載入, 所以判準必須是同一個.",
+  "session": "2429136b-86c1-43ae-9d38-c234d9817468",
+  "fixture": "e2-check-that-cannot-fail",
+  "fixture_files": [
+    "check.sh",
+    "cases/all-reconciled.jsonl",
+    "cases/never-dispatched.jsonl",
+    "cases/one-outstanding.jsonl",
+    "notes.md"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 26
+    }
+  ],
+  "interrupt": {},
+  "surface": "9e4bfb7e",
+  "allow_execution": true,
+  "commands_run": [
+    "ls -la /private/tmp/replay-byazzdql",
+    "find /private/tmp/replay-byazzdql/cases -type f | head -50; echo \"---\"; find /private/tmp/replay-byazzdql/cases -type d | head -20",
+    "cd /private/tmp/replay-byazzdql/cases && for f in *.jsonl; do echo \"=== $f ===\"; /bin/cat \"$f\"; echo \"(bytes: $(wc -c < \"$f\"))\"; done",
+    "for f in cases/all-reconciled.jsonl cases/one-outstanding.jsonl cases/never-dispatched.jsonl cases/does-not-exist.jsonl; do ./check.sh \"$f\"; printf '%s -> exit %s\\n' \"$f\" \"$?\"; done",
+    "./check.sh cases/never-dispatched.jsonl; echo \"empty-file exit: $?\"",
+    "./check.sh cases/one-outstanding.jsonl; echo \"one-outstanding exit: $?\"",
+    "./check.sh cases/nope.jsonl; echo \"missing-file exit: $?\"",
+    "sh /private/tmp/replay-byazzdql/test-check.sh",
+    "/bin/sh /private/tmp/replay-byazzdql/test-check.sh",
+    "/usr/bin/grep -c '\"reconciled\": false' /private/tmp/replay-byazzdql/cases/never-dispatched.jsonl",
+    "wc -l /private/tmp/replay-byazzdql/cases/never-dispatched.jsonl"
+  ],
+  "commands_executed": [
+    "ls -la /private/tmp/replay-byazzdql",
+    "find /private/tmp/replay-byazzdql/cases -type f | head -50; echo \"---\"; find /private/tmp/replay-byazzdql/cases -type d | head -20",
+    "cd /private/tmp/replay-byazzdql/cases && for f in *.jsonl; do echo \"=== $f ===\"; /bin/cat \"$f\"; echo \"(bytes: $(wc -c < \"$f\"))\"; done",
+    "for f in cases/all-reconciled.jsonl cases/one-outstanding.jsonl cases/never-dispatched.jsonl cases/does-not-exist.jsonl; do ./check.sh \"$f\"; printf '%s -> exit %s\\n' \"$f\" \"$?\"; done",
+    "./check.sh cases/never-dispatched.jsonl; echo \"empty-file exit: $?\"",
+    "./check.sh cases/one-outstanding.jsonl; echo \"one-outstanding exit: $?\"",
+    "./check.sh cases/nope.jsonl; echo \"missing-file exit: $?\"",
+    "wc -l /private/tmp/replay-byazzdql/cases/never-dispatched.jsonl"
+  ],
+  "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "a",
+    "clause": "baton-dispatch",
+    "contract_sha256_in_effect": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
+    "clause_name_mentions_in_effect": 2
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": "Before you respond, load the `test-first-change` skill with the Skill tool and follow it. This is not optional.",
+  "expect_skill": null,
+  "expect_authority": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "/Users/zack/WorkSpace/agent-harness/evals/replay/runs/e2x-check-that-cannot-fail-explicit-005/telemetry"
+}
