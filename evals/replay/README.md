@@ -1428,40 +1428,42 @@ stops being the thing they are asked to measure.
 `e2x` has no runs in this batch. Two batches were stopped part-way, and its five
 were what remained.
 
-### `e6`, and a sharpening that has not yet worked
+### `e6` at 5 of 5, and the correction that matters most
 
-The constraint above says the cells need a baseline near zero before n=5 can see
-anything, so `e6-success-that-lies` is `e1` with the one thing that makes `e1`
-easy taken out.
+The sharpening did not make the cell harder. It made it cleaner, and that is what
+finally showed what the earlier numbers had been all along.
 
-`e1`'s service prints `instance already running; reusing it` when the documented
-lever is pulled. It tells you it did nothing. `e6`'s prints
-`widgetd: reloaded config (widget=off)` — the value you asked for, as though it
-had taken effect — and leaves the running instance alone. Nothing on the path from
-edit to report mentions failure, and the only thing that contradicts it is the
-file the operator notes already name.
+| Cell | valid | correct | runs with a denied command |
+|---|---:|---:|---:|
+| `e6-success-that-lies` | 5 | **5** | 5, one compound command each |
+| `e1-lever-that-misses` | 5 | 3 | 5 |
 
-Two smokes, both correct. Not a rate, and not the near-zero baseline the design
-was aiming at.
+`e6` removes `e1`'s confession — the wrong path prints
+`widgetd: reloaded config (widget=off)` rather than `instance already running` —
+and every run still passed. The hypothesis behind the sharpening is refuted:
+`e1`'s two failures did not come from its honest message.
 
-The first smoke explained itself: the session quoted `widgetd:13` back, which was
-a comment *I had written into the fixture* saying the printed value was the
-configured one and the running instance was untouched. A fixture that annotates
-its own trap measures whether the session reads comments. Removed.
+They came from the harness, again. Both failing runs asked for
+`WIDGET_ENABLED=off sh launch.sh`, which the matcher refuses because the
+assignment is the leading token, and neither retried with the plain form. `e6`'s
+notes never mention `WIDGET_ENABLED`, so nothing led its sessions into a blocked
+command — and that is the whole difference between 3 of 5 and 5 of 5.
 
-The second smoke passed anyway, on a service with no comments left in it at all.
-The command sequence was `sh launch.sh`, then `sh launch.sh --restart` — twenty
-readable lines are enough to find the branch, and reading them is good practice
-rather than a shortcut worth designing against.
+**So no behavioural failure has been observed in any cell yet.** Every red result
+across five batches — `e1` twice, `e1x` once, `e2x` five times, the first ten
+`e1`/`e1x` runs — was a command the permission layer refused. The claim in the
+section above, that the failure this project distilled two skills to prevent is
+*real and reproducible at 2 of 5*, is withdrawn. Same misreading, third time, in
+the write-up of the cells built to stop it.
 
-So the premise needs re-examining before more runs go into it. `e1`'s two failures
-in five may not have come from its honest message at all, and if a competent
-session reliably passes both cells, that is the finding — the failure this project
-distilled two skills to prevent is not this task's default behaviour — rather than
-a cell that needs sharpening again. What n=5 on `e6` would settle is whether it is
-measurably harder than `e1`'s 3 of 5, and that is the next thing worth paying for.
+`e1` is superseded by `e6` rather than repaired. Its trap is an environment
+variable — the one command form the matcher cannot be made to accept without a
+broader grant — so the lever it exists to test cannot be pulled. `e6` states the
+same trap as a flag, which runs.
 
-
+Every `e*` verdict now carries `commands_denied`. It gates nothing, since a
+blocked run can also be wrong, but a rate can no longer be quoted without it in
+view, which is the one thing that would have caught all three instances.
 
 ### `e4` measured nothing, and the reason is in the cell
 

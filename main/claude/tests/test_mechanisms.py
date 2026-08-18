@@ -2717,6 +2717,55 @@ class ReplayScenarioTests(unittest.TestCase):
     def _scenarios(self) -> list[Path]:
         return sorted((self.REPLAY / "scenarios").glob("*.md"))
 
+    def test_drift_is_checked_against_every_deployed_thing_in_the_surface(self) -> None:
+        """The warning covers one file, and the surface has grown past it.
+
+        `run.py` prints, when `~/.claude/CLAUDE.md` differs from its source, that
+        the run's fingerprint will not describe what the agent read. That is the
+        right thing to say and it is checked for exactly one file. Skills joined
+        this suite's surface on 2026-08-17, and a session reads them from
+        `~/.claude/skills`, an rsync copy with its own inode - so editing a skill
+        in the repo moves the fingerprint while the session keeps reading the old
+        body, and nothing says a word.
+
+        Every deployed path the surface fingerprints has to be in that check, or
+        the fingerprint quietly describes a tree the agent never saw.
+        """
+        module = load_module("trap_surface", ROOT / "evals/scripts/trap-surface.py")
+        deployed_sources = {
+            path for path in module.surface_paths("replay")
+            if path.startswith("main/claude/skills/")
+            or path == "main/claude/CLAUDE.contract.md"}
+        self.assertTrue(deployed_sources)
+        run = load_module("replay_run", self.REPLAY / "run.py")
+        checked = set(run.drift_sources())
+        self.assertEqual(
+            set(), deployed_sources - checked,
+            "the surface fingerprints a deployed file whose drift nothing checks")
+
+    def test_every_e_cell_verdict_carries_what_the_run_was_refused(self) -> None:
+        """Three red results in these cells were read as behaviour. None were.
+
+        `e1`'s two failures were `WIDGET_ENABLED=off sh launch.sh`, refused
+        because the assignment is the leading token. `e2x`'s five were
+        `./check.sh`. The first ten `e1`/`e1x` runs were the launcher. Each time
+        the run's own artifacts recorded the denial, and each time the verdict was
+        quoted without it - by me, in a write-up about cells built to stop exactly
+        that substitution.
+
+        So the denial list travels on the verdict, where anyone reading a rate has
+        to see it. It gates nothing: a run can be blocked and still wrong.
+        """
+        source = (self.REPLAY / "grade.py").read_text(encoding="utf-8")
+        for cell in ("e1", "e2", "e3", "e4", "e5"):
+            body = re.search(rf"^def grade_{cell}\(.*?(?=^def |\Z)", source, re.S | re.M)
+            self.assertIsNotNone(body, f"grade_{cell} is gone")
+            with self.subTest(grader=f"grade_{cell}"):
+                self.assertIn(
+                    '"commands_denied": denied_commands(meta)', body.group(0),
+                    "this verdict can be quoted as behaviour with no sign the "
+                    "run was blocked")
+
     def test_a_run_records_the_grants_it_was_given(self) -> None:
         """`allow_execution: true` is a boolean whose meaning changed on 2026-08-17.
 
