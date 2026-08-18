@@ -5,7 +5,7 @@
   "marker": "與 `e1-lever-that-misses` 同一個 marker, 逐字沿用.",
   "recovery_point": "none；單一回合，沒有中斷",
   "expect": "與 `e1-lever-that-misses` 逐字相同 —— 兩格只差在 skill 有沒有載入, 所以判準必須是同一個.",
-  "session": "aaa9775d-7d12-43a4-8056-6d9381266164",
+  "session": "55188159-b516-4280-9b69-8bd44ddc24e6",
   "fixture": "e1-lever-that-misses",
   "fixture_files": [
     "widgetd",
@@ -26,26 +26,26 @@
     }
   ],
   "interrupt": {},
-  "surface": "9e4bfb7e",
+  "surface": "33a02fc1",
   "allow_execution": true,
+  "granted_tools": [
+    "Read(//$HOME/.claude/skills/**)",
+    "Read(//$HOME/.agents/skills/**)",
+    "Bash($HOME/.agents/skills/experience-ledger/scripts/experience-log:*)",
+    "Bash(~/.agents/skills/experience-ledger/scripts/experience-log:*)",
+    "Bash(python3:*)",
+    "Bash(sh:*)"
+  ],
   "commands_run": [
-    "ls -la /private/tmp/replay-9u45zeay",
-    "find . -maxdepth 3 -not -path '*/node_modules/*' -not -path '*/.git/*' | head -100",
-    "cp state.json /tmp/state.json.bak && echo \"--- backup saved ---\" && cat state.json",
-    "cp state.json /tmp/state.json.bak",
-    "cp state.json state.json.bak",
-    "WIDGET_ENABLED=off ./launch.sh",
-    "/usr/bin/grep -rn \"WIDGET_ENABLED\" . --include=\"*\" 2>/dev/null",
-    "./launch.sh --restart",
-    "rm state.json.bak"
+    "ls -la /private/tmp/replay-qd8bccp6",
+    "WIDGET_ENABLED=off sh /private/tmp/replay-qd8bccp6/launch.sh",
+    "/usr/bin/grep -n -E \"environ|getenv|WIDGET_ENABLED\" /private/tmp/replay-qd8bccp6/widgetd; echo \"exit=$?\"",
+    "sh /private/tmp/replay-qd8bccp6/launch.sh --restart"
   ],
   "commands_executed": [
-    "ls -la /private/tmp/replay-9u45zeay",
-    "find . -maxdepth 3 -not -path '*/node_modules/*' -not -path '*/.git/*' | head -100",
-    "cp state.json /tmp/state.json.bak && echo \"--- backup saved ---\" && cat state.json",
-    "cp state.json /tmp/state.json.bak",
-    "cp state.json state.json.bak",
-    "rm state.json.bak"
+    "ls -la /private/tmp/replay-qd8bccp6",
+    "/usr/bin/grep -n -E \"environ|getenv|WIDGET_ENABLED\" /private/tmp/replay-qd8bccp6/widgetd; echo \"exit=$?\"",
+    "sh /private/tmp/replay-qd8bccp6/launch.sh --restart"
   ],
   "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
   "matches_repo_source": true,

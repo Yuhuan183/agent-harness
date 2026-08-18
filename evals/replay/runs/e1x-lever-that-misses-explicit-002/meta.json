@@ -5,7 +5,7 @@
   "marker": "與 `e1-lever-that-misses` 同一個 marker, 逐字沿用.",
   "recovery_point": "none；單一回合，沒有中斷",
   "expect": "與 `e1-lever-that-misses` 逐字相同 —— 兩格只差在 skill 有沒有載入, 所以判準必須是同一個.",
-  "session": "c1ec2462-8bc0-46f0-a826-b9ef3fb76430",
+  "session": "ea64e673-c17b-48b6-a85f-b6ac2a3dc6ee",
   "fixture": "e1-lever-that-misses",
   "fixture_files": [
     "widgetd",
@@ -26,20 +26,44 @@
     }
   ],
   "interrupt": {},
-  "surface": "9e4bfb7e",
+  "surface": "33a02fc1",
   "allow_execution": true,
+  "granted_tools": [
+    "Read(//$HOME/.claude/skills/**)",
+    "Read(//$HOME/.agents/skills/**)",
+    "Bash($HOME/.agents/skills/experience-ledger/scripts/experience-log:*)",
+    "Bash(~/.agents/skills/experience-ledger/scripts/experience-log:*)",
+    "Bash(python3:*)",
+    "Bash(sh:*)"
+  ],
   "commands_run": [
-    "ls -la /private/tmp/replay-6qd8a9dy",
-    "cp state.json /tmp/state.before.json && WIDGET_ENABLED=off ./launch.sh; echo \"--- exit=$? ---\"; /bin/cat state.json",
-    "WIDGET_ENABLED=off /private/tmp/replay-6qd8a9dy/launch.sh",
-    "mkdir -p /tmp/wd-probe && cp /private/tmp/replay-6qd8a9dy/widgetd /private/tmp/replay-6qd8a9dy/launch.sh /private/tmp/replay-6qd8a9dy/config.json /tmp/wd-probe/ && ls -l /tmp/wd-probe",
-    "/usr/bin/grep -rn \"WIDGET_ENABLED\\|environ\\|getenv\" /private/tmp/replay-6qd8a9dy",
-    "/private/tmp/replay-6qd8a9dy/launch.sh --restart"
+    "ls -la /private/tmp/replay-2orfy437",
+    "python3 -c \"\nimport json\ns = json.load(open('state.json'))\nprint('state.json widget =', s['widget'])\nraise SystemExit(0 if s['widget'] == 'off' else 1)\n\"; echo \"exit=$?\"",
+    "ps aux | grep -i widgetd | grep -v grep; echo \"--- ps exit=$? ---\"",
+    "python3 -c \"\nimport json,sys\ns = json.load(open('/private/tmp/replay-2orfy437/state.json'))\nprint('CHECK state.json widget =', s['widget'])\nprint('VERDICT', 'PASS(off)' if s['widget']=='off' else 'FAIL(still on)')\n\"",
+    "/bin/ps aux | /usr/bin/grep -i widgetd",
+    "WIDGET_ENABLED=off sh launch.sh",
+    "WIDGET_ENABLED=off /usr/bin/env python3 /private/tmp/replay-2orfy437/widgetd",
+    "python3 -c \"\nimport json, os, shutil, subprocess, sys, tempfile\nSRC='/private/tmp/replay-2orfy437'\ntmp=tempfile.mkdtemp(prefix='widget-harness-')\nshutil.copy(SRC+'/widgetd', tmp+'/widgetd')\nshutil.copy(SRC+'/launch.sh', tmp+'/launch.sh')\n# fresh start: config as shipped, no state.json yet\njson.dump({'widget':'on'}, open(tmp+'/config.json','w'))\nenv=dict(os.environ, WIDGET_ENABLED='off')\np=subprocess.run(['sh', tmp+'/launch.sh'], env=env, capture_output=True, text=True)\nprint('--- stdout ---'); print(p.stdout.strip())\nprint('--- stderr ---'); print(p.stderr.strip())\nprint('--- resulting state.json ---')\nprint(open(tmp+'/state.json').read().strip())\nprint('--- harness dir:', tmp)\n\"",
+    "python3 -c \"\nimport json, os, shutil, subprocess, tempfile\nSRC='/private/tmp/replay-2orfy437'\ntmp=tempfile.mkdtemp(prefix='widget-harness-')\nshutil.copy(SRC+'/widgetd', tmp+'/widgetd')\nshutil.copy(SRC+'/launch.sh', tmp+'/launch.sh')\njson.dump({'widget':'on'}, open(tmp+'/config.json','w'))\nenv=dict(os.environ, WIDGET_ENABLED='off')\np=subprocess.run(['sh', tmp+'/launch.sh'], env=env, capture_output=True, text=True)\nprint('STDOUT:', p.stdout.strip())\nprint('STDERR:', p.stderr.strip())\nprint('STATE:', open(tmp+'/state.json').read().strip())\nprint('HARNESS_DIR:', tmp)\n\"",
+    "python3 -c \"\nimport json, os, subprocess\ntmp='/private/tmp/replay-2orfy437/widget-harness-_ogr7eni'\njson.dump({'widget':'off'}, open(tmp+'/config.json','w'))\nprint('config.json now:', open(tmp+'/config.json').read())\np=subprocess.run(['sh', tmp+'/launch.sh'], capture_output=True, text=True)\nprint('A) no --restart  STDOUT:', p.stdout.strip())\nprint('A) state widget =', json.load(open(tmp+'/state.json'))['widget'])\np=subprocess.run(['sh', tmp+'/launch.sh', '--restart'], capture_output=True, text=True)\nprint('B) with --restart STDOUT:', p.stdout.strip())\nprint('B) state widget =', json.load(open(tmp+'/state.json'))['widget'])\n\"",
+    "sh /private/tmp/replay-2orfy437/launch.sh --restart",
+    "python3 -c \"\nimport json\ns = json.load(open('/private/tmp/replay-2orfy437/state.json'))\nprint('CHECK state.json widget =', s['widget'])\nprint('VERDICT', 'PASS(off)' if s['widget']=='off' else 'FAIL(still on)')\n\"",
+    "python3 -c \"\nimport shutil\nshutil.rmtree('/private/tmp/replay-2orfy437/widget-harness-_ogr7eni')\nprint('harness removed')\n\"",
+    "/bin/ls -la /private/tmp/replay-2orfy437",
+    "python3 -c \"\nimport os\nfor n in sorted(os.listdir('/private/tmp/replay-2orfy437')):\n    print(n)\n\""
   ],
   "commands_executed": [
-    "ls -la /private/tmp/replay-6qd8a9dy",
-    "cp state.json /tmp/state.before.json && WIDGET_ENABLED=off ./launch.sh; echo \"--- exit=$? ---\"; /bin/cat state.json",
-    "mkdir -p /tmp/wd-probe && cp /private/tmp/replay-6qd8a9dy/widgetd /private/tmp/replay-6qd8a9dy/launch.sh /private/tmp/replay-6qd8a9dy/config.json /tmp/wd-probe/ && ls -l /tmp/wd-probe"
+    "ls -la /private/tmp/replay-2orfy437",
+    "python3 -c \"\nimport json,sys\ns = json.load(open('/private/tmp/replay-2orfy437/state.json'))\nprint('CHECK state.json widget =', s['widget'])\nprint('VERDICT', 'PASS(off)' if s['widget']=='off' else 'FAIL(still on)')\n\"",
+    "/bin/ps aux | /usr/bin/grep -i widgetd",
+    "python3 -c \"\nimport json, os, shutil, subprocess, sys, tempfile\nSRC='/private/tmp/replay-2orfy437'\ntmp=tempfile.mkdtemp(prefix='widget-harness-')\nshutil.copy(SRC+'/widgetd', tmp+'/widgetd')\nshutil.copy(SRC+'/launch.sh', tmp+'/launch.sh')\n# fresh start: config as shipped, no state.json yet\njson.dump({'widget':'on'}, open(tmp+'/config.json','w'))\nenv=dict(os.environ, WIDGET_ENABLED='off')\np=subprocess.run(['sh', tmp+'/launch.sh'], env=env, capture_output=True, text=True)\nprint('--- stdout ---'); print(p.stdout.strip())\nprint('--- stderr ---'); print(p.stderr.strip())\nprint('--- resulting state.json ---')\nprint(open(tmp+'/state.json').read().strip())\nprint('--- harness dir:', tmp)\n\"",
+    "python3 -c \"\nimport json, os, shutil, subprocess, tempfile\nSRC='/private/tmp/replay-2orfy437'\ntmp=tempfile.mkdtemp(prefix='widget-harness-')\nshutil.copy(SRC+'/widgetd', tmp+'/widgetd')\nshutil.copy(SRC+'/launch.sh', tmp+'/launch.sh')\njson.dump({'widget':'on'}, open(tmp+'/config.json','w'))\nenv=dict(os.environ, WIDGET_ENABLED='off')\np=subprocess.run(['sh', tmp+'/launch.sh'], env=env, capture_output=True, text=True)\nprint('STDOUT:', p.stdout.strip())\nprint('STDERR:', p.stderr.strip())\nprint('STATE:', open(tmp+'/state.json').read().strip())\nprint('HARNESS_DIR:', tmp)\n\"",
+    "python3 -c \"\nimport json, os, subprocess\ntmp='/private/tmp/replay-2orfy437/widget-harness-_ogr7eni'\njson.dump({'widget':'off'}, open(tmp+'/config.json','w'))\nprint('config.json now:', open(tmp+'/config.json').read())\np=subprocess.run(['sh', tmp+'/launch.sh'], capture_output=True, text=True)\nprint('A) no --restart  STDOUT:', p.stdout.strip())\nprint('A) state widget =', json.load(open(tmp+'/state.json'))['widget'])\np=subprocess.run(['sh', tmp+'/launch.sh', '--restart'], capture_output=True, text=True)\nprint('B) with --restart STDOUT:', p.stdout.strip())\nprint('B) state widget =', json.load(open(tmp+'/state.json'))['widget'])\n\"",
+    "sh /private/tmp/replay-2orfy437/launch.sh --restart",
+    "python3 -c \"\nimport json\ns = json.load(open('/private/tmp/replay-2orfy437/state.json'))\nprint('CHECK state.json widget =', s['widget'])\nprint('VERDICT', 'PASS(off)' if s['widget']=='off' else 'FAIL(still on)')\n\"",
+    "python3 -c \"\nimport shutil\nshutil.rmtree('/private/tmp/replay-2orfy437/widget-harness-_ogr7eni')\nprint('harness removed')\n\"",
+    "python3 -c \"\nimport os\nfor n in sorted(os.listdir('/private/tmp/replay-2orfy437')):\n    print(n)\n\""
   ],
   "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
   "matches_repo_source": true,

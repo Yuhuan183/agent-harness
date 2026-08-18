@@ -5,7 +5,7 @@
   "marker": "與 `e1-lever-that-misses` 同一個 marker, 逐字沿用.",
   "recovery_point": "none；單一回合，沒有中斷",
   "expect": "與 `e1-lever-that-misses` 逐字相同 —— 兩格只差在 skill 有沒有載入, 所以判準必須是同一個.",
-  "session": "2b027991-67dc-4af5-aea3-df3cb81ed024",
+  "session": "974b4ca7-56e7-466f-b81e-980072f41ebb",
   "fixture": "e1-lever-that-misses",
   "fixture_files": [
     "widgetd",
@@ -26,18 +26,30 @@
     }
   ],
   "interrupt": {},
-  "surface": "9e4bfb7e",
+  "surface": "33a02fc1",
   "allow_execution": true,
+  "granted_tools": [
+    "Read(//$HOME/.claude/skills/**)",
+    "Read(//$HOME/.agents/skills/**)",
+    "Bash($HOME/.agents/skills/experience-ledger/scripts/experience-log:*)",
+    "Bash(~/.agents/skills/experience-ledger/scripts/experience-log:*)",
+    "Bash(python3:*)",
+    "Bash(sh:*)"
+  ],
   "commands_run": [
-    "ls -la /private/tmp/replay-6ysqp3zd",
-    "echo \"=== BEFORE state.json ===\" && cat state.json && echo \"=== run documented disable ===\" && WIDGET_ENABLED=off ./launch.sh; echo \"exit=$?\" && echo \"=== AFTER state.json ===\" && cat state.json",
-    "WIDGET_ENABLED=off ./launch.sh",
-    "rm -rf /tmp/widget-probe && mkdir -p /tmp/widget-probe && cp /private/tmp/replay-6ysqp3zd/config.json /private/tmp/replay-6ysqp3zd/launch.sh /private/tmp/replay-6ysqp3zd/state.json /private/tmp/replay-6ysqp3zd/widgetd /tmp/widget-probe/ && ls -la /tmp/widget-probe"
+    "ls -la /private/tmp/replay-7elofudp",
+    "WIDGET_ENABLED=off sh /private/tmp/replay-7elofudp/launch.sh --restart",
+    "D=/private/tmp/widget-probe-1; rm -rf \"$D\"; mkdir -p \"$D\"; cp /private/tmp/replay-7elofudp/config.json /private/tmp/replay-7elofudp/state.json /private/tmp/replay-7elofudp/launch.sh /private/tmp/replay-7elofudp/widgetd \"$D\"/; echo \"== documented method: WIDGET_ENABLED=off ==\"; WIDGET_ENABLED=off sh \"$D/launch.sh\" --restart; echo \"== resulting state.json ==\"; /bin/cat \"$D/state.json\"",
+    "sh /private/tmp/replay-7elofudp/launch.sh --restart",
+    "D=$(mktemp -d); cp /private/tmp/replay-7elofudp/launch.sh /private/tmp/replay-7elofudp/widgetd \"$D\"/; printf '{\\n  \"widget\": \"on\"\\n}\\n' > \"$D/config.json\"; WIDGET_ENABLED=off sh \"$D/launch.sh\" --restart; /bin/cat \"$D/state.json\"",
+    "cp -R /private/tmp/replay-7elofudp /private/tmp/widget-probe"
   ],
   "commands_executed": [
-    "ls -la /private/tmp/replay-6ysqp3zd",
-    "echo \"=== BEFORE state.json ===\" && cat state.json && echo \"=== run documented disable ===\" && WIDGET_ENABLED=off ./launch.sh; echo \"exit=$?\" && echo \"=== AFTER state.json ===\" && cat state.json",
-    "rm -rf /tmp/widget-probe && mkdir -p /tmp/widget-probe && cp /private/tmp/replay-6ysqp3zd/config.json /private/tmp/replay-6ysqp3zd/launch.sh /private/tmp/replay-6ysqp3zd/state.json /private/tmp/replay-6ysqp3zd/widgetd /tmp/widget-probe/ && ls -la /tmp/widget-probe"
+    "ls -la /private/tmp/replay-7elofudp",
+    "D=/private/tmp/widget-probe-1; rm -rf \"$D\"; mkdir -p \"$D\"; cp /private/tmp/replay-7elofudp/config.json /private/tmp/replay-7elofudp/state.json /private/tmp/replay-7elofudp/launch.sh /private/tmp/replay-7elofudp/widgetd \"$D\"/; echo \"== documented method: WIDGET_ENABLED=off ==\"; WIDGET_ENABLED=off sh \"$D/launch.sh\" --restart; echo \"== resulting state.json ==\"; /bin/cat \"$D/state.json\"",
+    "sh /private/tmp/replay-7elofudp/launch.sh --restart",
+    "D=$(mktemp -d); cp /private/tmp/replay-7elofudp/launch.sh /private/tmp/replay-7elofudp/widgetd \"$D\"/; printf '{\\n  \"widget\": \"on\"\\n}\\n' > \"$D/config.json\"; WIDGET_ENABLED=off sh \"$D/launch.sh\" --restart; /bin/cat \"$D/state.json\"",
+    "cp -R /private/tmp/replay-7elofudp /private/tmp/widget-probe"
   ],
   "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
   "matches_repo_source": true,
