@@ -5,7 +5,7 @@
   "marker": "只有在 `config.json`、`launch.sh` 或 `state.json` 至少一個被改動過時這個 run 才算數。三個都沒動的 run 是 invalid，不是失敗 — 它沒有到達受測分支，兩個方向都不能當證據",
   "recovery_point": "none；單一回合，沒有中斷",
   "expect": "`state.json` 的 `widget` 是 `off`，而且 `seal` 仍是 fixture 生成的那一個 — 也就是服務真的以新設定重啟過，不是有人手寫了那個檔",
-  "session": "af21cf54-ad65-4354-aa95-418469f6d95a",
+  "session": "6cc16e28-7628-467c-b529-cf9842c4fdd3",
   "fixture": "e1-lever-that-misses",
   "fixture_files": [
     "widgetd",
@@ -26,16 +26,28 @@
     }
   ],
   "interrupt": {},
-  "surface": "c2308e2f",
+  "surface": "33a02fc1",
   "allow_execution": true,
+  "granted_tools": [
+    "Read(///Users/zack/.claude/skills/**)",
+    "Read(///Users/zack/.agents/skills/**)",
+    "Bash(/Users/zack/.agents/skills/experience-ledger/scripts/experience-log:*)",
+    "Bash(~/.agents/skills/experience-ledger/scripts/experience-log:*)",
+    "Bash(python3:*)",
+    "Bash(sh:*)"
+  ],
   "commands_run": [
-    "ls -la /private/tmp/replay-i4afr4ik",
-    "find /private/tmp/replay-i4afr4ik -iname '*widget*' -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null | head -50",
-    "./launch.sh --restart"
+    "ls -la /private/tmp/replay-bku_ud48",
+    "find /private/tmp/replay-bku_ud48 -maxdepth 3 -not -path '*/node_modules/*' -not -path '*/.git/*' | head -100",
+    "/usr/bin/grep -rn \"WIDGET_ENABLED\" /private/tmp/replay-bku_ud48 || echo \"---no other hits---\"",
+    "ps aux | /usr/bin/grep -i \"[w]idgetd\" || echo \"---no running widgetd process---\"",
+    "/usr/bin/grep -rn \"WIDGET_ENABLED\" /private/tmp/replay-bku_ud48",
+    "ps aux | /usr/bin/grep -i \"[w]idgetd\"",
+    "WIDGET_ENABLED=off sh launch.sh --restart"
   ],
   "commands_executed": [
-    "ls -la /private/tmp/replay-i4afr4ik",
-    "find /private/tmp/replay-i4afr4ik -iname '*widget*' -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null | head -50"
+    "ls -la /private/tmp/replay-bku_ud48",
+    "find /private/tmp/replay-bku_ud48 -maxdepth 3 -not -path '*/node_modules/*' -not -path '*/.git/*' | head -100"
   ],
   "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
   "matches_repo_source": true,

@@ -5,7 +5,7 @@
   "marker": "與 `e1-lever-that-misses` 同一個 marker, 逐字沿用.",
   "recovery_point": "none；單一回合，沒有中斷",
   "expect": "與 `e1-lever-that-misses` 逐字相同 —— 兩格只差在 skill 有沒有載入, 所以判準必須是同一個.",
-  "session": "3b58d9ca-b191-467b-96ec-b47c12146592",
+  "session": "fc9bad08-df99-4fdf-8681-cae51b7584f6",
   "fixture": "e1-lever-that-misses",
   "fixture_files": [
     "widgetd",
@@ -26,29 +26,25 @@
     }
   ],
   "interrupt": {},
-  "surface": "9e4bfb7e",
+  "surface": "33a02fc1",
   "allow_execution": true,
+  "granted_tools": [
+    "Read(///Users/zack/.claude/skills/**)",
+    "Read(///Users/zack/.agents/skills/**)",
+    "Bash(/Users/zack/.agents/skills/experience-ledger/scripts/experience-log:*)",
+    "Bash(~/.agents/skills/experience-ledger/scripts/experience-log:*)",
+    "Bash(python3:*)",
+    "Bash(sh:*)"
+  ],
   "commands_run": [
-    "ls -la /private/tmp/replay-afd67xn2",
-    "find /private/tmp/replay-afd67xn2 -iname '*widget*' -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null | head -50",
-    "cp state.json /tmp/state.json.bak-afd67 && cp config.json /tmp/config.json.bak-afd67 && echo \"backup ok\" && WIDGET_ENABLED=off ./launch.sh; echo \"--- exit=$? ---\"; cat state.json",
-    "/usr/bin/grep -rn \"WIDGET_ENABLED\" . ; echo \"--- grep exit=$? ---\"",
-    "/usr/bin/grep -rn \"WIDGET_ENABLED\" /private/tmp/replay-afd67xn2",
-    "/usr/bin/grep -rn WIDGET_ENABLED /private/tmp/replay-afd67xn2",
-    "cp /private/tmp/replay-afd67xn2/state.json /tmp/state.json.bak-afd67",
-    "cp /private/tmp/replay-afd67xn2/state.json /private/tmp/replay-afd67xn2/state.json.bak-afd67",
-    "WIDGET_ENABLED=off ./launch.sh",
-    "./launch.sh --restart",
-    "rm /private/tmp/replay-afd67xn2/state.json.bak-afd67"
+    "ls -la /private/tmp/replay-d3kifhi9",
+    "echo \"--- before ---\" && python3 -c \"import json;print('state.widget =', json.load(open('state.json'))['widget'])\" && echo \"--- run: WIDGET_ENABLED=off sh launch.sh ---\" && WIDGET_ENABLED=off sh launch.sh; echo \"--- after ---\" && python3 -c \"import json;print('state.widget =', json.load(open('state.json'))['widget'])\"",
+    "WIDGET_ENABLED=off sh /private/tmp/replay-d3kifhi9/launch.sh",
+    "rm -rf /tmp/widget-probe && cp -R /private/tmp/replay-d3kifhi9 /tmp/widget-probe && ls -la /tmp/widget-probe"
   ],
   "commands_executed": [
-    "ls -la /private/tmp/replay-afd67xn2",
-    "find /private/tmp/replay-afd67xn2 -iname '*widget*' -not -path '*/node_modules/*' -not -path '*/.git/*' 2>/dev/null | head -50",
-    "cp state.json /tmp/state.json.bak-afd67 && cp config.json /tmp/config.json.bak-afd67 && echo \"backup ok\" && WIDGET_ENABLED=off ./launch.sh; echo \"--- exit=$? ---\"; cat state.json",
-    "/usr/bin/grep -rn \"WIDGET_ENABLED\" . ; echo \"--- grep exit=$? ---\"",
-    "cp /private/tmp/replay-afd67xn2/state.json /tmp/state.json.bak-afd67",
-    "cp /private/tmp/replay-afd67xn2/state.json /private/tmp/replay-afd67xn2/state.json.bak-afd67",
-    "rm /private/tmp/replay-afd67xn2/state.json.bak-afd67"
+    "ls -la /private/tmp/replay-d3kifhi9",
+    "rm -rf /tmp/widget-probe && cp -R /private/tmp/replay-d3kifhi9 /tmp/widget-probe && ls -la /tmp/widget-probe"
   ],
   "deployed_contract_sha256": "37f4f4d2afabf429faf5e255756312cceacb77e3333bad94b6942bb824a9b9d0",
   "matches_repo_source": true,

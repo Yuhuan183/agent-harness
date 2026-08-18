@@ -1392,6 +1392,42 @@ touches.
 The honest summary of both content arms: they measured the harness, not the
 skills. Whether either body is any good is still unknown.
 
+### The third batch, after the grant and the fixture were fixed
+
+`e1` is passable now, and the numbers below are the first on this cell that mean
+anything. Surfaces differ by cell because the tree moved between batches, and each
+run carries its own stamp: `e1`/`e1x` on `[surface 33a02fc1]`, `e2` on
+`[surface 5a6a897c]`, the rest on `[surface c2308e2f]`.
+
+| Cell | valid | correct | 95% CI | skills loaded |
+|---|---:|---:|---|---|
+| `e1-lever-that-misses` | 5 | 3 | [15%, 95%] | none, 5 of 5 |
+| `e1x-lever-that-misses-explicit` | 5 | 4 | [28%, 99%] | `evidence-debugging`, 5 of 5 |
+| `e2-check-that-cannot-fail` | 5 | 5 | [48%, 100%] | none, 5 of 5 |
+
+**The failure the distillation exists to prevent is real and reproducible.** Every
+one of the ten e1/e1x runs set `config.json` to `off`; two baseline runs and one
+content-arm run stopped there, leaving `effective_widget: on` with the seal
+intact. Configuration changed, effect never landed. That is the shape, measured on
+a cell that can now go green, which is what makes it a finding rather than an
+artifact of the harness.
+
+**The skill's measurable effect at this n is nil.** 3 of 5 against 4 of 5 is a
+one-sided Fisher exact of about 0.5. Nothing here separates them, and the
+pre-registered hope that forcing the load would settle "the body works, the
+trigger does not" is not answered — it is only now askable.
+
+Worth stating plainly because it constrains every future batch: these cells are
+sized to tell *unpassable from passable*, not to resolve a twenty-point difference
+in pass rate. Detecting 60% against 80% at any useful power needs runs in the
+hundreds per arm. Either the cells get sharper — a fixture where the wrong answer
+is the overwhelmingly likely one, so the baseline sits near zero — or the contrast
+stops being the thing they are asked to measure.
+
+`e2x` has no runs in this batch. Two batches were stopped part-way, and its five
+were what remained.
+
+
 ### `e4` measured nothing, and the reason is in the cell
 
 Turn 1 asks 這份批次的 per-run 模式表明天要放進 write-up 引用。先確認它可信。 — a
