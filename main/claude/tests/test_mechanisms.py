@@ -4355,5 +4355,79 @@ class VersionAttestationTests(unittest.TestCase):
                 "match", "differs", "floor-met", "floor-unmet", "unprobeable"})
 
 
+class ResidentPoolReportTests(unittest.TestCase):
+    """The coverage figure this report exists to print is the one that can
+    silently invert.
+
+    `resident-pool-report` splits the installed pool into what this repo's
+    budgets reach and what nothing reaches, and the 2026-08-18 measurement put
+    that at about a sixth. The split is derived from the deployment manifest,
+    so a shipped skill crosses the line on the commit that ships it - and a
+    change to how the manifest names its targets would move every skill into
+    "unmanaged" while the script still exits 0 and still prints a table. That
+    failure looks exactly like a healthy report of a much worse number, which
+    is why the derivation is asserted rather than the number.
+    """
+
+    def setUp(self) -> None:
+        self.module = load_module(
+            "resident_pool_report", ROOT / "scripts" / "resident-pool-report.py")
+
+    def test_the_managed_set_is_read_from_the_manifest(self) -> None:
+        expected = {
+            line.split("\t")[1].rsplit("/", 1)[-1]
+            for line in read("scripts/deployment-manifest.tsv").splitlines()
+            if line and not line.startswith("#")
+            and len(line.split("\t")) >= 2
+            and line.split("\t")[1].startswith(".claude/skills/")}
+        self.assertTrue(expected, "the manifest ships no Claude skill; fixture is vacuous")
+        self.assertEqual(expected, self.module.managed_names())
+
+    def test_a_skill_outside_the_manifest_counts_as_unmanaged(self) -> None:
+        """The one classification the headline depends on, over a synthetic pool.
+
+        Reading the real `~/.claude/skills` would make this assert whatever the
+        machine happens to hold, which is the opposite of what a suite should
+        do with machine state.
+        """
+        shipped = sorted(self.module.managed_names())[0]
+        with tempfile.TemporaryDirectory() as tmp:
+            pool = Path(tmp)
+            for name, description in ((shipped, "a shipped one"),
+                                      ("not-ours", "installed from elsewhere")):
+                (pool / name).mkdir()
+                (pool / name / "SKILL.md").write_text(
+                    f"---\nname: {name}\ndescription: {description}\n---\n\nbody\n",
+                    encoding="utf-8")
+            original = self.module.POOL
+            try:
+                self.module.POOL = pool
+                rows = {row["name"]: row for row in self.module.measure()["skills"]}
+            finally:
+                self.module.POOL = original
+        self.assertEqual("repo-managed", rows[shipped]["origin"])
+        self.assertEqual("unmanaged", rows["not-ours"]["origin"])
+        # Only `name` and `description` are resident; the body must not be counted.
+        self.assertEqual(
+            self.module.word_count("not-ours installed from elsewhere"),
+            rows["not-ours"]["words"])
+
+    def test_it_reports_and_never_fails(self) -> None:
+        # Report-only for the reason in its docstring: the skills it cannot
+        # cap are not this repo's files. A gate here would fail a commit
+        # because the user installed something, and the cheapest way back to
+        # green would be uninstalling it.
+        finished = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "resident-pool-report.py"),
+             "--json"],
+            capture_output=True, text=True, cwd=ROOT)
+        self.assertEqual(0, finished.returncode, finished.stderr)
+        report = json.loads(finished.stdout)
+        self.assertTrue(report["floor"], "the total must not claim to be the whole")
+        self.assertEqual(
+            set(), {row["origin"] for row in report["skills"]}
+            - {"repo-managed", "project", "unmanaged"})
+
+
 if __name__ == '__main__':
     unittest.main()
