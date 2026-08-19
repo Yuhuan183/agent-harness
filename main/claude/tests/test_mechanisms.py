@@ -4541,5 +4541,73 @@ class ManagedTargetGuardTests(unittest.TestCase):
             self.assertEqual(0, malformed.returncode)
 
 
+class TaiwanUsageReportTests(unittest.TestCase):
+    """The sweep is only useful if it reads the shipped table and stays calibrated.
+
+    `readable-zh-tw` carries a 中國用語 replacement table and deploys it to clean
+    other people's copy; nothing pointed it back at this repo, and 智能體 sat in
+    the title of `docs/setup.md` for an unknown stretch. This is the report that
+    would have caught it, in the shape `docs/` got for size rather than a gate -
+    a word list cannot tell 用 from 提及.
+
+    Its first run returned 60 hits of which 57 were 落地, which is how this repo
+    writes 已落地 in nearly every research document. An instrument that reports
+    57 false positives is the permanent alarm this repo keeps warning about, so
+    the term is exempted with its reason recorded in the script. That exemption
+    is the calibration and it is the thing most likely to be abused later, which
+    is why the test below pins what it may contain.
+    """
+
+    SCRIPT = ROOT / "scripts/zh-tw-usage-report.py"
+
+    def run_report(self, extra=()):
+        return subprocess.run(
+            [sys.executable, str(self.SCRIPT), *extra],
+            capture_output=True, text=True, timeout=120, cwd=ROOT)
+
+    def test_it_reads_the_shipped_table_rather_than_a_copy(self) -> None:
+        """A second copy of the list would drift from what the skill teaches."""
+        module = load_module("zh_tw_usage_report", self.SCRIPT)
+        table = module.terms()
+        self.assertGreater(len(table), 20, "the table parsed to almost nothing")
+        # Spot-check both column senses and the ／ split the table uses.
+        self.assertEqual("智慧（人工智慧、智慧型手機）", table["智能"])
+        self.assertIn("視頻", table)
+        self.assertIn("短視頻", table)
+
+    def test_the_exemption_list_stays_small_and_explains_itself(self) -> None:
+        module = load_module("zh_tw_usage_report", self.SCRIPT)
+        self.assertLessEqual(
+            len(module.EXEMPT_TERMS), 3,
+            "exempting a term is how this report gets quietly switched off; "
+            "each one needs a reason a reader can disagree with")
+        for term, why in module.EXEMPT_TERMS.items():
+            self.assertGreater(
+                len(why), 40, f"{term}: an exemption without a stated reason")
+
+    def test_it_reports_and_never_fails(self) -> None:
+        finished = self.run_report(["--json"])
+        self.assertEqual(0, finished.returncode, finished.stderr)
+        report = json.loads(finished.stdout)
+        self.assertIn("hits", report)
+        for hit in report["hits"]:
+            self.assertIn("suggested", hit)
+
+    def test_it_catches_the_term_it_was_built_for(self) -> None:
+        """Positive control. Without it this only proves the tree is clean."""
+        module = load_module("zh_tw_usage_report", self.SCRIPT)
+        target = ROOT / "docs/setup.md"
+        original = target.read_text(encoding="utf-8")
+        try:
+            target.write_text(original.replace("智慧體", "智能體"),
+                              encoding="utf-8")
+            hits = module.sweep()
+        finally:
+            target.write_text(original, encoding="utf-8")
+        self.assertTrue(
+            any(h["path"] == "docs/setup.md" and h["term"] == "智能" for h in hits),
+            "the sweep misses the exact defect that motivated it")
+
+
 if __name__ == '__main__':
     unittest.main()

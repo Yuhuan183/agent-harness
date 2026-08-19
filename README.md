@@ -243,12 +243,13 @@ git diff --check
 scripts/sync.sh
 ```
 
-三支只報不擋的工具, 不在上面的驗收鏈裡, 因為它們回答的是「這筆紀錄還連著實體嗎」與「這台機器實際扛多少」, 而不是「這次改動對不對」:
+四支只報不擋的工具, 不在上面的驗收鏈裡, 因為它們回答的是「這筆紀錄還連著實體嗎」「這台機器實際扛多少」與「這裡的中文守不守自己的規矩」, 而不是「這次改動對不對」:
 
 ```bash
 scripts/evidence-check.py        # SHA 引用是否還解得開; trap 結果列的量測面指紋是否還是出貨版本
 scripts/docs-size-report.py      # docs/ 體積現況 (這層沒有字數預算, 見 docs/README.md 規則 8)
 scripts/resident-pool-report.py  # 這台機器實際的常駐 skill 描述量, 與預算蓋到的比例
+scripts/zh-tw-usage-report.py    # 本 repo 自己的中文有沒有用到它出貨在校正的中國用語
 ```
 
 `scripts/sync.sh` 的 dry-run 會先執行 preflight; 任何 contract, routing, JSON, shell 或部署
