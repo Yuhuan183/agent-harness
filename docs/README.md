@@ -31,7 +31,7 @@
 |---|---|---|
 | [架構總覽](architecture.md) | 由上而下的骨幹敘事: 架構圖, 核心想法, QC, 生命週期, hook, 附檔導引 | 各層細節 (指向專門文檔), 可變的 model 數值 |
 | [Harness Engineering Playbook](harness-engineering.md) | 可跨專案複用的設計與驗證方法 | 當前 route pins, 實驗原始數據 |
-| [研究摘要](research/README.md) | benchmark 快照, 成本口徑, 案例取捨, 研究缺口 | runtime 強制規則, 現行 route pins |
+| [研究摘要](research/README.md) | benchmark 快照, 成本口徑, 案例取捨, 研究缺口; `research/` 底下唯一的現行結論來源 | runtime 強制規則, 現行 route pins, 逐次查核的原始紀錄 (在 [landing-log](research/landing-log.md)) |
 | [Matt Pocock skills 導入研究](research/mattpocock-skills-integration.md) | 上游快照, 工作流比較, 相容性, 採用與拒絕理由 | 實作進度, runtime skill 本體 |
 | [Engineering workflow 蒸餾實作計畫](plans/engineering-workflow-distillation.md) | 已核准方向, 分階段 scope, gates, rollback 與 completion criteria | 上游研究全文, 已部署狀態 |
 | [配置與部署](setup.md) | bootstrap, apply, 驗收與回滾步驟 | 模型選擇理由 |
@@ -56,7 +56,7 @@
 1. 同一規則只保留一個真相源; 其他文件用連結與短摘要指過去.
 2. README 說明全貌與入口, 不承載會頻繁變動的 model 數值或完整操作細節.
 3. benchmark, effort, 日期與成本口徑只放研究摘要或 routing data, 不寫成永久能力宣稱.
-4. 已落地的 runtime 規則從 plan 移出; 歷史判斷留在 Git 或明確標示的決策紀錄.
+4. 已落地的 runtime 規則從 plan 移出; 歷史判斷留在 Git 或明確標示的決策紀錄. `docs/research/` 底下**只有 [`research/README.md`](research/README.md) 是現行指引**, 其餘是紀錄: 它們刻意保留被後來證據推翻的段落, 所以不進「指引是否還對」的稽核範圍. 分界寫在 [`document-inventory.json`](document-inventory.json), 由 `test_document_inventory.py` 盯住, 由 [`scripts/docs-size-report.py`](../scripts/docs-size-report.py) 分層回報.
 5. 文件改動仍需通過 contract tests, 連結檢查, `git diff --check` 與部署 dry-run.
 6. 語言分層: runtime 檔案 (contracts, roles, skills, script 註解) 的**操作本體** (指令, 流程, 格式) 用英文, 人讀文件用 zh-TW. 窄例外: skill/agent `description` 的**觸發詞**與對使用者輸出的**模板**可用所需語言以對上使用者; `readable-zh-tw` 是繁中素材. 其餘 runtime 中文即漂移.
 7. 標點: 人讀文件寫 zh-TW 文字 + 英文術語 + 半形標點 (`, . : ; ? ! ( ) " ' -`), 標點後空一格, 本條自身即範例. 全形只留在五處:

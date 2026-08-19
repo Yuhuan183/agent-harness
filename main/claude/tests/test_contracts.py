@@ -1657,15 +1657,25 @@ class DocumentationBudgetTests(unittest.TestCase):
         # justification comment for ordinary growth: `docs/` is pull cost, and
         # a reader who opens a long document chose to. What this catches is the
         # one failure a reader cannot choose their way out of — a document that
-        # has stopped being a document — and it sits an order of magnitude
-        # above anything the tree has ever held (largest today:
-        # docs/research/model-evidence.md, ~6.9K words).
+        # has stopped being a document.
+        #
+        # This comment used to say the ceiling sat an order of magnitude above
+        # anything the tree had held, naming model-evidence.md at ~6.9K words.
+        # That stopped being true and nothing said so: the largest document on
+        # 2026-08-19 is docs/research/landing-log.md at 13,765 words, 69% of the
+        # ceiling. The headroom is 1.45x, not 10x.
+        #
+        # That matters most for the append-only journals (landing-log,
+        # lifecycle-replay, clause-pricing), which grow by design and will reach
+        # this number. When one does, the remedy is the one docs/README.md rule
+        # 8 already names — split it, here by period, since a journal has no
+        # other seam — and never to raise the constant.
         #
         # The shape is borrowed from MAX_BYTES_PER_WORD, whose own comment says
         # a guard like this "must never become a second, tighter word budget".
-        # If a file approaches this number the answer is to split it or move
-        # content to its real owner, never to raise the constant. Sizes are
-        # reported, not asserted, by `scripts/docs-size-report.py`.
+        # Sizes are reported, not asserted, by `scripts/docs-size-report.py`,
+        # which splits the tree into the guidance tier that has to stay true and
+        # the evidence tier that does not.
         for path in sorted((ROOT / "docs").rglob("*.md")):
             relative = path.relative_to(ROOT).as_posix()
             words = word_count(path.read_text(encoding="utf-8"))

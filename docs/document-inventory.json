@@ -1,11 +1,13 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "audit_id": "DOC-AUDIT-2026-07-28-ENVELOPE",
   "base_commit": "728936f",
+  "pattern_precedence": "Most specific wins: an exact path beats a glob. There is no recursive docs/**/*.md rule, so a new docs/ subdirectory is uncovered until someone classifies it.",
   "reviewed_current_guidance": [
     "README.md",
     "docs/*.md",
-    "docs/**/*.md",
+    "docs/plans/*.md",
+    "docs/research/README.md",
     "main/claude/*.md",
     "main/claude/agents/*.md",
     "main/claude/plans/orchestration-plan.md",
@@ -23,6 +25,7 @@
   ],
   "evidence_not_current_guidance": [
     "main/claude/plans/orchestration-history.md",
+    "docs/research/*.md",
     "evals/**/*.md",
     "evals/**/*.json",
     "docs/research/prompt-surface-census.json"
