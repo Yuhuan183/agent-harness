@@ -1201,14 +1201,26 @@ Evidence threshold:
 
 Likely distilled behavior: facts first, one blocking decision at a time, local checkable plan by default, external publishing only after explicit approval.
 
-## M7 — `evidence-ladder`: 決定 **不整併, 不採用** (2026-08-19)
+## M7 — `evidence-ladder`: 採用進 repo, 但不與任何一支合併 (2026-08-19)
 
-問題是全域的 `evidence-ladder` 有沒有跟本 repo 兩支打架或近似, 能不能收斂. 三個答案都是否定.
+問題是全域的 `evidence-ladder` 有沒有跟本 repo 兩支打架或近似, 能不能收斂. 答案是
+**不打架, 不合併, 但要納管** —— 它是使用者自己寫的 skill, 只存在 `~/.claude/skills/`,
+沒有版控.
 
-它不是本 repo 的檔案 —— `~/.claude/skills/evidence-ladder`, 不在 manifest, 130 常駐字,
-屬於[常駐盤點](../research/resident-context-options.md)裡「沒有機制在管」那 41 支.
+### 先更正一個錯的判定
 
-### 領地不重疊
+本節第一版寫「不採用, 因為採用要付 130 常駐字」. **那是錯的.** 它已經裝在
+`~/.claude/skills/`, 每個 Claude session 都在列它的 name 與 description —— 那 129 字
+**本來就在付**. 納管不新增成本, 只是讓棘輪看得見它, 正是
+[常駐盤點](../research/resident-context-options.md)那一節說缺的東西.
+
+第一版還把它當成第三方檔案, 套了「不是本 repo 的檔案, 做成閘沒有立場」. 使用者自撰的
+skill 不適用那條.
+
+實測佐證: 納管前後 `resident-pool-report.py` 的**合計完全沒動** (5013 words), 只有覆蓋率
+從 15.7% 移到 18.3%.
+
+### 為什麼領地不重疊, 所以不合併
 
 | skill | 回答的問題 |
 |---|---|
@@ -1216,37 +1228,52 @@ Likely distilled behavior: facts first, one blocking decision at a time, local c
 | `test-first-change` | 怎麼證明我改對了 |
 | `evidence-ladder` | 這個結論可以拿出去講嗎 |
 
-### 唯一近似的那條, 拆開是三件事
-
-「沒看過紅的綠不是證據」三支都有:
+唯一近似的是「沒看過紅的綠不是證據」, 三支都有, 但拆開是三件事:
 
 - `test-first-change` — 新測試在寫實作**前**要先紅, 且是預測的那個理由紅;
 - `evidence-debugging` — 症狀從沒被按需產生過, 綠只代表沒觀察到;
 - `evidence-ladder` — 把**修正本身**弄壞, 確認測試以**預測的量級**變紅, 再還原.
 
-第三個是 mutation testing, 另外兩支沒有. 整併會弄丟它.
+第三個是 mutation testing, 另外兩支沒有. 合併會弄丟它.
 
-### 沒有矛盾, 且它有六成內容 repo 沒有
+### 沒有矛盾, 而且它有六成內容 repo 沒有
 
-`evidence-ladder` 的不觸發已經把 code review 讓給專案的 skill, 且它不執行動作, 碰不到契約的
-權限邊界. 對全 repo skill (含 dev-only 的 `harness-review`) 做過概念層 grep: L0–L5 階梯,
-非循環參考系, 儀器校準, 環境不是目標, 結論耐久度表, 撤回協議 —— 一條都沒有對應. 四個字面
-命中全是同字不同義 (fallback 迴圈, 門檻重校, rung, 暫時性 log 標記).
+`evidence-ladder` 的不觸發已經把 code review 讓給專案的 skill, 且它不執行動作, 碰不到
+契約的權限邊界. 對全 repo skill (含 dev-only 的 `harness-review`) 做過概念層 grep:
+L0–L5 階梯, 非循環參考系, 儀器校準, 環境不是目標, 結論耐久度表, 撤回協議 —— 一條都沒有
+對應. 四個字面命中全是同字不同義 (fallback 迴圈, 門檻重校, rung, 暫時性 log 標記).
 
-### 為什麼不採用進 repo
+### 採用的形狀
 
-`e4` 的 turn 是「這份批次的 per-run 模式表明天要放進 write-up 引用. 先確認它可信.」,
-`evidence-ladder` 在那格被自主選中 3/5 —— 正對上它描述裡的「要把量測數字寫進文件」.
-它是這台機器上唯一一支**依自己的觸發語**被正確選中的 skill.
+沿用兩支蒸餾 skill 的做法: 來源在 `main/.agents/skills/evidence-ladder/`, 兩側各一條整
+目錄 symlink, 逐位元組一致.
 
-那是不採用的理由, 不是採用的理由: 它現在就在正確運作, 而採用要付 130 常駐字 (Claude 側
-skill metadata 787/790, 只剩 3 字, 得先抬預算), 換到同樣的行為加一份要維護的 attribution.
-M6 的結論在此同樣成立 —— 第三支上去最可能的結果是再得到一組 0/5.
+| | |
+|---|---|
+| ATTRIBUTION | **無** —— 本 repo 自撰, 不是上游蒸餾 |
+| Codex `allow_implicit_invocation` | `false`, 與兩支蒸餾 skill 同 —— Claude 側的觸發證據不能轉移 |
+| 本文 | 照原樣收, 不改寫成 house style |
+| description | 129 字 (單項上限 180) |
+
+**照原樣收是刻意的.** 它現在就在正確運作, 而把能用的散文改寫成別支的形狀, 正是 M5 那七批
+學到不要做的那種沒量過的改動.
+
+### 預算
+
+| | 前 | 後 | 上限 |
+|---|---:|---:|---:|
+| Claude skill metadata | 787 | 916 | 790 → 934 |
+| Codex skill metadata | 707 | 836 | 710 → 853 |
+| 本文 (兩側同源) | — | 1172 | 1195 |
+
+兩個抬升不是同一種數字: **Claude 側買不到任何東西**, 只是把已經在付的帳記進預算; Codex 側
+是真的新增 129 字, 因為它從來沒部署到那邊, 而 provider-neutral 的方法型 skill 兩側都有是
+本 repo 對其他每一支的做法.
 
 ### 推翻條件
 
-`task-observer` 累積到三次「該用 `evidence-debugging` 卻載入 `evidence-ladder`」或反向的
-實例, 才動描述. 目前一次都沒量到, 而 M5 的教訓正是: 為沒量到的問題改描述會是第四次犯同一個錯.
+`task-observer` 累積到三次「該用其中一支卻載入另一支」的實例, 才動描述. 目前一次都沒量到,
+而 M5 的教訓正是: 為沒量到的問題改描述會是第四次犯同一個錯.
 
 順帶記一筆不處理的: `evidence-debugging` 與 `test-first-change` 各有一條「摸到你的動作,
 不是摸到結果」, 幾乎逐字相同. 那是 skill body (dispatch 成本) 且兩支各自獨立載入, 只載其中

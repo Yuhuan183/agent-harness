@@ -14,6 +14,12 @@ Decide the dispatch shape — direct, one agent, bounded parallel, workflow, or 
 
 Diagnose a reported defect from a reproduction you have actually run, and stop at the root cause unless repair was asked for. Invoke when the request says something is broken, failing, throwing, flaky, wrong, or slow, or asks to diagnose or debug — and in zh-TW: 出問題, 壞了, 掛了, 不會動, 有 bug, 很慢, 為什麼會, 查一下, 幫我看. Do not use for explaining code, reviewing a diff, refactoring, or writing a test for behaviour that already works.
 
+## evidence-ladder
+
+Establish that a technical claim is true — pick the cheapest sufficient level of evidence, avoid circular proof, calibrate instruments before trusting them, and record conclusions at the right durability.
+觸發：「這個結論可靠嗎」「怎麼證明」「測試夠不夠」「我推導出 X」、下結論前的自我檢查、要把量測數字寫進文件、發現先前結論可能有誤。
+不觸發：例行實作沒有爭議的結論、單純跑既有 gate、程式碼審查流程本身（用該專案的 review skill）。
+
 ## experience-ledger
 
 Dispatch experience ledger and analysis — log each outcome after QC, accumulate role × provider metrics (AR/CR/RB/FR/QS), and steer data-driven provider choice.

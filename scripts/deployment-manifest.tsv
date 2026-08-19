@@ -21,6 +21,7 @@ main/claude/skills/evidence-debugging	.claude/skills/evidence-debugging
 main/claude/skills/test-first-change	.claude/skills/test-first-change
 main/claude/skills/experience-ledger	.claude/skills/experience-ledger
 main/claude/skills/task-observer	.claude/skills/task-observer
+main/claude/skills/evidence-ladder	.claude/skills/evidence-ladder
 main/codex/AGENTS.contract.md	.codex/AGENTS.md
 main/codex/README.md	.codex/README.md
 main/codex/ANALYSIS.md	.codex/ANALYSIS.md
@@ -37,3 +38,4 @@ main/codex/skills/evidence-debugging	.codex/skills/evidence-debugging
 main/codex/skills/test-first-change	.codex/skills/test-first-change
 main/codex/skills/experience-ledger	.codex/skills/experience-ledger
 main/codex/skills/task-observer	.codex/skills/task-observer
+main/codex/skills/evidence-ladder	.codex/skills/evidence-ladder

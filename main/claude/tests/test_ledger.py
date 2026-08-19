@@ -152,6 +152,7 @@ class SharedSkillTests(unittest.TestCase):
             installed,
             [
                 "evidence-debugging",
+                "evidence-ladder",
                 "experience-ledger",
                 "headroom-protocol",
                 "speak-human-tw",
