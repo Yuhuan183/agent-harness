@@ -4454,5 +4454,92 @@ class ResidentPoolReportTests(unittest.TestCase):
             - {"repo-managed", "project", "unmanaged"})
 
 
+class ManagedTargetGuardTests(unittest.TestCase):
+    """The gate is only worth having if it refuses the right file and no other.
+
+    Written after the failure it exists for: on 2026-08-19 a contract clause was
+    written into `~/.claude/CLAUDE.md` instead of the source the manifest
+    deploys from, by a session that had read the manifest the day before. The
+    edit looked applied, was tested by nothing, and would have been reverted by
+    the next `sync.sh --apply`.
+
+    Every case runs against a temporary HOME so the verdicts are the manifest's,
+    not this machine's.
+    """
+
+    HOOK = ROOT / "main/claude/hooks/managed-target-guard.py"
+
+    def guard(self, path, home, tool="Write", repo=str(ROOT)):
+        payload = {"tool_name": tool, "tool_input": {"file_path": str(path)}}
+        return subprocess.run(
+            [sys.executable, str(self.HOOK)], input=json.dumps(payload),
+            capture_output=True, text=True, timeout=60,
+            env={**os.environ, "HOME": home, "AGENT_HARNESS_REPO": repo})
+
+    def test_it_blocks_a_wholesale_target_and_names_the_source(self) -> None:
+        with tempfile.TemporaryDirectory() as home:
+            result = self.guard(Path(home) / ".claude/CLAUDE.md", home)
+        self.assertEqual(2, result.returncode, result.stderr)
+        # Naming the source is the whole value: the reader is one step from the
+        # right file, instead of knowing only that this one was wrong.
+        self.assertIn("main/claude/CLAUDE.contract.md", result.stderr)
+
+    def test_it_resolves_a_link_that_reaches_managed_bytes(self) -> None:
+        """A path the manifest never lists can still land on managed bytes.
+
+        The first version of this test linked `~/.claude/skills/<name>` to
+        `~/.agents/skills/<name>`, which is the real deployed layout - and it
+        passed with the resolution deleted, because that literal path is a
+        manifest row in its own right. It proved nothing. The case that needs
+        `realpath` is a link from somewhere unlisted, which is what any
+        convenience symlink into the skill tree is.
+        """
+        with tempfile.TemporaryDirectory() as home:
+            managed = Path(home) / ".agents/skills/evidence-debugging"
+            managed.mkdir(parents=True)
+            link = Path(home) / "shortcut"
+            link.symlink_to(managed)
+            result = self.guard(link / "SKILL.md", home, tool="Edit")
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn("main/.agents/skills/evidence-debugging", result.stderr)
+
+    def test_it_leaves_merged_targets_and_strangers_alone(self) -> None:
+        """A three-column row holds machine state this repo never authors, and a
+        skill it does not ship is not its business. Both have to stay writable or
+        the gate stops being narrow and starts being in the way."""
+        with tempfile.TemporaryDirectory() as home:
+            for allowed in (".claude/settings.json", ".codex/config.toml",
+                            ".claude/settings.local.json",
+                            ".agents/skills/not-ours/SKILL.md",
+                            ".claude/telemetry/notes.txt"):
+                with self.subTest(path=allowed):
+                    result = self.guard(Path(home) / allowed, home)
+                    self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_it_fails_open_when_it_cannot_read_the_manifest(self) -> None:
+        """A gate that cannot evaluate its condition must not answer anyway.
+
+        No checkout means every unrelated edit in every session would be
+        refused, which is a worse failure than the one this prevents. It says so
+        on stderr rather than failing silently.
+        """
+        with tempfile.TemporaryDirectory() as home:
+            result = self.guard(Path(home) / ".claude/CLAUDE.md", home,
+                                repo=str(Path(home) / "gone"))
+        self.assertEqual(0, result.returncode)
+        self.assertIn("not enforced", result.stderr)
+
+    def test_it_ignores_tools_that_do_not_write(self) -> None:
+        with tempfile.TemporaryDirectory() as home:
+            result = self.guard(Path(home) / ".claude/CLAUDE.md", home,
+                                tool="Read")
+            self.assertEqual(0, result.returncode, result.stderr)
+            malformed = subprocess.run(
+                [sys.executable, str(self.HOOK)], input="not json",
+                capture_output=True, text=True, timeout=60,
+                env={**os.environ, "HOME": home})
+            self.assertEqual(0, malformed.returncode)
+
+
 if __name__ == '__main__':
     unittest.main()
