@@ -2,6 +2,6 @@ evidence-debugging
 evidence-ladder
 experience-ledger
 headroom-protocol
-speak-human-tw
+readable-zh-tw
 task-observer
 test-first-change

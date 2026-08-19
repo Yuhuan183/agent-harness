@@ -18,7 +18,7 @@
 |---|---|
 | `skills/headroom-protocol/` | 共用 skill 本體 (含 Codex 端 `agents/openai.yaml`); `.claude/skills` 與 `.codex/skills` 各以 symlink 引用 |
 | `skills/experience-ledger/` | 共用 skill 本體: 派工經驗記帳與指標分析 (含 `scripts/`); 帳本在 `~/.agents/telemetry/` (machine-local 不入庫) |
-| `skills/speak-human-tw/` | 共用 skill 本體: 繁中去 AI 味改寫 (蒸餾自上游, 見其 `ATTRIBUTION.md`); 同以 symlink 雙端引用 |
+| `skills/readable-zh-tw/` | 共用 skill 本體: 繁中去 AI 味改寫 (蒸餾自上游, 見其 `ATTRIBUTION.md`); 同以 symlink 雙端引用 |
 | `skills/task-observer/` | skill 使用受挫時主動詢問, 明確同意後才記錄改善觀察; append-only JSONL 帳本在 `~/.agents/telemetry/`, 不會自動修改 skill |
 | `skills/evidence-debugging/` | 共用 skill 本體: 以已跑過的重現做診斷, 診斷與修復是兩種授權 (蒸餾自上游, 見其 `ATTRIBUTION.md`); 同以 symlink 雙端引用 |
 | `skills/test-first-change/` | 共用 skill 本體: 先寫會紅的檢查再改行為, seam 必須抵達可觀察結果 (蒸餾自上游, 見其 `ATTRIBUTION.md`); 同以 symlink 雙端引用 |

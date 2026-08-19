@@ -54,7 +54,7 @@ RESIDENT_CONTRACT_BUDGETS = {
     #
     # 599 -> 621 on 2026-08-19, and this one is new content rather than a
     # correction: the language clause now routes by reader - user-facing prose
-    # answers to `speak-human-tw`'s standard, agent-facing text stays terse - and
+    # answers to `readable-zh-tw`'s standard, agent-facing text stays terse - and
     # a separate rule forbids the filler both were carrying. Distilled from that
     # skill's own pattern list, category four, which is the residue a
     # conversational assistant leaves: flattery, preamble announcing what
@@ -1194,9 +1194,9 @@ class DocumentationBudgetTests(unittest.TestCase):
         # 37 and 25 words. The reason is a measurement, not a preference: across
         # five replay batches these two loaded in 5 of 30 runs, and they were the
         # only two deployed skills whose descriptions carried no Chinese at all -
-        # speak-human-tw 121 characters of it, headroom-protocol 48,
+        # readable-zh-tw 121 characters of it, headroom-protocol 48,
         # experience-ledger 32, task-observer 15, these two zero - in a project
-        # whose requests arrive in Chinese. speak-human-tw is 176 words wide for
+        # whose requests arrive in Chinese. readable-zh-tw is 176 words wide for
         # exactly this reason and has been since it landed.
         #
         # Whether skill selection is lexical is a hypothesis, not something this
@@ -1224,7 +1224,7 @@ class DocumentationBudgetTests(unittest.TestCase):
         # shape - the flip is what buys the resident cost, so the flip is where
         # the decision belongs.
         metadata_budgets = {"claude": 934, "codex": 525}
-        # The widest legitimate description today is speak-human-tw at 176: it
+        # The widest legitimate description today is readable-zh-tw at 176: it
         # states its triggers twice, in zh-TW and English, because it is the
         # one skill invoked by users in either language.
         per_skill_budget = 180
@@ -1371,7 +1371,7 @@ class DocumentationBudgetTests(unittest.TestCase):
     def test_the_widest_description_keeps_every_trigger_it_pays_for(self) -> None:
         """A description is resident cost *and* the only routing surface.
 
-        speak-human-tw is the largest always-resident description in the repo,
+        readable-zh-tw is the largest always-resident description in the repo,
         which makes it the standing trim candidate — and trimming it is the one
         edit whose damage no test here can see, because whether a skill loads is
         decided by a model reading this text, not by anything mechanical.
@@ -1392,7 +1392,7 @@ class DocumentationBudgetTests(unittest.TestCase):
         asserted, so whenever a trim does happen it has to come out of genuine
         duplication rather than out of the tokens that make the skill load.
         """
-        frontmatter_text = frontmatter(".agents/skills/speak-human-tw/SKILL.md")
+        frontmatter_text = frontmatter(".agents/skills/readable-zh-tw/SKILL.md")
         # Every phrasing a user is expected to invoke it by, in both languages.
         for trigger in ("去 AI 味", "說人話", "這段好 AI", "改自然一點",
                         "校對再發", "審查", "改寫",
@@ -1494,14 +1494,14 @@ class DocumentationBudgetTests(unittest.TestCase):
             # The four below were unbudgeted until 2026-07-30: the ceiling
             # existed on the three files someone had remembered, not on the
             # tier, so the largest dispatch-time surface in the repo
-            # (speak-human-tw) had no limit at all. Each is set at its measured
+            # (readable-zh-tw) had no limit at all. Each is set at its measured
             # size plus ~2%, which is what the three above already are (100%,
             # 99%, 98% used). The number is not a researched threshold — the
             # repo's own sources say none is derivable
             # (docs/research/context-and-vendors.md) — it is a ratchet: growth
             # has to displace something or be argued for in the commit message.
             #
-            # experience-ledger and speak-human-tw are one source each, shared
+            # experience-ledger and readable-zh-tw are one source each, shared
             # by both providers through a symlink; both deployed surfaces are
             # listed because both are what a session actually loads.
             ".claude/skills/experience-ledger/SKILL.md": 980,
@@ -1509,8 +1509,8 @@ class DocumentationBudgetTests(unittest.TestCase):
             # Largest dispatch-time body in the repo, and the one that states
             # its triggers twice (zh-TW and English) because either language
             # can invoke it. Trimming it is deliberately a separate task.
-            ".claude/skills/speak-human-tw/SKILL.md": 2090,
-            ".codex/skills/speak-human-tw/SKILL.md": 2090,
+            ".claude/skills/readable-zh-tw/SKILL.md": 2090,
+            ".codex/skills/readable-zh-tw/SKILL.md": 2090,
             # Claude's copies are thin pointers; Codex carries the procedure,
             # so the two sides of these two skills are genuinely different
             # files and get their own ceilings rather than a shared one.
@@ -1635,7 +1635,7 @@ class DocumentationBudgetTests(unittest.TestCase):
 
         Scoped to human-facing docs, where the rule has no exceptions. All five
         exempt categories live outside this glob - verbatim external quotes,
-        `speak-human-tw` material, `evals/traps/**` fixtures, skill
+        `readable-zh-tw` material, `evals/traps/**` fixtures, skill
         descriptions and user-facing templates, and full-width literals used as
         match data - so a failure here is drift and never a false positive.
         Quotes and dashes are excluded because they have no half-width form,
@@ -1841,11 +1841,11 @@ class DocumentationBudgetTests(unittest.TestCase):
                     missing.append(f"main/{provider}/README.md: {name}")
         self.assertEqual([], missing)
 
-    # `speak-human-tw` identifies its upstream by tag alone (v1.4.0). Left as
+    # `readable-zh-tw` identifies its upstream by tag alone (v1.4.0). Left as
     # it is on purpose: retro-fitting a SHA means resolving what that tag
     # pointed at when the skill was distilled, which nobody can do from here.
     # It is grandfathered, not exempt - the ceiling is one entry and shrinks.
-    ATTRIBUTION_WITHOUT_A_COMMIT = {"speak-human-tw"}
+    ATTRIBUTION_WITHOUT_A_COMMIT = {"readable-zh-tw"}
 
     # Files that state which upstream commit the distillation was made against.
     # Adding one here is how a new document joins the set that must move together

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Speak Human TW"
-  short_description: "Polish zh-TW copy into natural, Taiwan-localized prose"
-  default_prompt: "Use $speak-human-tw to rewrite this zh-TW copy naturally while preserving every fact and the author's voice."

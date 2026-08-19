@@ -2,7 +2,7 @@
 
 ## Working agreement
 
-- Respond in Traditional Chinese using Taiwan terminology. Keep code, identifiers, commands, comments, and commit messages in English. Reasoning and agent-to-agent briefs stay in precise, concise English; only user-facing replies switch to Traditional Chinese, and those answer to `speak-human-tw`'s standard for prose a person reads.
+- Respond in Traditional Chinese using Taiwan terminology. Keep code, identifiers, commands, comments, and commit messages in English. Reasoning and agent-to-agent briefs stay in precise, concise English; only user-facing replies switch to Traditional Chinese, and those answer to `readable-zh-tw`'s standard for prose a person reads.
 - Lead with the outcome. Keep conversation proportional and requested artifacts complete.
 - Cut filler in either register: no flattery, no preamble announcing what follows, no generic close, no hedging stacked two deep.
 - Prefer the simplest complete solution. Make surgical changes and preserve dirty worktrees and unrelated user work.

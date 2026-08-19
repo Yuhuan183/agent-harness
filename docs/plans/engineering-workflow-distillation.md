@@ -172,7 +172,7 @@ false-positive 檢查:
 觀察期內要求明示呼叫. 三個 skill 目前都是 false.
 
 **Codex 側的使用細節**: `$name` 要放在**句首**. 寫成「Use $name. …」叫不動 —— 這是實測出來的,
-第一次探測差點因此被報成「skill 在 Codex 上不能用」的嚴重缺陷, 是對照組 (`$speak-human-tw`
+第一次探測差點因此被報成「skill 在 Codex 上不能用」的嚴重缺陷, 是對照組 (`$readable-zh-tw`
 同樣句式) 擋下來的.
 
 ## 三個 skill 的分工

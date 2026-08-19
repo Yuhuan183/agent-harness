@@ -58,7 +58,7 @@ skill metadata 逐項 (兩側共用的描述逐字相同):
 
 | skill | words | 備註 |
 |---|---|---|
-| `speak-human-tw` | 176 | 單項上限 180, 只剩 4 words. 雙語各述一次, 因為它是唯一會被使用者以任一語言直接叫用的 skill |
+| `readable-zh-tw` | 176 | 單項上限 180, 只剩 4 words. 雙語各述一次, 因為它是唯一會被使用者以任一語言直接叫用的 skill |
 | `task-observer` | 102 | |
 | `headroom-protocol` | 92 | |
 | `baton-dispatch` | 88 | Claude 專有 |
@@ -122,10 +122,10 @@ Codex 側餘裕 38 words (約半支 skill 的描述) 是這份盤點的直接動
 
 ### L1 · description 修剪
 
-`speak-human-tw` 176 words, 是中位數的兩倍, 也是唯一逼近單項上限的.
+`readable-zh-tw` 176 words, 是中位數的兩倍, 也是唯一逼近單項上限的.
 s10-skill-recall 四臂實測 (2026-07-31): 砍文件類型列舉 (B) 或砍不觸發排除項 (C)
 單獨做, 鑑別度無損; **兩個都砍 (D) 精確度立刻崩**, 3 樣本中 1 次把 nginx 設定檔/
-error log/Python 程式碼全導向 `speak-human-tw`.
+error log/Python 程式碼全導向 `readable-zh-tw`.
 
 那 176 words 因此有一部分是**冗餘覆蓋**: 兩條子句互相補位.
 

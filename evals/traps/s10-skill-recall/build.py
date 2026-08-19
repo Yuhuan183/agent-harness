@@ -15,7 +15,7 @@ differs from pristine in two ways cannot attribute a difference to either.
 
 Each variant is now pristine with declared levers removed, and **a lever that
 does not match exactly once is a hard error**. That is the property worth having:
-if `speak-human-tw` is reworded, this fails loudly instead of writing an arm that
+if `readable-zh-tw` is reworded, this fails loudly instead of writing an arm that
 is silently identical to pristine and measures nothing. The first arm-B cut
 failed in that family already - it dropped the zh-TW exclusion and left the
 English one, and all three runs cited the surviving clause, voiding the precision
@@ -38,7 +38,7 @@ BUNDLE = HERE / "pristine" / "descriptions.md"
 VARIANTS = HERE / "variants"
 
 # The levers, spelled as the exact bytes they remove from the generated bundle.
-# Both are on `speak-human-tw`, which is the skill these arms are about; the
+# Both are on `readable-zh-tw`, which is the skill these arms are about; the
 # exclusion lever is two substitutions because the clause is stated in both
 # languages and cutting only one is the defect that voided the first arm B.
 LEVERS = {

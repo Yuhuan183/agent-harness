@@ -60,9 +60,9 @@
         {
           "bytes": 6625,
           "file_bytes": 7373,
-          "file_sha256": "31e205d647c6139fc96529bc3518ab8a0606fc6282ddf144925812b04373e840",
+          "file_sha256": "a7cb9edf73f7d70c4e3a44b87263ef4e71acff1b9480d23fa17e86587469d9f0",
           "kind": "skill-body",
-          "path": "main/claude/skills/speak-human-tw/SKILL.md",
+          "path": "main/claude/skills/readable-zh-tw/SKILL.md",
           "sha256": "66d37748198b3e73a9e76cd47ea941595eec4d4d152a129be45b0689149c3024",
           "words": 1864
         },
@@ -89,7 +89,7 @@
         {
           "bytes": 3192,
           "path": "main/claude/CLAUDE.contract.md",
-          "sha256": "eb5fc5382ef3d38fe5ce3b0db981b7e69363a563a144c85a8eb1ef0b8f7a5170",
+          "sha256": "e927645afb114369c6cba638ce00c92162c4bba0e9195057a4c930ff1ad8a4d2",
           "words": 472
         },
         {
@@ -149,10 +149,10 @@
         {
           "bytes": 696,
           "file_bytes": 7373,
-          "file_sha256": "31e205d647c6139fc96529bc3518ab8a0606fc6282ddf144925812b04373e840",
+          "file_sha256": "a7cb9edf73f7d70c4e3a44b87263ef4e71acff1b9480d23fa17e86587469d9f0",
           "kind": "skill-metadata",
-          "path": "main/claude/skills/speak-human-tw/SKILL.md",
-          "sha256": "150ad4476f5a44ec47d4697557d9ecad45f5e1145fdc4b93f25a65467ab40b5a",
+          "path": "main/claude/skills/readable-zh-tw/SKILL.md",
+          "sha256": "09383e5b3026e8d6509defaaadb0e134a2a3d4cf5d54c196ec23f2eaa1f27068",
           "words": 176
         },
         {
@@ -376,9 +376,9 @@
         {
           "bytes": 6625,
           "file_bytes": 7373,
-          "file_sha256": "31e205d647c6139fc96529bc3518ab8a0606fc6282ddf144925812b04373e840",
+          "file_sha256": "a7cb9edf73f7d70c4e3a44b87263ef4e71acff1b9480d23fa17e86587469d9f0",
           "kind": "skill-body",
-          "path": "main/codex/skills/speak-human-tw/SKILL.md",
+          "path": "main/codex/skills/readable-zh-tw/SKILL.md",
           "sha256": "66d37748198b3e73a9e76cd47ea941595eec4d4d152a129be45b0689149c3024",
           "words": 1864
         },
@@ -405,7 +405,7 @@
         {
           "bytes": 4159,
           "path": "main/codex/AGENTS.contract.md",
-          "sha256": "315bbab081f1c613d84be9a9ff139850b8d13b6c1d7b1ed6858e10ca71fafabf",
+          "sha256": "e7cfa6f7dbca2ff668a7e2b4a4c7cd08986c0a925bea2c81d0734d431e8920b1",
           "words": 609
         },
         {
@@ -441,11 +441,11 @@
         {
           "bytes": 696,
           "file_bytes": 7373,
-          "file_sha256": "31e205d647c6139fc96529bc3518ab8a0606fc6282ddf144925812b04373e840",
+          "file_sha256": "a7cb9edf73f7d70c4e3a44b87263ef4e71acff1b9480d23fa17e86587469d9f0",
           "injected": true,
           "kind": "skill-metadata",
-          "path": "main/codex/skills/speak-human-tw/SKILL.md",
-          "sha256": "150ad4476f5a44ec47d4697557d9ecad45f5e1145fdc4b93f25a65467ab40b5a",
+          "path": "main/codex/skills/readable-zh-tw/SKILL.md",
+          "sha256": "09383e5b3026e8d6509defaaadb0e134a2a3d4cf5d54c196ec23f2eaa1f27068",
           "words": 176
         },
         {
@@ -587,12 +587,12 @@
     "claude": {
       "dispatch": {
         "bytes": 47281,
-        "payload_sha256": "0f21ed79e2a2a15cfeca77966fc05726da03dceb72e895cbf9d1ab50777971e6",
+        "payload_sha256": "e7b041e1f1eab86c78838656878e0fabfccbcff7ab4b8f5162e2c4d90e539786",
         "words": 7930
       },
       "resident": {
         "bytes": 8900,
-        "payload_sha256": "d24245d8e9fbd2dd46c804c3cb0a54b0c62a4e0e804f6b2c03b21e0b582f61db",
+        "payload_sha256": "b3e540d649b516ce9b051684bdc1e93db3c232d82a18fecdbb51cd4fcfd06990",
         "words": 1524
       },
       "roles": {
@@ -604,12 +604,12 @@
     "codex": {
       "dispatch": {
         "bytes": 45007,
-        "payload_sha256": "dabbcc29bfaa68eeef9005fc70649e0fd06447cbcd2dbe2b0b4b4ddd3cb8ed4c",
+        "payload_sha256": "0dddef5a53067ba117d5bc4315f3047a4da892dfcfbe34a9d9141fccf7e7344f",
         "words": 7682
       },
       "resident": {
         "bytes": 7344,
-        "payload_sha256": "840398db4e08be9b30f722cf4c75a8c2cb4f8263aa55da5a3bddbef524373490",
+        "payload_sha256": "9e3538381eb9fc11fb14c1b962d35ffe5f9f1eed32845cb619f4f42a3e2a1f66",
         "words": 1185
       },
       "roles": {

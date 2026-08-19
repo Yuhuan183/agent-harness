@@ -1645,15 +1645,15 @@ class TrapGraderIntegrityTests(unittest.TestCase):
     }
 
     def _speak_human_section(self, body: str) -> str:
-        """Just the speak-human-tw block.
+        """Just the readable-zh-tw block.
 
         Scoping matters: four other descriptions also carry a `不觸發：` line,
         so a whole-file search for that token says nothing about the skill under
         test — it was the first thing to make this test lie.
         """
-        _, _, after = body.partition("## speak-human-tw")
+        _, _, after = body.partition("## readable-zh-tw")
         section, _, _ = after.partition("\n## ")
-        self.assertTrue(section.strip(), "speak-human-tw section not found")
+        self.assertTrue(section.strip(), "readable-zh-tw section not found")
         return section
 
     def test_each_selection_trap_variant_removes_what_it_claims_to(self) -> None:
@@ -1693,7 +1693,7 @@ class TrapGraderIntegrityTests(unittest.TestCase):
         half-removed bilingual pair does not weaken the surface, it just makes
         the arm quietly agree with the control.
 
-        `speak-human-tw` is the only description stating its rules in two
+        `readable-zh-tw` is the only description stating its rules in two
         languages, which is why the pair map is short and explicit rather than
         inferred, and why it is checked inside that section only.
         """

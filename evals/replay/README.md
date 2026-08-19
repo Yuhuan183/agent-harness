@@ -1520,7 +1520,7 @@ would be stamped exactly like the one before it.
 ### The trigger change, and its refutation
 
 Both distilled skills were the only two in the deployed set whose descriptions
-listed their triggers in English alone — speak-human-tw carries 121 Chinese
+listed their triggers in English alone — readable-zh-tw carries 121 Chinese
 characters, headroom-protocol 48, experience-ledger 32, task-observer 15, these
 two zero — in a project whose requests arrive in Chinese. Both descriptions now
 state their triggers in both languages, deployed and verified byte-identical on

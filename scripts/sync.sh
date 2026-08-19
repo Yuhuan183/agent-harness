@@ -542,7 +542,7 @@ log "note: ~/.codex/config.toml is merged section-scoped ([agents] only, see DEP
 if [[ $APPLY -eq 1 ]]; then
   # Shared skill symlinks and platform wrappers resolve to SKILL.md.
   for l in "$HOME/.claude/skills/headroom-protocol" "$HOME/.codex/skills/headroom-protocol" \
-           "$HOME/.claude/skills/speak-human-tw" "$HOME/.codex/skills/speak-human-tw" \
+           "$HOME/.claude/skills/readable-zh-tw" "$HOME/.codex/skills/readable-zh-tw" \
            "$HOME/.claude/skills/experience-ledger" "$HOME/.codex/skills/experience-ledger" \
            "$HOME/.claude/skills/task-observer" "$HOME/.codex/skills/task-observer"; do
     [[ -f "$l/SKILL.md" ]] || { log "ERROR: $l failed to resolve to SKILL.md"; exit 1; }

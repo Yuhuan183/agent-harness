@@ -1,6 +1,12 @@
 # Attribution
 
-本 skill（`speak-human-tw`）蒸餾改寫自上游開源專案：
+本 skill（`readable-zh-tw`）蒸餾改寫自上游開源專案：
+
+> 2026-08-19 由 `speak-human-tw` 更名為 `readable-zh-tw`。上游專案仍名為
+> `speak-human-tw`，更名只發生在我方這一份。改名的理由是目標分岔：上游要的是
+> 「讀起來像真人寫的」，我方要的是「AI 回應通俗近人且好讀」，兩者在版面規則上
+> 相反（上游少用列表與粗體，我方要掃讀）。已記錄的實驗產物（`evals/**/runs/`）
+> 保留舊名，因為那是當時的事實。
 
 - 專案：[speak-human-tw](https://github.com/Raymondhou0917/speak-human-tw) v1.4.0
 - 作者：Raymond Hou（雷蒙三十）
