@@ -1,0 +1,12 @@
+interface:
+  display_name: "Evidence Ladder"
+  short_description: "Pick the cheapest level of evidence a claim actually needs"
+  default_prompt: "Use $evidence-ladder to decide what evidence this claim needs before asserting it."
+policy:
+  # Explicit-only, matching the two distilled skills. The Claude side has some
+  # evidence this fires on the right ask - it was chosen 3 of 5 on the `e4` cell,
+  # whose turn is "確認它可信" before a write-up, which is its own stated
+  # trigger - but that evidence does not transfer: Codex resolves skills through
+  # a different surface and has never run this one. Nothing bounds a false
+  # positive there yet, so invocation stays explicit until it is measured.
+  allow_implicit_invocation: false

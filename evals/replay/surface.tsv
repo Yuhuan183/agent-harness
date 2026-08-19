@@ -28,6 +28,7 @@ main/claude/skills/experience-ledger/SKILL.md
 main/claude/skills/task-observer/SKILL.md
 main/claude/skills/evidence-debugging/SKILL.md
 main/claude/skills/test-first-change/SKILL.md
+main/claude/skills/evidence-ladder/SKILL.md
 main/claude/hooks/experience-pending.py
 main/claude/hooks/leaf-redispatch.py
 main/claude/hooks/runtime-guard.py

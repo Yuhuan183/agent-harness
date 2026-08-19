@@ -1145,7 +1145,16 @@ class DocumentationBudgetTests(unittest.TestCase):
         # Whether skill selection is lexical is a hypothesis, not something this
         # repo has established. `skills_invoked` moving off 0 of 5 on `e1` is what
         # would support it; nothing here assumes it in advance.
-        metadata_budgets = {"claude": 790, "codex": 710}
+        # 790/710 -> 934/853 on 2026-08-19 for `evidence-ladder`, measured at
+        # 916/836. The two halves of that raise are not the same kind of number
+        # and the commit message says so: on Claude it buys nothing, because the
+        # skill was already installed in `~/.claude/skills` and already listed in
+        # every session - the ratchet simply could not see it, which is the
+        # coverage gap `scripts/resident-pool-report.py` was written to measure.
+        # On Codex it is 129 genuinely new resident words: the skill has never
+        # been deployed there, and parity for a provider-neutral method skill is
+        # what this repo does with every other one.
+        metadata_budgets = {"claude": 934, "codex": 853}
         # The widest legitimate description today is speak-human-tw at 176: it
         # states its triggers twice, in zh-TW and English, because it is the
         # one skill invoked by users in either language.
@@ -1470,6 +1479,15 @@ class DocumentationBudgetTests(unittest.TestCase):
             # anyone recording it. Measured 971 + ~2%.
             ".claude/skills/test-first-change/SKILL.md": 991,
             ".codex/skills/test-first-change/SKILL.md": 991,
+            # Adopted 2026-08-19, written in this repo rather than distilled, so
+            # there is no ATTRIBUTION beside it. Measured 1172 + ~2%. It is the
+            # third largest dispatch body here and the ceiling is set from what
+            # it is, not from what the two distilled skills came out at - it
+            # carries a six-level ladder, four evidence rules and a recording
+            # table, and compressing it to look like its neighbours would be
+            # rewriting working prose to match a shape.
+            ".claude/skills/evidence-ladder/SKILL.md": 1195,
+            ".codex/skills/evidence-ladder/SKILL.md": 1195,
         }
         self.assertEqual(
             {path for path in budgets if "/skills/" in path},

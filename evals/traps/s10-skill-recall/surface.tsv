@@ -18,6 +18,7 @@
 # Recompute: evals/scripts/trap-surface.py --trap s10-skill-recall
 main/claude/skills/baton-dispatch/SKILL.md
 main/claude/skills/evidence-debugging/SKILL.md
+main/claude/skills/evidence-ladder/SKILL.md
 main/claude/skills/experience-ledger/SKILL.md
 main/claude/skills/headroom-protocol/SKILL.md
 main/claude/skills/provider-routing/SKILL.md
