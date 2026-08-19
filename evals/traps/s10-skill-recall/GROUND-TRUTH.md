@@ -8,7 +8,7 @@ Every other trap here measures what an agent does *after* a skill is loaded.
 Nothing measured the description itself. That gap had a concrete consequence: a
 skill description is simultaneously permanent resident cost and the only
 surface that routes work to the skill, so the word budget pushes it shorter
-while recall pushes it longer — and on 2026-07-30 a `speak-human-tw` trim was
+while recall pushes it longer — and on 2026-07-30 a `readable-zh-tw` trim was
 measured (19 words, ~2% of the resident tier) with no way to test what it cost.
 It was dropped for that reason, and `test_contracts.py` now pins the tokens.
 
@@ -26,7 +26,7 @@ recall measurement outright; that was an overclaim, corrected 2026-07-31.
 
 Eighteen utterances over the six installed skills. Three groups matter:
 
-**Recall-critical (U02, U05).** Match `speak-human-tw` only through a document
+**Recall-critical (U02, U05).** Match `readable-zh-tw` only through a document
 kind — 客服信, 公告 — with no quoted trigger phrase anywhere in the utterance.
 These are what an enumeration trim silently costs. A description that keeps the
 quoted phrases but drops the seven document kinds still looks complete and
@@ -42,7 +42,7 @@ a literal match. That is the behaviour the clause is there to buy.
 **Neighbour discrimination (U12–U18).** Six of the seven should load a specific
 other skill; U18 asks for a small direct edit and explicitly declines dispatch,
 which `baton-dispatch`'s own 不觸發 clause (小修改) rules out. Without these an
-agent could score well by answering `speak-human-tw` or `none` throughout.
+agent could score well by answering `readable-zh-tw` or `none` throughout.
 
 U17 pairs with U13: both belong to `experience-ledger`, one by its logging half
 and one by its metrics half, so a run cannot pass by mapping the word 派工 to
@@ -52,11 +52,11 @@ and one by its metrics half, so a run cannot pass by mapping the word 派工 to
 
 | ID | Answer | The clause that decides it |
 |---|---|---|
-| U01 | speak-human-tw | 「改自然一點」+ 電子報 |
-| U02 | speak-human-tw | 客服信 + 像真人寫的 — no quoted phrase |
-| U03 | speak-human-tw | 「校對再發」+ 銷售頁 + 文案 |
-| U04 | speak-human-tw | `de-AI this text` — the English trigger line |
-| U05 | speak-human-tw | 公告 + 語感 + 審 — no quoted phrase |
+| U01 | readable-zh-tw | 「改自然一點」+ 電子報 |
+| U02 | readable-zh-tw | 客服信 + 像真人寫的 — no quoted phrase |
+| U03 | readable-zh-tw | 「校對再發」+ 銷售頁 + 文案 |
+| U04 | readable-zh-tw | `de-AI this text` — the English trigger line |
+| U05 | readable-zh-tw | 公告 + 語感 + 審 — no quoted phrase |
 | U06 | none | 不觸發：逐字翻譯 |
 | U07 | none | 不觸發：模仿特定品牌／個人 voice |
 | U08 | none | 不觸發：事實查核 |

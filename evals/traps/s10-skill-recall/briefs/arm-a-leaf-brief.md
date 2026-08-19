@@ -26,7 +26,7 @@ Output: your report must contain one line per utterance, at column one, in
 exactly this shape and nothing else on the line:
 
 ```text
-SELECT: U01 -> speak-human-tw
+SELECT: U01 -> readable-zh-tw
 SELECT: U06 -> none
 ```
 

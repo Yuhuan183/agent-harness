@@ -1,0 +1,4 @@
+interface:
+  display_name: "Readable zh-TW"
+  short_description: "Polish zh-TW copy into natural, Taiwan-localized prose"
+  default_prompt: "Use $readable-zh-tw to rewrite this zh-TW copy naturally while preserving every fact and the author's voice."

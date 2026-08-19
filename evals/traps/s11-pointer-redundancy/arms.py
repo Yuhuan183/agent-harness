@@ -55,7 +55,7 @@ POINTER = {
     # from "we would not have seen one".
     #
     # Re-recorded 2026-08-19, when the clause gained a register split: the
-    # language rule now sends user-facing prose to `speak-human-tw`'s standard.
+    # language rule now sends user-facing prose to `readable-zh-tw`'s standard.
     # That makes it a pointer as well as the control, which is a change to what
     # arm C means here rather than to what the control does — the language switch
     # is still what arm B removes and still what nobody doubts.
@@ -64,7 +64,7 @@ POINTER = {
         "identifiers, commands, comments, and commit messages in English. "
         "Thinking and agent-to-agent briefs stay in precise, concise English; "
         "only user-facing replies switch to Traditional Chinese, and those "
-        "answer to `speak-human-tw`'s standard for prose a person reads.\n"
+        "answer to `readable-zh-tw`'s standard for prose a person reads.\n"
     ),
     # Also not a pointer. This one is here because it is the only resident
     # clause found so far whose value can be priced on the quality of what gets
@@ -108,7 +108,7 @@ RESIDUAL = {
                        "and arm C is B's removal plus extras rather than a "
                        "narrower cut. Studying this pointer would need an arm "
                        "that keeps the bullet and drops only the sentence naming "
-                       "`speak-human-tw`, which is not what C is. Removing the "
+                       "`readable-zh-tw`, which is not what C is. Removing the "
                        "bullet also removes the rules keeping code and "
                        "agent-to-agent briefs in English, because they share it",
     },

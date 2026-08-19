@@ -37,11 +37,11 @@ VARIANTS = HERE / "variants"
 # description covers the ask — either because it is ordinary work or because a
 # description explicitly excludes it. Rationale per item: GROUND-TRUTH.md.
 ANSWERS = {
-    "U01": "speak-human-tw",
-    "U02": "speak-human-tw",
-    "U03": "speak-human-tw",
-    "U04": "speak-human-tw",
-    "U05": "speak-human-tw",
+    "U01": "readable-zh-tw",
+    "U02": "readable-zh-tw",
+    "U03": "readable-zh-tw",
+    "U04": "readable-zh-tw",
+    "U05": "readable-zh-tw",
     "U06": "none",
     "U07": "none",
     "U08": "none",

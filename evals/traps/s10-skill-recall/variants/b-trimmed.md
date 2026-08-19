@@ -38,7 +38,7 @@ Cross-provider routing — H/X profiles, GPT↔Claude fallback, codex bridge res
 觸發：「派給 GPT/Codex」「換 provider」「fallback」「要不要 verifier」「安全審查找誰」、跨 provider 交接。
 不觸發：單一 provider 的直接工作。
 
-## speak-human-tw
+## readable-zh-tw
 
 繁體中文去 AI 味改寫：審查與改寫對外文字，去除 AI 腔、校正中國用語與半形標點，讓文字讀起來像真人寫的。
 觸發：「去 AI 味」「說人話」「這段好 AI」「改自然一點」「校對再發」，或檢查對外文字的語感。

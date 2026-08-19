@@ -117,15 +117,15 @@ class SharedSkillTests(unittest.TestCase):
             )
 
     def test_speak_human_tw_is_shared_via_symlink(self) -> None:
-        self._assert_symlinked_body("speak-human-tw")
+        self._assert_symlinked_body("readable-zh-tw")
 
     def test_speak_human_tw_layout_and_attribution(self) -> None:
-        base = "main/.agents/skills/speak-human-tw"
+        base = "main/.agents/skills/readable-zh-tw"
         for ref in ("patterns", "taiwan-localization", "protected-list", "humanize"):
             self.assertTrue((ROOT / base / "references" / f"{ref}.md").is_file(), ref)
         self.assertTrue((ROOT / base / "agents/openai.yaml").is_file())
         meta = frontmatter(f"{base}/SKILL.md")
-        self.assertIn("name: speak-human-tw", meta)
+        self.assertIn("name: readable-zh-tw", meta)
         self.assertNotIn("user-invocable:", meta)
         self.assertIn("license: MIT", meta)
         skill = read(f"{base}/SKILL.md")
@@ -155,7 +155,7 @@ class SharedSkillTests(unittest.TestCase):
                 "evidence-ladder",
                 "experience-ledger",
                 "headroom-protocol",
-                "speak-human-tw",
+                "readable-zh-tw",
                 "task-observer",
                 "test-first-change",
             ],

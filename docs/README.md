@@ -58,11 +58,11 @@
 3. benchmark, effort, 日期與成本口徑只放研究摘要或 routing data, 不寫成永久能力宣稱.
 4. 已落地的 runtime 規則從 plan 移出; 歷史判斷留在 Git 或明確標示的決策紀錄.
 5. 文件改動仍需通過 contract tests, 連結檢查, `git diff --check` 與部署 dry-run.
-6. 語言分層: runtime 檔案 (contracts, roles, skills, script 註解) 的**操作本體** (指令, 流程, 格式) 用英文, 人讀文件用 zh-TW. 窄例外: skill/agent `description` 的**觸發詞**與對使用者輸出的**模板**可用所需語言以對上使用者; `speak-human-tw` 是繁中素材. 其餘 runtime 中文即漂移.
+6. 語言分層: runtime 檔案 (contracts, roles, skills, script 註解) 的**操作本體** (指令, 流程, 格式) 用英文, 人讀文件用 zh-TW. 窄例外: skill/agent `description` 的**觸發詞**與對使用者輸出的**模板**可用所需語言以對上使用者; `readable-zh-tw` 是繁中素材. 其餘 runtime 中文即漂移.
 7. 標點: 人讀文件寫 zh-TW 文字 + 英文術語 + 半形標點 (`, . : ; ? ! ( ) " ' -`), 標點後空一格, 本條自身即範例. 全形只留在五處:
 
    - 逐字引用的外部原文.
-   - `speak-human-tw` 繁中素材.
+   - `readable-zh-tw` 繁中素材.
    - `evals/traps/**` 與 `evals/replay/**` 的 fixture, 情境與結果表 (文字本身是被量的變數).
    - skill `description` 的觸發詞與對使用者輸出的模板. 前者被 s10 trap 以位元組釘住, 後者是給人看的成品.
    - 程式裡拿全形當資料比對的字面值 (regex class, 對前四類的逐字斷言).
