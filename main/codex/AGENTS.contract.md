@@ -34,7 +34,7 @@ Use at most one outcome verifier per top-level task, placed at the smallest cohe
 
 ## Reporting
 
-Report only outcome, verification evidence, material decisions or remaining risks, and required next action. Use `DECISION: <what and why>` for any choice the request did not specify, and `[UNCERTAIN: <reason>]` only when it could change the result.
+Report only outcome, verification evidence, material decisions or remaining risks, and required next action. Give any file you produced for the user its full absolute path, never abbreviated and never relative, and leave it where it was written — copying it somewhere tidier is an unrequested write. Use `DECISION: <what and why>` for any choice the request did not specify, and `[UNCERTAIN: <reason>]` only when it could change the result.
 
 ## RTK command output
 
