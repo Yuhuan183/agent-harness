@@ -51,7 +51,24 @@ RESIDENT_CONTRACT_BUDGETS = {
     # "Direct execution is the default" with the sentence naming what the main
     # task owns - one thought, and the Claude twin already writes it as one
     # sentence - so rules went 25 -> 24 while words went up.
-    "codex": ContractBudget(".codex/AGENTS.contract.md", 599, 26, 175, 0.15, 0.25),
+    #
+    # 599 -> 621 on 2026-08-19, and this one is new content rather than a
+    # correction: the language clause now routes by reader - user-facing prose
+    # answers to `speak-human-tw`'s standard, agent-facing text stays terse - and
+    # a separate rule forbids the filler both were carrying. Distilled from that
+    # skill's own pattern list, category four, which is the residue a
+    # conversational assistant leaves: flattery, preamble announcing what
+    # follows, generic close, hedging stacked two deep. Measured 609.
+    #
+    # The filler rule is its own bullet, not a third sentence on "lead with the
+    # outcome". Two reasons and they agree: it is a prohibition list rather than
+    # a shaping principle, and merged it pushed bytes-per-rule to 173.2 against a
+    # 175 cap, where any later sentence anywhere in the file would have failed.
+    # Split, that reads 166.4. The Claude twin is at 16 of 16 rules afterwards and
+    # is deliberately left there - a cap raised for a rule nobody has written yet
+    # is a budget granted on an estimate, which the metadata note above already
+    # calls out.
+    "codex": ContractBudget(".codex/AGENTS.contract.md", 621, 26, 175, 0.15, 0.25),
 }
 
 
