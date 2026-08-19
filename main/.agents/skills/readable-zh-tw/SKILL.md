@@ -98,7 +98,7 @@ license: MIT
 - 「好讀」不等於「有個人風格」：這份洗乾淨稿子，作者的聲音要作者自己加。
 - 事實查核不在範圍內（直出的止步條件是「自己去查」，改稿是「標註請作者查」）。
 - 不代作者生產經歷。
-- 本 skill 蒸餾改寫自 [speak-human-tw](https://github.com/Raymondhou0917/speak-human-tw) v1.4.0（MIT，© 2026 Raymond Hou／雷蒙三十），見 [ATTRIBUTION.md](ATTRIBUTION.md)。2026-08-19 更名並分出直出模式，理由見該檔。
+- 本 skill 蒸餾改寫自 [speak-human-tw](https://github.com/Raymondhou0917/speak-human-tw) `2c27cca`（MIT，© 2026 Raymond Hou／雷蒙三十），見 [ATTRIBUTION.md](ATTRIBUTION.md)。2026-08-19 更名並分出直出模式，理由見該檔。
 
 ## 參考導航
 
