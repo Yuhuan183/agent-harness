@@ -2,12 +2,44 @@
 
 from __future__ import annotations
 
-import fnmatch
 import json
+import re
 import unittest
 from pathlib import Path
 
 from support import ROOT
+
+
+def covers(pattern: str, path: str) -> bool:
+    """Glob match where `*` stops at a separator and `**` spans directories.
+
+    `fnmatch` was used here until 2026-08-19 and its `*` crosses `/`, so
+    `docs/*.md` matched `docs/research/anything.md` and `main/claude/*.md`
+    matched any depth under it. Every pattern was therefore recursive and the
+    coverage assertion below could not fail - a new guidance document anywhere
+    under a scanned root was covered by whichever top-level pattern named its
+    root.
+
+    Nothing had actually slipped through: re-running the check with these
+    semantics leaves all 82 candidates covered, because the list was written for
+    path-aware matching in the first place - which is why `docs/**/*.md` sits
+    beside `docs/*.md` rather than instead of it. What was broken was the
+    guard's ability to fail, not the coverage it guards, and the audit document
+    lists that guard as one of this inventory's benefits.
+    """
+    out, i = [], 0
+    while i < len(pattern):
+        if pattern.startswith("**/", i):
+            out.append("(?:[^/]+/)*"); i += 3
+        elif pattern.startswith("**", i):
+            out.append(".*"); i += 2
+        elif pattern[i] == "*":
+            out.append("[^/]*"); i += 1
+        elif pattern[i] == "?":
+            out.append("[^/]"); i += 1
+        else:
+            out.append(re.escape(pattern[i])); i += 1
+    return re.fullmatch("".join(out), path) is not None
 
 
 class DocumentInventoryTests(unittest.TestCase):
@@ -42,9 +74,45 @@ class DocumentInventoryTests(unittest.TestCase):
         uncovered = [
             path
             for path in sorted(candidates)
-            if not any(fnmatch.fnmatch(path, pattern) for pattern in patterns)
+            if not any(covers(pattern, path) for pattern in patterns)
         ]
         self.assertEqual(uncovered, [])
+
+    def test_the_coverage_rule_can_actually_fail(self) -> None:
+        """The assertion above is only worth its runtime if it can go red.
+
+        For most of this inventory's life it could not: `fnmatch` crosses path
+        separators, so every pattern was recursive and every candidate matched
+        something. The check passed for a reason unrelated to coverage, which is
+        indistinguishable from passing for the right one.
+
+        These cases are what the matcher has to get right, asserted directly
+        rather than by trusting the implementation: a document one directory
+        below a single-star pattern is *not* covered by it, `**` does span
+        directories, and `**/name` matches at the top level as well as below it.
+        """
+        self.assertFalse(covers("docs/*.md", "docs/research/x.md"))
+        self.assertFalse(covers("main/claude/*.md", "main/claude/hooks/NOTES.md"))
+        self.assertTrue(covers("docs/*.md", "docs/setup.md"))
+        self.assertTrue(covers("docs/**/*.md", "docs/research/deep/x.md"))
+        self.assertTrue(covers("**/ATTRIBUTION.md", "ATTRIBUTION.md"))
+        self.assertTrue(
+            covers("**/ATTRIBUTION.md", "main/.agents/skills/a/ATTRIBUTION.md"))
+
+        # And end to end: a real path under a scanned root that no pattern
+        # names must come out uncovered. `main/claude/hooks/` holds .py files
+        # and is in no pattern, so a document dropped there is the shape this
+        # guard exists to catch.
+        patterns = (
+            self.inventory["reviewed_current_guidance"]
+            + self.inventory["evidence_not_current_guidance"]
+            + self.inventory["excluded_from_semantic_currentness"]
+        )
+        intruder = "main/claude/hooks/NOTES.md"
+        self.assertFalse(
+            any(covers(pattern, intruder) for pattern in patterns),
+            "a document in an unlisted subdirectory is covered by some pattern, "
+            "so the coverage assertion cannot fail and proves nothing")
 
     def test_inventory_rules_resolve_to_real_artifacts(self) -> None:
         for path in (
