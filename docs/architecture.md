@@ -115,9 +115,9 @@ Codex verifier (bridge 名稱不分角色, 額度看不到), 仍由主 session �
 ## 五. Hook 系統實作
 
 Hook 是把「規則」變成「機制」的地方: 需要判斷的交給模型, 能機械判定的交給 hook. 預設
-**fail-open** (診斷型故障時放行, 不阻塞工作); 刻意 **fail-closed** 的是五個有界 gate
-(commit-test 的 Bash 與 git 兩側, leaf-redispatch, runtime-guard, verifier-quota),
-每個只在很窄的條件下攔截.
+**fail-open** (診斷型故障時放行, 不阻塞工作); 刻意 **fail-closed** 的是六個有界 gate
+(commit-test 的 Bash 與 git 兩側, leaf-redispatch, runtime-guard, verifier-quota,
+managed-target-guard), 每個只在很窄的條件下攔截.
 
 一個代表性設計: 唯讀角色的邊界是**能力面而非解析 shell** — no-write roles 根本不配 Bash,
 因為 shell 的寫入途徑關不完; 需要跑指令的驗證改派 Codex `verifier` 並鎖 `sandbox_mode = "read-only"`.

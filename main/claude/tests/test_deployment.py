@@ -1165,7 +1165,8 @@ class MachineStateHygieneTests(unittest.TestCase):
         self.assertEqual(
             gates,
             {"commit-test-gate.py", "leaf-redispatch.py",
-             "runtime-guard.py", "verifier-quota.py"},
+             "managed-target-guard.py", "runtime-guard.py",
+             "verifier-quota.py"},
             "the fail-closed hook set changed; every doc naming the count and "
             "the gate list has to move with it")
         # The commit gate is two enforcement points, not one: the Bash hook and

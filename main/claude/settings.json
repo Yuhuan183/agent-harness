@@ -59,6 +59,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/managed-target-guard.py\"",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "SessionStart": [
