@@ -18,7 +18,7 @@
 | `skills/leaf-dispatch` | Codex 原生派工細節 (resolver 呼叫, brief 組裝, 記帳); 主契約按需載入 | 自動 |
 | `skills/headroom-protocol` | symlink → `../.agents/skills/headroom-protocol` (與 Claude 共用同一本體) | 自動 |
 | `skills/experience-ledger` | symlink → `../.agents/skills/experience-ledger` (派工經驗記帳與分析, 與 Claude 共用) | 自動 |
-| `skills/readable-zh-tw` | symlink → `../.agents/skills/readable-zh-tw` (繁中去 AI 味, 與 Claude 共用同一本體) | 自動 |
+| `skills/readable-zh-tw` | symlink → `../.agents/skills/readable-zh-tw` (繁中可讀性: 直出與改稿兩個模式, 與 Claude 共用同一本體) | 自動 |
 | `skills/task-observer` | symlink → `../.agents/skills/task-observer` (使用受挫時主動詢問, 同意後才記錄; machine-local JSONL) | 自動 |
 | `skills/evidence-debugging` | symlink → `../.agents/skills/evidence-debugging` (以已跑過的重現做診斷, 與 Claude 共用同一本體) | 自動 |
 | `skills/test-first-change` | symlink → `../.agents/skills/test-first-change` (先寫會紅的檢查再改行為, 與 Claude 共用同一本體) | 自動 |
