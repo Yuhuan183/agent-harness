@@ -6,6 +6,9 @@
 已核准的後續範圍, 驗收與停止條件見
 [蒸餾實作計畫](../plans/engineering-workflow-distillation.md).
 
+`readable-zh-tw` 蒸餾自另一個上游, 它的 pin, 目標分岔與逐次同步紀錄獨立成篇, 見
+[readable-zh-tw 的上游](readable-zh-tw-upstream.md) (`scripts/readable-zh-tw-recheck.sh`).
+
 > 對齊日期: 2026-07-28, 上游與場域研究於 2026-08-08 重查 (Pilotfish v1.3.10, Deep Agents 0.7.5). 這是目前專案採用決策的入口; 各來源的取證細節留在分題文件.
 
 ## 這份文件回答什麼

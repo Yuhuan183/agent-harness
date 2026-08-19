@@ -32,6 +32,18 @@ These are what an enumeration trim silently costs. A description that keeps the
 quoted phrases but drops the seven document kinds still looks complete and
 still fails these two.
 
+U02 got harder on 2026-08-19 and nothing here caught it. Its utterance ends
+「讀起來像不像真人寫的」, and until that day the description also said 「讓文字讀
+起來像真人寫的」 — so the item had two matching paths where its design says one.
+The rewrite that renamed the skill dropped that phrase, because sounding like a
+person is the upstream's goal and not this one's. The item is now what it was
+always described as, which is the right state, but it is not the state the rows
+above were measured in. The trigger lock in `test_contracts` did not fire because
+the phrase was never on its list: that list covers what a user would type to
+invoke, and this was a phrase the description happened to share with an utterance.
+Restoring it would put the abandoned goal back into a resident description to make
+one eval item easier, which is the wrong trade.
+
 **Precision-critical (U09, U10, U11).** Each carries a verbatim trigger phrase
 from the description — 改自然一點, 說人話, 改自然一點 — bolted onto work the
 不觸發 clause rules out: a `nginx` config file, an error log, Python code. These
