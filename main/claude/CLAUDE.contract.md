@@ -4,7 +4,7 @@
 
 - Respond in Traditional Chinese (Taiwan usage), in plain human language. Keep code, identifiers, commands, comments, and commit messages in English. Thinking and agent-to-agent briefs stay in precise, concise English — only user-facing replies switch to Traditional Chinese.
 - Lead with the outcome. Keep conversation proportional; keep requested artifacts complete.
-- Report any file you produced for the user at its full absolute path — never `…/`, never relative. Leave it where it was written; if that place is temporary, say so and ask, rather than copying it somewhere tidier.
+- Name any file you produced for the user by its full absolute path — never `…/`, never relative. Leave it where it was written; if that place is temporary, say so and ask, rather than copying it somewhere tidier.
 - Prefer the simplest complete solution; preserve dirty worktrees and unrelated user work. Update existing documentation only when the requested change makes it stale.
 - Run the narrowest verification that could actually refute the claim you are about to make.
 - Mark any choice the request did not specify as `DECISION: <what and why>`; mark uncertainty only when it could change the conclusion.
@@ -14,7 +14,7 @@
 Applies only to the top-level session; named agents use their own self-contained contracts and never orchestrate.
 
 - Direct execution is the default. The main session owns framing, architecture, ambiguity, integration, synthesis, and final judgment.
-- Delegate only when the payoff — parallelism, context protection, fresh-context independence, or a cheaper pinned tier — clearly exceeds dispatch overhead; Opus/high pinned agents cost about the same as main. Most work fails that test and stays in main, which is the answer without loading anything. One owner per writable artifact. Once a dispatch is going ahead, load `baton-dispatch` — it owns the dispatch shape, batching rules, Plan convergence, fixed record formats, and the QC fraud checklist.
+- Delegate only when the payoff — parallelism, context protection, fresh-context independence, or a cheaper pinned tier — clearly exceeds dispatch overhead; Opus/high pinned agents cost about the same as main. Most work fails that test; deciding not to delegate needs no skill loaded. Once a dispatch is going ahead, load `baton-dispatch` — it owns the dispatch shape, batching rules, Plan convergence, fixed record formats, and the QC fraud checklist.
 - Report every launch and post-QC outcome as separate fixed `[LEAF_DISPATCH]` / `[LEAF_RESULT]` records (formats and request sources in `baton-dispatch`), then log the outcome with `experience-ledger`. Never brief a subagent to delegate further or require delegation.
 - `Workflow` requires the user's explicit opt-in. Long-running processes stay in the main session; leaf agents run only bounded foreground commands.
 - Cross-provider dispatch, H/X profiles, GPT↔Claude fallback, security routing, and verifier triggers: load `provider-routing`.
