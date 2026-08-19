@@ -1055,14 +1055,15 @@ class DocumentationBudgetTests(unittest.TestCase):
                 for path in (ROOT / skills_dir).glob("*/SKILL.md")
             }
             provider_layers = census["providers"][provider]
-            resident_metadata = {
-                record["path"]
-                for record in provider_layers["resident"]
-                if record.get("kind") == "skill-metadata"
-            }
+            # Which layer a skill's metadata lands in depends on whether the
+            # provider injects it; that none of them vanishes does not, and that
+            # is what this pair protects. Before Codex injection was modelled
+            # this read the resident layer alone, which is why relaxing it to
+            # "somewhere" is paired with the exact split asserted below.
             metadata_records = [
                 record
-                for record in provider_layers["resident"]
+                for layer in ("resident", "dispatch")
+                for record in provider_layers[layer]
                 if record.get("kind") == "skill-metadata"
             ]
             dispatch_bodies = {
@@ -1070,12 +1071,41 @@ class DocumentationBudgetTests(unittest.TestCase):
                 for record in provider_layers["dispatch"]
                 if record.get("kind") == "skill-body"
             }
-            self.assertEqual(resident_metadata, expected_skills)
+            self.assertEqual(
+                {record["path"] for record in metadata_records}, expected_skills)
             self.assertEqual(dispatch_bodies, expected_skills)
             self.assertTrue(
                 all(record["words"] > 5 for record in metadata_records),
                 f"{provider} skill descriptions must be fully counted",
             )
+
+        # Every Claude skill is injected, so all of its metadata is resident.
+        # On Codex `allow_implicit_invocation: false` means the skill is absent
+        # until `$skill` pulls it in, so its metadata is a dispatch cost - and a
+        # budget counting it as resident charges a ceiling for words no turn
+        # pays. Read straight from the yaml here rather than through the census
+        # helper, or this would only assert that the census agrees with itself.
+        flag = re.compile(r"^\s*allow_implicit_invocation\s*:\s*(\S+)", re.M)
+        for provider, skills_dir in (
+            ("claude", "main/claude/skills"),
+            ("codex", "main/codex/skills"),
+        ):
+            resident = {
+                record["path"]
+                for record in census["providers"][provider]["resident"]
+                if record.get("kind") == "skill-metadata"
+            }
+            for path in sorted((ROOT / skills_dir).glob("*/SKILL.md")):
+                relative = path.relative_to(ROOT).as_posix()
+                config = path.parent / "agents" / "openai.yaml"
+                found = (flag.search(config.read_text(encoding="utf-8"))
+                         if config.is_file() else None)
+                injected = provider == "claude" or found is None or (
+                    found.group(1).strip("\"'") != "false")
+                self.assertEqual(
+                    injected, relative in resident,
+                    f"{relative}: injected={injected} but resident="
+                    f"{relative in resident}")
         for provider in ("claude", "codex"):
             self.assertEqual(
                 set(census["providers"][provider]),
@@ -1155,16 +1185,28 @@ class DocumentationBudgetTests(unittest.TestCase):
         # Whether skill selection is lexical is a hypothesis, not something this
         # repo has established. `skills_invoked` moving off 0 of 5 on `e1` is what
         # would support it; nothing here assumes it in advance.
-        # 790/710 -> 934/853 on 2026-08-19 for `evidence-ladder`, measured at
-        # 916/836. The two halves of that raise are not the same kind of number
-        # and the commit message says so: on Claude it buys nothing, because the
-        # skill was already installed in `~/.claude/skills` and already listed in
-        # every session - the ratchet simply could not see it, which is the
-        # coverage gap `scripts/resident-pool-report.py` was written to measure.
-        # On Codex it is 129 genuinely new resident words: the skill has never
-        # been deployed there, and parity for a provider-neutral method skill is
-        # what this repo does with every other one.
-        metadata_budgets = {"claude": 934, "codex": 853}
+        # 790 -> 934 on 2026-08-19 for `evidence-ladder`, measured at 916. On
+        # Claude that raise buys nothing: the skill was already installed in
+        # `~/.claude/skills` and already listed in every session, and the ratchet
+        # simply could not see it - the coverage gap
+        # `scripts/resident-pool-report.py` was written to measure.
+        #
+        # The Codex half of that same commit said "129 genuinely new resident
+        # words" and raised 710 -> 853. That was false, and in the direction that
+        # flatters the number: `allow_implicit_invocation: false` means Codex does
+        # not inject the skill at all, so `evidence-ladder`, `evidence-debugging`
+        # and `test-first-change` - 321 words between them - were being counted
+        # against a ceiling while costing a Codex turn nothing. Nobody had read
+        # what the flag does; the 2026-08-17 discovery probe had already recorded
+        # those two skills missing from the session's skill list and it was read
+        # as a discovery quirk rather than as a cost fact.
+        #
+        # The census now models it, so this counts the five skills Codex actually
+        # injects: measured 515, ceiling 525. Flipping any of the three flags to
+        # true fails this test until the ceiling is raised, which is the right
+        # shape - the flip is what buys the resident cost, so the flip is where
+        # the decision belongs.
+        metadata_budgets = {"claude": 934, "codex": 525}
         # The widest legitimate description today is speak-human-tw at 176: it
         # states its triggers twice, in zh-TW and English, because it is the
         # one skill invoked by users in either language.
