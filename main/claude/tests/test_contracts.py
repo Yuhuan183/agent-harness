@@ -68,7 +68,26 @@ RESIDENT_CONTRACT_BUDGETS = {
     # is deliberately left there - a cap raised for a rule nobody has written yet
     # is a budget granted on an estimate, which the metadata note above already
     # calls out.
-    "codex": ContractBudget(".codex/AGENTS.contract.md", 621, 26, 175, 0.15, 0.25),
+    #
+    # 621 -> 630 on 2026-08-19 for the layout invariant: prose is the default and
+    # a list is for items that can be skipped, not for reasoning. It has to be
+    # resident rather than in `readable-zh-tw`, and that is the whole point -
+    # replies never load the skill, so a reply-shape rule kept there applies to
+    # nothing. Measured 618, and 7 of the words it needed came back from the
+    # dispatch bullet, which stated "never brief a subagent to delegate further,
+    # and never hand one a task that would require delegation" where the Claude
+    # twin says it in one clause; taking the twin's wording is a parity fix that
+    # happened to pay for this.
+    #
+    # Fourth raise in two days (550, 592, 599, 621, 630) and the trajectory is
+    # worth seeing rather than reading one note at a time: 592 was a new clause,
+    # 599 corrected a measurement of a clause that was missing half its rule, 621
+    # was the register split, and this is its last piece. All four are the same
+    # body of work - what a user-facing reply owes its reader - landing in
+    # instalments because it was decided in instalments. If a fifth arrives for
+    # the same subject, the question is not the ceiling but whether the resident
+    # layer is the right owner.
+    "codex": ContractBudget(".codex/AGENTS.contract.md", 630, 26, 175, 0.15, 0.25),
 }
 
 

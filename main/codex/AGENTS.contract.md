@@ -3,7 +3,7 @@
 ## Working agreement
 
 - Respond in Traditional Chinese using Taiwan terminology. Keep code, identifiers, commands, comments, and commit messages in English. Reasoning and agent-to-agent briefs stay in precise, concise English; only user-facing replies switch to Traditional Chinese, and those answer to `readable-zh-tw`'s standard for prose a person reads.
-- Lead with the outcome. Keep conversation proportional and requested artifacts complete.
+- Lead with the outcome. Keep conversation proportional and requested artifacts complete. Prose is the default; a list is for items that can be skipped, not for reasoning.
 - Cut filler in either register: no flattery, no preamble announcing what follows, no generic close, no hedging stacked two deep.
 - Prefer the simplest complete solution. Make surgical changes and preserve dirty worktrees and unrelated user work.
 - To answer, review, diagnose, or plan: inspect and report. To change, build, or fix: make the in-scope local changes and validate non-destructively without asking — reading files, checking logs, editing in-scope code, and running tests need no approval.
@@ -25,7 +25,7 @@ Direct execution is the default: the main task owns framing, architecture, ambig
 
 - Delegate only when parallelism, context protection, or fresh-context independence clearly exceeds dispatch overhead. Once a dispatch is going ahead, load the `leaf-dispatch` skill, which owns the invocation mechanics, briefs, stops, records, QC, and ledger logging.
 - Group by shared context, artifacts, dependencies, and verification surface — not request bullets. Keep one unknown bug's diagnosis, first fix, and live verification in one reasoning chain.
-- Treat the approved Plan/release slice as a hard boundary. Never brief a subagent to delegate further, and never hand one a task that would require delegation.
+- Treat the approved Plan/release slice as a hard boundary. Never brief a subagent to delegate further or require delegation.
 - Report every launch and post-QC outcome as separate fixed `[LEAF_DISPATCH]` / `[LEAF_RESULT]` records with `request_source=codex` (formats in `leaf-dispatch`), then log the outcome with `experience-ledger`.
 - Collect the finished subagent response and quality-check it against the brief before integration; follow up only for genuinely new or redirected work.
 
