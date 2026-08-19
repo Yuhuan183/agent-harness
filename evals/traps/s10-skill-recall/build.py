@@ -48,7 +48,7 @@ LEVERS = {
     ),
     "exclusions": (
         ("不觸發：逐字翻譯、模仿特定品牌／個人 voice、事實查核、程式碼／log／設定檔。"
-         "本 skill 只去 AI 味、不加個人風格。\n", ""),
+         "本 skill 管可讀性，不加個人風格。\n", ""),
         (" Not for: literal translation, brand-voice mimicry, fact-checking, "
          "code/log/config.", ""),
     ),
