@@ -170,22 +170,7 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 
 那時還欠著三件, 到 2026-08-12 收束成一件: negative control fixture (方向 4) 已落地為 s8 arm B 並跑過每臂 30 次; description 接不接得住隱晦措辭 (方向 3 衍生) 已測且**判定無定論, 退場**; **lifecycle replay 也在同日補齊並跑完第一批** — 四項判準, 三份事前登記情境, 15 個 run. 三件都收束了, 開著的換成新的三件 (見下).
 
-這些查核的完整紀錄搬到 [landing-log.md](landing-log.md) 了 —— 它是一份**日誌**, 而本文是**總結**, 兩者長在一起時 sprawl guard 就會燒. 依日期由新到舊:
-
-- [2026-08-14: 方向 1 的推翻條件成立 — 契約有時候真的贏](landing-log.md#2026-08-14-方向-1-的推翻條件成立--契約有時候真的贏)
-- [2026-08-14: 判準 3 的不穩定比任何操弄都大](landing-log.md#2026-08-14-判準-3-的不穩定比任何操弄都大)
-- [2026-08-13 計劃區塊已落地 (2026-08-14 收)](landing-log.md#2026-08-13-計劃區塊已落地-2026-08-14-收)
-- [2026-08-12: description 覆蓋度實測, 無定論 —— 但推翻了一條自己記過的結論](landing-log.md#2026-08-12-description-覆蓋度實測-無定論--但推翻了一條自己記過的結論)
-- [2026-08-12: 判準 2 備妥, replay 有了自己的 harness](landing-log.md#2026-08-12-判準-2-備妥-replay-有了自己的-harness)
-- [2026-08-13: 排擠假說被自己的操弄推翻](landing-log.md#2026-08-13-排擠假說被自己的操弄推翻)
-- [曾經要等新 session 的兩件 (2026-08-11 開, 2026-08-12 兩件都收掉)](landing-log.md#曾經要等新-session-的兩件-2026-08-11-開-2026-08-12-兩件都收掉)
-- [2026-08-08 查核結果 (方向 1, 2)](landing-log.md#2026-08-08-查核結果-方向-1-2)
-- [2026-08-08 查核結果 (方向 4)](landing-log.md#2026-08-08-查核結果-方向-4)
-- [2026-08-08 查核結果 (方向 3)](landing-log.md#2026-08-08-查核結果-方向-3)
-- [A/B 結果 (2026-08-08 ~ 08-10, 90 runs)](landing-log.md#ab-結果-2026-08-08--08-10-90-runs)
-- [2026-08-08 查核結果 (方向 5)](landing-log.md#2026-08-08-查核結果-方向-5)
-- [2026-08-10 查核結果 (Headroom 0.34 升級): 同一個失效換了一層皮](landing-log.md#2026-08-10-查核結果-headroom-034-升級-同一個失效換了一層皮)
-- [2026-08-14 查核結果 (Headroom 0.35 升級): 這次是儀器先開口](landing-log.md#2026-08-14-查核結果-headroom-035-升級-這次是儀器先開口)
+這些查核的完整紀錄搬到 [landing-log.md](landing-log.md) 了 —— 它是一份**日誌**, 而本文是**總結**, 兩者長在一起時 sprawl guard 就會燒. 每一則的標題自帶日期, 從那份文件的目次直接找: 本文不再抄一份逐則連結, 因為手抄別人的目次每多一則就多一個會過期的地方, 而它原本宣稱的「依日期由新到舊」已經不成立了.
 
 ### 明確不做的事
 
@@ -201,6 +186,14 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 
 ## 文件索引
 
+**本文是這個目錄唯一的現行結論來源, 其餘每一份都是紀錄.** 那不是編輯風格的差別, 是
+稽核範圍的差別: 紀錄會刻意保留被後來證據推翻的段落, 拿它當現行設計讀就會讀錯. 這條
+分界寫在 [`docs/document-inventory.json`](../document-inventory.json) 裡, 由
+`test_document_inventory.py` 盯住, 並由 `scripts/docs-size-report.py` 分層回報.
+
+在 2026-08-19 之前這條線不存在: 稽核範圍用的是一條遞迴 glob, 把整個目錄都算成現行
+指引, 而這個目錄從 13.4k 字長到 85k 字都沒有人決定過要這樣.
+
 | 文件 | 回答什麼問題 |
 |---|---|
 | [context-and-vendors.md](context-and-vendors.md) | 常駐 context 有多貴, 兩家供應商官方怎麼說 |
@@ -209,7 +202,12 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 | [model-evidence.md](model-evidence.md) | route 與 effort 怎麼選, 成本口徑怎麼算, 外部先驗有多可信 |
 | [trap-experiments.md](trap-experiments.md) | 可重播的失敗情境與反證 |
 | [local-experiments.md](local-experiments.md) | 本機任務結果 |
-| [lifecycle-replay.md](lifecycle-replay.md) | replay 的四項存活判準, 三份事前登記情境, 與 2026-08-12 第一批的結論 |
+| [lifecycle-replay.md](lifecycle-replay.md) | replay 的四項存活判準, 三個生命週期問題, 與累計 463 個 run 的結論 |
+| [clause-pricing.md](clause-pricing.md) | 從 lifecycle-replay 分出來的一條線: 能不能用產出品質給常駐子句定價 |
+| [landing-log.md](landing-log.md) | 每一次查核的原始紀錄與原始措辭, 含被後來證據推翻的段落 |
+| [mattpocock-skills-integration.md](mattpocock-skills-integration.md) | 工程工作流 skill 的上游快照, 工作流比較, 採用與拒絕理由 |
+| [upstream-distillation-ledger.md](upstream-distillation-ledger.md) | 上游每一節蒸餾到哪裡, 捨棄了什麼 (`scripts/upstream-recheck.sh` 可覆核) |
+| [readable-zh-tw-upstream.md](readable-zh-tw-upstream.md) | `readable-zh-tw` 的上游 pin, 目標分岔與逐次同步紀錄 |
 | [prompt-surface-census.json](prompt-surface-census.json) | deterministic resident/role surface 快照 |
 
 ## 驗證缺口
