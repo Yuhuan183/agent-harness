@@ -32,17 +32,26 @@ bound on that cost, which is more than nothing and less than a routing test.
 
 | Path | Role | Show to agent under test? |
 |---|---|---|
-| `pristine/descriptions.md` | generated: every resident description, as a session carries them (eight since 2026-08-17, six when the rows below were measured) | arm A: yes (as a fresh copy) |
+| `pristine/descriptions.md` | generated: every resident description, as a session carries them (nine since 2026-08-19, six when the rows below were measured) | arm A: yes (as a fresh copy) |
 | `pristine/utterances.md` | the eighteen opening messages | yes |
-| `variants/*.md` | arm B/C/D surfaces, one lever each | that arm only, as `descriptions.md` |
+| `variants/*.md` | generated: pristine minus one lever each (B document kinds, C exclusions, D both) | that arm only, as `descriptions.md` |
 | `GROUND-TRUTH.md` | item design, answer rationale, failure modes, A/B protocol | never |
 | `grade.py` | mechanical answer sheet (decisions + read-only discipline) | never |
-| `build.py` | regenerates the bundle from the live frontmatters | — |
+| `build.py` | regenerates all four arms from the live frontmatters | — |
 | `briefs/arm-a-leaf-brief.md` | verbatim dispatch text, identical for every arm | yes |
 
-The bundle is **generated**, not copied: `python3 build.py --check` fails once
-the checkout's descriptions move past it, and the repo suite runs that check. A
-trap graded against last month's routing surface measures nothing.
+All four arms are **generated**, not copied: `python3 build.py --check` fails
+once the checkout's descriptions move past them, and the repo suite runs that
+check. A trap graded against last month's routing surface measures nothing.
+
+The variants were hand-cut until 2026-08-19, and that is what went wrong: only
+`pristine/` was generated and guarded, so each skill added to the repo widened
+the gap in silence. By the time it was noticed the arms were three whole
+descriptions behind on top of the one clause each is meant to drop, which is not
+one variable any more — a difference between pristine and arm B could have come
+from the cut clause or from the three absent skills, with nothing to tell them
+apart. The levers are declared in `build.py` now, and a lever that does not match
+exactly once is a hard error rather than an arm that silently equals pristine.
 
 ## Protocol (arm A)
 
@@ -196,6 +205,12 @@ re-run D-shaped arms before taking the second.
   in this table, 2026-07-31's included, was graded under that cue. Removing the
   comment re-cuts the fixture and makes the existing rows uncomparable, so it
   is recorded here rather than quietly fixed.
+  **Gone as of 2026-08-19**, and not as a decision about this bias: generating
+  the variants means an arm is pristine minus a lever, and pristine carries no
+  such label, so there is nowhere for one to survive. The cue is off every future
+  run. It changes nothing about the rows above, which were already uncomparable
+  once the arms went from six descriptions to nine — two reasons now instead of
+  one, and both point the same way: **re-measure rather than compare.**
 - **Cross-arm bleed observed.** Two arm-D runs' notes referenced description
   copies from outside their own workdir — one named a compression-store hash,
   one named "the Variant B/D copies surfaced via proactive expansion" and

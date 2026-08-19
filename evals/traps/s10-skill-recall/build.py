@@ -1,10 +1,25 @@
 #!/usr/bin/env python3
-"""Regenerate `pristine/descriptions.md` from the live skill frontmatters.
+"""Regenerate every arm's surface from the live skill frontmatters.
 
 The fixture has to be the real routing surface, not a copy that drifts away
 from it: a trap that measures selection against last month's descriptions
 measures nothing. So the bundle is generated, and `--check` fails when the
 checkout has moved past it (same contract as the prompt-surface census).
+
+The variants used to be hand-cut copies, and that is the hole this closes
+(2026-08-19). `pristine/` was generated and guarded while `variants/` was
+neither, so every skill added to the repo widened the gap silently: by the time
+it was noticed the arms were missing three whole descriptions on top of the one
+clause each is supposed to drop, which is no longer one variable. An arm that
+differs from pristine in two ways cannot attribute a difference to either.
+
+Each variant is now pristine with declared levers removed, and **a lever that
+does not match exactly once is a hard error**. That is the property worth having:
+if `speak-human-tw` is reworded, this fails loudly instead of writing an arm that
+is silently identical to pristine and measures nothing. The first arm-B cut
+failed in that family already - it dropped the zh-TW exclusion and left the
+English one, and all three runs cited the surviving clause, voiding the precision
+half (README, 2026-07-31).
 
 Usage:
     python3 build.py --write | --check
@@ -20,6 +35,34 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 SKILLS = ROOT / "main" / "claude" / "skills"
 BUNDLE = HERE / "pristine" / "descriptions.md"
+VARIANTS = HERE / "variants"
+
+# The levers, spelled as the exact bytes they remove from the generated bundle.
+# Both are on `speak-human-tw`, which is the skill these arms are about; the
+# exclusion lever is two substitutions because the clause is stated in both
+# languages and cutting only one is the defect that voided the first arm B.
+LEVERS = {
+    "document-kinds": (
+        ("，或檢查電子報、社群貼文、銷售頁、文案、客服信、簡報、公告的語感。",
+         "，或檢查對外文字的語感。"),
+    ),
+    "exclusions": (
+        ("不觸發：逐字翻譯、模仿特定品牌／個人 voice、事實查核、程式碼／log／設定檔。"
+         "本 skill 只去 AI 味、不加個人風格。\n", ""),
+        (" Not for: literal translation, brand-voice mimicry, fact-checking, "
+         "code/log/config.", ""),
+    ),
+}
+
+# One lever each for B and C, both for D - the design the README's arm table
+# describes. Filenames carry which arm is which, because the surfaces
+# deliberately say nothing about it: labelled variants told the agent under test
+# what it was in, and two arm-D runs reasoned from the label (2026-08-06).
+ARMS = {
+    "b-trimmed.md": ("document-kinds",),
+    "c-no-exclusions.md": ("exclusions",),
+    "d-both.md": ("document-kinds", "exclusions"),
+}
 
 # No provenance comment, deliberately (2026-08-06). This bundle is the surface
 # under test, and the variants are copies of it with one clause cut. While the
@@ -64,25 +107,58 @@ def render() -> str:
     return "".join(parts)
 
 
+def render_arm(bundle: str, levers: tuple[str, ...]) -> str:
+    """`bundle` with each lever's clauses removed, or a hard error.
+
+    Exactly one occurrence is required. Zero means the description moved and the
+    arm would silently become a copy of pristine; more than one means the clause
+    is no longer unique and the cut would take out something it was not meant to.
+    """
+    text = bundle
+    for lever in levers:
+        for before, after in LEVERS[lever]:
+            found = text.count(before)
+            if found != 1:
+                raise SystemExit(
+                    f"lever {lever!r} matches {found} times, expected 1. The "
+                    "surface moved past this cut: re-derive the clause from the "
+                    "current description before regenerating, or the arm stops "
+                    "being one variable away from pristine.")
+            text = text.replace(before, after)
+    return text
+
+
+def surfaces() -> dict[Path, str]:
+    """Every arm's file and the bytes it should hold."""
+    bundle = render()
+    built = {BUNDLE: bundle}
+    for name, levers in ARMS.items():
+        built[VARIANTS / name] = render_arm(bundle, levers)
+    return built
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     mode = ap.add_mutually_exclusive_group(required=True)
     mode.add_argument("--write", action="store_true")
     mode.add_argument("--check", action="store_true")
     args = ap.parse_args()
-    fresh = render()
+    built = surfaces()
     if args.write:
-        BUNDLE.parent.mkdir(parents=True, exist_ok=True)
-        BUNDLE.write_text(fresh, encoding="utf-8")
-        print(f"wrote {BUNDLE.relative_to(ROOT)}")
+        for path, text in built.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8")
+            print(f"wrote {path.relative_to(ROOT)}")
         return 0
-    current = BUNDLE.read_text(encoding="utf-8") if BUNDLE.exists() else ""
-    if current != fresh:
-        print(f"stale fixture: {BUNDLE.relative_to(ROOT)}\n"
-              f"refresh with: python3 {Path(__file__).relative_to(ROOT)} --write",
+    stale = [path for path, text in built.items()
+             if (path.read_text(encoding="utf-8") if path.exists() else "") != text]
+    if stale:
+        print("stale fixture: "
+              + ", ".join(path.relative_to(ROOT).as_posix() for path in stale)
+              + f"\nrefresh with: python3 {Path(__file__).relative_to(ROOT)} --write",
               file=sys.stderr)
         return 1
-    print("fixture is current")
+    print(f"fixtures are current ({len(built)} arms)")
     return 0
 
 

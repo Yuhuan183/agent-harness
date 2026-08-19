@@ -65,7 +65,7 @@
 | # | 項目 | 判準 / 下一步 |
 |---|---|---|
 | 1 | skill 效用判斷 | 由 `task-observer` 在真實工作裡累積, 三條判準見下方〈驗收路線〉 |
-| 2 | s10 的變異臂已經不是單一變因 | `variants/b,c,d` 缺 `evidence-debugging`, `test-first-change`, `evidence-ladder` 三支, 與 pristine 的差已不只是「砍掉一條子句」. 再跑 s10 之前必須重生 |
+| 2 | ~~s10 的變異臂已經不是單一變因~~ | **2026-08-19 已修**: 三個臂改由 `build.py` 從 pristine 減去宣告的 lever 產生, 不匹配即硬失敗, 並納入既有的 `--check`. 舊結果列仍不可比 (當時是六份描述, 現在九份), 要用就重新量 |
 | 3 | 常駐預算只覆蓋不到兩成 | 已量並已記, 歸屬移到[常駐盤點](../research/resident-context-options.md); repo 側能做的只有維持自己那份紀律 |
 | 4 | `openai.yaml` 與 `description` 的語意漂移 | 已擋住改名 (目錄 / frontmatter `name` / `default_prompt` 三處一致), 語意仍靠 review. 沒有便宜的機械做法, 不假裝關掉 |
 
