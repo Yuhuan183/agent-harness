@@ -8,11 +8,11 @@ deterministic because both read the checkout - which is also their limit: every
 skill installed from somewhere else is listed in exactly the same per-session
 block and no mechanism here has ever seen it. On 2026-08-17 that was 8 managed
 skills inside a pool of 49, so the ratchet everybody pays attention to reached
-about a sixth of the load it appears to control (M5 finding, see
-docs/plans/engineering-workflow-distillation.md).
+about a sixth of the load it appears to control (docs/research/
+resident-context-options.md owns that finding and carries the current split).
 
-That gap cannot be closed by a gate. The other 41 are not this repo's files, and
-a commit hook that fails because the user installed a skill would be refusing
+That gap cannot be closed by a gate. Most of the rest are not this repo's files,
+and a commit hook that fails because the user installed a skill would be refusing
 work it has no standing to refuse. So this is the instrument instead, on the
 same argument that made `docs/` a report rather than a budget: measure it, print
 it, and let the reader decide.
