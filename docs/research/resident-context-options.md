@@ -11,63 +11,54 @@
 
 ## 先把尺度講清楚
 
-只看常駐層自己, 很容易把小數字看成大數字. 實測對照 (`usage-report --days 7`, 本機):
+只看常駐層自己, 很容易把小數字看成大數字. 2026-07-31 以 `usage-report --days 7` 對照過
+一次, 結論是數量級的, 所以底下不寫當時的絕對值 —— 那些字數已經變過三次, 而論證沒有:
 
-| | 值 |
-|---|---|
-| main opus-5 每回合 prompt context | p50 **24.4%**, p95 **75.1%** (1M window)|
-| 整個常駐層 | 1128 words ≈ 1.7–2.3K tokens (由 bytes 推估)|
-| 常駐層佔實際 prompt | **0.93%** (p50) / **0.31%** (p95)|
-| 修掉 56 words 佔實際 prompt | **0.049%** (p50) / **0.016%** (p95)|
-
-同一組數字畫出來, p50 那一回合的 prompt 裡各佔多少:
+- main opus-5 每回合的 prompt context 在 1M window 裡是 **p50 約四分之一, p95 約四分之三**;
+- 整個常駐層是**四位數的 words**, 換算約 2–3K tokens;
+- 兩者相除, 常駐層佔實際 prompt **不到 1%**, p95 時更低;
+- 一次典型的修剪 (數十 words) 因此落在**萬分之幾**.
 
 ```text
-  整個 prompt (24.4% of 1M window)  ████████████████████████████████  100%
-  └ 常駐層 (1128 words)             ▏                                 0.93%
-    └ 修掉 56 words 的效果          ▏                                 0.049%
+  整個 prompt                       ████████████████████████████████  100%
+  └ 常駐層                          ▏                                <1%
+    └ 修掉數十 words 的效果          ▏                              ~0.0X%
 ```
 
-**所以: 常駐字數不是目前 context 壓力的來源.** p95 的 75.1% 來自 transcript 累積,
-工具輸出與檔案讀取, 跟這 1128 words 幾乎無關. 任何以「省 token」為理由的常駐修剪,
-報酬都在雜訊裡.
+**所以: 常駐字數不是目前 context 壓力的來源.** p95 那三分之二來自 transcript 累積, 工具
+輸出與檔案讀取, 跟常駐層幾乎無關. 任何以「省 token」為理由的常駐修剪, 報酬都在雜訊裡.
+
+要當下的絕對值就跑上一節那三支指令; 這裡只保留不隨字數變動的那個比例關係.
 
 這**不推翻**規範原則 2. IFScale 量的是指令**條數**增加時的遵循衰退, Context Rot 量的是
 context 變長時的可靠性下滑; 原則 2 講的是規則彼此稀釋注意力, 不是 token 佔比. 預算作為
 「規則密度的棘輪」仍然有效 — 失效的只是「省下的字數」這個報酬敘事.
 
-## 現況 (2026-07-31 實測)
+## 現況: 不寫在這裡
 
-來源 `scripts/prompt-surface-census.py`; 上限來源 `test_contracts.py`.
+**這一節從 2026-08-19 起不複製數字.** 它原本有一張 2026-07-31 的實測表 (契約, skill
+metadata, role metadata, 合計, 餘裕), 而三週後每一格都錯了 —— 契約 397 已是 488, skill
+metadata 595 已是 917 —— 同時本文下一節寫著 917. 一份標題叫「現況盤點」的文件,
+自己跟自己矛盾, 而餘裕欄正是修剪決策的依據.
 
-| | 契約 | skill metadata | role metadata | 常駐合計 | 餘裕 |
-|---|---|---|---|---|---|
-| Claude | 397 / 520 | 595 / 620 | 136 / 140 | 1128 / 1280 | 152 |
-| Codex | 527 / 540 | 515 / 540 | 61 / 63 | 1103 / 1143 | **40** |
+[契約瘦身](../contract-slimming.md)早就定了這條規矩:「現行數值的唯一真相源是
+`test_contracts.py`, 本文不複製數字.」那條當時只寫給它自己. 現在這裡也照辦.
 
-(Codex 契約 2026-07-31 曾降為 480, 經 re-review 全部還原; L4 淨變動為零.)
+要現況就跑這三支, 各自回答不同的問題:
 
-role metadata 是 2026-08-01 review 補進來的: 每支 leaf role 的 name 與 description
-(Claude 在 agent frontmatter, Codex 在 `config.merge.toml` 的 `[agents.*]`) 跟 skill
-description 一樣每個 session 都列出來, 先前只量 role 本文, 等於把常駐的那一半留在
-census 與預算之外. 它同時是這道棘輪唯一的繞道: 把句子從 skill description 搬進 role
-description, 成本不變而測試全綠. 合計因此從 992/1042 修正為 1128/1103 — 這是量測
-範圍的修正, 不是誰變胖了.
+| 問題 | 指令 |
+|---|---|
+| 各層量到多少, 上限多少, 還剩多少 | `main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests -k budget` |
+| 每一支 skill 與 role 的逐項字數 | `main/.agents/scripts/python3-run scripts/prompt-surface-census.py` |
+| 這台機器實際扛多少, 預算蓋到幾成 | `main/.agents/scripts/python3-run scripts/resident-pool-report.py` |
 
-skill metadata 逐項 (兩側共用的描述逐字相同):
+**結構不變, 所以寫在這裡**: 常駐層由三塊組成 —— 兩份契約本體, 每支 skill 的 `name` 與
+`description`, 每支 leaf role 的 `name` 與 `description`. 第三塊是 2026-08-01 review 補進
+census 的; 在那之前只量 role 本文, 等於把常駐的那一半留在預算之外, 而它同時是這道棘輪
+唯一的繞道 —— 把句子從 skill description 搬進 role description, 成本不變而測試全綠.
 
-| skill | words | 備註 |
-|---|---|---|
-| `readable-zh-tw` | 176 | 單項上限 180, 只剩 4 words. 雙語各述一次, 因為它是唯一會被使用者以任一語言直接叫用的 skill |
-| `task-observer` | 102 | |
-| `headroom-protocol` | 92 | |
-| `baton-dispatch` | 88 | Claude 專有 |
-| `leaf-dispatch` | 77 | Codex 專有, 合併了 Claude 側兩支的 territory |
-| `provider-routing` | 69 | Claude 專有 |
-| `experience-ledger` | 68 | |
-
-Codex 側餘裕 38 words (約半支 skill 的描述) 是這份盤點的直接動機 — 但**餘裕變少不等於
-該砍**, 見〈六個可能結果〉.
+Codex 側還有一層結構差異: `allow_implicit_invocation: false` 的 skill 不會被注入, 所以它
+的 metadata 是 dispatch 成本不是常駐成本. census 從 2026-08-19 起建模這件事, 詳見下一節.
 
 ## 但這道棘輪只蓋住六分之一 (2026-08-18 實測)
 
@@ -95,8 +86,8 @@ Codex 側餘裕 38 words (約半支 skill 的描述) 是這份盤點的直接動
 - **為什麼不做成閘**: 那 41 支不是本 repo 的檔案. 一個因為使用者裝了 skill 就擋 commit
   的 hook, 擋的是它沒有立場擋的事. 判準沿用[文件導覽規則 8](../README.md#維護規則): 不是
   這一層付的成本, 就只報不擋.
-- **這不推翻上一節的尺度論證, 反而加強它**: 5013 words 依那節的口徑仍只佔 p50 prompt 的
-  4% 上下. 「省 token」這個報酬敘事還是在雜訊裡.
+- **這不推翻上一節的尺度論證, 反而加強它**: 即使是這個放大後的合計, 依那節的口徑仍只佔
+  p50 prompt 的個位數百分比. 「省 token」這個報酬敘事還是在雜訊裡.
 - **被削弱的是原則 2 那條**: 預算的正當性是「規則密度的棘輪」, 而 session 實際收到的指令
   條目有六分之五不在棘輪內. 最寬的一支 (`lark-apps` 385 words) 是本 repo 單項上限 180 的
   兩倍多. **所以「常駐層受控」讀成「這台機器的常駐注意力受控」是錯的.**
@@ -116,18 +107,18 @@ Codex 側餘裕 38 words (約半支 skill 的描述) 是這份盤點的直接動
 | L5 | 抑制新增 | 新規則推得出來 | 已有機制 (新 skill 未登錄即測試失敗)|
 | **L6** | **調高預算** | **每一句都通過原則 1** | 規範明文允許 (需理由寫進 commit)|
 
-**L6 不是失敗選項.** 如果 1042 words 每一句都是「刪掉會讓模型犯錯」, 那正確答案就是
-調高上限並記明理由 — 尤其在字數對真實 prompt 的影響只有 0.27% 的前提下. 把 L6 漏掉會
-讓讀者只往下砍, 這正是本文第一版犯的錯.
+**L6 不是失敗選項.** 如果常駐層每一句都是「刪掉會讓模型犯錯」, 那正確答案就是調高上限
+並記明理由 —— 尤其在字數對真實 prompt 的影響落在萬分之幾的前提下. 把 L6 漏掉會讓讀者
+只往下砍, 這正是本文第一版犯的錯.
 
 ### L1 · description 修剪
 
-`readable-zh-tw` 176 words, 是中位數的兩倍, 也是唯一逼近單項上限的.
+`readable-zh-tw` 是最寬的一支 description, 約中位數的兩倍, 也是唯一逼近單項上限的.
 s10-skill-recall 四臂實測 (2026-07-31): 砍文件類型列舉 (B) 或砍不觸發排除項 (C)
 單獨做, 鑑別度無損; **兩個都砍 (D) 精確度立刻崩**, 3 樣本中 1 次把 nginx 設定檔/
 error log/Python 程式碼全導向 `readable-zh-tw`.
 
-那 176 words 因此有一部分是**冗餘覆蓋**: 兩條子句互相補位.
+那份描述因此有一部分是**冗餘覆蓋**: 兩條子句互相補位.
 
 但 s10 量的是**鑑別度** (批次分類), 不是實際載入行為, 證據不對稱: 失敗是強證據,
 通過是弱證據. 所以 B/C 的乾淨結果**不構成修剪許可**, 只證明「不是明顯壞的修剪」.

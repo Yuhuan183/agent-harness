@@ -1304,6 +1304,38 @@ class DocumentationBudgetTests(unittest.TestCase):
                 f"{provider} resident layer "
                 f"({budget.path} plus skill and role metadata)")
 
+    def test_the_leverage_doc_does_not_copy_the_budget_numbers(self) -> None:
+        """`contract-slimming` says the budgets live here and nowhere else.
+
+        That rule was written for itself and the neighbouring document ignored
+        it. `resident-context-options.md` carried a "現況" table of measured and
+        capped pairs, and three weeks later every cell was wrong - contract 397
+        against an actual 488, skill metadata 595 against 917 - while a section
+        further down the same file stated 917. A document titled 現況盤點 that
+        disagrees with itself is worse than one with no numbers, because its
+        餘裕 column is what a trimming decision reads.
+
+        So the numbers left and the commands that produce them stayed. This
+        asserts the shape that came back last time: a `N / M` pair, which is how
+        a measured-against-cap figure gets written. Prose about the structure,
+        ratios and orders of magnitude is unaffected - none of that rots when a
+        clause is added.
+        """
+        import re
+        text = read("docs/research/resident-context-options.md")
+        copied = re.findall(r"\b\d{2,4} / \d{2,4}\b", text)
+        self.assertEqual(
+            [], copied,
+            "resident-context-options.md is copying budget figures again; the "
+            "measured values belong to the census and the caps belong to this "
+            "file, and a copy of either goes stale without anything failing")
+        # And the replacement has to be reachable: the doc earns the right to
+        # omit the numbers only by naming what produces them.
+        for command in ("scripts/prompt-surface-census.py",
+                        "scripts/resident-pool-report.py"):
+            self.assertIn(command, text,
+                          f"the doc drops the numbers without pointing at {command}")
+
     def test_resident_contracts_stay_dense(self) -> None:
         """What the word ceilings above cannot see: what the words bought.
 
