@@ -1,6 +1,6 @@
 # Engineering workflow 蒸餾實作計畫
 
-狀態: **完成**. 兩個蒸餾 skill 已出貨並部署, 第三個 (`evidence-ladder`) 已納管.
+狀態: **完成**. 兩個蒸餾 skill 已出貨並部署.
 行為驗收量不出效果, 原因寫在下面; 後續判斷交給 `task-observer` 在真實工作裡累積.
 
 最後更新: 2026-08-19
@@ -25,14 +25,13 @@
 |---|---|---|
 | `evidence-debugging` | 蒸餾自上游 `diagnosing-bugs` | 逐位元組一致 |
 | `test-first-change` | 蒸餾自上游 `tdd` | 逐位元組一致 |
-| `evidence-ladder` | 本 repo 自撰, 2026-08-19 納管 | 逐位元組一致 |
 
-三者都從 `main/.agents/skills/` 單一來源以整目錄 symlink 部署到兩個 provider,
+兩者都從 `main/.agents/skills/` 單一來源以整目錄 symlink 部署到兩個 provider,
 `INSTALLED.txt`, `deployment-manifest.tsv`, census 與預算都涵蓋.
 
 ### 可以說與不可以說的
 
-- **可以說**: 三個 skill 蓋好了, 部署正確, 兩端逐位元組一致, 蒸餾的兩個經過逐段 attribution 覆核;
+- **可以說**: 兩個 skill 蓋好了, 部署正確, 兩端逐位元組一致, 內容經過逐段 attribution 覆核;
 - **可以說**: 常駐成本已量 —— 詳見[常駐盤點](../research/resident-context-options.md);
 - **不可以說**: 它們讓結果變好. 沒有證據;
 - **不可以說**: 它們沒用. 同樣沒有證據 —— 從來沒做出一個需要它們的題目.
@@ -182,14 +181,14 @@ false-positive 檢查:
 |---|---|
 | 症狀已知, 原因不明 | `evidence-debugging` |
 | 要改的行為已知 (含已診斷完的修復) | `test-first-change` |
-| 要判斷一個結論夠不夠格拿出去講 | `evidence-ladder` |
 | 只要求解釋或評估 | 都不是 |
 
 `test-first-change` 的 `description` 直接點名 `evidence-debugging`, 這是刻意的: 不點名時兩者
 只能靠語感分, 而「fix」兩邊都寫著. 代價是可攜層出現一個 sibling skill 名 —— 接受, 因為拿掉它
 就沒有任何機制在描述層做這個區分.
 
-三者都有「沒看過紅的綠不是證據」, 但那是三件不同的事, 不合併的理由見 M7.
+與機器上的 `evidence-ladder` 有一條規則重疊而不牴觸, 判定不合併; 決定記在
+[orchestration-history](../../main/claude/plans/orchestration-history.md) 的 2026-08-19 那筆.
 
 ## 新 skill 的建立基準
 
@@ -255,7 +254,7 @@ replay 量不出來的原因是它需要一個「模型會做錯」的題目, �
 
 ### 判準 (先寫, 之後不改口)
 
-- **三筆以上**觀察指名這三個 skill 之一 —— 那是它們有負載的證據;
+- **三筆以上**觀察指名這兩個 skill 之一 —— 那是它們有負載的證據;
 - **三筆以上**摩擦的教訓落在它們的守備範圍, 而它們沒有被載入 —— 那是觸發面的證據,
   而且是 replay 造不出來的那種;
 - **連續一個月的真實使用沒有任何一筆指向它們** —— 那是「不是這台機器的瓶頸」的弱證據,
@@ -281,62 +280,6 @@ replay 量不出來的原因是它需要一個「模型會做錯」的題目, �
 蒸餾只留了否定面, 把正面規則丟掉了. 已補回 `test-first-change` 的 Then 步驟 3.
 
 `to-tickets` 的後半段假設有 issue tracker 可寫, 而本計畫的非目標明寫不依賴任何 tracker.
-
-## M7 — `evidence-ladder`: 採用進 repo, 但不與任何一支合併 (2026-08-19)
-
-問題是全域的 `evidence-ladder` 有沒有跟本 repo 兩支打架或近似, 能不能收斂. 答案是
-**不打架, 不合併, 但要納管** —— 它是使用者自己寫的 skill, 只存在 `~/.claude/skills/`, 沒有版控.
-
-### 先更正一個錯的判定
-
-本節第一版寫「不採用, 因為採用要付 130 常駐字」. **那是錯的.** 它已經裝在 `~/.claude/skills/`,
-每個 Claude session 都在列它的 name 與 description —— 那 129 字**本來就在付**. 納管不新增成本,
-只是讓棘輪看得見它.
-
-第一版還把它當成第三方檔案, 套了「不是本 repo 的檔案, 做成閘沒有立場」. 使用者自撰的 skill
-不適用那條.
-
-實測佐證: 納管前後 `resident-pool-report.py` 的**合計完全沒動** (5013 words), 只有覆蓋率
-從 15.7% 移到 18.3%.
-
-### 唯一近似的那條, 拆開是三件事
-
-三支都有「沒看過紅的綠不是證據」, 但:
-
-- `test-first-change` — 新測試在寫實作**前**要先紅, 且是預測的那個理由紅;
-- `evidence-debugging` — 症狀從沒被按需產生過, 綠只代表沒觀察到;
-- `evidence-ladder` — 把**修正本身**弄壞, 確認測試以**預測的量級**變紅, 再還原.
-
-第三個是 mutation testing, 另外兩支沒有. 合併會弄丟它.
-
-### 沒有矛盾, 而且它有六成內容 repo 沒有
-
-`evidence-ladder` 的不觸發已經把 code review 讓給專案的 skill, 且它不執行動作, 碰不到契約的
-權限邊界. 對全 repo skill (含 dev-only 的 `harness-review`) 做過概念層 grep: L0–L5 階梯,
-非循環參考系, 儀器校準, 環境不是目標, 結論耐久度表, 撤回協議 —— 一條都沒有對應. 四個字面
-命中全是同字不同義 (fallback 迴圈, 門檻重校, rung, 暫時性 log 標記).
-
-### 採用的形狀
-
-| | |
-|---|---|
-| ATTRIBUTION | **無** —— 使用者自撰, 不是上游蒸餾 |
-| Codex `allow_implicit_invocation` | `false`, 與兩支蒸餾 skill 同 |
-| 本文 | 照原樣收, 不改寫成 house style |
-| description | 129 字 (單項上限 180) |
-
-**照原樣收是刻意的.** 它現在就在正確運作, 而把能用的散文改寫成別支的形狀, 正是這批工作學到
-不要做的那種沒量過的改動.
-
-預算: Claude skill metadata 787 → 916 (上限 790 → 934), Codex 707 → 836 (710 → 853),
-本文 1172 (上限 1195). 兩個抬升不是同一種數字: **Claude 側買不到任何東西**, 只是把已經在付的
-帳記進預算; Codex 側是真的新增 129 字, 因為它從來沒部署到那邊.
-
-### 順帶記一筆不處理的
-
-`evidence-debugging` 與 `test-first-change` 各有一條「摸到你的動作, 不是摸到結果」, 幾乎逐字
-相同. 那是 skill body (dispatch 成本) 且兩支各自獨立載入, 只載其中一支的 session 仍然需要它
-—— 自足是設計, 不是 `harness-review` 說的常駐層重複.
 
 ## Upstream recheck workflow
 
