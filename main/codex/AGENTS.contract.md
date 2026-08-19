@@ -24,7 +24,7 @@ Direct execution is the default: the main task owns framing, architecture, ambig
 
 - Delegate only when parallelism, context protection, or fresh-context independence clearly exceeds dispatch overhead. Once a dispatch is going ahead, load the `leaf-dispatch` skill, which owns the invocation mechanics, briefs, stops, records, QC, and ledger logging.
 - Group by shared context, artifacts, dependencies, and verification surface — not request bullets. Keep one unknown bug's diagnosis, first fix, and live verification in one reasoning chain.
-- Treat the approved Plan/release slice as a hard boundary; one owner per writable artifact. Never brief a subagent to delegate further, and never hand one a task that would require delegation.
+- Treat the approved Plan/release slice as a hard boundary. Never brief a subagent to delegate further, and never hand one a task that would require delegation.
 - Report every launch and post-QC outcome as separate fixed `[LEAF_DISPATCH]` / `[LEAF_RESULT]` records with `request_source=codex` (formats in `leaf-dispatch`), then log the outcome with `experience-ledger`.
 - Collect the finished subagent response and quality-check it against the brief before integration; follow up only for genuinely new or redirected work.
 
