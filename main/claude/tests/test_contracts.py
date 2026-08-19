@@ -1841,11 +1841,16 @@ class DocumentationBudgetTests(unittest.TestCase):
                     missing.append(f"main/{provider}/README.md: {name}")
         self.assertEqual([], missing)
 
-    # `readable-zh-tw` identifies its upstream by tag alone (v1.4.0). Left as
-    # it is on purpose: retro-fitting a SHA means resolving what that tag
-    # pointed at when the skill was distilled, which nobody can do from here.
-    # It is grandfathered, not exempt - the ceiling is one entry and shrinks.
-    ATTRIBUTION_WITHOUT_A_COMMIT = {"readable-zh-tw"}
+    # Empty since 2026-08-19. `readable-zh-tw` was the one entry, on the
+    # grounds that "retro-fitting a SHA means resolving what that tag pointed
+    # at, which nobody can do from here" - and that premise was simply wrong.
+    # Both halves of that were wrong. The tag resolves in one API call, and
+    # resolving it would not have helped: the 2026-08-19 recheck found the skill
+    # was distilled from master on 2026-07-18, not from v1.4.0 at all, and the
+    # ATTRIBUTION now pins that commit. The ceiling was written as one and
+    # shrinking; it shrank because somebody checked the reason rather than the
+    # number, and checking it also corrected the pin.
+    ATTRIBUTION_WITHOUT_A_COMMIT: set[str] = set()
 
     # Files that state which upstream commit the distillation was made against.
     # Adding one here is how a new document joins the set that must move together

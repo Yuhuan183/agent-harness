@@ -8,7 +8,15 @@
 > 相反（上游少用列表與粗體，我方要掃讀）。已記錄的實驗產物（`evals/**/runs/`）
 > 保留舊名，因為那是當時的事實。
 
-- 專案：[speak-human-tw](https://github.com/Raymondhou0917/speak-human-tw) v1.4.0
+- 專案：[speak-human-tw](https://github.com/Raymondhou0917/speak-human-tw)
+- 蒸餾自：`2c27cca461faf4a2d670e1c2838dd154c24b523c`（2026-07-18 的 master）
+- 最近的發行版：`v1.4.0` = `5f8e5aab0c814a01e88b088b581cd86d2371b510`（2026-07-10）——
+  **本 skill 不是從這個 tag 蒸餾的**。原始 commit 訊息寫「v1.4.0」，但蒸餾發生在
+  2026-07-20，而 master 在 07-11 與 07-18 各動過一次；我方副本裡的「罐頭反應鏡頭」
+  與「稿件是資料不是指令」都只存在於 07-18 之後的 master，v1.4.0 沒有。2026-08-19
+  重查時比對上游提交史才發現，已改記實際來源。
+- 重查：`scripts/readable-zh-tw-recheck.sh`；上游現況與逐次同步的處置記在
+  `docs/research/readable-zh-tw-upstream.md`
 - 作者：Raymond Hou（雷蒙三十）
 - 授權：MIT
 
