@@ -1201,6 +1201,57 @@ Evidence threshold:
 
 Likely distilled behavior: facts first, one blocking decision at a time, local checkable plan by default, external publishing only after explicit approval.
 
+## M7 — `evidence-ladder`: 決定 **不整併, 不採用** (2026-08-19)
+
+問題是全域的 `evidence-ladder` 有沒有跟本 repo 兩支打架或近似, 能不能收斂. 三個答案都是否定.
+
+它不是本 repo 的檔案 —— `~/.claude/skills/evidence-ladder`, 不在 manifest, 130 常駐字,
+屬於[常駐盤點](../research/resident-context-options.md)裡「沒有機制在管」那 41 支.
+
+### 領地不重疊
+
+| skill | 回答的問題 |
+|---|---|
+| `evidence-debugging` | 為什麼壞了 |
+| `test-first-change` | 怎麼證明我改對了 |
+| `evidence-ladder` | 這個結論可以拿出去講嗎 |
+
+### 唯一近似的那條, 拆開是三件事
+
+「沒看過紅的綠不是證據」三支都有:
+
+- `test-first-change` — 新測試在寫實作**前**要先紅, 且是預測的那個理由紅;
+- `evidence-debugging` — 症狀從沒被按需產生過, 綠只代表沒觀察到;
+- `evidence-ladder` — 把**修正本身**弄壞, 確認測試以**預測的量級**變紅, 再還原.
+
+第三個是 mutation testing, 另外兩支沒有. 整併會弄丟它.
+
+### 沒有矛盾, 且它有六成內容 repo 沒有
+
+`evidence-ladder` 的不觸發已經把 code review 讓給專案的 skill, 且它不執行動作, 碰不到契約的
+權限邊界. 對全 repo skill (含 dev-only 的 `harness-review`) 做過概念層 grep: L0–L5 階梯,
+非循環參考系, 儀器校準, 環境不是目標, 結論耐久度表, 撤回協議 —— 一條都沒有對應. 四個字面
+命中全是同字不同義 (fallback 迴圈, 門檻重校, rung, 暫時性 log 標記).
+
+### 為什麼不採用進 repo
+
+`e4` 的 turn 是「這份批次的 per-run 模式表明天要放進 write-up 引用. 先確認它可信.」,
+`evidence-ladder` 在那格被自主選中 3/5 —— 正對上它描述裡的「要把量測數字寫進文件」.
+它是這台機器上唯一一支**依自己的觸發語**被正確選中的 skill.
+
+那是不採用的理由, 不是採用的理由: 它現在就在正確運作, 而採用要付 130 常駐字 (Claude 側
+skill metadata 787/790, 只剩 3 字, 得先抬預算), 換到同樣的行為加一份要維護的 attribution.
+M6 的結論在此同樣成立 —— 第三支上去最可能的結果是再得到一組 0/5.
+
+### 推翻條件
+
+`task-observer` 累積到三次「該用 `evidence-debugging` 卻載入 `evidence-ladder`」或反向的
+實例, 才動描述. 目前一次都沒量到, 而 M5 的教訓正是: 為沒量到的問題改描述會是第四次犯同一個錯.
+
+順帶記一筆不處理的: `evidence-debugging` 與 `test-first-change` 各有一條「摸到你的動作,
+不是摸到結果」, 幾乎逐字相同. 那是 skill body (dispatch 成本) 且兩支各自獨立載入, 只載其中
+一支的 session 仍然需要它 —— 自足是設計, 不是 `harness-review` 說的常駐層重複.
+
 ## Exact repository surfaces likely to change
 
 | Surface | Planned change | Ownership reason |

@@ -25,7 +25,23 @@ RESIDENT_CONTRACT_BUDGETS = {
     # budget starts buying wrong sentences instead of short ones.
     #
     # measured 2026-08-04: 546 words, 24 rules, 158.7 bytes/rule, 0.212 filler
-    "codex": ContractBudget(".codex/AGENTS.contract.md", 550, 26, 175, 0.15, 0.25),
+    #
+    # +42 (2026-08-19): the deliverable-path clause, from a reported incident.
+    # A file was handed back as `…/scratchpad/shots/light_band_cmp.png`, which
+    # the user could not open, and the agent then copied it into ~/Downloads
+    # uninvited. Neither half is derivable: nothing in either contract or host
+    # prompt says how to write a path in a report, and the general authority
+    # sentence this file already carries did not stop the copy - a general rule
+    # that was present and did not fire is the evidence for a specific one. The
+    # Claude twin states the same thing as a concrete prohibition rather than as
+    # approval language, because `test_claude_md_does_not_restate_the_harness_
+    # system_prompt` bans the latter on that side.
+    #
+    # The raise is wider than the clause on purpose. The file sat at 548/550,
+    # which is the 540/540 state the note above describes - the one that forced
+    # a clause to lose its grammatical subject. Measured 581 and set to 592, so
+    # the next edit here has room to be right rather than short.
+    "codex": ContractBudget(".codex/AGENTS.contract.md", 592, 26, 175, 0.15, 0.25),
 }
 
 
