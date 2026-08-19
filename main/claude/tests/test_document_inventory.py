@@ -42,6 +42,10 @@ def covers(pattern: str, path: str) -> bool:
     return re.fullmatch("".join(out), path) is not None
 
 
+def covers_any(patterns: list[str], path: str) -> bool:
+    return any(covers(pattern, path) for pattern in patterns)
+
+
 class DocumentInventoryTests(unittest.TestCase):
     def setUp(self) -> None:
         self.inventory = json.loads(
@@ -49,7 +53,12 @@ class DocumentInventoryTests(unittest.TestCase):
         )
 
     def test_inventory_is_bound_to_the_review_base(self) -> None:
-        self.assertEqual(self.inventory["schema_version"], 1)
+        """`audit_id` and `base_commit` name the audit that first drew this
+        envelope. Those two are deliberately frozen; the pattern lists are not.
+        The envelope is re-runnable, so a later reclassification bumps
+        `schema_version` and leaves the provenance fields alone.
+        """
+        self.assertEqual(self.inventory["schema_version"], 2)
         self.assertEqual(self.inventory["base_commit"], "728936f")
         self.assertEqual(
             self.inventory["audit_id"], "DOC-AUDIT-2026-07-28-ENVELOPE"
@@ -113,6 +122,41 @@ class DocumentInventoryTests(unittest.TestCase):
             any(covers(pattern, intruder) for pattern in patterns),
             "a document in an unlisted subdirectory is covered by some pattern, "
             "so the coverage assertion cannot fail and proves nothing")
+
+    def test_research_is_evidence_except_its_own_summary(self) -> None:
+        """`docs/research/` records what was checked, including what was later
+        overturned; only its `README.md` states conclusions that hold now.
+
+        Until 2026-08-19 the guidance list carried a recursive `docs/**/*.md`,
+        so every research document was claimed as current guidance. Nobody
+        noticed, because `fnmatch` made the coverage assertion unfalsifiable
+        (see `covers` above) - and in the meantime that tree grew from 13.4k
+        words at the review base to 85k, all of it silently inside the
+        envelope.
+
+        The split is asserted here rather than left to the glob, because a
+        journal that keeps its refuted paragraphs on purpose must never be read
+        as a statement of the current design.
+        """
+        guidance = self.inventory["reviewed_current_guidance"]
+        evidence = self.inventory["evidence_not_current_guidance"]
+
+        for journal in (
+            "docs/research/landing-log.md",
+            "docs/research/lifecycle-replay.md",
+            "docs/research/clause-pricing.md",
+            "docs/research/model-evidence.md",
+        ):
+            self.assertTrue(covers_any(evidence, journal), journal)
+            self.assertFalse(covers_any(guidance, journal), journal)
+
+        self.assertIn("docs/research/README.md", guidance)
+
+        # And no recursive `docs` rule may come back: it is what let that tree
+        # grow six-fold inside the envelope without anyone deciding it should.
+        self.assertNotIn("docs/**/*.md", guidance)
+        self.assertFalse(covers_any(guidance, "docs/anything/new.md"))
+        self.assertFalse(covers_any(evidence, "docs/anything/new.md"))
 
     def test_inventory_rules_resolve_to_real_artifacts(self) -> None:
         for path in (

@@ -4,6 +4,8 @@
 比較基準: `728936f`
 範圍定義: [document-inventory.json](document-inventory.json)
 
+> 那份 inventory 是**可重跑的範圍定義**, 不是這次稽核的凍結快照: `audit_id` 與 `base_commit` 釘住這次稽核, 分類清單則會隨樹一起改. 已知的改動: 2026-08-19 把 `docs/research/` 由現行指引改列為紀錄 (該目錄的 README 除外), 因為原本那條遞迴 glob 在這次稽核之後把 77.4k 字的實驗紀錄一併算進了現行指引.
+
 ## 結果
 
 原文件有實質偏移, 並非只有文字老舊. 最重要的偏移是:
