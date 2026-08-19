@@ -41,7 +41,17 @@ RESIDENT_CONTRACT_BUDGETS = {
     # which is the 540/540 state the note above describes - the one that forced
     # a clause to lose its grammatical subject. Measured 581 and set to 592, so
     # the next edit here has room to be right rather than short.
-    "codex": ContractBudget(".codex/AGENTS.contract.md", 592, 26, 175, 0.15, 0.25),
+    #
+    # 592 -> 599 the next day, and it is a correction rather than a refill: 581
+    # measured a clause that was missing half its rule. The Claude twin said to
+    # leave the file where it was written *and* to say so and ask when that place
+    # is temporary; this side stated only the prohibition, so a Codex session was
+    # told not to copy and never told what to do instead. Restoring the second
+    # half measures 587. A rule slot was returned in the same pass by merging
+    # "Direct execution is the default" with the sentence naming what the main
+    # task owns - one thought, and the Claude twin already writes it as one
+    # sentence - so rules went 25 -> 24 while words went up.
+    "codex": ContractBudget(".codex/AGENTS.contract.md", 599, 26, 175, 0.15, 0.25),
 }
 
 
