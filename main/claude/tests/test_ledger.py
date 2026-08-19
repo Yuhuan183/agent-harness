@@ -119,9 +119,10 @@ class SharedSkillTests(unittest.TestCase):
     def test_speak_human_tw_is_shared_via_symlink(self) -> None:
         self._assert_symlinked_body("readable-zh-tw")
 
-    def test_speak_human_tw_layout_and_attribution(self) -> None:
+    def test_readable_zh_tw_layout_and_attribution(self) -> None:
         base = "main/.agents/skills/readable-zh-tw"
-        for ref in ("patterns", "taiwan-localization", "protected-list", "humanize"):
+        for ref in ("patterns", "taiwan-localization", "protected-list", "humanize",
+                    "rewrite-mode"):
             self.assertTrue((ROOT / base / "references" / f"{ref}.md").is_file(), ref)
         self.assertTrue((ROOT / base / "agents/openai.yaml").is_file())
         meta = frontmatter(f"{base}/SKILL.md")
@@ -129,11 +130,29 @@ class SharedSkillTests(unittest.TestCase):
         self.assertNotIn("user-invocable:", meta)
         self.assertIn("license: MIT", meta)
         skill = read(f"{base}/SKILL.md")
-        for ref in ("patterns.md", "taiwan-localization.md", "protected-list.md", "humanize.md"):
+        for ref in ("patterns.md", "taiwan-localization.md", "protected-list.md",
+                    "humanize.md", "rewrite-mode.md"):
             self.assertIn(ref, skill)
-        self.assertIn("## 選擇工作模式", skill)
-        self.assertIn("改寫模式（預設）", skill)
+        # The mode split is the 2026-08-19 rewrite's whole point, and which mode
+        # is default is the half that decides behaviour: writing a reply is not
+        # rewriting someone's manuscript, so the manuscript flow must not be
+        # what a session falls into. Asserted rather than trusted to the prose,
+        # because the previous version defaulted the other way and this test
+        # pinned that default by name.
+        self.assertIn("## 兩個模式", skill)
+        self.assertIn("**直出**（預設）", skill)
+        self.assertIn("## 直出：一次寫對", skill)
+        # Punctuation is mode-dependent from the same rewrite: half-width for
+        # replies, which is this repo's convention, and full-width for copy,
+        # which is the Taiwan publishing one. Either alone would be wrong
+        # somewhere.
+        self.assertIn("半形", skill)
+        self.assertIn("全形", skill)
+        # No fixed confirmation gate before rewriting, in the body or the flow
+        # it moved to.
         self.assertNotIn("先列清單、等確認", skill)
+        self.assertNotIn("先列清單、等確認",
+                         read(f"{base}/references/rewrite-mode.md"))
         # MIT derivative must carry the upstream notice.
         attribution = read(f"{base}/ATTRIBUTION.md")
         self.assertIn("MIT", attribution)
