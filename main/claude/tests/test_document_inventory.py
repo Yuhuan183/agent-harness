@@ -3,43 +3,10 @@
 from __future__ import annotations
 
 import json
-import re
 import unittest
 from pathlib import Path
 
-from support import ROOT
-
-
-def covers(pattern: str, path: str) -> bool:
-    """Glob match where `*` stops at a separator and `**` spans directories.
-
-    `fnmatch` was used here until 2026-08-19 and its `*` crosses `/`, so
-    `docs/*.md` matched `docs/research/anything.md` and `main/claude/*.md`
-    matched any depth under it. Every pattern was therefore recursive and the
-    coverage assertion below could not fail - a new guidance document anywhere
-    under a scanned root was covered by whichever top-level pattern named its
-    root.
-
-    Nothing had actually slipped through: re-running the check with these
-    semantics leaves all 82 candidates covered, because the list was written for
-    path-aware matching in the first place - which is why `docs/**/*.md` sits
-    beside `docs/*.md` rather than instead of it. What was broken was the
-    guard's ability to fail, not the coverage it guards, and the audit document
-    lists that guard as one of this inventory's benefits.
-    """
-    out, i = [], 0
-    while i < len(pattern):
-        if pattern.startswith("**/", i):
-            out.append("(?:[^/]+/)*"); i += 3
-        elif pattern.startswith("**", i):
-            out.append(".*"); i += 2
-        elif pattern[i] == "*":
-            out.append("[^/]*"); i += 1
-        elif pattern[i] == "?":
-            out.append("[^/]"); i += 1
-        else:
-            out.append(re.escape(pattern[i])); i += 1
-    return re.fullmatch("".join(out), path) is not None
+from support import ROOT, covers
 
 
 def covers_any(patterns: list[str], path: str) -> bool:
