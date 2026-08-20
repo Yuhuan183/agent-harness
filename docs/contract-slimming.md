@@ -20,7 +20,7 @@
    指名的 regression test 鎖住, 不得以「保險起見」概括豁免;
    (c) 同一條政策只能有一個真相源, 其他位置只放連結. 加規則前先找矛盾, 不是先找空位.
 3. **分層放置.** 按需流程放 skills (漸進揭露); 可機械判定的紀律交給 hooks 與
-   contract tests (機制勝過提醒); 角色專屬規則放各 role 契約, 不進主契約.
+   contract tests (機制勝過提醒, 論證在 [playbook](harness-engineering.md#3-四個原則)); 角色專屬規則放各 role 契約, 不進主契約.
 4. **決策點強制行勝過清單散文.** 弱檔位執行者只遵守決策點上的格式行
    (`INTENT:`/`TWINS:`/`AUTH:`/`LEAF_DISPATCH` 等), 不遵守清單中的原則句;
    此類行屬於 role 契約與 QC 檢核, 不佔主契約預算 (fable-method 蒸餾, 取證見

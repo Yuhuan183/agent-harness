@@ -93,10 +93,11 @@ flowchart BT
 **管什麼.** 單一一條規則的措辭與位置. 這是本 repo 量得最細的一層, 因為它是唯一能做
 A/B 的粒度.
 
-**怎麼做.** 常駐層只收四類東西: 猜不到的精確指令 (命令, 環境怪癖), 非預設慣例, 硬性
-護欄, 以及外部真值來源與衝突優先序. 判準只有一句 —— **刪掉這一行會不會犯錯? 不會就刪.**
+**怎麼做.** 什麼配得上常駐, 由 [playbook 第 1 節](harness-engineering.md#1-核心立場)
+的四類與那句判準決定 —— **刪掉這一行會不會犯錯? 不會就刪.** 本 repo 在那之上加的是量:
 兩份契約各有字數上限, 外加三項密度指標 (規則條數, 每條的位元組數, 廢話比例), 所以
-「把一句話寫長」不能換到更多規則. 每支 skill 與 role 的 `description` 各有自己的上限.
+「把一句話寫長」換不到更多規則. 每支 skill 與 role 的 `description` 各有自己的上限,
+規範在[契約瘦身](contract-slimming.md).
 
 **用什麼量.** [prompt-surface-census.py](../scripts/prompt-surface-census.py) 說哪一句
 在哪一層, 各多重; [contract-operator-delta.py](../scripts/contract-operator-delta.py) 在
@@ -109,8 +110,8 @@ A/B 的粒度.
   短語斷言全數通過, 而同一份檔案裡放了十二個語意缺陷.
 - **搬家其實是漲價.** 把一句話從 skill 本文搬進 `description`, 它就從「按需載入」變成
   「每回合都在」.
-- **矛盾比稀釋貴.** 契約疊在供應商 system prompt 之上, 牴觸時新世代模型會花 reasoning
-  去調和互斥規則, 而不是直接擇一. 所以牴觸是 bug, 處置是刪那一行.
+- **矛盾更貴.** 論證在 [playbook 第 1 節](harness-engineering.md#1-核心立場);
+  對這一層的意思是, 牴觸供應商 system prompt 的子句是 bug, 處置是刪那一行, 不是加字解釋.
 
 **要動它得先拿出什麼.** 改措辭要事前登記的本機 A/B —— 這一層的效果量大到三倍, 也小到
 點估計翻倍還過不了事前門檻, 兩種都發生過. 新增子句要先證明「刪掉它模型會犯錯」, 再做
@@ -203,11 +204,15 @@ A/B 的粒度.
 平行性, context 保護, fresh-context 獨立性, 或明顯較便宜的角色檔位值得那筆開銷時才派工.
 派工的三個維度刻意分開, 不為每個題材新增 agent:
 
-| 維度 | 決定什麼 | 例 |
+| 維度 | 決定什麼 | 本 repo 的實際值 |
 |---|---|---|
-| **Role** | 權限, 工具, 判斷與停止邊界 | 七個固定角色 |
-| **Task class** | ledger 裡可比較的 cohort | recon, review, impl, verify, security |
-| **Lens** | 這次要攻擊的接縫 | 語意接縫, 狀態與並行, 測試有效性 |
+| **Role** | 權限, 工具, 判斷與停止邊界 | 七個固定角色, 在 [`main/claude/agents/`](../main/claude/agents/) |
+| **Task class** | ledger 裡可比較的 cohort | 清單與各自的定義在 [metrics](../main/.agents/skills/experience-ledger/references/metrics.md); 有幾個刻意不參與決策 |
+| **Lens** | 這次要攻擊的接縫 | 語意接縫, 狀態與並行, 契約邊界, 測試有效性 |
+
+三個維度為什麼要分開, 論證在 [playbook](harness-engineering.md#leaf-分派的三層契約).
+`recon` (定位, 盤點, 摘要) 與 `review` (有界, 對抗式的唯讀審查, 必須指定 lens) 即使都由
+`explore` 執行, 也不能併成同一筆 route 證據 —— 那會把兩種很不一樣的工作平均掉.
 
 QC 把一件事制度化: **報告是一組待證主張, 不是證據.** 每次派工結束, main 依序做收件分級,
 機械稽核, 抓詐欺清單 (含強制的 grep 覆核), 再四級裁決入帳. 派工的五個狀態每一個都要有

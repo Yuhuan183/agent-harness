@@ -29,19 +29,28 @@
 
 ## 文件責任
 
-| 文件 | 保存內容 | 不保存內容 |
-|---|---|---|
-| [架構總覽](architecture.md) | 由上而下的骨幹敘事: 架構圖, 核心想法, 六層地圖與各層入口, 附檔導引 | 各層的職責與實作 (在分層剖析), 可變的 model 數值, 會過期的量測值 (指向腳本) |
-| [分層剖析](agent-engineering.md) | 六層各自的職責, 實作, 儀器, 已知失效與升級判準; 跨層的兩條軸; 升級評估的五個問題 | 這個系統的骨幹敘事 (在架構總覽), 跨專案方法論 (在 playbook), 實驗原始數據 (在 research/) |
-| [Harness Engineering Playbook](harness-engineering.md) | 可跨專案複用的設計與驗證方法 | 當前 route pins, 實驗原始數據 |
-| [研究摘要](research/README.md) | benchmark 快照, 成本口徑, 案例取捨, 研究缺口; `research/` 底下唯一的現行結論來源 | runtime 強制規則, 現行 route pins, 逐次查核的原始紀錄 (在 [landing-log](research/landing-log.md)) |
-| [Matt Pocock skills 導入研究](research/mattpocock-skills-integration.md) | 上游快照, 工作流比較, 相容性, 採用與拒絕理由 | 實作進度, runtime skill 本體 |
-| [Engineering workflow 蒸餾實作計畫](plans/engineering-workflow-distillation.md) | 已核准方向, 分階段 scope, gates, rollback 與 completion criteria | 上游研究全文, 已部署狀態 |
-| [配置與部署](setup.md) | bootstrap, apply, 驗收與回滾步驟 | 模型選擇理由 |
-| [契約瘦身規範](contract-slimming.md) | CLAUDE.md/AGENTS.md 的內容判定, 預算原則與驗收 | 歷史歷程, 當前 orchestration 狀態 |
-| [派工生命週期](dispatch-lifecycle.md) | 派工五個狀態的承載物, 不成立的推論, 驗證清單 | 派工形狀與 QC (baton-dispatch), provider 選擇 (provider-routing) |
-| [Hook 系統](hook-system.md) | fail-open/fail-closed 語意, 逐事件清單, 為何值得信任 | hook 內部實作細節 (各 hook 檔內 docstring) |
-| [Orchestration plan](../main/claude/plans/orchestration-plan.md)+[history](../main/claude/plans/orchestration-history.md) | 當前最新方案; append-only 決策歷程 | 完整方法論與研究全文 |
+每份文件對應[六層](agent-engineering.md#一-六層地圖)的哪一層寫在第一欄. 有兩件橫跨所有
+層, 標成「跨層」: 證據 (憑什麼算數) 與部署 (規則怎麼真的到機器上). 有兩層的規範不在
+`docs/` 底下 —— ② Context 與 ③ Loop 由出貨的 skill 擁有, 那欄直接指過去.
+
+| 層 | 文件 | 保存內容 | 不保存內容 |
+|---|---|---|---|
+| 跨層 · 地圖 | [架構總覽](architecture.md) | 由上而下的骨幹敘事: 架構圖, 核心想法, 六層地圖與各層入口, 附檔導引 | 各層的職責與實作 (在分層剖析), 可變的 model 數值, 會過期的量測值 (指向腳本) |
+| 跨層 · 全六層 | [分層剖析](agent-engineering.md) | 六層各自的職責, 實作, 儀器, 已知失效與升級判準; 跨層的兩條軸; 升級評估的五個問題 | 跨專案通則的完整論證 (在 playbook), 這個系統的骨幹敘事 (在架構總覽), 實驗原始數據 (在 research/) |
+| 跨層 · 通則 | [Harness Engineering Playbook](harness-engineering.md) | 可跨專案複用的設計與驗證方法, 以及每條通則的完整論證 | 當前 route pins, 實驗原始數據, 本 repo 逐層的實作 (在分層剖析) |
+| ① 子句 | [契約瘦身規範](contract-slimming.md) | CLAUDE.md/AGENTS.md 的內容判定, 預算原則與驗收 | 歷史歷程, 當前 orchestration 狀態 |
+| ② Context | 規範在 [contract-slimming](contract-slimming.md) 與 [headroom-runtime](../main/.agents/docs/headroom-runtime.md) | — | — |
+| ③ Loop | 規範在 [baton-dispatch](../main/claude/skills/baton-dispatch/SKILL.md) | — | — |
+| ④ Harness | [Hook 系統](hook-system.md) | fail-open/fail-closed 語意, 逐事件清單, 為何值得信任 | hook 內部實作細節 (各 hook 檔內 docstring) |
+| ⑤ Graph | [QC 白話說明](qc-explainer.md) | 為什麼需要 QC, 四個步驟各吃什麼, 白話的取證說明 | 有約束力的 QC 規則字面 (在兩份派工 skill) |
+| ⑤ Graph | [派工生命週期](dispatch-lifecycle.md) | 派工五個狀態的承載物, 不成立的推論, 驗證清單 | 派工形狀與 QC (baton-dispatch), provider 選擇 (provider-routing) |
+| ⑤ Graph | [Fable 5 安全 fallback](fable-5-fallback.md) | 用 Fable 5 時怎麼避免被切到 Opus, 以及可行性邊界 | 本 repo 的跨 provider fallback 規則 (在 provider-routing) |
+| ⑥ Evidence | [研究摘要](research/README.md) | benchmark 快照, 成本口徑, 案例取捨, 研究缺口; `research/` 底下唯一的現行結論來源 | runtime 強制規則, 現行 route pins, 逐次查核的原始紀錄 (在 [landing-log](research/landing-log.md)) |
+| ⑥ Evidence | [Matt Pocock skills 導入研究](research/mattpocock-skills-integration.md) | 上游快照, 工作流比較, 相容性, 採用與拒絕理由 | 實作進度, runtime skill 本體 |
+| ⑥ Evidence | [2026-07-28 統一稽核](document-audit-2026-07-28.md) | 那一次稽核的六維度結果與範圍信封 | 之後的變更 (信封是活的, 見該文件的注記) |
+| 跨層 · 部署 | [配置與部署](setup.md) | bootstrap, apply, 驗收與回滾步驟 | 模型選擇理由 |
+| 跨層 · 計畫 | [Engineering workflow 蒸餾實作計畫](plans/engineering-workflow-distillation.md) | 已核准方向, 分階段 scope, gates, rollback 與 completion criteria | 上游研究全文, 已部署狀態 |
+| 跨層 · 計畫 | [Orchestration plan](../main/claude/plans/orchestration-plan.md)+[history](../main/claude/plans/orchestration-history.md) | 當前最新方案; append-only 決策歷程 | 完整方法論與研究全文 |
 
 ## Runtime 真相源
 
