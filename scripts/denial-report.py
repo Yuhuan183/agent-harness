@@ -21,11 +21,13 @@ was checked on 2026-08-10 and turned out to measure ordinary work: the commit
 gate denies repeatedly while a red suite gets fixed, which is the mechanism
 succeeding. The longest-run column is printed for that reason and left there.
 
-Provenance. Rows recorded before 2026-08-20 include the suite's own fixture
-denials: the gates resolve their log path from HOME, the tests run those gates
-for real, and most fixtures - but not all of them - override HOME. They are
+Provenance. Before 2026-08-20 the suite's own fixture denials shared this file:
+the gates resolve their log path from HOME, the tests run those gates for real,
+and most fixtures - but not all of them - overrode HOME. Rows from that era are
 counted apart rather than filtered out, because deciding which rows are fake
-from their contents is a judgement this script would get wrong.
+from their contents is a judgement this script would get wrong. It says the era
+is mixed, not that any particular row is; that call needs a person looking at
+where the row points.
 
 Usage:
     scripts/denial-report.py [--days N] [--json]
@@ -141,8 +143,9 @@ def main() -> int:
 
     stale = report["before_isolation"]
     if stale:
-        print(f"  {stale} row(s) predate {ISOLATED_FROM} and include the "
-              f"suite's own fixture denials; counts below mix them in")
+        print(f"  {stale} row(s) predate {ISOLATED_FROM}, when the suite's own "
+              f"fixture denials shared this file; check where a row came from "
+              f"before counting it")
     print(f"  {report['with_session']} row(s) carry a session id")
 
     print("\nby gate and reason")

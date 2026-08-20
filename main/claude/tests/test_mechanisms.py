@@ -3081,6 +3081,55 @@ class ReportOnlyToolTests(unittest.TestCase):
                     f"{len(listed)}")
 
 
+class DenialReportTests(unittest.TestCase):
+    """The reader is the half that was missing for twelve days, so the property
+    worth pinning is that it reads the file the gates actually write to - a
+    report aimed at a stale path would print `no denials recorded` forever and
+    look exactly like a quiet week."""
+
+    SCRIPT = ROOT / "scripts/denial-report.py"
+
+    def _run(self, log: Path):
+        return subprocess.run(
+            [sys.executable, str(self.SCRIPT)],
+            env={**os.environ, "AGENT_DENIAL_LOG": str(log)},
+            capture_output=True, text=True)
+
+    def test_it_reads_the_log_the_gates_write_to(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log = Path(temp_dir) / "denials.jsonl"
+            log.write_text("\n".join(json.dumps(row) for row in (
+                {"ts": "2026-08-19T01:00:00+00:00", "gate": "leaf-redispatch",
+                 "reason": "leaf-tried-to-dispatch", "session_id": "s"},
+                {"ts": "2026-08-21T02:00:00+00:00", "gate": "runtime-guard",
+                 "reason": "runtime-too-old-or-unknown"},
+            )) + "\n", encoding="utf-8")
+            result = self._run(log)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("2 row(s)", result.stdout)
+            self.assertIn("leaf-redispatch / leaf-tried-to-dispatch", result.stdout)
+            # One row predates the isolation date and one does not, so the
+            # provenance line has to split them rather than label the file.
+            self.assertIn("1 row(s) predate", result.stdout)
+
+    def test_a_missing_or_broken_log_reports_instead_of_failing(self) -> None:
+        """Report-only means report-only: an unreadable line is a skipped line,
+        not an exit code. A reader that can fail becomes a gate by accident."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            absent = self._run(Path(temp_dir) / "nothing.jsonl")
+            self.assertEqual(absent.returncode, 0, absent.stderr)
+            self.assertIn("no denials recorded", absent.stdout)
+
+            broken = Path(temp_dir) / "broken.jsonl"
+            broken.write_text('{"ts": "2026-08-21T00:00:00+00:00", "gate": "g", '
+                              '"reason": "r"}\nnot json\n[1, 2]\n',
+                              encoding="utf-8")
+            result = self._run(broken)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("2 unparseable line(s)", result.stdout)
+            self.assertIn("1 row(s)", result.stdout)
+
+
 class CodenameGlossReportTests(unittest.TestCase):
     """`docs/README.md` rule 8 promises one tier of documents does not require
     the repo's own vocabulary, and nothing enforced it.
