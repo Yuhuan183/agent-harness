@@ -200,6 +200,65 @@ def tracked_markdown() -> list[str]:
     return [path for path in listed if not path.startswith("evals/")]
 
 
+def covers(pattern: str, path: str) -> bool:
+    """Glob match where `*` stops at a separator and `**` spans directories.
+
+    `fnmatch` was used for the document inventory until 2026-08-19 and its `*`
+    crosses `/`, so `docs/*.md` matched `docs/research/anything.md` and
+    `main/claude/*.md` matched any depth under it. Every pattern was therefore
+    recursive, which is how 77k words of lab journal spent three weeks inside
+    the current-guidance envelope without anyone choosing that.
+    """
+    out, i = [], 0
+    while i < len(pattern):
+        if pattern.startswith("**/", i):
+            out.append("(?:[^/]+/)*"); i += 3
+        elif pattern.startswith("**", i):
+            out.append(".*"); i += 2
+        elif pattern[i] == "*":
+            out.append("[^/]*"); i += 1
+        elif pattern[i] == "?":
+            out.append("[^/]"); i += 1
+        else:
+            out.append(re.escape(pattern[i])); i += 1
+    return re.fullmatch("".join(out), path) is not None
+
+
+def document_inventory() -> dict:
+    return json.loads(
+        (ROOT / "docs/document-inventory.json").read_text(encoding="utf-8"))
+
+
+def guidance_markdown() -> list[str]:
+    """Tracked markdown that claims to be true right now.
+
+    The complement is the evidence tier: journals that keep their refuted
+    paragraphs and their original numbers on purpose. An invariant about what
+    the prose may claim has to skip those, or it forces a lab notebook to be
+    rewritten every time the mechanism it once described moves on.
+
+    Precedence follows `pattern_precedence` in the inventory: an exact path
+    beats a glob, which is what keeps `docs/research/README.md` in the guidance
+    tier while its siblings sit outside it.
+    """
+    inventory = document_inventory()
+    guidance = inventory["reviewed_current_guidance"]
+    evidence = inventory["evidence_not_current_guidance"]
+    excluded = inventory["excluded_from_semantic_currentness"]
+    selected = []
+    for path in tracked_markdown():
+        if path in guidance:
+            selected.append(path)
+            continue
+        if any(covers(rule, path) for rule in excluded):
+            continue
+        if any(covers(rule, path) for rule in evidence):
+            continue
+        if any(covers(rule, path) for rule in guidance):
+            selected.append(path)
+    return selected
+
+
 def frontmatter(path: str) -> str:
     return read(path).split("---", 2)[1]
 

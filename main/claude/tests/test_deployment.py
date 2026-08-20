@@ -1175,15 +1175,76 @@ class MachineStateHygieneTests(unittest.TestCase):
         expected = {4: "四", 5: "五", 6: "六"}[len(gates) + 1]
 
         numerals = "一兩二三四五六七八"
-        stated = [(path, match) for path in tracked_markdown()
-                  if not path.endswith(".contract.md")
-                  for match in re.findall(
-                      rf"([{numerals}])個有界 gate", read_repo(path))]
-        self.assertGreaterEqual(len(stated), 2, "the count is documented somewhere")
-        for path, count in stated:
-            self.assertEqual(count, expected,
-                             f"{path}: says {count}個有界 gate, shipped set is "
-                             f"{expected}個 ({sorted(gates)} + githooks/pre-commit)")
+
+        # A second, genuinely different number lives beside the first: the
+        # gates that leave a denial line are the five Python hooks. The git
+        # pre-commit is an enforcement point without one, so 6 and 5 are both
+        # right and a reader deserves to see which is which.
+        writers = {
+            path.name
+            for path in (ROOT / "main/claude/hooks").glob("*.py")
+            if "denial_log.record(" in path.read_text(encoding="utf-8")
+        }
+        self.assertEqual(
+            writers,
+            {"commit-test-gate.py", "leaf-redispatch.py",
+             "managed-target-guard.py", "runtime-guard.py",
+             "verifier-quota.py"},
+            "the set of gates that leave a denial line changed; the doc naming "
+            "that count has to move with it")
+        denial_expected = {3: "三", 4: "四", 5: "五", 6: "六"}[len(writers)]
+
+        # Scanned over the guidance tier only. The journals under
+        # `docs/research/` keep the numbers that were true when each entry was
+        # written - that is what makes them evidence - so holding them to the
+        # current count would force a lab notebook to be rewritten whenever a
+        # gate lands.
+        pages = [path for path in guidance_markdown()
+                 if not path.endswith(".contract.md")]
+        carriers = {
+            rf"([{numerals}])個有界 gate": expected,
+            rf"([{numerals}])個 gate 會留下拒絕紀錄": denial_expected,
+        }
+        stated = [(path, phrase, match)
+                  for path in pages
+                  for phrase, want in carriers.items()
+                  for match in re.findall(phrase, read_repo(path))]
+        self.assertGreaterEqual(len(stated), 3, "the counts are documented somewhere")
+        for path, phrase, count in stated:
+            self.assertEqual(
+                count, carriers[phrase],
+                f"{path}: says {count} for {phrase!r}; shipped sets are "
+                f"{expected}個有界 gate ({sorted(gates)} + githooks/pre-commit) "
+                f"and {denial_expected}個 with a denial line ({sorted(writers)})")
+
+        # And no third phrasing may state either count without using a carrier.
+        # `docs/hook-system.md` said 五個 for the three weeks after the sixth
+        # gate landed, because the guard matched one phrase and that document
+        # used another - "目前五個", with the word `gate` nowhere near it
+        # (2026-08-20). Two sweeps, because the stale wording gave the guard
+        # nothing to anchor on: a count next to `gate`, and any count at all in
+        # a sentence about fail-closed hooks.
+        #
+        # Ordinals and deictics are excluded by prefix, not by luck: 同一個
+        # prompt and 第二個 outcome verifier both sit inside the sentence that
+        # carries the real count, and neither is a count of gates.
+        bare = re.compile(rf"(?<![同第每另任其這那上下])([{numerals}])個")
+        anchored = re.compile(rf"([{numerals}])個[^\s,。;]{{0,4}} ?gate")
+        for path in pages:
+            for sentence in re.split(r"(?<=[.。;;\n])", read_repo(path)):
+                covered = [match.span()
+                           for phrase in carriers
+                           for match in re.finditer(phrase, sentence)]
+                suspects = list(anchored.finditer(sentence))
+                if "fail-closed" in sentence:
+                    suspects += bare.finditer(sentence)
+                for match in suspects:
+                    self.assertTrue(
+                        any(start <= match.start() and match.end() <= end
+                            for start, end in covered),
+                        f"{path}: {match.group(0)!r} states a gate count in a "
+                        "phrasing no carrier matches, so nothing will notice "
+                        f"when it goes stale - {sentence.strip()[:90]!r}")
 
     def test_the_verifier_quota_docs_name_the_spelling_it_cannot_count(self) -> None:
         """A quota that counts one provider's name has to say so where it is described.
