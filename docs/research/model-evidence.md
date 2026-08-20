@@ -596,8 +596,10 @@ plugin), dispatch/rollout 識別碼, 並盡量自動取得 input, output, cache 
 - 高能力模型只有在能提升可接受率, 減少返工或降低失敗風險時才划算; 機械任務不因總分高就
   自動升級, 安全/金錢/破壞性資料也不因 token 便宜就降級.
 
-責任分工不在這裡: Main 和七個 leaf roles 的責任, 三種 profile 語意, 以及各 surface 的套用
-方式, 由 [根 README](../../README.md#執行模型) 統一說明.
+責任分工不在這裡: 七個 leaf role 的權限邊界在
+[harness engineering](../architecture/harness-engineering.md#七個角色-各自的邊界), 三種
+profile 語意與各 surface 的套用方式在
+[graph engineering](../architecture/graph-engineering.md#routing-同一個角色-不同的檔位).
 
 現行 pins, 品質門檻和 availability 的唯一真相源是
 [Claude routing](../../main/claude/model-routing.toml) 和 [Codex routing](../../main/codex/model-routing.toml).

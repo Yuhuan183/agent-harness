@@ -36,6 +36,24 @@
 **抓不到蓄意錯誤的機制等於不存在**. 新增角色要在同一個 cohort 裡證明現有角色契約不足,
 不能因為題材不同就開新角色.
 
+## 七個角色, 各自的邊界
+
+Main 不是派工器而已: 它負責需求定義, 歧義, 架構, 風險, 切界, 整合, 最終驗證與對使用者
+負責. leaf 拿到的是有界工作, 而邊界就寫在這張表的第三欄.
+
+| Role | 使用時機 | 權限邊界 |
+|---|---|---|
+| `explore` | 大範圍定位, 或具明確 lens 的有界專案 review | 唯讀; 不設計, 不實作, 不做最終判斷 |
+| `mech-executor` | pattern 與完成條件已完整 | 只做機械套用; 遇到例外就停止 |
+| `executor` | 封閉範圍內仍需要局部判斷的實作 | 可寫入; 不擴大產品或架構範圍 |
+| `plan-verifier` | material Plan 需要 fresh-context 挑戰 | 唯讀; 只回 `READY`/`REVISE` |
+| `verifier` | 高影響聲稱需要獨立反證 | 唯讀; 只回 `CONFIRMED`/`REFUTED`/`INCONCLUSIVE` |
+| `security-reviewer` | 核准前的 trust-boundary 與 abuse-path 分析 | 唯讀; 不實作 |
+| `security-executor` | 已核准安全契約的實作 | 可寫入; 不得重開需求或弱化控制 |
+
+Claude 與 Codex 各有一份自足的角色契約; leaf 不讀 main 的 orchestration 文件, 也不能再派
+下一層. 三個可寫角色另外各自帶了前景指令 10 分鐘上限, 以及放不下時該回傳什麼.
+
 ## 監控: 擋不住的那一半
 
 防護欄之外, 這一層還有一組**只看不擋**的東西, 因為多數失效不適合用閘處理:
