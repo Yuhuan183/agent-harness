@@ -72,9 +72,11 @@ Hook 建置規範 (真實目錄先證明可跑 → 合成 pipe-test → `jq` 驗
 
 ## 攔截了就要留痕 (2026-08-08 起)
 
-四個 Python gate 攔截時各寫一行到 `~/.claude/telemetry/denials.jsonl`, 由共用的
-[denial_log](../main/claude/hooks/denial_log.py) 負責, 欄位含 `gate`, 短代碼 `reason`,
-時間與 session. 用代碼而不是散文, 是為了讓「連續擋幾次」數得出來而不必去 parse 給人看的訊息.
+五個 gate 會留下拒絕紀錄, 攔截時各寫一行到 `~/.claude/telemetry/denials.jsonl`, 由共用的
+[denial_log](../main/claude/hooks/denial_log.py) 負責. 欄位是 `gate`, 短代碼 `reason` 與
+時間; 有 payload 的再帶 session 與 agent_type —— commit gate 是 git hook, 拿不到 payload,
+所以它的列只有前三欄. 用代碼而不是散文, 是為了讓「連續擋幾次」數得出來而不必去 parse
+給人看的訊息.
 
 會加這件事是因為 2026-08-08 想回答「我們的閘多常擋人」時, 只能去考古 transcript, 而且
 **前三次都測錯** - 最初的 146 筆「命中」全是讀 hook 原始碼的檔案內容, 因為 block 字串就寫在
@@ -82,15 +84,32 @@ Hook 建置規範 (真實目錄先證明可跑 → 合成 pipe-test → `jq` 驗
 
 三件刻意不做的事:
 
-- **不是 gate, 也不是門檻.** 沒有任何東西讀這份檔案做決策. 先前查過「連續三次就升級」這個
-  想法, 實測發現跨過門檻的幾乎都是 commit-test-gate 的紅套件重試, 那是機制在運作;
-  要不要有門檻, 得先有這份資料才談得起 (見[研究摘要方向 5](research/README.md#待辦方向)).
+- **不是 gate, 也不是門檻.** [denial-report](../scripts/denial-report.py) 會讀它, 但只報
+  不決定: 沒有門檻, 沒有非零 exit. 先前查過「連續三次就升級」這個想法, 實測發現跨過門檻的
+  幾乎都是 commit-test-gate 的紅套件重試, 那是機制在運作; 要不要有門檻, 得先有這份資料才
+  談得起 (見[研究摘要方向 5](research/README.md#待辦方向)).
 - **記錄失敗絕不影響攔截.** `record` 吞掉所有例外, 連 import 失敗也有 fallback; 測試直接
   把 telemetry 路徑佔成檔案, 斷言 gate 仍然回 exit 2. gate 對它的條件 fail-closed,
   對它的簿記 fail-open, 兩者不能對調.
 - **不記內容.** 只留 payload 的識別欄位 (session, agent_type, tool_name), 不留指令本身.
 
-`python3 ~/.claude/hooks/denial_log.py --tail 20` 印最近幾筆.
+`scripts/denial-report.py` 按 gate, reason 與日期彙總; `python3
+~/.claude/hooks/denial_log.py --tail 20` 印最近幾筆原始列.
+
+### 沒人讀的儀器不會告訴你它壞了 (2026-08-20)
+
+這份紀錄蓋好之後十二天沒有人讀, 而那十二天它長到 35,856 列, 其中**只有 3 列是真的**. 其餘
+是套件自己跑出來的: 這些測試會真的執行那些 fail-closed gate, 而 gate 從 HOME 推算紀錄路徑
+—— 多數 fixture 有覆寫 HOME, 但要讓 `~` 真的指向家目錄的那幾支不能覆寫, 於是寫進了開發者
+本機那一份.
+
+修法**不是**在 gate 裡判斷「我現在是不是在測試中」: fail-closed 的 hook 不該因為自認在測試
+而走另一條分支. 改成環境變數 `AGENT_DENIAL_LOG`, 由 [`tests/support.py`](../main/claude/tests/support.py)
+設一次 —— 和它上面那段清掉 `GIT_*` 的理由同一個: 「套件不會寫到這台機器的紀錄」是整個套件
+的性質, 不是 40 個呼叫點各自要記得的事.
+
+代價要說清楚: 2026-08-20 之前的列是混的, 所以 `denial-report.py` 把它們單獨數出來而不是
+過濾掉 —— 從內容猜哪些是假的, 正是這支腳本會猜錯的事.
 
 ## 這套設計的邊界
 

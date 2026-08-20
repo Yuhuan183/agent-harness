@@ -54,6 +54,17 @@ GIT_HOOK_ENV = (
 for _name in GIT_HOOK_ENV:
     os.environ.pop(_name, None)
 
+# Send every denial this suite provokes somewhere that is not the developer's
+# machine. The same argument as the scrub above, one layer over: these tests run
+# the fail-closed gates for real, so they produce real denial rows, and
+# `denial_log` resolves its path from HOME. Most fixtures already override HOME;
+# the ones that cannot - a spelling test needs `~` to mean the real home - wrote
+# into the machine-local log instead, and by 2026-08-20 it held 35,856 rows of
+# which 3 were real. Setting it here rather than in each fixture, because "no
+# test writes to the machine's telemetry" is a property of the suite.
+os.environ["AGENT_DENIAL_LOG"] = os.path.join(
+    tempfile.gettempdir(), "agent-harness-suite-denials.jsonl")
+
 
 # Repo root: deployable harness sources live under main/; docs and evals stay
 # at the project root.

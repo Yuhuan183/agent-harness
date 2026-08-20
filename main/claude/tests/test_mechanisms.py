@@ -1,5 +1,6 @@
 """Deterministic mechanisms: hooks, sync preflight, statusline, guards."""
 import shutil
+import uuid
 
 from support import *  # noqa: F401,F403
 
@@ -2411,22 +2412,28 @@ class DenialLogTests(unittest.TestCase):
     """Denials were the one thing the gates do that nothing recorded, so
     answering "how often does this fire" meant grepping transcripts - and the
     hooks' own docstrings contain the block strings, which is how the first
-    three attempts at that question came back wrong. These assert the two
-    properties that make the log worth having: it records, and it cannot break
-    the gate it observes."""
+    three attempts at that question came back wrong. These assert the three
+    properties that make the log worth having: it records, it cannot break the
+    gate it observes, and what it records is real."""
 
-    def _deny(self, home: Path, extra_env: dict | None = None):
+    def _deny(self, home: Path | None = None, extra_env: dict | None = None,
+              session: str = "sess-test"):
         hook = ROOT / "main/claude/hooks/leaf-redispatch.py"
-        env = {**os.environ, "HOME": str(home), **(extra_env or {})}
+        env = {**os.environ, **({"HOME": str(home)} if home else {}),
+               **(extra_env or {})}
         return subprocess.run(
             [sys.executable, str(hook)],
             input=json.dumps({"tool_name": "Agent", "agent_type": "executor",
-                              "session_id": "sess-test"}),
+                              "session_id": session}),
             capture_output=True, text=True, env=env)
 
     def test_a_denial_is_recorded_with_enough_to_count_it(self) -> None:
         with tempfile.TemporaryDirectory() as home:
-            result = self._deny(Path(home))
+            # The suite redirects every gate away from the machine's own log, so
+            # clearing the override here is what puts the HOME default back
+            # under test - otherwise this asserts nothing about where a real
+            # denial lands.
+            result = self._deny(Path(home), {"AGENT_DENIAL_LOG": ""})
             self.assertEqual(result.returncode, 2, result.stderr)
             log = Path(home) / ".claude" / "telemetry" / "denials.jsonl"
             self.assertTrue(log.exists(), "denial produced no row")
@@ -2437,6 +2444,49 @@ class DenialLogTests(unittest.TestCase):
             self.assertEqual(row["reason"], "leaf-tried-to-dispatch")
             self.assertEqual(row["session_id"], "sess-test")
             self.assertIn("ts", row)
+
+    def test_the_override_decides_where_the_row_lands(self) -> None:
+        """Set, it wins over HOME; unset, HOME decides. Both directions, because
+        an override that silently does nothing looks exactly like isolation
+        working."""
+        with tempfile.TemporaryDirectory() as home:
+            elsewhere = Path(home) / "redirected.jsonl"
+            result = self._deny(Path(home), {"AGENT_DENIAL_LOG": str(elsewhere)})
+            self.assertEqual(result.returncode, 2, result.stderr)
+            self.assertTrue(elsewhere.exists(), "the override was ignored")
+            self.assertFalse(
+                (Path(home) / ".claude/telemetry/denials.jsonl").exists(),
+                "the row landed in HOME as well as the override")
+
+    def test_the_suite_cannot_write_to_the_machines_own_log(self) -> None:
+        """The regression this exists for. These tests run the fail-closed gates
+        for real, and the gates resolve their log from HOME, so before
+        `support.py` redirected them the machine-local log filled with fixture
+        denials: 35,856 rows on 2026-08-20, of which 3 were real. Nothing read
+        it, which is why nobody noticed for nine days.
+
+        Deliberately runs with the real HOME - the fixtures that override HOME
+        were never the problem. A unique session marker rather than a row count,
+        so a genuine denial from another session running at the same time cannot
+        turn this red."""
+        marker = f"suite-isolation-{uuid.uuid4().hex}"
+        machine = Path(os.path.expanduser("~/.claude/telemetry/denials.jsonl"))
+        override = os.environ.get("AGENT_DENIAL_LOG")
+        self.assertTrue(override, "the suite stopped redirecting gate denials; "
+                                  "every fixture denial now lands on the machine")
+        redirected = Path(override)
+
+        result = self._deny(session=marker)
+        self.assertEqual(result.returncode, 2, result.stderr)
+
+        # `assertIn` against a log this size puts the whole file in the failure
+        # message, so the comparison is reduced to a bool before it is asserted.
+        self.assertTrue(marker in redirected.read_text(encoding="utf-8"),
+                        "the denial went somewhere this test cannot see")
+        if machine.exists():
+            self.assertFalse(
+                marker in machine.read_text(encoding="utf-8"),
+                f"a fixture denial reached {machine}")
 
     def test_an_unwritable_log_still_blocks(self) -> None:
         """The gate is fail-closed on its condition and fail-open on its
@@ -2456,10 +2506,17 @@ class DenialLogTests(unittest.TestCase):
     def test_the_module_is_deployed_next_to_the_hooks_that_import_it(self) -> None:
         # The hooks import it as a sibling, so it has to travel with them; the
         # manifest ships the directory, and this catches a future move out of it.
-        self.assertTrue((ROOT / "main/claude/hooks/denial_log.py").exists())
-        for hook in ("leaf-redispatch.py", "runtime-guard.py",
-                     "verifier-quota.py", "commit-test-gate.py"):
-            source = (ROOT / "main/claude/hooks" / hook).read_text(encoding="utf-8")
+        hooks = ROOT / "main/claude/hooks"
+        self.assertTrue((hooks / "denial_log.py").exists())
+        # Derived, not listed. The list used to be four names and stayed four
+        # after `managed-target-guard` became the fifth importer on 2026-08-19,
+        # so the new gate's fallback was never checked and the count in
+        # docs/hook-system.md drifted with it.
+        importers = sorted(path.name for path in hooks.glob("*.py")
+                           if "denial_log.record(" in path.read_text(encoding="utf-8"))
+        self.assertGreaterEqual(len(importers), 4, importers)
+        for hook in importers:
+            source = (hooks / hook).read_text(encoding="utf-8")
             with self.subTest(hook=hook):
                 self.assertIn("import denial_log", source)
                 self.assertIn("denial_log = None", source,

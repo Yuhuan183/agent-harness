@@ -30,6 +30,24 @@ import sys
 from datetime import datetime, timezone
 
 LOG = "~/.claude/telemetry/denials.jsonl"
+# Where a row actually goes. The test suite runs these gates for real - scratch
+# repositories, real `git commit`, real hook subprocesses - and a gate that
+# derives its log path from HOME writes those fixture denials into the
+# developer's own log. That is not hypothetical: on 2026-08-20 the machine-local
+# log held 35,856 rows and 3 of them were real, so the one question this file
+# exists to answer ("how often do our gates block, and whom") could not be
+# answered from it. The suite sets this variable once, in `tests/support.py`.
+#
+# An override rather than test-detection inside the gate: a fail-closed hook
+# must not take a different branch because it believes it is under test. This
+# only moves where the row lands, so it cannot weaken any boundary - and a
+# person who wants to silence the log can already delete the file.
+ENV = "AGENT_DENIAL_LOG"
+
+
+def log_path() -> str:
+    """The log this process writes to: the override when set, else HOME's."""
+    return os.path.expanduser(os.environ.get(ENV) or LOG)
 
 
 def record(gate: str, reason: str, event: object = None, **detail: object) -> None:
@@ -50,7 +68,7 @@ def record(gate: str, reason: str, event: object = None, **detail: object) -> No
                 if event.get(key):
                     row[key] = event[key]
         row.update({k: v for k, v in detail.items() if v is not None})
-        out = os.path.expanduser(LOG)
+        out = log_path()
         os.makedirs(os.path.dirname(out), exist_ok=True)
         with open(out, "a", encoding="utf-8") as handle:
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")
@@ -64,7 +82,7 @@ def main() -> int:
     if len(sys.argv) > 2 and sys.argv[2].isdigit():
         limit = int(sys.argv[2])
     try:
-        with open(os.path.expanduser(LOG), encoding="utf-8") as handle:
+        with open(log_path(), encoding="utf-8") as handle:
             rows = handle.read().splitlines()
     except FileNotFoundError:
         print("no denials recorded yet")
