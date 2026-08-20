@@ -58,13 +58,13 @@
           "words": 1224
         },
         {
-          "bytes": 5718,
-          "file_bytes": 6479,
-          "file_sha256": "8949e5402319d372fc85ddb320862c04be574dea63eb7e4d023c4f22948494e5",
+          "bytes": 6476,
+          "file_bytes": 7237,
+          "file_sha256": "418989467c94865e3fa1a4666298f6e400f522a4400dbe4e33e39ded530d1a6d",
           "kind": "skill-body",
           "path": "main/claude/skills/readable-zh-tw/SKILL.md",
-          "sha256": "bb7e757fdbfaab9d5441caa6b7d4553f4dae9c2cb88d40b8fa37d9865182525f",
-          "words": 1512
+          "sha256": "2dbf514585f19e445e65a502f1c9ab32b1debd1cefb2304fabef3b61577af260",
+          "words": 1751
         },
         {
           "bytes": 243,
@@ -148,8 +148,8 @@
         },
         {
           "bytes": 709,
-          "file_bytes": 6479,
-          "file_sha256": "8949e5402319d372fc85ddb320862c04be574dea63eb7e4d023c4f22948494e5",
+          "file_bytes": 7237,
+          "file_sha256": "418989467c94865e3fa1a4666298f6e400f522a4400dbe4e33e39ded530d1a6d",
           "kind": "skill-metadata",
           "path": "main/claude/skills/readable-zh-tw/SKILL.md",
           "sha256": "046b9c091681700f2d05d9ad2750e86ac30530c13c2817792cc2dc1fb25ad0c7",
@@ -374,13 +374,13 @@
           "words": 1041
         },
         {
-          "bytes": 5718,
-          "file_bytes": 6479,
-          "file_sha256": "8949e5402319d372fc85ddb320862c04be574dea63eb7e4d023c4f22948494e5",
+          "bytes": 6476,
+          "file_bytes": 7237,
+          "file_sha256": "418989467c94865e3fa1a4666298f6e400f522a4400dbe4e33e39ded530d1a6d",
           "kind": "skill-body",
           "path": "main/codex/skills/readable-zh-tw/SKILL.md",
-          "sha256": "bb7e757fdbfaab9d5441caa6b7d4553f4dae9c2cb88d40b8fa37d9865182525f",
-          "words": 1512
+          "sha256": "2dbf514585f19e445e65a502f1c9ab32b1debd1cefb2304fabef3b61577af260",
+          "words": 1751
         },
         {
           "bytes": 4874,
@@ -440,8 +440,8 @@
         },
         {
           "bytes": 709,
-          "file_bytes": 6479,
-          "file_sha256": "8949e5402319d372fc85ddb320862c04be574dea63eb7e4d023c4f22948494e5",
+          "file_bytes": 7237,
+          "file_sha256": "418989467c94865e3fa1a4666298f6e400f522a4400dbe4e33e39ded530d1a6d",
           "injected": true,
           "kind": "skill-metadata",
           "path": "main/codex/skills/readable-zh-tw/SKILL.md",
@@ -586,9 +586,9 @@
   "totals": {
     "claude": {
       "dispatch": {
-        "bytes": 46374,
-        "payload_sha256": "8af58dc9c9589e980776034541dd11f660d180ec7b6a8fcba8854691aa6b8494",
-        "words": 7578
+        "bytes": 47132,
+        "payload_sha256": "0e6cacc43566de3fb4c5e0d10a5b8476181c9c63f0b69a0acc35d2da3edb0f26",
+        "words": 7817
       },
       "resident": {
         "bytes": 8995,
@@ -603,9 +603,9 @@
     },
     "codex": {
       "dispatch": {
-        "bytes": 44100,
-        "payload_sha256": "bd06f755749560ff8ff04c56228cb588ededa6eb89cef094789a80c7fc765c8a",
-        "words": 7330
+        "bytes": 44858,
+        "payload_sha256": "4c82040fdbd1feaf37e23b061059f6e9b99fe06c8763d0919c50a8cc9aa1f33c",
+        "words": 7569
       },
       "resident": {
         "bytes": 7404,
