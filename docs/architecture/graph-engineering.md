@@ -51,6 +51,69 @@ preflight, parity 與目標端證據四件齊全.
 | 誰並行 | 以任務形狀 batching, 不以檔案數或 request bullet; 一個可寫 artifact 一個 owner |
 | 做完給誰 | 回 main. leaf 不再派工, Claude 側由 `leaf-redispatch` 擋, Codex 側由 `max_depth = 1` |
 
+## 一次派工的完整迴路
+
+從請求到「要不要改 routing」是一個閉環, 而閉環上**每一個決策點都有人或機制守著** —— 沒有
+一步是模型自己說了算:
+
+```mermaid
+flowchart TD
+    user["User request"] --> main["Main session<br/>framing, architecture, integration, judgment"]
+    main --> brake{"Dispatch payoff<br/>clearly exceeds overhead?"}
+    brake -- "No" --> direct["Main executes directly"]
+    brake -- "Yes" --> shape["Resolve role + task class + scenario/lens"]
+    shape --> chooseProvider["Provider choice (CP-first:<br/>ledger hints + priors + quota)"]
+    chooseProvider --> chooseProfile["Profile selection<br/>(balanced / fast / quality_guarded)"]
+    chooseProfile --> resolve["Provider resolver<br/>model + effort for the role"]
+    resolve --> leaf["Bounded leaf execution"]
+    leaf --> qc["Main-owned QC"]
+    qc --> result["LEAF_RESULT"]
+    qc --> ledger["experience ledger<br/>outcome, route, request_source, time, tokens"]
+    ledger --> report["Comparable role × task class cohorts"]
+    report --> threshold{"Enough current,<br/>same-scope evidence?"}
+    threshold -- "No" --> keep["Keep prior; continue sampling"]
+    threshold -- "Yes" --> revise["Revision suggestion<br/>human-reviewed; no silent switch"]
+    revise --> approve["Human approval<br/>preset/config change in source"]
+    approve --> redeploy["sync.sh --apply + new session"]
+    redeploy -. "next dispatch epoch" .-> chooseProvider
+    keep -. "next dispatch" .-> chooseProvider
+```
+
+## Routing: 同一個角色, 不同的檔位
+
+三個 profile 都**先滿足角色的品質門檻**, 再最佳化第二目標:
+
+| Profile | 用途 |
+|---|---|
+| `balanced` | 能力, 時間, 成本與 token 的日常平衡 |
+| `fast` | 通過品質門檻後, 優先較低時間/輸出成本 |
+| `quality_guarded` | 高風險, 高影響或高度不確定工作, 提高能力餘裕 |
+
+**套用方式因 surface 而異**, 而這是最容易誤解的一格 —— 沒有一個 surface 會在執行中換模型:
+
+| Surface | Routing 套用方式 |
+|---|---|
+| Main session | 使用者在 task/session 開始前選擇; 專案不會在執行中偷換模型 |
+| Claude named roles | deployment preset; 一次原子更新全部 frontmatter pins, 重新部署並開新 session |
+| Native Codex leaf | 每次派工由 resolver 回傳 model/effort/invocation |
+| Claude→Codex bridge | 每次派工以 `claude-bridge` surface 解析; 不套用 Claude pins |
+
+實際的 pin, effort 與 availability 證據在兩份 `model-routing.toml`; 選擇理由與數據口徑在
+[研究摘要](../research/README.md).
+
+## 派工紀錄長什麼樣
+
+main 把派工與 QC 結果**獨立成固定紀錄**, 不混在一般說明裡, 這樣人類回顧與 machine-local
+遙測才對得上:
+
+```text
+[LEAF_DISPATCH] dispatch_id=review-01|task=semantic seam review|role=explore|class=review|request_source=claude-code|route=balanced/claude/claude-sonnet-5/low|reason=context-protection
+[LEAF_RESULT] dispatch_id=review-01|task=semantic seam review|outcome=accepted|qc=full|ledger=logged
+```
+
+`request_source` 分得出 `claude-code`, `codex`, `claude-code-plugin-codex` 與
+`codex-claude-cli`. 逐字模板只在兩份派工 skill 裡, 本文不複製.
+
 ## 還沒貼合的部分
 
 - **並行幾乎沒有真實樣本.** ledger 裡絕大多數是單筆派工; 合批的判準寫得比用過的次數多.

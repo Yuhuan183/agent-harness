@@ -1767,21 +1767,43 @@ class DocumentationBudgetTests(unittest.TestCase):
             "full-width punctuation that has a half-width form (docs/README.md "
             "rule 7); convert it and put a space after the mark")
 
-    def test_root_readme_is_a_complete_navigation_surface(self) -> None:
+    def test_root_readme_reaches_every_area_without_restating_it(self) -> None:
+        """The front door: value, one diagram, how to deploy, then pointers.
+
+        This used to assert nine section titles and two diagrams, because the
+        README carried the roster, the routing table and the dispatch record
+        format itself. Those have owners now - the roster is Harness-layer
+        material, routing and the records are Graph-layer - so asserting the old
+        titles would pin the README to duplicating them (2026-08-20).
+
+        What replaces it is the property the section names were standing in for:
+        every area is *reachable*. A link is enough; a copy is not, which is why
+        the diagram count is capped rather than floored.
+        """
         readme = read("README.md")
-        self.assertEqual(readme.count("```mermaid"), 2)
-        for phrase in (
-            "配置與部署拓撲",
-            "派工與資料回饋迴路",
-            "Main 與七個 leaf roles",
-            "Role, task class 與 scenario 分離",
-            "Routing 語意",
-            "結構化派工回報",
-            "機制與護欄",
-            "管理邊界",
+        self.assertEqual(
+            readme.count("```mermaid"), 1,
+            "one diagram at the front door - the deployment topology. The "
+            "runtime loop and the four-layer map belong to docs/architecture/")
+
+        for section in ("架構速覽", "快速部署", "機制與護欄", "管理邊界", "文件導覽"):
+            self.assertIn(f"## {section}", readme, section)
+
+        for target in (
             "docs/README.md",
+            "docs/architecture/architecture.md",
+            "docs/architecture/context-engineering.md",
+            "docs/architecture/harness-engineering.md",
+            "docs/architecture/loop-engineering.md",
+            "docs/architecture/graph-engineering.md",
+            "docs/setup.md",
+            "docs/research/README.md",
+            "main/claude/README.md",
+            "main/codex/README.md",
+            "main/.agents/README.md",
         ):
-            self.assertIn(phrase, readme)
+            self.assertIn(f"({target})", readme,
+                          f"{target} is unreachable from the front door")
 
     def test_documentation_navigation_links_resolve_locally(self) -> None:
         paths = [
