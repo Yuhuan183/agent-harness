@@ -114,7 +114,7 @@ Reusing that runner would have inherited the fault verbatim.
 
 ### The harness, measured rather than assumed
 
-Every row probed on 2026-08-12 against Claude Code 2.1.226, before a scenario
+Every row probed on 2026-08-12 against Claude Code 2.1.226, before a scenario <!-- pinned 2026-08-21 -->
 was written.
 
 | need | setting | what the probe showed |

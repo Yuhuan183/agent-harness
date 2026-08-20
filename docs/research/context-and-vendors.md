@@ -188,7 +188,7 @@ Codex CLI 派工, 這些參數不在可控面上, 所以只記錄, 不接線; `n
 |---|---|---|
 | [arXiv 2607.27250](https://arxiv.org/abs/2607.27250) (2026-07-28) | **知識型**: repo 事實寫進 `AGENTS.md`. 兩個 frontier agent (Claude Code, Codex), 3 個真實 repo, 17 個任務, 288 次評分執行, 只變 context 注入策略 | 正確率無可測增益, 等價檢定把效果界在 <=10-15pp. 失敗來自實作能力 (功能設計, 模式選擇, 接線), 不是缺 repo 知識; 把真正的 `AGENTS.md` 注回去「從未把差一點的失敗救成通過」 |
 | 本機 s7 A/B (2026-07-23) | **程序型**: 一句機器可檢的 gate 子句 | exact-template 合規 1/4 -> 3/3 (bridge), 6/10 -> 3/3 (opus) |
-| [arXiv 2604.14228](https://arxiv.org/abs/2604.14228) | 常駐檔的**進場位置**: Claude Code v2.1.88 原始碼層拆解 (第三方逆向) | `CLAUDE.md` 以 user context 進場, 不是 system prompt; 服從因此是機率性的 |
+| [arXiv 2604.14228](https://arxiv.org/abs/2604.14228) | 常駐檔的**進場位置**: Claude Code v2.1.88 原始碼層拆解 (第三方逆向) <!-- pinned 2026-08-21 --> | `CLAUDE.md` 以 user context 進場, 不是 system prompt; 服從因此是機率性的 |
 
 前兩列結論相反卻不矛盾 - **量的不是同一種子句**. 合起來給出一條本 repo 之前沒有的判定軸: 常駐層的每一句先分清是**程序/權限**還是 **repo 知識**. 前者維持現行預算與「無 failing trap, 無規則」公約; 後者現在有外部有界證據說它買不到正確率, 預設可砍, 要留就得自帶本機反例.
 

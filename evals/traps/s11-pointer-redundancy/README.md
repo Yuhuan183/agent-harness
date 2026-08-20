@@ -107,7 +107,7 @@ breed an agent that loads everything.
 > the failure the surface fingerprints exist to prevent, one level down. The
 > runs below record the contract sha and the remaining name count per run.
 
-**2026-08-08, `provider-routing`, `[surface 32cc98cf]`, Claude Code 2.1.226.**
+**2026-08-08, `provider-routing`, `[surface 32cc98cf]`, Claude Code 2.1.226.** <!-- pinned 2026-08-21 -->
 30 runs, 3 arms × 2 cells × 5 seeds. Zero invalid, zero run failures.
 
 > The stamp stays at `32cc98cf` because that is what produced these rows. An

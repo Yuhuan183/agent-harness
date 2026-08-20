@@ -88,7 +88,7 @@ replay 量的絕大部分是「沒發生」. 而「沒發生」是最容易假�
 
 **先要回答的不是情境設計, 是 harness.** s11 的 runner 跑 `--print --permission-mode manual`, 一回合, 沒有任何動作會被核准 — 而這三件事全都是「跑起來, 被打斷, 被修正, 有派工」的 session 才有的性質. 用它等於把 s11 `b1` 那個失效原封不動繼承過來. 所以 replay 有自己的 runner, 而它的每一個設定都是**先量再用**:
 
-| 需要 | 設定 | 探測結果 (2026-08-12, Claude Code 2.1.226) |
+| 需要 | 設定 | 探測結果 (2026-08-12, Claude Code 2.1.226) <!-- pinned 2026-08-21 --> |
 |---|---|---|
 | 多回合 | `--session-id` 之後 `--resume` | 第二回合在無工具下答出第一回合的檔名與回覆 |
 | agent 能動手 | `--permission-mode acceptEdits` | 寫得進去; `manual` 下什麼都寫不進去 |
