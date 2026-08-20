@@ -4541,6 +4541,39 @@ class ManagedTargetGuardTests(unittest.TestCase):
             self.assertEqual(0, malformed.returncode)
 
 
+
+class ReportOnlyToolTests(unittest.TestCase):
+    def test_the_readme_counts_the_report_only_tools_it_lists(self) -> None:
+        """A stated count beside a list is the cheapest thing in this repo to
+        get wrong, and the fail-closed gate count proved it: one document said
+        五 for three weeks after the sixth gate landed, because nothing tied the
+        numeral to the inventory (2026-08-20).
+
+        The same shape sits in the README - a numeral, then a fenced block of
+        report-only tools. Derived from the block rather than pinned, so adding
+        a fifth tool without touching the numeral fails here.
+
+        Not derived from `scripts/` itself: "always exits 0" would sweep in
+        `contract-operator-delta.py`, which is corroboration inside the
+        contract-slimming flow rather than one of these. The list is curated by
+        purpose, so the block is the inventory and this only holds the count to
+        it.
+        """
+        readme = read_repo("README.md")
+        numerals = {"三": 3, "四": 4, "五": 5, "六": 6, "七": 7}
+        stated = re.search(rf"([{''.join(numerals)}])支只報不擋的工具", readme)
+        self.assertIsNotNone(stated, "the README states how many there are")
+
+        block = re.search(r"支只報不擋的工具.*?```bash\n(.*?)```", readme, re.S)
+        self.assertIsNotNone(block, "the tools are listed in a fenced block")
+        listed = re.findall(r"^(scripts/[\w.-]+)", block.group(1), re.MULTILINE)
+        self.assertEqual(
+            numerals[stated.group(1)], len(listed),
+            f"README says {stated.group(1)}支 but lists {len(listed)}: {listed}")
+        for script in listed:
+            self.assertTrue((ROOT / script).exists(), script)
+
+
 class TaiwanUsageReportTests(unittest.TestCase):
     """The sweep is only useful if it reads the shipped table and stays calibrated.
 
