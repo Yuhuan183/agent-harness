@@ -147,14 +147,19 @@ git diff --check
 scripts/sync.sh
 ```
 
-四支只報不擋的工具, 不在上面的驗收鏈裡, 因為它們回答的是「這筆紀錄還連著實體嗎」「這台機器實際扛多少」與「這裡的中文守不守自己的規矩」, 而不是「這次改動對不對」:
+六支只報不擋的工具, 不在上面的驗收鏈裡, 因為它們回答的是「現在長什麼樣」而不是「這次改動對不對」:
 
 ```bash
-scripts/evidence-check.py        # SHA 引用是否還解得開; trap 結果列的量測面指紋是否還是出貨版本
-scripts/docs-size-report.py      # docs/ 體積, 分現行指引與紀錄兩層 (這層沒有字數預算, 見 docs/README.md 規則 8)
-scripts/resident-pool-report.py  # 這台機器實際的常駐 skill 描述量, 與預算蓋到的比例
-scripts/zh-tw-usage-report.py    # 本 repo 自己的中文有沒有用到它出貨在校正的中國用語
+scripts/evidence-check.py         # SHA 引用是否還解得開; trap 結果列的量測面指紋是否還是出貨版本
+scripts/docs-size-report.py       # docs/ 體積, 分現行指引與紀錄兩層 (這層沒有字數預算, 見 docs/README.md 規則 8)
+scripts/resident-pool-report.py   # 這台機器實際的常駐 skill 描述量, 與預算蓋到的比例
+scripts/zh-tw-usage-report.py     # 本 repo 自己的中文有沒有用到它出貨在校正的中國用語
+scripts/codename-gloss-report.py  # 說明類文件有沒有直接丟出內部代號而不解釋
+scripts/denial-report.py          # 這些閘實際擋了多少次, 擋在什麼理由上
 ```
+
+`scripts/contract-operator-delta.py` 刻意不在這張表: 它是契約精簡流程裡的佐證步驟, 不是
+「現在長什麼樣」的儀器.
 
 `scripts/sync.sh` 的 dry-run 會先執行 preflight; 任何 contract, routing, JSON, shell 或部署
 manifest 驗證失敗, 都會在寫入前停止.
