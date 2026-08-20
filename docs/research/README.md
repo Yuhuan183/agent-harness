@@ -9,7 +9,7 @@
 `readable-zh-tw` 蒸餾自另一個上游, 它的 pin, 目標分岔與逐次同步紀錄獨立成篇, 見
 [readable-zh-tw 的上游](readable-zh-tw-upstream.md) (`scripts/readable-zh-tw-recheck.sh`).
 
-> 對齊日期: 2026-07-28, 上游與場域研究於 2026-08-08 重查 (Pilotfish v1.3.10, Deep Agents 0.7.5). 這是目前專案採用決策的入口; 各來源的取證細節留在分題文件.
+> 對齊日期: 2026-07-28, 上游與場域研究於 2026-08-08 重查 (Pilotfish v1.3.10), Deep Agents 於 2026-08-20 再查 (0.7.7). 這是目前專案採用決策的入口; 各來源的取證細節留在分題文件.
 
 ## 這份文件回答什麼
 
@@ -97,7 +97,7 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 | 來源 | 查核時的狀態 | 查核日 | 注意 |
 |---|---|---|---|
 | Pilotfish | latest release tag `v1.3.10`, tag commit `7a7f71b...` | 2026-08-08 | 上游發版頻率高於本文件重查頻率 - 四天內出了 v1.3.9 與 v1.3.10 兩版, 引用前先確認 tag |
-| Deep Agents | PyPI stable `0.7.5` (2026-08-06); CLI `deepagents-code 0.1.54` | 2026-08-08 | SDK 與 CLI 交錯發版, 版本序不同步; 版本與託管產品狀態需在引用時重查 |
+| Deep Agents | PyPI stable `0.7.7`; CLI `deepagents-code 0.1.58` (2026-08-19); `deepagents-acp 0.0.10` | 2026-08-20 | 三個 package 各自發版, 版本序不同步, 分開報. 兩週內主線是 session 身分穿過壓縮, 與本專案 `dispatch_id` 的載體同一件事, 見 [peer-harnesses](peer-harnesses.md#2026-08-20-重查-主線移到-session-身分) |
 | Headroom | PyPI `headroom-ai 0.35.0`; GitHub latest release tag `v0.35.0` (皆 2026-08-13); 本機 CLI `0.35.0`; 跑著的 proxy 自報 `0.35.0`; PR #1044 仍 open | 2026-08-17 | 四層這次全部對齊, 而**第四層是問出來的不是推的** — 08-14 查時 `persistent-service` 停著, 根本問不出 proxy 版本; 08-17 重啟後 `/health` 才自己說. 見 [landing-log](landing-log.md) 的 2026-08-10 與 2026-08-14 兩次查核 |
 | mattpocock/skills | Claude marketplace pin `068b6e0`; release tag `v1.2.3` (2026-08-06); `plugin.json` version `1.2.3`; 25 skills | 2026-08-17 | **版本號不會告訴你內容變了** - 08-14 到 08-17 之間 pin 前進 12 個 commit, 而 tag, version 與 skill 數全部沒動. 逐字引用上游 SKILL.md 前先重解析 pin, 見 [mattpocock-skills-integration.md](mattpocock-skills-integration.md) |
 | Artificial Analysis Intelligence Index | **v4.1.1** (August 2026-current) | 2026-08-14 | 點版本會回溯重算全部分數 - v4.1.1 只換了 𝜏³-Banking 的 dataset 與三項評測的 grader, 前緣分數就整體上移約 2 分. 引用絕對值前先確認版本, 見 [model-evidence.md](model-evidence.md) |

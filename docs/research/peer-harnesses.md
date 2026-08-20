@@ -1,6 +1,6 @@
 # 同業 agent harness 拆解
 
-> 對齊日期: Pilotfish 段 2026-08-08 (v1.3.10); Deep Agents 段 2026-08-08 (0.7.5). 只保留會影響本專案設計的存續結論.
+> 對齊日期: Pilotfish 段 2026-08-08 (v1.3.10); Deep Agents 段 2026-08-20 (0.7.7). 只保留會影響本專案設計的存續結論.
 
 ## 這份文件回答什麼
 
@@ -15,7 +15,32 @@
 
 ## LangChain Deep Agents
 
-查核版本: PyPI stable `0.7.5` (2026-08-06). 0.7.x 全是修補與小功能, 沒有新的 middleware. 值得記的變動在同源 CLI `deepagents-code` 0.1.52: Hooks v2 轉正式並支援 plugin 安裝的 hook, 且 HITL 的拒絕理由改寫成給模型看的形式 - 最後這項與 Anthropic auto mode 的 deny-and-continue 是同一件事, 兩個獨立實作收斂 (見 [研究摘要方向 5](README.md#待辦方向)).
+查核版本: PyPI stable `0.7.7`; CLI `deepagents-code` 0.1.58 (2026-08-19); `deepagents-acp` 0.0.10. 三個 package 各自發版, 版本序不同步, 引用前分開報.
+
+2026-08-08 那次記的是: 0.7.x 全是修補與小功能, 沒有新的 middleware; 值得記的變動在 CLI 0.1.52 的 Hooks v2 與 HITL 拒絕理由改寫成給模型看的形式 - 最後這項與 Anthropic auto mode 的 deny-and-continue 是同一件事, 兩個獨立實作收斂 (見 [研究摘要方向 5](README.md#待辦方向)).
+
+### 2026-08-20 重查: 主線移到 session 身分
+
+0.7.5 → 0.7.7 與 CLI 0.1.54 → 0.1.58 之間, 三個 release 講同一件事:
+
+- `0.7.6` 摘要時把對話歷史 offload 到**另一個 session id**;
+- CLI `0.1.56` 修「強制壓縮分叉」, 保住 `session_id`;
+- CLI `0.1.55` 與 `deepagents-acp 0.0.10` 加上 session 的持久化與重新設定.
+
+PyPI 摘要也改寫了, 現在把 context management 與 long-term memory 放進第一句.
+
+**為什麼這一段值得查而不是抄**: 本專案的 `dispatch_id` 是 `<session>:<agent>`, 而
+`weekly-integrity` 的孤兒偵測靠它配對. 壓縮若換掉 session id, 壓縮前後的紀錄會分屬兩個
+session, 對帳就會憑空生出孤兒.
+
+**查了, 這裡不成立**: 本 repo 一次經歷過壓縮的工作階段, project 目錄下當天只有一個
+transcript, id 全程未變, 沒有分叉出兄弟檔. **但那是代理指標** —— hook 看到的 `session_id`
+才是真正的載體, 而該日沒有任何派工, 所以 `delegation.jsonl` 與 pending 都沒有事件可對.
+要確立得等一次「壓縮之後才派工」的真實情況.
+
+CLI 另外加了 `/context` 用量報告 (`0.1.55`) 與 `/offload` 後的總量 (`0.1.57`). 那正是本
+專案 context 層寫下的第一條落差 (動態流入沒有儀器). **方向可借, 現在不做**: 這裡連「一次
+典型工作階段流入多少」的基線都沒有, 先做儀器只會做出一支沒有校準的儀器.
 
 Deep Agents 的價值不在提供另一套固定流程, 而在把幾個可組合能力做成 middleware 與 state boundary:
 
