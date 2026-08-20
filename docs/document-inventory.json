@@ -2,10 +2,11 @@
   "schema_version": 2,
   "audit_id": "DOC-AUDIT-2026-07-28-ENVELOPE",
   "base_commit": "728936f",
-  "pattern_precedence": "Most specific wins: an exact path beats a glob. There is no recursive docs/**/*.md rule, so a new docs/ subdirectory is uncovered until someone classifies it.",
+  "pattern_precedence": "Most specific wins: an exact path beats a glob. There is no recursive docs/**/*.md rule, so a new docs/ subdirectory is uncovered until someone classifies it - docs/architecture/ was added that way on 2026-08-20.",
   "reviewed_current_guidance": [
     "README.md",
     "docs/*.md",
+    "docs/architecture/*.md",
     "docs/plans/*.md",
     "docs/research/README.md",
     "main/claude/*.md",

@@ -194,21 +194,46 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 在 2026-08-19 之前這條線不存在: 稽核範圍用的是一條遞迴 glob, 把整個目錄都算成現行
 指引, 而這個目錄從 13.4k 字長到 85k 字都沒有人決定過要這樣.
 
+分成四組, 每組後面標的是它服務[架構](../architecture/architecture.md)的哪一層 —— 研究
+不是憑興趣長出來的, 每一份都是為了回答某一層的一個問題.
+
+**檔案維持平放, 不開子目錄.** 子目錄會逼出 `docs/research/**/*.md` 這條遞迴 glob, 而那
+正是 2026-08-19 從稽核信封裡拔掉的東西: 一條遞迴規則讓整個目錄悄悄變成現行指引, 三週
+沒人發現. 為了十四個檔案的導航把它裝回來不划算, 分組寫在這張表裡就夠.
+
+### 成本與常駐 — Context 層
+
 | 文件 | 回答什麼問題 |
 |---|---|
 | [context-and-vendors.md](context-and-vendors.md) | 常駐 context 有多貴, 兩家供應商官方怎麼說 |
 | [resident-context-options.md](resident-context-options.md) | 常駐成本現況, 可用槓桿與延後的 runtime-selection eval |
-| [peer-harnesses.md](peer-harnesses.md) | Deep Agents 與 Pilotfish 的原始碼與版本拆解 |
+
+### 模型, routing 與同業 — Graph 層
+
+| 文件 | 回答什麼問題 |
+|---|---|
 | [model-evidence.md](model-evidence.md) | route 與 effort 怎麼選, 成本口徑怎麼算, 外部先驗有多可信 |
+| [fable-5-fallback.md](fable-5-fallback.md) | 用 Fable 5 時怎麼避免被切到 Opus, 以及可行性邊界 |
+| [peer-harnesses.md](peer-harnesses.md) | Deep Agents 與 Pilotfish 的原始碼與版本拆解 |
+
+### 本機實驗 — 橫跨四層的證據面
+
+| 文件 | 回答什麼問題 |
+|---|---|
 | [trap-experiments.md](trap-experiments.md) | 可重播的失敗情境與反證 |
-| [local-experiments.md](local-experiments.md) | 本機任務結果 |
-| [lifecycle-replay.md](lifecycle-replay.md) | replay 的四項存活判準, 三個生命週期問題, 與累計 463 個 run 的結論 |
+| [lifecycle-replay.md](lifecycle-replay.md) | replay 的四項存活判準, 三個生命週期問題與結論 |
 | [clause-pricing.md](clause-pricing.md) | 從 lifecycle-replay 分出來的一條線: 能不能用產出品質給常駐子句定價 |
+| [local-experiments.md](local-experiments.md) | 本機任務結果 |
 | [landing-log.md](landing-log.md) | 每一次查核的原始紀錄與原始措辭, 含被後來證據推翻的段落 |
+| [prompt-surface-census.json](prompt-surface-census.json) | deterministic resident/role surface 快照 |
+
+### 上游與蒸餾 — 這些能力從哪來
+
+| 文件 | 回答什麼問題 |
+|---|---|
 | [mattpocock-skills-integration.md](mattpocock-skills-integration.md) | 工程工作流 skill 的上游快照, 工作流比較, 採用與拒絕理由 |
 | [upstream-distillation-ledger.md](upstream-distillation-ledger.md) | 上游每一節蒸餾到哪裡, 捨棄了什麼 (`scripts/upstream-recheck.sh` 可覆核) |
 | [readable-zh-tw-upstream.md](readable-zh-tw-upstream.md) | `readable-zh-tw` 的上游 pin, 目標分岔與逐次同步紀錄 |
-| [prompt-surface-census.json](prompt-surface-census.json) | deterministic resident/role surface 快照 |
 
 ## 驗證缺口
 

@@ -130,7 +130,7 @@ instruction, 當次使用者要求或 global contract. 每次新增或調整 tun
 
 | 上游相依 | 本專案承接者 | 判準 |
 |---|---|---|
-| `CONTEXT.md` + ADR | `AGENTS.md` 與 [architecture.md](../architecture.md) | 蒸餾版指向既有 owner; 不得建立 `CONTEXT.md`, `docs/adr/*` 或任何新的根文件 |
+| `CONTEXT.md` + ADR | `AGENTS.md` 與 [architecture.md](../architecture/architecture.md) | 蒸餾版指向既有 owner; 不得建立 `CONTEXT.md`, `docs/adr/*` 或任何新的根文件 |
 | `codebase-design` skill (`tdd` 取 seam 語彙) | 蒸餾版自帶最小定義 | seam = 可觀察行為的公開邊界. 一句話帶完, 不留跨 skill 指標 |
 | `tests.md` / `mocking.md` (TypeScript + Jest 範例) | 自寫等價範例 | 概念移植, **範例重寫**. 本 repo 的測試面是 Python `unittest`, shell, 與 markdown 契約斷言; 直接翻譯 Jest 範例會教出這裡不存在的習慣 |
 | `scripts/hitl-loop.template.sh` (feedback loop 第 10 級) | **移除該級** | 本 repo 的驗證面沒有「必須有人點擊」的情境. 留一個未實作的指標比沒有更糟 |

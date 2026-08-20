@@ -3040,8 +3040,8 @@ class CodenameGlossReportTests(unittest.TestCase):
 
     def test_the_scanned_set_comes_from_rule_eight(self) -> None:
         scanned = self.module().scanned_documents()
-        self.assertIn("docs/architecture.md", scanned)
-        self.assertIn("docs/agent-engineering.md", scanned)
+        self.assertIn("docs/architecture/architecture.md", scanned)
+        self.assertIn("docs/architecture/graph-engineering.md", scanned)
         self.assertNotIn(
             "docs/research/landing-log.md", scanned,
             "research journals are written for whoever ran the batch; holding "

@@ -2,7 +2,7 @@
 
 Hook 是這個 harness 把「規則」變成「機制」的地方. 契約用文字告訴模型該怎麼做, hook
 則是不依賴模型記性, 每次都會跑的確定性檢查. 核心分工只有一句: **需要判斷的交給模型,
-能機械判定的交給 hook** (方法論見 [playbook](harness-engineering.md) 第 3, 5 節).
+能機械判定的交給 hook** (方法論見 [playbook](engineering-playbook.md) 第 3, 5 節).
 
 實際掛載設定在 [`main/claude/settings.json`](../main/claude/settings.json), 逐一部署到
 `~/.claude/hooks/`; 真相源永遠是 source checkout, 不是 HOME.
@@ -68,7 +68,7 @@ gate 都用合成 stdin 做 pipe-test, 把正常, 該攔截, 防繞過三種輸�
 - `verifier-quota`, `bridge-jobs`, gate-line 錨定都有對應的機械測試, 見 `test_mechanisms.py`.
 
 Hook 建置規範 (真實目錄先證明可跑 → 合成 pipe-test → `jq` 驗設定 → 失敗訊息回到模型 →
-保持秒級 → 新 session 驗載入) 與測試案例規範見 [playbook 第 5 節](harness-engineering.md#5-驗證迴路).
+保持秒級 → 新 session 驗載入) 與測試案例規範見 [playbook 第 5 節](engineering-playbook.md#5-驗證迴路).
 
 ## 攔截了就要留痕 (2026-08-08 起)
 
@@ -98,7 +98,7 @@ Hook 建置規範 (真實目錄先證明可跑 → 合成 pipe-test → `jq` 驗
   刻意不做成 gate, 因為關不起來的 gate 會誘人相信一個假保證 — 那正是[派工生命週期](dispatch-lifecycle.md)
   裡「artifact 所有權仍屬判斷」的由來.
 - Hook 是本機單機防線. 重要規則不能只靠單機 hook, enforcement 分層是
-  `Claude hook → pre-commit → CI → monitoring`, 攔截點依序變晚 ([playbook 第 9 節](harness-engineering.md#9-enforcement-層級與-bootstrap)).
+  `Claude hook → pre-commit → CI → monitoring`, 攔截點依序變晚 ([playbook 第 9 節](engineering-playbook.md#9-enforcement-層級與-bootstrap)).
 - reviewer 的唯讀邊界是兩層合力: frontmatter **allowlist** (只放行列出的工具, 因此任何會變更狀態的
   MCP 工具都不在其中), `runtime-guard` (版本不足就擋派工). 用 allowlist 而非 denylist
   的理由就在這裡: denylist 對沒列到的 MCP 工具會預設放行.
