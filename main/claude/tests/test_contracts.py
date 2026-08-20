@@ -1685,6 +1685,45 @@ class DocumentationBudgetTests(unittest.TestCase):
                 "is a document that outgrew its single responsibility - split "
                 "it or move sections to the doc that owns them")
 
+    def test_no_single_test_file_is_most_of_the_suite(self) -> None:
+        """The sprawl guard the test tree did not have.
+
+        `test_mechanisms.py` held 175 of 388 tests across 15 classes before
+        2026-08-20, including 71 about `evals/replay/` that used no name from
+        the rest of the file. A file called "mechanisms" holding 45% of every
+        assertion in the repo is the same failure `DOC_SPRAWL_CEILING` catches
+        one directory over, and nothing was looking.
+
+        Counted by collecting the suite rather than by grepping for `def test_`:
+        a grep sees 396 where the loader sees 388, because docstrings quote test
+        names, and a guard that miscounts by 2% invites being ignored.
+        """
+        loader = unittest.TestLoader()
+        suite = loader.discover(str(ROOT / "main/claude/tests"), pattern="test_*.py")
+
+        def flatten(item):
+            if isinstance(item, unittest.TestSuite):
+                for child in item:
+                    yield from flatten(child)
+            else:
+                yield item
+
+        per_file: dict[str, int] = {}
+        for case in flatten(suite):
+            per_file[type(case).__module__] = per_file.get(
+                type(case).__module__, 0) + 1
+        total = sum(per_file.values())
+        self.assertGreater(total, 100, "the suite failed to collect")
+
+        worst, count = max(per_file.items(), key=lambda item: item[1])
+        self.assertLessEqual(
+            count / total, TEST_SHARE_CEILING,
+            f"{worst}.py holds {count}/{total} tests "
+            f"({count / total:.0%}). This is not a budget overrun, it is a file "
+            "that outgrew its subject - split it at a seam, as "
+            "test_replay_scenarios.py was split out, and do not raise the "
+            "constant")
+
     def test_human_docs_stay_half_width(self) -> None:
         """The sweep was a commit; without this it is not a rule.
 

@@ -2,6 +2,38 @@
 from support import *  # noqa: F401,F403
 
 
+class RoleCountTests(unittest.TestCase):
+    def test_documents_state_the_number_of_roles_that_ship(self) -> None:
+        """Third count in this repo to get a carrier, after the fail-closed
+        gates and the report-only tools.
+
+        七個固定角色 is stated twice in `agent-engineering.md` and was checked by
+        nothing, so retiring or adding a role would have left both sentences
+        confidently wrong - which is exactly what happened to the gate count for
+        three weeks when the sixth gate landed (2026-08-20).
+
+        Derived from the shipped role files rather than pinned, and from
+        `ROLES` too, so the two cannot disagree: a role file that no test
+        registers is as much a defect as a numeral that drifted.
+        """
+        shipped = {path.stem for path in (ROOT / "main/claude/agents").glob("*.md")}
+        self.assertEqual(shipped, set(ROLES), "role files and ROLES disagree")
+
+        numerals = {3: "三", 4: "四", 5: "五", 6: "六", 7: "七", 8: "八", 9: "九"}
+        expected = numerals[len(shipped)]
+
+        stated = [(path, match) for path in tracked_markdown()
+                  for match in re.findall(
+                      rf"([{''.join(numerals.values())}])個固定角色", read_repo(path))]
+        self.assertGreaterEqual(
+            len(stated), 1, "the role count is documented somewhere")
+        for path, count in stated:
+            self.assertEqual(
+                count, expected,
+                f"{path}: says {count}個固定角色, {len(shipped)} ship "
+                f"({sorted(shipped)})")
+
+
 class AgentRosterTests(unittest.TestCase):
     def test_roster_matches_expected_roles(self) -> None:
         self.assertEqual(
