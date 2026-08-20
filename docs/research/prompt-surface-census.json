@@ -87,10 +87,10 @@
       ],
       "resident": [
         {
-          "bytes": 3274,
+          "bytes": 3252,
           "path": "main/claude/CLAUDE.contract.md",
-          "sha256": "89b6082d65572a079ec8feab02e5599ae4286bde3895d22180daaee5481aab8a",
-          "words": 488
+          "sha256": "8783b70d5e43d3b0e874336fbfd64aead14fb7ec51b0b6f4502eeb0a886cb379",
+          "words": 487
         },
         {
           "bytes": 427,
@@ -403,10 +403,10 @@
       ],
       "resident": [
         {
-          "bytes": 4206,
+          "bytes": 4257,
           "path": "main/codex/AGENTS.contract.md",
-          "sha256": "4dd6f3c199471925aa2386402e15cd477d6b5c113dd71b2bfd56701920c57d17",
-          "words": 618
+          "sha256": "8e31b2cba1e93ab60fd12cf2d9e973179d9b77934f71de3f5e1953450d89583e",
+          "words": 625
         },
         {
           "bytes": 439,
@@ -591,9 +591,9 @@
         "words": 7817
       },
       "resident": {
-        "bytes": 8995,
-        "payload_sha256": "9c5944a46f207d5cb0388092cbd8a9bcaed916cc80566ba54accb1be7b7e881e",
-        "words": 1541
+        "bytes": 8973,
+        "payload_sha256": "6a076b43332c03ef9b4f551c916d4b1674967b1709c8ad7c571b9e05bb0ca84f",
+        "words": 1540
       },
       "roles": {
         "bytes": 10788,
@@ -608,9 +608,9 @@
         "words": 7569
       },
       "resident": {
-        "bytes": 7404,
-        "payload_sha256": "038ad3933b427c517f6a50c40a61f299ed25effebf403399d496ad4fd64a96b4",
-        "words": 1195
+        "bytes": 7455,
+        "payload_sha256": "c3fc2e8f41ade97cf68df2be15f1d333f9813abce2a67cc4463c7505b4983adb",
+        "words": 1202
       },
       "roles": {
         "bytes": 10838,
