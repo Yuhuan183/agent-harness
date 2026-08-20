@@ -11,7 +11,6 @@
     "docs/research/README.md",
     "main/claude/*.md",
     "main/claude/agents/*.md",
-    "main/claude/plans/orchestration-plan.md",
     "main/claude/prompts/*.md",
     "main/claude/skills/**/*.md",
     "main/codex/*.md",
@@ -25,7 +24,7 @@
     ".agents/skills/harness-review/**/*.md"
   ],
   "evidence_not_current_guidance": [
-    "main/claude/plans/orchestration-history.md",
+    "docs/plans/orchestration-history.md",
     "docs/research/*.md",
     "evals/**/*.md",
     "evals/**/*.json",

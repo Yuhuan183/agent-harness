@@ -1,7 +1,7 @@
 # Orchestration Decision History
 
 > 依時間序的決策紀錄; 只追加, 不重寫. 當前方案見
-> [orchestration-plan.md](orchestration-plan.md); 完整差異由 Git 保存.
+> [orchestration-state.md](orchestration-state.md); 完整差異由 Git 保存.
 
 - **2026-07-12** — Fail-open local monitoring and nested-delegation detection.
 - **2026-07-15** — Direct-first cost-aware dispatch replaced fixed pipelines; Headroom wrap ownership; no routine stacked verification.

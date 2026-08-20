@@ -188,7 +188,7 @@ false-positive 檢查:
 就沒有任何機制在描述層做這個區分.
 
 與機器上的 `evidence-ladder` 有一條規則重疊而不牴觸, 判定不合併; 決定記在
-[orchestration-history](../../main/claude/plans/orchestration-history.md) 的 2026-08-19 那筆.
+[orchestration-history](orchestration-history.md) 的 2026-08-19 那筆.
 
 ## 新 skill 的建立基準
 

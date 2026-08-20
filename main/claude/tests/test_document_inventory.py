@@ -207,7 +207,7 @@ class DocumentInventoryTests(unittest.TestCase):
         for path in (
             "README.md",
             "docs/research/README.md",
-            "main/claude/plans/orchestration-plan.md",
+            "docs/plans/orchestration-state.md",
             "main/codex/AGENTS.contract.md",
             ".agents/skills/harness-review/SKILL.md",
             "scripts/deployment-manifest.tsv",

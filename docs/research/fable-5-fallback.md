@@ -81,7 +81,7 @@ Opus.
 
 ## 設計方向 (未實作, 供日後評估)
 
-以下記錄做法與原理, 尚未實作, 也未決定要不要做. orchestration-plan 的未決項有指標.
+以下記錄做法與原理, 尚未實作, 也未決定要不要做. 尚未進 [orchestration-state](../plans/orchestration-state.md) 的不變量表.
 
 ### 方向一: 軟性啟發式 dispatch 提示 hook
 
