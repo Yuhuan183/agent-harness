@@ -150,7 +150,7 @@ flowchart LR
 - `main/claude/CLAUDE.contract.md`;
 - `main/codex/AGENTS.contract.md`;
 - `docs/architecture.md`;
-- `docs/harness-engineering.md`;
+- `docs/engineering-playbook.md`;
 - `docs/research/*`;
 - `main/claude/plans/*`.
 
@@ -185,7 +185,7 @@ flowchart LR
 
 | 相依 | 兩個 skill 怎麼用 | 本專案的處置 |
 |---|---|---|
-| `CONTEXT.md` 與 ADR | **兩個 skill 的開頭第一段都是**「read `CONTEXT.md` (if it exists)」與 respect ADRs | 計畫明文不新增 `CONTEXT.md` 與 `docs/adr/*`. 蒸餾版要改指既有 owner (`AGENTS.md`, [architecture.md](../architecture.md)), 不能只把那行刪掉留下空洞 |
+| `CONTEXT.md` 與 ADR | **兩個 skill 的開頭第一段都是**「read `CONTEXT.md` (if it exists)」與 respect ADRs | 計畫明文不新增 `CONTEXT.md` 與 `docs/adr/*`. 蒸餾版要改指既有 owner (`AGENTS.md`, [architecture.md](../architecture/architecture.md)), 不能只把那行刪掉留下空洞 |
 | `codebase-design` skill | `tdd` 要 agent 呼叫 Skill tool 取 seam 語彙 | 不導入該 skill. 蒸餾版自帶最小語彙 (seam = 可觀察行為的公開邊界), 不留跨 skill 指標 |
 | `tests.md` / `mocking.md` | TypeScript + Jest 範例 | 概念可移植, **範例不可移植** — 本 repo 是 Python + shell + markdown 契約. 要自己寫等價範例, 不是翻譯 |
 | `scripts/hitl-loop.template.sh` | feedback loop 第 10 級 (需要人點擊時的結構化迴圈) | 本 repo 的驗證面沒有這種情境; 直接移除該級, 不留未實作的指標 |

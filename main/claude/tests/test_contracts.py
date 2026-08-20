@@ -1871,7 +1871,7 @@ class DocumentationBudgetTests(unittest.TestCase):
         self.assertNotIn("AR lead >=10pt", plan)
 
     def test_harness_engineering_keeps_role_boundaries_local(self) -> None:
-        doc = read("docs/harness-engineering.md")
+        doc = read("docs/engineering-playbook.md")
         research = read("docs/research/model-evidence.md")
         self.assertIn("main-only 段必須短", doc)
         self.assertIn("角色檔要自足", doc)

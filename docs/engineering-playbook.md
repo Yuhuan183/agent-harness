@@ -131,7 +131,7 @@ write/read, 重試, 人工修正, 等待時間與失敗風險都要入帳. 訂�
 例外, 整合與 acceptance. 新增 role 要在同一個 cohort 裡證明現有角色契約不足.
 
 派工前後各輸出一筆固定格式的紀錄, 讓人類回顧與遙測對得上; 格式屬於派工流程本身, 不寫進
-方法論. 本 repo 的角色清單, class 清單與紀錄格式在[分層剖析第五層](agent-engineering.md#第五層-graph-多個-agent-怎麼協作).
+方法論. 本 repo 的角色清單, class 清單與紀錄格式在[graph engineering](architecture/graph-engineering.md).
 
 ## 8. Skill 與第三方內容
 

@@ -218,13 +218,13 @@ main/codex/scripts/model-routing resolve --surface claude-bridge --priority qual
 
 ## 文件導覽
 
-想由上而下讀懂整套設計, 先看 [架構總覽](docs/architecture.md) — 它從架構圖開始, 串起
+想由上而下讀懂整套設計, 先看 [架構總覽](docs/architecture/architecture.md) — 它從架構圖開始, 串起
 核心想法與六層地圖, 再指向每一層. 其餘依工作目的從
 [docs/README.md](docs/README.md) 進入:
 
-- [Agent engineering 分層剖析](docs/agent-engineering.md): 六層各自的職責, 實作, 量它的
+- [Agent engineering 分層剖析](docs/architecture/architecture.md): 六層各自的職責, 實作, 量它的
   儀器, 已知失效與升級判準; 跨層的兩條軸與升級評估的五個問題.
-- [Harness Engineering Playbook](docs/harness-engineering.md): 跨專案設計與維運方法.
+- [Harness Engineering Playbook](docs/engineering-playbook.md): 跨專案設計與維運方法.
 - [研究摘要](docs/research/README.md): Artificial Analysis, 成本模型, 本機實驗與證據限制.
 - [配置與部署](docs/setup.md): bootstrap, dry-run, apply, 驗收與回滾.
 - [常駐契約瘦身規範](docs/contract-slimming.md): CLAUDE.md 與 AGENTS.md 的內容判定, 預算與驗收.

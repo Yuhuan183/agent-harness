@@ -7,19 +7,19 @@
 
 | 你要做什麼 | 從哪裡開始 | 接著看 |
 |---|---|---|
-| 由上而下讀懂整套架構 | [架構總覽](architecture.md) | [根 README](../README.md) |
-| 從最小單位往上看懂 agent engineering | [分層剖析](agent-engineering.md) | [架構總覽](architecture.md), [Playbook](harness-engineering.md) |
-| 評估一個升級提案 | [升級評估: 五個問題](agent-engineering.md#四-升級評估-五個問題) | [跨層的兩條軸](agent-engineering.md#二-跨層的兩條軸), [evidence-ladder](../main/.agents/skills/evidence-ladder/SKILL.md) |
-| 理解整體架構與資料流 | [根 README](../README.md) | [Harness Engineering Playbook](harness-engineering.md) |
+| 由上而下讀懂整套架構 | [架構總覽](architecture/architecture.md) | [根 README](../README.md) |
+| 從最小單位往上看懂 agent engineering | [分層剖析](architecture/architecture.md) | [架構總覽](architecture/architecture.md), [Playbook](engineering-playbook.md) |
+| 評估一個升級提案 | [升級評估: 五個問題](architecture/architecture.md#六-升級評估-五個問題) | [跨層的兩條軸](architecture/architecture.md#四-跨層的兩條軸), [evidence-ladder](../main/.agents/skills/evidence-ladder/SKILL.md) |
+| 理解整體架構與資料流 | [根 README](../README.md) | [Harness Engineering Playbook](engineering-playbook.md) |
 | 安裝, 同步或回滾 | [配置與部署](setup.md) | [Claude README](../main/claude/README.md), [Codex README](../main/codex/README.md) |
-| 修改 leaf role 或派工契約 | [Playbook: Leaf 分派](harness-engineering.md#leaf-分派的三層契約) | [Briefs](../main/claude/skills/baton-dispatch/references/briefs-and-stops.md) |
+| 修改 leaf role 或派工契約 | [Playbook: Leaf 分派](engineering-playbook.md#leaf-分派的三層契約) | [Briefs](../main/claude/skills/baton-dispatch/references/briefs-and-stops.md) |
 | 評估 model/effort/provider | [研究摘要](research/README.md) | [Claude routing](../main/claude/model-routing.toml), [Codex routing](../main/codex/model-routing.toml) |
 | 評估 Matt Pocock 工程 skills 的導入方式 | [導入研究](research/mattpocock-skills-integration.md) | [蒸餾實作計畫](plans/engineering-workflow-distillation.md) |
-| 用 Fable 5 時避免被切到 Opus | [Fable 5 安全 fallback](fable-5-fallback.md) | [provider-routing](../main/claude/skills/provider-routing/SKILL.md) |
+| 用 Fable 5 時避免被切到 Opus | [Fable 5 安全 fallback](research/fable-5-fallback.md) | [provider-routing](../main/claude/skills/provider-routing/SKILL.md) |
 | 查 experience-ledger 指標 | [Metrics](../main/.agents/skills/experience-ledger/references/metrics.md) | [skill 本體](../main/.agents/skills/experience-ledger/SKILL.md) |
 | 驗證派工狀態與路由證據 | [派工生命週期](dispatch-lifecycle.md) | [bridge-liveness](../main/claude/skills/provider-routing/references/bridge-liveness.md) |
 | 診斷 context 或工具輸出 | [Headroom runtime](../main/.agents/docs/headroom-runtime.md) | [RTK](../main/claude/RTK.md) |
-| 審視文檔與開發指引是否對齊 | [2026-07-28 統一稽核](document-audit-2026-07-28.md) | [可重跑 inventory](document-inventory.json) |
+| 審視文檔與開發指引是否對齊 | [2026-07-28 統一稽核](document-audit.md) | [可重跑 inventory](document-inventory.json) |
 | 理解 QC 怎麼把關 | [QC 白話說明](qc-explainer.md) | [baton-dispatch](../main/claude/skills/baton-dispatch/SKILL.md) |
 | 理解 hook 系統怎麼運作 | [Hook 系統](hook-system.md) | [settings.json](../main/claude/settings.json) |
 | 跑行為 trap eval | [evals/traps/](../evals/traps/) 各 README | [QC 說明](qc-explainer.md) 取證段 |
@@ -29,25 +29,29 @@
 
 ## 文件責任
 
-每份文件對應[六層](agent-engineering.md#一-六層地圖)的哪一層寫在第一欄. 有兩件橫跨所有
+每份文件對應[六層](architecture/architecture.md#三-四層地圖)的哪一層寫在第一欄. 有兩件橫跨所有
 層, 標成「跨層」: 證據 (憑什麼算數) 與部署 (規則怎麼真的到機器上). 有兩層的規範不在
 `docs/` 底下 —— ② Context 與 ③ Loop 由出貨的 skill 擁有, 那欄直接指過去.
 
 | 層 | 文件 | 保存內容 | 不保存內容 |
 |---|---|---|---|
-| 跨層 · 地圖 | [架構總覽](architecture.md) | 由上而下的骨幹敘事: 架構圖, 核心想法, 六層地圖與各層入口, 附檔導引 | 各層的職責與實作 (在分層剖析), 可變的 model 數值, 會過期的量測值 (指向腳本) |
-| 跨層 · 全六層 | [分層剖析](agent-engineering.md) | 六層各自的職責, 實作, 儀器, 已知失效與升級判準; 跨層的兩條軸; 升級評估的五個問題 | 跨專案通則的完整論證 (在 playbook), 這個系統的骨幹敘事 (在架構總覽), 實驗原始數據 (在 research/) |
-| 跨層 · 通則 | [Harness Engineering Playbook](harness-engineering.md) | 可跨專案複用的設計與驗證方法, 以及每條通則的完整論證 | 當前 route pins, 實驗原始數據, 本 repo 逐層的實作 (在分層剖析) |
+| 跨層 · 地圖 | [架構總覽](architecture/architecture.md) | 完整資料流, 核心想法, 四層地圖, 跨層的兩條軸與兩件橫跨的事, 升級評估的五個問題 | 每一層自己的職責與實作 (在四份層文件), 跨專案方法論 (在 playbook), 會過期的量測值 (指向腳本) |
+| Context | [context-engineering](architecture/context-engineering.md) | 模型看到什麼: 一條子句怎麼寫, 一個 window 裡放什麼 | 預算的判定表與驗收 (在契約瘦身) |
+| Harness | [harness-engineering](architecture/harness-engineering.md) | 模型周圍: 工具, 權限, 監控, 防護欄 | 每道 hook 的攔截條件 (在 hook 系統) |
+| Loop | [loop-engineering](architecture/loop-engineering.md) | 單一 agent 的迴路: 規劃 → 執行 → 驗證 → 重試, 各自的停止條件 | 派工形狀與 brief (在 baton-dispatch) |
+| Graph | [graph-engineering](architecture/graph-engineering.md) | 多 agent 協作: 誰先做, 誰並行, 做完給誰; QC 與五個狀態 | QC 規則字面 (在派工 skill), 狀態承載物 (在派工生命週期) |
+| 跨層 · 全六層 | [分層剖析](architecture/architecture.md) | 六層各自的職責, 實作, 儀器, 已知失效與升級判準; 跨層的兩條軸; 升級評估的五個問題 | 跨專案通則的完整論證 (在 playbook), 這個系統的骨幹敘事 (在架構總覽), 實驗原始數據 (在 research/) |
+| 跨層 · 通則 | [Harness Engineering Playbook](engineering-playbook.md) | 可跨專案複用的設計與驗證方法, 以及每條通則的完整論證 | 當前 route pins, 實驗原始數據, 本 repo 逐層的實作 (在分層剖析) |
 | ① 子句 | [契約瘦身規範](contract-slimming.md) | CLAUDE.md/AGENTS.md 的內容判定, 預算原則與驗收 | 歷史歷程, 當前 orchestration 狀態 |
 | ② Context | 規範在 [contract-slimming](contract-slimming.md) 與 [headroom-runtime](../main/.agents/docs/headroom-runtime.md) | — | — |
 | ③ Loop | 規範在 [baton-dispatch](../main/claude/skills/baton-dispatch/SKILL.md) | — | — |
 | ④ Harness | [Hook 系統](hook-system.md) | fail-open/fail-closed 語意, 逐事件清單, 為何值得信任 | hook 內部實作細節 (各 hook 檔內 docstring) |
 | ⑤ Graph | [QC 白話說明](qc-explainer.md) | 為什麼需要 QC, 四個步驟各吃什麼, 白話的取證說明 | 有約束力的 QC 規則字面 (在兩份派工 skill) |
 | ⑤ Graph | [派工生命週期](dispatch-lifecycle.md) | 派工五個狀態的承載物, 不成立的推論, 驗證清單 | 派工形狀與 QC (baton-dispatch), provider 選擇 (provider-routing) |
-| ⑤ Graph | [Fable 5 安全 fallback](fable-5-fallback.md) | 用 Fable 5 時怎麼避免被切到 Opus, 以及可行性邊界 | 本 repo 的跨 provider fallback 規則 (在 provider-routing) |
+| ⑤ Graph | [Fable 5 安全 fallback](research/fable-5-fallback.md) | 用 Fable 5 時怎麼避免被切到 Opus, 以及可行性邊界 | 本 repo 的跨 provider fallback 規則 (在 provider-routing) |
 | ⑥ Evidence | [研究摘要](research/README.md) | benchmark 快照, 成本口徑, 案例取捨, 研究缺口; `research/` 底下唯一的現行結論來源 | runtime 強制規則, 現行 route pins, 逐次查核的原始紀錄 (在 [landing-log](research/landing-log.md)) |
 | ⑥ Evidence | [Matt Pocock skills 導入研究](research/mattpocock-skills-integration.md) | 上游快照, 工作流比較, 相容性, 採用與拒絕理由 | 實作進度, runtime skill 本體 |
-| ⑥ Evidence | [2026-07-28 統一稽核](document-audit-2026-07-28.md) | 那一次稽核的六維度結果與範圍信封 | 之後的變更 (信封是活的, 見該文件的注記) |
+| ⑥ Evidence | [2026-07-28 統一稽核](document-audit.md) | 那一次稽核的六維度結果與範圍信封 | 之後的變更 (信封是活的, 見該文件的注記) |
 | 跨層 · 部署 | [配置與部署](setup.md) | bootstrap, apply, 驗收與回滾步驟 | 模型選擇理由 |
 | 跨層 · 計畫 | [Engineering workflow 蒸餾實作計畫](plans/engineering-workflow-distillation.md) | 已核准方向, 分階段 scope, gates, rollback 與 completion criteria | 上游研究全文, 已部署狀態 |
 | 跨層 · 計畫 | [Orchestration plan](../main/claude/plans/orchestration-plan.md)+[history](../main/claude/plans/orchestration-history.md) | 當前最新方案; append-only 決策歷程 | 完整方法論與研究全文 |
@@ -85,7 +89,7 @@
    | 層 | 涵蓋 | 寫法 |
    |---|---|---|
    | 給模型讀 | contracts, roles, skills, script 註解的操作本體 | 英文, 見規則 6 |
-   | 說明與研究 | [架構總覽](architecture.md), [分層剖析](agent-engineering.md), [QC 白話說明](qc-explainer.md), [研究總結](research/README.md) | 讀者不必先懂本 repo 的內部詞彙. 核心概念先給圖, 數據對比先給表, 結論條列; 散文只用來講圖表講不了的因果. 術語照留 —— 換白話近義詞會把精確性一起換掉 —— 但**內部代號** (`s11`, `p1b` 這類 trap 與 replay 情境編號) 第一次出現時, 同一句裡要有東西說它問的是什麼. 研究日誌不在這一層: 它們寫給跑過那批實驗的人看 |
+   | 說明與研究 | [架構總覽](architecture/architecture.md), [context](architecture/context-engineering.md), [harness](architecture/harness-engineering.md), [loop](architecture/loop-engineering.md), [graph](architecture/graph-engineering.md), [QC 白話說明](qc-explainer.md), [研究總結](research/README.md) | 讀者不必先懂本 repo 的內部詞彙. 核心概念先給圖, 數據對比先給表, 結論條列; 散文只用來講圖表講不了的因果. 術語照留 —— 換白話近義詞會把精確性一起換掉 —— 但**內部代號** (`s11`, `p1b` 這類 trap 與 replay 情境編號) 第一次出現時, 同一句裡要有東西說它問的是什麼. 研究日誌不在這一層: 它們寫給跑過那批實驗的人看 |
    | 操作與規範 | [setup](setup.md), [hook-system](hook-system.md), [dispatch-lifecycle](dispatch-lifecycle.md), [contract-slimming](contract-slimming.md), 兩份 README | 直白精簡, 不為了淺顯加篇幅 |
 
    **`docs/**` 沒有字數預算** (2026-08-08 起). 字數上限量的是 push 成本 — 每回合或每次派工都要付的位元組 — 而 manifest 部署的檔案裡沒有一份在 `docs/` 底下: 這一層是 pull 成本, 由打開它的人付一次, 而且可以不看完. 用擋 commit 的天花板管 pull 成本, 買到的是「記錄新學到的東西要先調預算」這種摩擦. 這一層改由兩件事看住: [`scripts/docs-size-report.py`](../scripts/docs-size-report.py) 只報不擋, 另有一道 `DOC_SPRAWL_CEILING` 數量級鬆閘, 只抓「一份文件已經不是一份文件」. 逼近鬆閘的正解是拆檔或搬回真正的 owner, 不是調高常數. 預算仍然嚴格生效在出貨層: 兩份契約, skill 與 role 的 `description`, 以及每一支出貨 skill 的本文, 規範見[契約瘦身](contract-slimming.md).

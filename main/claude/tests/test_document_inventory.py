@@ -177,7 +177,7 @@ class DocumentInventoryTests(unittest.TestCase):
         cross-project method. Anything here that stops being true of other
         projects belongs in the layered analysis instead.
         """
-        owner = "docs/harness-engineering.md"
+        owner = "docs/engineering-playbook.md"
         phrases = ("機制勝過提醒", "最短驗證迴路", "注意力稅", "抓不到蓄意錯誤",
                    "刪掉這一行", "Task class", "矛盾更貴")
         owner_text = read_repo(owner)
@@ -187,7 +187,7 @@ class DocumentInventoryTests(unittest.TestCase):
                 f"{phrase!r} is declared owned by {owner} but does not appear "
                 "there; either the owner moved or the phrase was reworded")
 
-        link = re.compile(r"\]\([^)]*harness-engineering\.md[^)]*\)")
+        link = re.compile(r"\]\([^)]*engineering-playbook\.md[^)]*\)")
         offenders = []
         for path in guidance_markdown():
             if path != "README.md" and not path.startswith("docs/"):
