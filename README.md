@@ -247,7 +247,7 @@ scripts/sync.sh
 
 ```bash
 scripts/evidence-check.py        # SHA 引用是否還解得開; trap 結果列的量測面指紋是否還是出貨版本
-scripts/docs-size-report.py      # docs/ 體積現況 (這層沒有字數預算, 見 docs/README.md 規則 8)
+scripts/docs-size-report.py      # docs/ 體積, 分現行指引與紀錄兩層 (這層沒有字數預算, 見 docs/README.md 規則 8)
 scripts/resident-pool-report.py  # 這台機器實際的常駐 skill 描述量, 與預算蓋到的比例
 scripts/zh-tw-usage-report.py    # 本 repo 自己的中文有沒有用到它出貨在校正的中國用語
 ```

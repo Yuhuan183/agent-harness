@@ -8,6 +8,7 @@
 | 你要做什麼 | 從哪裡開始 | 接著看 |
 |---|---|---|
 | 由上而下讀懂整套架構 | [架構總覽](architecture.md) | [根 README](../README.md) |
+| 評估一個升級提案 | [升級評估: 五個問題](architecture.md#四-升級評估-五個問題) | [規則的座標系](architecture.md#三-規則的座標系), [evidence-ladder](../main/.agents/skills/evidence-ladder/SKILL.md) |
 | 理解整體架構與資料流 | [根 README](../README.md) | [Harness Engineering Playbook](harness-engineering.md) |
 | 安裝, 同步或回滾 | [配置與部署](setup.md) | [Claude README](../main/claude/README.md), [Codex README](../main/codex/README.md) |
 | 修改 leaf role 或派工契約 | [Playbook: Leaf 分派](harness-engineering.md#leaf-分派的三層契約) | [Briefs](../main/claude/skills/baton-dispatch/references/briefs-and-stops.md) |
@@ -29,7 +30,7 @@
 
 | 文件 | 保存內容 | 不保存內容 |
 |---|---|---|
-| [架構總覽](architecture.md) | 由上而下的骨幹敘事: 架構圖, 核心想法, QC, 生命週期, hook, 附檔導引 | 各層細節 (指向專門文檔), 可變的 model 數值 |
+| [架構總覽](architecture.md) | 由上而下的骨幹敘事: 架構圖, 核心想法, 規則座標系與升級評估, QC, 生命週期, hook, 附檔導引 | 各層細節 (指向專門文檔), 可變的 model 數值, 會過期的量測值 (指向腳本) |
 | [Harness Engineering Playbook](harness-engineering.md) | 可跨專案複用的設計與驗證方法 | 當前 route pins, 實驗原始數據 |
 | [研究摘要](research/README.md) | benchmark 快照, 成本口徑, 案例取捨, 研究缺口; `research/` 底下唯一的現行結論來源 | runtime 強制規則, 現行 route pins, 逐次查核的原始紀錄 (在 [landing-log](research/landing-log.md)) |
 | [Matt Pocock skills 導入研究](research/mattpocock-skills-integration.md) | 上游快照, 工作流比較, 相容性, 採用與拒絕理由 | 實作進度, runtime skill 本體 |
