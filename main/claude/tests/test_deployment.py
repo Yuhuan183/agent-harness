@@ -1253,6 +1253,42 @@ class MachineStateHygieneTests(unittest.TestCase):
                         "phrasing no carrier matches, so nothing will notice "
                         f"when it goes stale - {sentence.strip()[:90]!r}")
 
+    def test_a_document_listing_the_gates_lists_all_of_them(self) -> None:
+        """The count guard above reads numerals. A list has none.
+
+        `main/claude/plans/orchestration-plan.md` carried an "Enforcement
+        inventory" naming four gate files plus the git-side hook, and stayed
+        wrong for the two weeks after `managed-target-guard` landed, because it
+        never says how many there are - so the numeral guard had nothing to
+        match and the enumeration went unread (2026-08-20).
+
+        Three documents enumerate the gates, and a partial list is worse than
+        no list: a reader auditing the guardrails from any of them checks one
+        fewer than exists and concludes the surface is smaller than it is.
+
+        Threshold of three, so that a document mentioning one or two gates in
+        passing is not forced to become an inventory.
+        """
+        gates = {
+            path.name
+            for path in (ROOT / "main/claude/hooks").glob("*.py")
+            if re.search(r"^[ \t]*return 2$",
+                         path.read_text(encoding="utf-8"), re.MULTILINE)
+        }
+        self.assertGreaterEqual(len(gates), 4, "the gate set failed to resolve")
+
+        incomplete = []
+        for path in guidance_markdown():
+            text = read_repo(path)
+            named = {gate for gate in gates
+                     if gate in text or gate.removesuffix(".py") in text}
+            if len(named) >= 3 and named != gates:
+                incomplete.append((path, sorted(gates - named)))
+        self.assertEqual(
+            incomplete, [],
+            "these documents enumerate the fail-closed gates but skip some; a "
+            "partial inventory reads as a complete one")
+
     def test_the_verifier_quota_docs_name_the_spelling_it_cannot_count(self) -> None:
         """A quota that counts one provider's name has to say so where it is described.
 
