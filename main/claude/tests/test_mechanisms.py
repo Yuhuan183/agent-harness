@@ -3064,6 +3064,22 @@ class ReportOnlyToolTests(unittest.TestCase):
         for script in listed:
             self.assertTrue((ROOT / script).exists(), script)
 
+        # And every other guidance document stating the count is held to the
+        # same block. Matching stops before the noun, because the copy that went
+        # stale used a different one: the README said 四支只報不擋的工具 while
+        # docs/architecture/harness-engineering.md said 四支只報不擋的腳本, and
+        # `codename-gloss-report.py` was in neither list - so both numerals
+        # agreed with each other and both were one short (2026-08-20).
+        for path in guidance_markdown():
+            if path == "README.md":
+                continue
+            for numeral in re.findall(rf"([{''.join(numerals)}])支只報不擋",
+                                      read_repo(path)):
+                self.assertEqual(
+                    numerals[numeral], len(listed),
+                    f"{path}: says {numeral}支 but the README block lists "
+                    f"{len(listed)}")
+
 
 class CodenameGlossReportTests(unittest.TestCase):
     """`docs/README.md` rule 8 promises one tier of documents does not require
