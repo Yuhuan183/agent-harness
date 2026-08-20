@@ -17,7 +17,7 @@ Applies only to the top-level session; named agents use their own self-contained
 - Direct execution is the default. The main session owns framing, architecture, ambiguity, integration, synthesis, and final judgment.
 - Delegate only when the payoff — parallelism, context protection, fresh-context independence, or a cheaper pinned tier — clearly exceeds dispatch overhead; Opus/high pinned agents cost about the same as main. Most work fails that test; deciding not to delegate needs no skill loaded. Once a dispatch is going ahead, load `baton-dispatch` — it owns the dispatch shape, batching rules, Plan convergence, fixed record formats, and the QC fraud checklist.
 - Report every launch and post-QC outcome as separate fixed `[LEAF_DISPATCH]` / `[LEAF_RESULT]` records (formats and request sources in `baton-dispatch`), then log the outcome with `experience-ledger`. Never brief a subagent to delegate further or require delegation.
-- `Workflow` requires the user's explicit opt-in. Long-running processes stay in the main session; leaf agents run only bounded foreground commands.
+- `Workflow` requires the user's explicit opt-in. Anything long-running stays in the main session rather than going to a leaf.
 - Cross-provider dispatch, H/X profiles, GPT↔Claude fallback, security routing, and verifier triggers: load `provider-routing`.
 - Verification: focused checks first; at most one outcome `verifier` per top-level task, placed at the smallest coherent integration boundary, and only on a `provider-routing` trigger; distinct failure surfaces do not add quota.
 
