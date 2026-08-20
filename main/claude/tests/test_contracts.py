@@ -1778,8 +1778,16 @@ class DocumentationBudgetTests(unittest.TestCase):
         punctuation this repo has not used yet could produce a false red. On any
         mismatch the message prints the headings it computed, which makes that
         case one glance to tell apart from a real break.
+
+        Same-file links - `(#heading)` with no path - are checked from
+        2026-08-20. They were invisible before, because the target group
+        required at least one character and a bare anchor has none. Two were
+        broken the whole time: when README and landing-log split on 2026-08-17,
+        two links kept pointing at headings that had moved to the other file,
+        and a link that resolves to nothing in its own document is exactly what
+        this test claims to catch.
         """
-        link = re.compile(r"\[[^\]]*\]\(([^)#\s]+)(#[^)\s]*)?\)")
+        link = re.compile(r"\[[^\]]*\]\(([^)#\s]*)(#[^)\s]*)?\)")
         broken = []
         tracked = git("ls-files", "*.md").stdout.split()
         for name in tracked:
@@ -1787,10 +1795,13 @@ class DocumentationBudgetTests(unittest.TestCase):
             for target, anchor in link.findall(path.read_text(encoding="utf-8")):
                 if target.startswith(("http://", "https://", "mailto:")):
                     continue
-                dest = (path.parent / target).resolve()
+                if not target and not anchor:
+                    continue
+                dest = path if not target else (path.parent / target).resolve()
                 if not dest.exists():
                     broken.append(f"{name} -> {target}")
                     continue
+                target = target or name
                 if not anchor or dest.suffix != ".md":
                     continue
                 headings = {

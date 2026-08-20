@@ -8,7 +8,8 @@
 | 你要做什麼 | 從哪裡開始 | 接著看 |
 |---|---|---|
 | 由上而下讀懂整套架構 | [架構總覽](architecture.md) | [根 README](../README.md) |
-| 評估一個升級提案 | [升級評估: 五個問題](architecture.md#四-升級評估-五個問題) | [規則的座標系](architecture.md#三-規則的座標系), [evidence-ladder](../main/.agents/skills/evidence-ladder/SKILL.md) |
+| 從最小單位往上看懂 agent engineering | [分層剖析](agent-engineering.md) | [架構總覽](architecture.md), [Playbook](harness-engineering.md) |
+| 評估一個升級提案 | [升級評估: 五個問題](agent-engineering.md#四-升級評估-五個問題) | [跨層的兩條軸](agent-engineering.md#二-跨層的兩條軸), [evidence-ladder](../main/.agents/skills/evidence-ladder/SKILL.md) |
 | 理解整體架構與資料流 | [根 README](../README.md) | [Harness Engineering Playbook](harness-engineering.md) |
 | 安裝, 同步或回滾 | [配置與部署](setup.md) | [Claude README](../main/claude/README.md), [Codex README](../main/codex/README.md) |
 | 修改 leaf role 或派工契約 | [Playbook: Leaf 分派](harness-engineering.md#leaf-分派的三層契約) | [Briefs](../main/claude/skills/baton-dispatch/references/briefs-and-stops.md) |
@@ -30,7 +31,8 @@
 
 | 文件 | 保存內容 | 不保存內容 |
 |---|---|---|
-| [架構總覽](architecture.md) | 由上而下的骨幹敘事: 架構圖, 核心想法, 規則座標系與升級評估, QC, 生命週期, hook, 附檔導引 | 各層細節 (指向專門文檔), 可變的 model 數值, 會過期的量測值 (指向腳本) |
+| [架構總覽](architecture.md) | 由上而下的骨幹敘事: 架構圖, 核心想法, 六層地圖與各層入口, 附檔導引 | 各層的職責與實作 (在分層剖析), 可變的 model 數值, 會過期的量測值 (指向腳本) |
+| [分層剖析](agent-engineering.md) | 六層各自的職責, 實作, 儀器, 已知失效與升級判準; 跨層的兩條軸; 升級評估的五個問題 | 這個系統的骨幹敘事 (在架構總覽), 跨專案方法論 (在 playbook), 實驗原始數據 (在 research/) |
 | [Harness Engineering Playbook](harness-engineering.md) | 可跨專案複用的設計與驗證方法 | 當前 route pins, 實驗原始數據 |
 | [研究摘要](research/README.md) | benchmark 快照, 成本口徑, 案例取捨, 研究缺口; `research/` 底下唯一的現行結論來源 | runtime 強制規則, 現行 route pins, 逐次查核的原始紀錄 (在 [landing-log](research/landing-log.md)) |
 | [Matt Pocock skills 導入研究](research/mattpocock-skills-integration.md) | 上游快照, 工作流比較, 相容性, 採用與拒絕理由 | 實作進度, runtime skill 本體 |
@@ -74,7 +76,7 @@
    | 層 | 涵蓋 | 寫法 |
    |---|---|---|
    | 給模型讀 | contracts, roles, skills, script 註解的操作本體 | 英文, 見規則 6 |
-   | 說明與研究 | [架構總覽](architecture.md), [QC 白話說明](qc-explainer.md), [research/](research/) | 讀者不必先懂本 repo 的內部詞彙. 核心概念先給圖, 數據對比先給表, 結論條列; 散文只用來講圖表講不了的因果 |
+   | 說明與研究 | [架構總覽](architecture.md), [分層剖析](agent-engineering.md), [QC 白話說明](qc-explainer.md), [研究總結](research/README.md) | 讀者不必先懂本 repo 的內部詞彙. 核心概念先給圖, 數據對比先給表, 結論條列; 散文只用來講圖表講不了的因果. 術語照留 —— 換白話近義詞會把精確性一起換掉 —— 但**內部代號** (`s11`, `p1b` 這類 trap 與 replay 情境編號) 第一次出現時, 同一句裡要有東西說它問的是什麼. 研究日誌不在這一層: 它們寫給跑過那批實驗的人看 |
    | 操作與規範 | [setup](setup.md), [hook-system](hook-system.md), [dispatch-lifecycle](dispatch-lifecycle.md), [contract-slimming](contract-slimming.md), 兩份 README | 直白精簡, 不為了淺顯加篇幅 |
 
    **`docs/**` 沒有字數預算** (2026-08-08 起). 字數上限量的是 push 成本 — 每回合或每次派工都要付的位元組 — 而 manifest 部署的檔案裡沒有一份在 `docs/` 底下: 這一層是 pull 成本, 由打開它的人付一次, 而且可以不看完. 用擋 commit 的天花板管 pull 成本, 買到的是「記錄新學到的東西要先調預算」這種摩擦. 這一層改由兩件事看住: [`scripts/docs-size-report.py`](../scripts/docs-size-report.py) 只報不擋, 另有一道 `DOC_SPRAWL_CEILING` 數量級鬆閘, 只抓「一份文件已經不是一份文件」. 逼近鬆閘的正解是拆檔或搬回真正的 owner, 不是調高常數. 預算仍然嚴格生效在出貨層: 兩份契約, skill 與 role 的 `description`, 以及每一支出貨 skill 的本文, 規範見[契約瘦身](contract-slimming.md).

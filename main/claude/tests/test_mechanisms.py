@@ -4574,6 +4574,76 @@ class ReportOnlyToolTests(unittest.TestCase):
             self.assertTrue((ROOT / script).exists(), script)
 
 
+class CodenameGlossReportTests(unittest.TestCase):
+    """`docs/README.md` rule 8 promises one tier of documents does not require
+    the repo's own vocabulary, and nothing enforced it.
+
+    The overview broke it in its newest section on 2026-08-20: `s11`, `p1b` and
+    `d1`/`d2` all appeared with nothing saying what they are, which sends a
+    reader into `evals/` to find out that a name is a scenario id.
+
+    Two things about this report are the load-bearing ones and both are pinned
+    below. The codename inventory is derived from `evals/`, so a new scenario is
+    covered the day it exists; and the scanned set is read out of rule 8's own
+    table, so adding a document to that tier extends the scan rather than
+    needing a second list to remember.
+    """
+
+    SCRIPT = ROOT / "scripts/codename-gloss-report.py"
+
+    def module(self):
+        return load_module("codename_gloss_report", self.SCRIPT)
+
+    def test_the_inventory_comes_from_evals_not_from_a_list(self) -> None:
+        names = set(self.module().codenames())
+        for trap in (ROOT / "evals/traps").iterdir():
+            if trap.is_dir():
+                self.assertIn(trap.name.split("-")[0], names, trap.name)
+        self.assertIn("p1b", names, "replay run directories are part of it")
+        # Longest first, or `s1` would shadow `s10` in the alternation.
+        ordered = self.module().codenames()
+        self.assertEqual(ordered, sorted(ordered, key=lambda n: (-len(n), n)))
+
+    def test_the_scanned_set_comes_from_rule_eight(self) -> None:
+        scanned = self.module().scanned_documents()
+        self.assertIn("docs/architecture.md", scanned)
+        self.assertIn("docs/agent-engineering.md", scanned)
+        self.assertNotIn(
+            "docs/research/landing-log.md", scanned,
+            "research journals are written for whoever ran the batch; holding "
+            "them to this rule is the wrong repair")
+        for relative in scanned:
+            self.assertTrue((ROOT / relative).exists(), relative)
+
+    def test_it_reports_and_never_fails(self) -> None:
+        finished = subprocess.run(
+            [sys.executable, str(self.SCRIPT), "--json"],
+            capture_output=True, text=True, timeout=120, cwd=ROOT)
+        self.assertEqual(0, finished.returncode, finished.stderr)
+        report = json.loads(finished.stdout)
+        self.assertEqual(
+            [], report["unglossed"],
+            "a first use in the explanatory tier has nothing explaining it")
+
+    def test_it_catches_a_bare_first_use(self) -> None:
+        """Positive control. A clean tree on its own proves nothing."""
+        module = self.module()
+        target = ROOT / "docs/qc-explainer.md"
+        original = target.read_text(encoding="utf-8")
+        bare = original.replace(
+            "- s7 (假完成情境: 交付物裡埋了六種詐欺, 看無人稽核時抓不抓得到) 顯示說謊報告可以\n  全身而退;",
+            "- s7 埋了六種詐欺, 說謊報告在無人稽核時可以全身而退;")
+        self.assertNotEqual(original, bare, "the control edit matched nothing")
+        try:
+            target.write_text(bare, encoding="utf-8")
+            found = module.measure()["unglossed"]
+        finally:
+            target.write_text(original, encoding="utf-8")
+        self.assertEqual(
+            [("docs/qc-explainer.md", "s7")],
+            [(row["path"], row["codename"]) for row in found])
+
+
 class TaiwanUsageReportTests(unittest.TestCase):
     """The sweep is only useful if it reads the shipped table and stays calibrated.
 
