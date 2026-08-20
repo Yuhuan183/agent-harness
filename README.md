@@ -52,8 +52,8 @@ flowchart LR
 | **Harness** | 模型周圍: 工具, 權限, 監控, 防護欄 | [harness-engineering](docs/architecture/harness-engineering.md) |
 | **Context** | 模型看到什麼 | [context-engineering](docs/architecture/context-engineering.md) |
 
-另有兩件橫跨四層, 因為對每一層都要問一次: **證據** (憑什麼算數) 與**部署** (規則怎麼真的
-到機器上). 完整資料流, 兩條軸與升級評估的五個問題在[架構總覽](docs/architecture/architecture.md).
+另有三件橫跨四層, 因為對每一層都要問一次: **證據** (憑什麼算數), **部署** (規則怎麼真的
+到機器上) 與**授權** (每一道機制停在誰手上). 完整資料流, 兩條軸與升級評估的五個問題在[架構總覽](docs/architecture/architecture.md).
 
 ### Repository 佈局
 
