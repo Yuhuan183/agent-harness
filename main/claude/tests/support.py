@@ -326,6 +326,19 @@ MAX_BYTES_PER_WORD = 16
 # fails. It is not a budget and must not be tuned toward one.
 DOC_SPRAWL_CEILING = 20000
 
+# The same failure one directory over, on the tree that had no guard at all.
+# `test_mechanisms.py` reached 175 tests across 15 classes on 2026-08-20 - 45%
+# of the whole suite in a file named "mechanisms" - while `docs/` had been
+# guarded against exactly this since 2026-08-08.
+#
+# A share rather than a line count, deliberately. A line ceiling has to be
+# raised as the suite grows and so becomes a second, tighter budget, which is
+# what DOC_SPRAWL_CEILING's own comment warns against. A share is scale-free:
+# adding tests anywhere raises the denominator, so ordinary growth never trips
+# it and only concentration does. The remedy is to split the file at a subject
+# seam, never to raise the constant.
+TEST_SHARE_CEILING = 0.33
+
 
 # Density companions to the word ceilings. A word cap bounds how large a
 # document is; it says nothing about whether the words bought rules or padding,
