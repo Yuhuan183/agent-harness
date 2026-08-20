@@ -1088,7 +1088,7 @@ class MachineStateHygieneTests(unittest.TestCase):
         # Contracts are prompts, budgeted separately. Dated history entries are
         # exempt for the opposite reason: they record what was true on a date,
         # and editing them to match today would falsify the record.
-        exempt = ("main/claude/plans/orchestration-history.md",)
+        exempt = ("docs/plans/orchestration-history.md",)
         docs = [path for path in tracked_markdown()
                 if not path.endswith(".contract.md") and path not in exempt]
         named = [path for path in docs if "commit-test-gate" in read_repo(path)]

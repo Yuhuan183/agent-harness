@@ -24,8 +24,8 @@
 | 理解 hook 系統怎麼運作 | [Hook 系統](hook-system.md) | [settings.json](../main/claude/settings.json) |
 | 跑行為 trap eval | [evals/traps/](../evals/traps/) 各 README | [QC 說明](qc-explainer.md) 取證段 |
 | 跑多回合 lifecycle replay | [evals/replay/](../evals/replay/) | [存活判準](research/lifecycle-replay.md) |
-| 深度審查本 repo 設計 | [harness-review](../.agents/skills/harness-review/SKILL.md) (dev-only) | [plan](../main/claude/plans/orchestration-plan.md) |
-| 決定下一步做什麼 | [待辦方向](research/README.md#待辦方向) | [plan](../main/claude/plans/orchestration-plan.md) |
+| 深度審查本 repo 設計 | [harness-review](../.agents/skills/harness-review/SKILL.md) (dev-only) | [orchestration 不變量](plans/orchestration-state.md) |
+| 決定下一步做什麼 | [待辦方向](research/README.md#待辦方向) | [orchestration 不變量](plans/orchestration-state.md) |
 
 ## 文件責任
 
@@ -54,7 +54,8 @@
 | ⑥ Evidence | [2026-07-28 統一稽核](document-audit.md) | 那一次稽核的六維度結果與範圍信封 | 之後的變更 (信封是活的, 見該文件的注記) |
 | 跨層 · 部署 | [配置與部署](setup.md) | bootstrap, apply, 驗收與回滾步驟 | 模型選擇理由 |
 | 跨層 · 計畫 | [Engineering workflow 蒸餾實作計畫](plans/engineering-workflow-distillation.md) | 已核准方向, 分階段 scope, gates, rollback 與 completion criteria | 上游研究全文, 已部署狀態 |
-| 跨層 · 計畫 | [Orchestration plan](../main/claude/plans/orchestration-plan.md)+[history](../main/claude/plans/orchestration-history.md) | 當前最新方案; append-only 決策歷程 | 完整方法論與研究全文 |
+| 跨層 · 清單 | [Orchestration 不變量](plans/orchestration-state.md) | 八條必須成立的性質, 各自指向擁有者; 改動前後逐條檢查用 | 每條的論證與實作 (在四份層文件) |
+| 跨層 · 紀錄 | [Orchestration 決策歷程](plans/orchestration-history.md) | append-only, 依時間序; 保留原始措辭 | 當前狀態 (在不變量表) |
 
 ## Runtime 真相源
 

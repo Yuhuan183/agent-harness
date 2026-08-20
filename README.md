@@ -168,7 +168,7 @@ manifest 驗證失敗, 都會在寫入前停止.
 - [研究摘要](docs/research/README.md): benchmark 快照, 成本模型, 本機實驗與證據限制.
 - [配置與部署](docs/setup.md): bootstrap, dry-run, apply, 驗收與回滾.
 - [常駐契約瘦身規範](docs/contract-slimming.md): CLAUDE.md 與 AGENTS.md 的內容判定, 預算與驗收.
-- [目前 orchestration plan](main/claude/plans/orchestration-plan.md): 現況, 未決項與短決策紀錄.
+- [Orchestration 不變量](docs/plans/orchestration-state.md): 八條必須成立的性質與各自的擁有者.
 
 文件採單一職責: runtime 規則放 contracts, 角色能力放 agent files, 按需流程放 skills, 方法與
 研究放 docs; 本文只提供全貌與入口, 不複製細節真相源.

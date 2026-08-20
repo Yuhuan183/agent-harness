@@ -1876,7 +1876,7 @@ class DocumentationBudgetTests(unittest.TestCase):
         self.assertEqual([], broken, f"{len(tracked)} tracked documents scanned")
 
     def test_documented_baseline_matches_runtime_contract(self) -> None:
-        plan = read(".claude/plans/orchestration-plan.md")
+        plan = read_repo("docs/plans/orchestration-state.md")
         readme = read("README.md")
         # The literal date is the point: it fails whenever the plan's substance
         # is edited without the currency line being re-dated, which is the

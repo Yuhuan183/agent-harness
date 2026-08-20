@@ -2,7 +2,7 @@
 
 適用對象: `main/claude/CLAUDE.contract.md` (部署為 `~/.claude/CLAUDE.md`) 與
 `main/codex/AGENTS.contract.md` (部署為 `~/.codex/AGENTS.md`). 這是規範而非歷程;
-歷次瘦身決策由 Git 與 [orchestration-history.md](../main/claude/plans/orchestration-history.md) 保存.
+歷次瘦身決策由 Git 與 [orchestration-history.md](plans/orchestration-history.md) 保存.
 
 ## 原則
 
