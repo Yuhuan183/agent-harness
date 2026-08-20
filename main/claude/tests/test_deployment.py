@@ -1228,7 +1228,14 @@ class MachineStateHygieneTests(unittest.TestCase):
         # Ordinals and deictics are excluded by prefix, not by luck: 同一個
         # prompt and 第二個 outcome verifier both sit inside the sentence that
         # carries the real count, and neither is a count of gates.
-        bare = re.compile(rf"(?<![同第每另任其這那上下])([{numerals}])個")
+        #
+        # 一 and 兩 are out of the bare sweep entirely. 一個角色 is an article,
+        # not a tally, and it appears in a table row that also says fail-closed
+        # (docs/agent-engineering.md), which the first version of this sweep
+        # flagged. Nothing is lost: a real count of one or two would still be
+        # written next to `gate` and the anchored sweep below reads that.
+        countable = "".join(n for n in numerals if n not in "一兩")
+        bare = re.compile(rf"(?<![同第每另任其這那上下])([{countable}])個")
         anchored = re.compile(rf"([{numerals}])個[^\s,。;]{{0,4}} ?gate")
         for path in pages:
             for sentence in re.split(r"(?<=[.。;;\n])", read_repo(path)):
