@@ -61,8 +61,16 @@ agy-auto() {
   command agy --mode accept-edits "$@"
 }
 
+# `--1m` sits *before* the `--`: everything after the separator is handed to the
+# agent, so `hclaude --1m` would pass the flag to `claude` itself and leave the
+# session at 200k. Behind a custom ANTHROPIC_BASE_URL only a model id carrying
+# the `[1m]` suffix makes Claude Code send the context-1m beta header, and the
+# flag is what sets it. Costs one thing: with no ANTHROPIC_MODEL already set the
+# session is pinned to Headroom's default (0.36: claude-opus-5), overridable per
+# shell with HEADROOM_1M_MODEL. Needs Headroom 0.34+ for the flag; on 0.34/0.35
+# the default is the stale claude-opus-4-8. See ~/.agents/docs/headroom-runtime.md.
 hclaude() {
-  _agent_harness_headroom_wrap claude -- "$@"
+  _agent_harness_headroom_wrap claude --1m -- "$@"
 }
 
 hcodex() {

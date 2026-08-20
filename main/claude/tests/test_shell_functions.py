@@ -120,10 +120,13 @@ fi
                 "high",
                 "two words",
             ],
+            # `--1m` before the separator, or Headroom never sees it and the
+            # session silently caps at 200k.
             "hclaude 'two words'": [
                 "headroom",
                 "wrap",
                 "claude",
+                "--1m",
                 "--",
                 "two words",
             ],
@@ -145,6 +148,7 @@ fi
                 "headroom",
                 "wrap",
                 "claude",
+                "--1m",
                 "--",
                 "--permission-mode",
                 "auto",
