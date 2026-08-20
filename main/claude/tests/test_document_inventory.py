@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
+import re
 import unittest
 from pathlib import Path
 
-from support import ROOT, covers
+from support import ROOT, covers, guidance_markdown, read_repo
 
 
 def covers_any(patterns: list[str], path: str) -> bool:
@@ -124,6 +125,83 @@ class DocumentInventoryTests(unittest.TestCase):
         self.assertNotIn("docs/**/*.md", guidance)
         self.assertFalse(covers_any(guidance, "docs/anything/new.md"))
         self.assertFalse(covers_any(evidence, "docs/anything/new.md"))
+
+    def test_every_guidance_document_has_a_stated_owner(self) -> None:
+        """`docs/README.md` rule 1 says one truth source per rule, and the
+        文件責任 table is what assigns them. An unlisted document has no stated
+        job, so a claim can land in it without displacing anything.
+
+        The table listed 10 of the 13 guidance documents under `docs/` on
+        2026-08-20 - `qc-explainer.md`, `fable-5-fallback.md` and the audit were
+        missing - which is the same shape as the research index that listed 8 of
+        13 the day before. Both were found by counting rather than by reading,
+        because a table that is merely incomplete still looks authoritative.
+
+        Only `docs/` is in scope. Documents under `main/` are runtime artifacts
+        whose owner is their own location.
+        """
+        table = read_repo("docs/README.md")
+        start = table.index("## 文件責任")
+        block = table[start:table.index("\n## ", start)]
+        listed = set(re.findall(r"\]\(([^)]+\.md)\)", block))
+
+        unlisted = []
+        for path in sorted(p for p in guidance_markdown() if p.startswith("docs/")):
+            relative = path[len("docs/"):]
+            if not any(relative == entry or entry.endswith("/" + relative)
+                       for entry in listed):
+                unlisted.append(path)
+        self.assertEqual(
+            unlisted, [],
+            "every guidance document needs a row in docs/README.md 文件責任 "
+            "saying what it holds and what it does not")
+
+    def test_a_restated_principle_points_at_the_document_that_argues_it(self) -> None:
+        """`docs/README.md` rule 1: one truth source per rule, everyone else
+        links and summarises. Only the second half is checkable, so that is what
+        this checks.
+
+        On 2026-08-20 eight core claims were each *argued* in three or four
+        documents. Nothing caught it because none of them shares a sentence -
+        the drift is semantic, and a duplicate-text scan reports zero. What it
+        cost was already visible: the layered analysis listed five task classes
+        where the runtime reference lists eight, because the list had been
+        restated from memory rather than read.
+
+        The rule is not "say it once". A one-line restatement where a reader
+        needs it is what rule 1 calls a 短摘要 and is fine. What is not fine is
+        restating it with no way back to the argument, because then the two
+        copies drift and neither reader can tell which is current.
+
+        The owner is the playbook: it is the document whose declared job is
+        cross-project method. Anything here that stops being true of other
+        projects belongs in the layered analysis instead.
+        """
+        owner = "docs/harness-engineering.md"
+        phrases = ("機制勝過提醒", "最短驗證迴路", "注意力稅", "抓不到蓄意錯誤",
+                   "刪掉這一行", "Task class", "矛盾更貴")
+        owner_text = read_repo(owner)
+        for phrase in phrases:
+            self.assertTrue(
+                phrase in owner_text,
+                f"{phrase!r} is declared owned by {owner} but does not appear "
+                "there; either the owner moved or the phrase was reworded")
+
+        link = re.compile(r"\]\([^)]*harness-engineering\.md[^)]*\)")
+        offenders = []
+        for path in guidance_markdown():
+            if path != "README.md" and not path.startswith("docs/"):
+                continue
+            if path == owner:
+                continue
+            text = read_repo(path)
+            restated = [phrase for phrase in phrases if phrase in text]
+            if restated and not link.search(text):
+                offenders.append((path, restated))
+        self.assertEqual(
+            offenders, [],
+            "these documents restate a principle with no link back to the "
+            f"document that argues it ({owner})")
 
     def test_inventory_rules_resolve_to_real_artifacts(self) -> None:
         for path in (

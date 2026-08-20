@@ -118,23 +118,20 @@ write/read, 重試, 人工修正, 等待時間與失敗風險都要入帳. 訂�
 
 ### Leaf 分派的三層契約
 
-不要為每種主題建立一個 agent. 先拆清楚三層:
+不要為每種主題建立一個 agent. 先拆清楚三層, 因為它們各自獨立變動:
 
-| 層 | 決定什麼 | 目前做法 |
-|---|---|---|
-| Role | 權限, 工具, 可做的判斷與停止邊界 | 七個固定角色; 例如 `explore` 唯讀, `executor` 可在封閉範圍內實作 |
-| Task class | experience-ledger 的可比較 cohort | `recon`, `review`, `plan`, `impl`, `verify`, `security`; 另有不參與決策的 `smoke`/`other` |
-| Scenario/lens | 這次要攻擊的情境與證據接縫 | 寫進 brief; 例如 semantic seams, state/concurrency, contract boundaries, test validity |
+| 層 | 決定什麼 |
+|---|---|
+| Role | 權限, 工具, 可做的判斷與停止邊界 |
+| Task class | 結果記帳時可比較的 cohort |
+| Scenario/lens | 這次要攻擊的情境與證據接縫 |
 
-`recon` 只負責定位, 盤點與摘要; `review` 是有界, 對抗式的唯讀專案審查, 必須指定主要 lens,
-接縫兩側的 truth source 與殘餘盲區. 兩者即使都由 `explore` 執行也不能混成同一筆 route 證據.
-重複 execution 不看數量門檻; 只有一份 stable brief 能完整描述獨立同型項目的 ownership 與逐項
-驗收時才合批, main 保留例外, 整合與 acceptance. 新增 role 仍須同 cohort 證明角色契約不足.
+同一個 role 跑不同 task class, 不能混成同一筆 route 證據. 重複 execution 不看數量門檻;
+只有一份 stable brief 能完整描述獨立同型項目的 ownership 與逐項驗收時才合批, main 保留
+例外, 整合與 acceptance. 新增 role 要在同一個 cohort 裡證明現有角色契約不足.
 
-主 session 在派工前後各輸出一筆獨立紀錄, 避免與一般說明混雜: `LEAF_DISPATCH` 固定帶 task,
-role, class, source, 完整 route 與 dispatch payoff; `LEAF_RESULT` 固定帶 outcome, QC tier 與
-ledger 是否成功寫入. task label 必須和 ledger 相同, 讓人類回顧與 machine-local 遙測可對照.
-逐字模板只在兩份派工 skill 裡, 本文不複製.
+派工前後各輸出一筆固定格式的紀錄, 讓人類回顧與遙測對得上; 格式屬於派工流程本身, 不寫進
+方法論. 本 repo 的角色清單, class 清單與紀錄格式在[分層剖析第五層](agent-engineering.md#第五層-graph-多個-agent-怎麼協作).
 
 ## 8. Skill 與第三方內容
 
