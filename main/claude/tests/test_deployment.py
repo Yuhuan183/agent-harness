@@ -1234,9 +1234,23 @@ class MachineStateHygieneTests(unittest.TestCase):
         # (docs/agent-engineering.md), which the first version of this sweep
         # flagged. Nothing is lost: a real count of one or two would still be
         # written next to `gate` and the anchored sweep below reads that.
+        #
+        # The anchored span allows spaces, because the third stale count found
+        # its way through the gap between them: `docs/hook-system.md` said
+        # 四個 Python gate for the day after `managed-target-guard` became the
+        # fifth writer, and a span that excluded whitespace could not reach past
+        # `Python` to the word it was anchored on (2026-08-20). Bounded at ten
+        # and stopped at sentence punctuation, and calibrated before landing:
+        # over the whole guidance tier it adds no match a carrier does not
+        # already cover.
+        # 道 as well as 個, for the same reason and found the same way: two
+        # architecture files said 五道 Python gate, correct on the day and
+        # anchored to nothing, so the next gate would have left them behind
+        # silently (2026-08-20). Both measure words in, so the carrier phrasing
+        # is the only spelling that passes rather than the only one that fits.
         countable = "".join(n for n in numerals if n not in "一兩")
-        bare = re.compile(rf"(?<![同第每另任其這那上下])([{countable}])個")
-        anchored = re.compile(rf"([{numerals}])個[^\s,。;]{{0,4}} ?gate")
+        bare = re.compile(rf"(?<![同第每另任其這那上下])([{countable}])[個道]")
+        anchored = re.compile(rf"([{numerals}])[個道][^,。;\n]{{0,10}}gate")
         for path in pages:
             for sentence in re.split(r"(?<=[.。;;\n])", read_repo(path)):
                 covered = [match.span()
