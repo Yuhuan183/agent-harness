@@ -1860,9 +1860,11 @@ class DocumentationBudgetTests(unittest.TestCase):
         # is edited without the currency line being re-dated, which is the
         # cheapest guard this repo has against a document that says "current as
         # of" a date older than its own contents. Bump it deliberately, in the
-        # same commit as the edit that made it stale. Last bumped when the
-        # lifecycle-replay evidence gap stopped being a gap.
-        self.assertIn("Current as of 2026-08-13", plan)
+        # same commit as the edit that made it stale. Last bumped on 2026-08-20,
+        # when the enforcement inventory gained `managed-target-guard` - it had
+        # been missing since that gate landed two weeks earlier - and the
+        # lifecycle-replay gap stopped restating a run count that moves.
+        self.assertIn("Current as of 2026-08-20", plan)
         self.assertIn("MIT", readme)
         self.assertIn("Yuhuan", read("LICENSE"))
         self.assertIn("same-role, same-task-class", plan)

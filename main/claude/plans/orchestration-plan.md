@@ -1,6 +1,6 @@
 # Orchestration current state
 
-> Current as of 2026-08-13. Completed migrations and superseded decisions live in
+> Current as of 2026-08-20. Completed migrations and superseded decisions live in
 > [orchestration-history.md](orchestration-history.md); this file contains only the active contract.
 
 ## Direction
@@ -41,6 +41,7 @@ The current fail-closed gates are:
 - `leaf-redispatch.py`
 - `runtime-guard.py --gate`
 - `verifier-quota.py`
+- `managed-target-guard.py`
 
 Diagnostic hooks remain fail-open. Artifact ownership and semantic brief quality remain main-task judgments and are checked during QC rather than presented as shell-enforced guarantees.
 
@@ -62,7 +63,7 @@ scripts/sync.sh
 
 ## Remaining evidence gaps
 
-- Pilotfish-derived controls are statically enforced by contracts and tests. Lifecycle replay is no longer unmeasured — `evals/replay/` ran 15 pre-registered runs on 2026-08-12 — but one batch settles little: interruption and conflicting leaf results showed no failure at 5 of 5, with an exact 95% lower bound of 0.478, and repeated correction lapsed on the contract's own `DECISION:` obligation in 10 of 25 turns. Read the intervals, not the percentages.
+- Pilotfish-derived controls are statically enforced by contracts and tests. Lifecycle replay is no longer unmeasured, and the run count is not restated here because it moves — see the result table in [`evals/replay/README.md`](../../../evals/replay/README.md) and the standing limits in [research/README.md](../../../docs/research/README.md#驗證缺口). What has not changed is how to read it: the cells that show no failure carry an exact 95% lower bound near 0.5, so they bound the risk rather than establishing the control. Read the intervals, not the percentages.
 - Provider/model efficiency decisions stay exploratory until same-role, same-task-class route cells reach the configured sample floor.
 - Headroom behavior must be reported separately as repository policy, installed package version, GitHub release tag, and live service state.
 
