@@ -78,11 +78,28 @@ including the no-Bash rule for read-only roles.
 section: this repo keeps that discipline in `docs/` and in the test suite rather
 than inside a skill body, and adapters would duplicate `provider-routing`.
 
-**Not classified.** Upstream's exact wording has not been compared clause by
-clause the way `test-first-change`'s ledger does it. What was checked on
-2026-08-21 is coverage — whether each upstream rule has a local equivalent —
-across all ten rules in the invariants and stop-condition sections. Anyone
-advancing the pin should do the wording pass this file has not.
+**Clause by clause (2026-08-21).** The coverage pass asked whether each upstream
+rule had a local equivalent. This asks the different question the licence cares
+about: how close is the wording. Five clauses are close enough that the credit
+has to be explicit rather than folded into "these are upstream's ideas".
+
+| Upstream | Ours | Reading |
+|---|---|---|
+| "Treat the current plan or owner-approved release slice as a hard dispatch boundary" | "The approved Plan or release slice is a hard boundary" | Near-verbatim; only the verb and the article differ |
+| "Treat completion of the current vertical slice as a checkpoint; do not automatically dispatch the next phase" | "Finishing a slice is a checkpoint, not authority to dispatch the next phase" | Same sentence, compressed |
+| "Pause before adding a new domain, data table, API surface, external service, or deployment responsibility" | "stop before adding a domain, table, API, service, deployment responsibility" | **The list itself is upstream's**, item for item and in order |
+| "Define the outcome, non-goals, constraints, and evidence required" | "Stabilize outcome, scope/non-scope, constraints, evidence…" | The same four items in the same order, with two local additions |
+| "Converge shared contracts, schemas, registries, and architecture decisions before fan-out" | "Converge shared schemas, registries, config, generated output, and lockfiles" | The rule and two list items are upstream's; the rest is local |
+
+Everything else measured below a quarter overlap on content words and reads as
+this repo's own sentences carrying upstream's idea — "keep final judgment with
+the main agent" and "centralize expensive verification" are the two closest of
+those, and both were rewritten around local units rather than adapted.
+
+The classification direction that matters is calling a substantial portion a
+concept rewrite, so the five above are listed even where the compression is
+heavy. The MIT text was already reproduced in full below, so this pass changes
+the precision of the credit and not the licence position.
 
 ## Rechecking
 

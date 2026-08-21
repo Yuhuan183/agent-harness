@@ -65,8 +65,14 @@ The report is complete when it carries five things: every upstream rule with its
 disposition; **what was checked** to decide each one, not just the verdict; a pin
 that resolves; the date; and **what was not checked**. The last is the one that
 gets dropped, and dropping it turns a partial pass into something that reads like
-a full audit — `baton-dispatch`'s attribution says its wording pass is still
-owed, precisely so nobody assumes otherwise.
+a full audit.
+
+Coverage and wording are two passes, not one. Coverage asks whether each upstream
+rule has a local equivalent; the wording pass asks how close the sentences are,
+which is the question the licence cares about. Only the second can catch the
+error that matters — calling a substantial portion a concept rewrite — and an
+upstream that moved only its punctuation does not discharge it, because that pass
+checks *our* reading rather than upstream's changes.
 
 Two dispositions people skip:
 
