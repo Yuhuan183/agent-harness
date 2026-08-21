@@ -3272,6 +3272,26 @@ class MachineStateCheckTests(unittest.TestCase):
             self.assertEqual(report["changed"], [])
             self.assertEqual(report["removed"], [])
 
+    def test_a_rewrite_that_keeps_the_size_is_still_a_change(self) -> None:
+        """The version that shipped first compared size and whole-second mtime,
+        so a state file rewritten to the same length inside one second was
+        invisible - a counter or a fixed-width timestamp has exactly that shape.
+        Small files are compared by content now, which also means a touch that
+        changes nothing does not read as a change."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tree = Path(temp_dir)
+            target = tree / "state.json"
+            target.write_text('{"n": 9}', encoding="utf-8")
+            report = json.loads(
+                self._run(tree, f"printf '{{\"n\": 8}}' > {target}").stdout)
+            self.assertEqual([Path(p).name for p in report["changed"]],
+                             ["state.json"], "a same-size rewrite went unseen")
+
+            target.write_text('{"n": 8}', encoding="utf-8")
+            touched = json.loads(self._run(tree, f"touch {target}").stdout)
+            self.assertEqual(touched["changed"], [],
+                             "a touch with no content change reported as one")
+
     def test_a_command_that_writes_nothing_reports_nothing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             tree = Path(temp_dir)
