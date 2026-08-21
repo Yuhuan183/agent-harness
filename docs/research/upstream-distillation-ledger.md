@@ -1,14 +1,14 @@
 # 蒸餾帳本: 上游每一節的去向
 
 上游是 [mattpocock/skills](https://github.com/mattpocock/skills), pin
-`068b6e0c62393147daf03530149cdce209c93da8`.
+`885e2ca4d842d139e9aef4e48d366c63cb1b8013`.
 
 **這份帳本可以覆核.** `scripts/upstream-recheck.sh` 重新抓那個 SHA 的四個檔案並比對雜湊:
 
 | 上游檔案 | sha256 前 16 | bytes |
 |---|---|---:|
-| `skills/engineering/diagnosing-bugs/SKILL.md` | `573142d28dc5a4d9` | 8614 |
-| `skills/engineering/tdd/SKILL.md` | `6875cbca6b7d17be` | 3578 |
+| `skills/engineering/diagnosing-bugs/SKILL.md` | `77f3cf31bc99b2f4` | 8529 |
+| `skills/engineering/tdd/SKILL.md` | `cb01f66bebfaa25f` | 3549 |
 | `skills/engineering/tdd/tests.md` | `859f9e592c188fda` | 2214 |
 | `skills/engineering/tdd/mocking.md` | `3ceb807fdf4a47d6` | 1481 |
 
