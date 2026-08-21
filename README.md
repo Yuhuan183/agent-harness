@@ -147,7 +147,7 @@ git diff --check
 scripts/sync.sh
 ```
 
-九支只報不擋的工具, 不在上面的驗收鏈裡, 因為它們回答的是「現在長什麼樣」而不是「這次改動對不對」:
+十支只報不擋的工具, 不在上面的驗收鏈裡, 因為它們回答的是「現在長什麼樣」而不是「這次改動對不對」:
 
 ```bash
 scripts/evidence-check.py         # SHA 引用是否還解得開; trap 結果列的量測面指紋是否還是出貨版本
@@ -159,6 +159,7 @@ scripts/denial-report.py          # 這些閘實際擋了多少次, 擋在什麼
 scripts/context-inflow-report.py  # 真實工作階段裡, 窗口實際被什麼填滿 (常駐只佔約 15%)
 scripts/memory-freshness-report.py # CLI 記憶裡指涉的路徑與連結是否還解得開
 scripts/machine-state-check.py     # 跑套件 (或任一指令) 會不會改到 repo 以外的東西
+scripts/upstream-pin-report.py     # 蒸餾來源的上游有沒有動過我們記下的那個 pin
 ```
 
 `scripts/contract-operator-delta.py` 刻意不在這張表: 它是契約精簡流程裡的佐證步驟, 不是

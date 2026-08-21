@@ -174,8 +174,17 @@ could falsify it is a summary.
 
 ## Known limit
 
-`scripts/upstream-recheck.sh` and `docs/research/upstream-distillation-ledger.md`
-cover exactly one upstream. Every other recheck is manual, including all three
-done on 2026-08-21. Generalising the script is unfinished work, not an oversight
-to hide — until it is done, this skill is the procedure and a person is the
-mechanism.
+Half of the recheck is mechanical now, and half is not.
+
+`scripts/upstream-pin-report.py` answers "did any upstream move", derived
+from the `ATTRIBUTION.md` files so a newly distilled skill joins it the day
+its attribution lands. That is the step that was missing: on 2026-08-21 an
+upstream was found twelve commits past its pin only because somebody went
+looking, and the first run of that report immediately found a second one 32
+commits out that had never been rechecked at all.
+
+What stays manual is everything after. `scripts/upstream-recheck.sh` and
+`docs/research/upstream-distillation-ledger.md` verify bytes for one upstream
+only; the rest have no hash table, and reading a diff, deciding whether a move
+matters and classifying each rule were never going to be mechanical. The report
+tells you where to look; a person still does the looking.
