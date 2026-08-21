@@ -109,7 +109,7 @@ headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787
 `headroom install remove`, 它會一併撤掉自己寫的區塊.
 
 Claude Code 在自訂 `ANTHROPIC_BASE_URL` 之下會關閉 on-demand tool loading, 改成一次載入
-全部 tool schema (upstream #746). Headroom v0.34 起的 `wrap claude` 會設
+全部 tool schema (upstream #746). `headroom wrap claude` 會設
 `ENABLE_TOOL_SEARCH` 把它開回來, 預設 `true`, 也可用 `--tool-search auto`/`auto:N`/`false`
 調整; 環境裡既有的值優先於預設, 會被原封不動保留. 走 `persistent-service` 常駐 routing 時,
 這個變數必須跟 base URL 一起常駐, 否則原生 `claude` 會在沒有 deferral 的狀態下走 proxy.
@@ -121,9 +121,9 @@ adapter 相容性查核集中在
 [`headroom-runtime.md`](../main/.agents/docs/headroom-runtime.md); 不可用無效的 base URL
 環境變數或靜默 fallback 冒充成功 routing.
 
-Headroom v0.34 起已移除 CLI context tools; Claude/Codex wrapper 不再傳入舊版的
-context-tool 選項. RTK 指引仍由本專案契約管理, 不依賴 Headroom 注入或改寫 —
-v0.34 的注入入口 `--serena-instructions` 預設關閉, 本 repo 不啟用. 升級 Headroom 後
+Headroom 沒有 CLI context tools; Claude/Codex wrapper 不傳入那類選項. RTK 指引仍由
+本專案契約管理, 不依賴 Headroom 注入或改寫 — 注入入口 `--serena-instructions` 預設關閉,
+本 repo 不啟用. 升級 Headroom 後
 若 `wrap` 的參數有變, 記得重跑 `scripts/install-zsh-functions.sh --apply`.
 完整 lifecycle, Remote Control 與版本轉換說明見
 [`headroom-runtime.md`](../main/.agents/docs/headroom-runtime.md).

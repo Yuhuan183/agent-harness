@@ -18,8 +18,9 @@
 > 前三個都可能一致地錯 —— 升級了 CLI 卻沒 `headroom install restart`, 三者會有兩者說新版
 > 而實際跑的是舊的. 啟動橫幅是唯一不經由 CLI 的紀錄, 也是唯一能把 uptime 對上的.
 >
-> 可攜的宣稱只有**下限**: 「需要 0.34 以上」在每台都成立, 「這台裝的是某一版」只在一台成立.
-> 本文件其餘部分寫的是下限與跨機器行為, 不寫確切版本.
+> **本 repo 只跟當前 Headroom.** 這份文件寫的是當前版本的行為, 不寫版本下限, 也不寫
+> 「哪一版開始有什麼」的遷移史. 停在舊版的機器要自己調配 —— 維護那張對照表的成本落在
+> 每一個讀的人身上, 而收益只有停在舊版的那一台拿得到. 裝了 Headroom 就是前提, 版本不是.
 
 > 只記錄跨機器的架構, 操作邊界與版本轉換. venv, PID, port 與 profile 名稱屬 machine-local state, 不進 git.
 
@@ -44,11 +45,11 @@ git-tracked agent settings, 也不得手寫進 shell profile. 唯一的例外是
 `~/.zshrc` 維護一個 marker-fenced 區塊寫入這些變數, 屬 machine-local 選用狀態, 不是本
 repo 的預設. 選了它就等於放棄 wrap-first 的分界 — 上表「原生 session」那幾列不再成立,
 `claude` 與 `hclaude` 同樣走 proxy, Remote Control 在**所有** Claude session 都不可用.
-RTK 指引由 harness 契約管理. Headroom
-v0.34 起已移除 CLI context tools, 因此 Claude 與 Codex wrap 不再傳入舊版選項; 舊旗標
-會被 CLI 明確拒絕並附遷移訊息, 不是被忽略.
+RTK 指引由 harness 契約管理. Headroom 沒有
+CLI context tools, 因此 Claude 與 Codex wrap 不傳入那類選項; 舊旗標會被 CLI 明確拒絕
+並附遷移訊息, 不是被忽略.
 
-v0.34 把注入入口換成兩個新的預設值, 兩者都要知道:
+注入入口有兩個預設值, 兩者都要知道:
 
 - `--serena-instructions` 預設關閉, 本 repo 不啟用. 它會把 marker-fenced 區塊寫進
   **當前工作目錄**的 `CLAUDE.md` 或 `AGENTS.md`; 在本 repo 根目錄執行等於憑空生出一份
@@ -58,7 +59,7 @@ v0.34 把注入入口換成兩個新的預設值, 兩者都要知道:
 
 ### 每次 wrap 都會清除舊 context tool 的殘留
 
-v0.34 不只是拒絕舊旗標: 每一次 `headroom wrap` 與 `headroom unwrap` 都會呼叫
+不只是拒絕舊旗標: 每一次 `headroom wrap` 與 `headroom unwrap` 都會呼叫
 `purge_context_tool_artifacts()` 主動刪除舊版裝過的東西 (best-effort, 失敗不擋啟動,
 報告寫 stderr). 刪除範圍包含 `~/.claude/settings.json` 與 `~/.cursor/hooks.json` 裡
 命令含 `rtk-rewrite` / `rtk rewrite` / `lean-ctx-rewrite` / `lean-ctx-redirect` /
@@ -70,7 +71,7 @@ v0.34 不只是拒絕舊旗標: 每一次 `headroom wrap` 與 `headroom unwrap` 
 - `~/.headroom/bin/{rtk,lean-ctx}` — **無條件刪除**.
 
 本 repo 註冊的 hook 命令是 `rtk hook claude`, 不含上列任何 marker, 所以不會被誤刪
-(2026-08-10 對 0.34 原始碼再次核對). 但**二進位檔會**: 若機器上的 `rtk` 是早期
+(核對紀錄見 [`RTK.md`](../../claude/RTK.md)). 但**二進位檔會**: 若機器上的 `rtk` 是早期
 Headroom 裝的 (`~/.local/bin/rtk` 指向 `~/.headroom/bin/rtk`), 下一次 `hclaude` 或
 `hcodex` 就會把它連同 symlink 一起刪掉. hook 的 `command -v rtk` 前置檢查會讓它安靜地
 變成 no-op — RTK 整個消失而不報錯. 因此 rtk 必須改由**與 Headroom 無關**的來源安裝
@@ -87,7 +88,7 @@ App/Desktop 走相同路徑. Codex App 不在目前已驗證的 wrap surface.
 | Proxy | Claude/Codex/Antigravity 都以明確的 `headroom wrap <agent>` session 為標準 | 只壓縮實際經 proxy 的流量 |
 | Headroom MCP | `headroom mcp install` | 手動壓縮與 marker retrieval, 不等於全流量代理 |
 | Coding compressor | Headroom stable release | 以具日期的 release notes 與安裝版本 capability 為準, 不在無日期段落固定 backend |
-| RTK 指引 | harness 的 Claude/Codex contract | v0.34 起 Headroom 已不注入; `--serena-instructions` 維持關閉 |
+| RTK 指引 | harness 的 Claude/Codex contract | Headroom 不注入; `--serena-instructions` 維持關閉 |
 | Serena code-memory | `headroom wrap` 的預設 (`--code-memory`) | 由 wrap 註冊 MCP, 不由本 repo 部署或版控 |
 | Headroom plugin | 維持停用 (`headroom@headroom-marketplace`) | 避免與 CLI/MCP 的 lifecycle 重複 |
 
@@ -97,10 +98,10 @@ Claude App 使用 OAuth 直連, 不經 proxy, 只能透過 MCP 做手動文字�
 ## 操作指引
 
 - **Claude**: 需要 Headroom 時使用 `hclaude`; Auto Mode 使用 `hclaude-auto`. 底層是 `headroom wrap claude --1m`, 2026-08-21 起**預設就是 1M context**, 見下面兩條.
-- **`--1m`: 0.36 兩端都修好了**. 自訂 `ANTHROPIC_BASE_URL` 之下, Claude Code 的 `/model` 選擇不會傳到 API, 只有帶 `[1m]` 後綴的 model id 才會送出 `context-1m` beta header; 不加 `--1m` 就是 200k. 0.36 一次修掉兩端 — wrapper 端的預設模型常數改成 `claude-opus-5` 並可用 `HEADROOM_1M_MODEL` 覆寫 (upstream #2937, PR #2983), proxy 端則不再在算 context budget 之前就把 `[1m]` 剝掉 (#3073). 0.34/0.35 的兩個坑都不必再繞: 乾淨 shell 下 `--1m` 不會再把 session 釘在 Opus 4.8, 1M session 也不會再被當成 200k 計量且低估計價約 2 倍.
-- **旗標位置是關鍵, 不要「整理」它.** `--` 之後的東西全部歸 `claude_args`, 所以 `--1m` 必須在 `--` 之前. 對真正的 command object 實測: `['--1m', ...]` 得到 `context_1m=True`, 而 `['--', '--1m', ...]` 得到 `False` 並把旗標原樣交給 `claude` 執行檔 — session 靜靜地停在 200k, 沒有任何錯誤訊息. 2026-08-21 之前 `hclaude` 正是後者. 代價是: 沒設過 `ANTHROPIC_MODEL` 時 session 會被釘在 Headroom 的預設 (0.36 為 `claude-opus-5`), 要換用 `HEADROOM_1M_MODEL`. 另一條路是在 `~/.zshrc` 設 `ANTHROPIC_MODEL="claude-opus-5[1m]"` (wrap 用 `os.environ.copy()` 所以會生效), 但那會釘死每一個 session 並讓 `/model` 選單失效 — upstream #2983 明講這是它要取代的 workaround, 不建議.
-- **沒有 1M→200k 的降級階梯.** 0.36 release note 的 “make `--1m` fallback model configurable” 指的是「未指定 model 時要用哪個 model」, 不是 context 大小的 fallback. `[1m]` 是向 Anthropic 請求 1M tier, 有沒有資格是帳號層級的事; 沒資格就是 API 報錯, 不會自動退回 200k.
-- **on-demand tool loading (`--tool-search`)**: 自訂 `ANTHROPIC_BASE_URL` 會讓 Claude Code 關閉 tool deferral, 改成一次載入所有 tool schema, 吃掉數十 K 的 local context (upstream issue #746). v0.34 的 `wrap claude` 因此會設 `ENABLE_TOOL_SEARCH`, 預設 `true`. 可用值 `true`/`1`/`yes`/`on`, `false`/`0`/`no`/`off`, `auto`, `auto:N` (N 為 0-100); 打錯會直接報錯而不是默默關掉. 優先序是 `--tool-search` 旗標 > 環境裡既有的 `ENABLE_TOOL_SEARCH` (原封不動) > 內建預設; 空字串視同未設. Read/Edit/Bash 這類內建工具永遠不會被延後載入, agent loop 不受影響. 若採 always-on routing (下面的 `persistent-service`), 這個變數要跟 base URL 一起常駐, 否則原生 `claude` 會在沒有 deferral 的情況下走 proxy.
+- **`--1m`**: 自訂 `ANTHROPIC_BASE_URL` 之下, Claude Code 的 `/model` 選擇不會傳到 API, 只有帶 `[1m]` 後綴的 model id 才會送出 `context-1m` beta header; 不加 `--1m` 就是 200k. wrapper 端沒設 `ANTHROPIC_MODEL` 時會退到內建預設 `claude-opus-5`, 可用 `HEADROOM_1M_MODEL` 每個 shell 覆寫; 已設的 `ANTHROPIC_MODEL` 只會被補上後綴, 且是冪等的. proxy 端會把 `[1m]` 算進 context budget 再計價.
+- **旗標位置是關鍵, 不要「整理」它.** `--` 之後的東西全部歸 `claude_args`, 所以 `--1m` 必須在 `--` 之前. 對真正的 command object 實測: `['--1m', ...]` 得到 `context_1m=True`, 而 `['--', '--1m', ...]` 得到 `False` 並把旗標原樣交給 `claude` 執行檔 — session 靜靜地停在 200k, 沒有任何錯誤訊息. 2026-08-21 之前 `hclaude` 正是後者. 代價是: 沒設過 `ANTHROPIC_MODEL` 時 session 會被釘在 Headroom 的預設 `claude-opus-5`, 要換就用 `HEADROOM_1M_MODEL`. 另一條路是在 `~/.zshrc` 設 `ANTHROPIC_MODEL="claude-opus-5[1m]"` (wrap 用 `os.environ.copy()` 所以會生效), 但那會釘死每一個 session 並讓 `/model` 選單失效 — upstream #2983 明講這是它要取代的 workaround, 不建議.
+- **沒有 1M→200k 的降級階梯.** release note 的 “make `--1m` fallback model configurable” 指的是「未指定 model 時要用哪個 model」, 不是 context 大小的 fallback. `[1m]` 是向 Anthropic 請求 1M tier, 有沒有資格是帳號層級的事; 沒資格就是 API 報錯, 不會自動退回 200k.
+- **on-demand tool loading (`--tool-search`)**: 自訂 `ANTHROPIC_BASE_URL` 會讓 Claude Code 關閉 tool deferral, 改成一次載入所有 tool schema, 吃掉數十 K 的 local context (upstream issue #746). `wrap claude` 因此會設 `ENABLE_TOOL_SEARCH`, 預設 `true`. 可用值 `true`/`1`/`yes`/`on`, `false`/`0`/`no`/`off`, `auto`, `auto:N` (N 為 0-100); 打錯會直接報錯而不是默默關掉. 優先序是 `--tool-search` 旗標 > 環境裡既有的 `ENABLE_TOOL_SEARCH` (原封不動) > 內建預設; 空字串視同未設. Read/Edit/Bash 這類內建工具永遠不會被延後載入, agent loop 不受影響. 若採 always-on routing (下面的 `persistent-service`), 這個變數要跟 base URL 一起常駐, 否則原生 `claude` 會在沒有 deferral 的情況下走 proxy.
 - **Codex**: 需要 Headroom 時使用 `hcodex`; Auto Mode 使用 `hcodex-auto`. 底層是 `headroom wrap codex`, 不依賴預先存在的永久 provider.
 - **Antigravity CLI**: 原生 Auto Mode 使用 `agy-auto` (`agy --mode accept-edits`). Headroom 入口保留為 `hagy`/`hagy-auto`, 但會先確認安裝版本真的提供 `headroom wrap agy`; 沒有就 exit 127, 不能降級成未壓縮的 `agy`.
 - **權限**: 一般自動執行分別使用 Claude `--permission-mode auto`, Codex `-a on-request -s workspace-write`, Antigravity `--mode accept-edits`. `--dangerously-skip-permissions` 與 `--dangerously-bypass-approvals-and-sandbox` 不是 Auto Mode, 也不是 Headroom 的必要參數; 只有外層已有隔離環境時才能針對單次任務明確選用. 可重用的 shell functions 見 `docs/setup.md`.
@@ -117,51 +118,25 @@ Claude App 使用 OAuth 直連, 不經 proxy, 只能透過 MCP 做手動文字�
   機器的 profile, port 或 provider 值.
 - **套件管理**: CLI 由 `uv tool` 與 uv 管理的 Python 提供, `~/.local/bin/headroom` 是 MCP 設定應使用的絕對路徑.
 - **升級**: 先執行 `headroom update --check`, 再用 `headroom update` 或 `uv tool upgrade headroom-ai`. 升級後重開 wrapped session; `persistent-service` profile 執行 `headroom install restart --profile <profile>`, 再以 `headroom install status --profile <profile>` 確認 `running` 與 `Healthy: yes`. `headroom doctor` 另用來確認 CLI, proxy 與 routing; 它不能取代 deployment health. `persistent-task` 依上表重新 `apply` 或先轉為 `persistent-service`. 若這次升級改動了 `headroom wrap` 的參數, 還要重跑 `scripts/install-zsh-functions.sh --apply`: `~/.zshrc` 裡的舊 block 不會自己更新, `hclaude`/`hcodex` 會帶著失效旗標啟動而被 CLI 擋下.
-- **Legacy Codex provider**: v0.34 的 `headroom unwrap codex` 只認得目前的 auto-injected marker. 本機舊版 `# --- Headroom persistent provider ---` block 曾出現 CLI 宣稱成功但檔案未變; 必須直接檢查 `~/.codex/config.toml` 並以 `headroom doctor` 交叉驗證, 不得只採信成功訊息.
+- **Legacy Codex provider**: `headroom unwrap codex` 只認得目前的 auto-injected marker. 本機舊版 `# --- Headroom persistent provider ---` block 曾出現 CLI 宣稱成功但檔案未變; 必須直接檢查 `~/.codex/config.toml` 並以 `headroom doctor` 交叉驗證, 不得只採信成功訊息.
 - **`headroom learn`**: 預設只允許寫入 machine-local, gitignored 的學習檔. 不得未經 review 直接以 `--target CLAUDE.md`, `AGENTS.md` 或其他 tracked contract 覆寫專案規則.
 - **App 手動壓縮**: 只壓大型 read-only JSON, log, table 或 search output; 程式碼, 錯誤, 圖片與可編輯內容交給原始工具.
 
-## 版本轉換
+## 升級之後
 
-### v0.34 -> v0.35 (2026-08-13 發版, 2026-08-14 對 0.35.0 原始碼核對)
+只跟當前版本, 所以升級的動作固定而短:
 
-改到本文件結論的:
+1. 升 CLI, 然後 `headroom install restart`. **不重啟的話 CLI 會說新版而跑的是舊的** ——
+   而且 `headroom --version` 與 `uv tool list` 會一起這麼說, 三個來源裡有兩個一致地錯.
+2. 對照 `headroom wrap claude --help` 的旗標面. 有變就重跑
+   `scripts/install-zsh-functions.sh --apply` (它是冪等的, 且不在 `sync.sh` 裡).
+3. 用開頭那四個來源確認, 第四個不能是問 CLI 得來的.
 
-| 變動 | 影響 |
-|---|---|
-| `--1m` 會把 `[1m]` 補進顯式 `--model` (#2922) | 只修掉 flag 蓋過 env var 那條路徑; 預設模型常數不變 |
-| Serena 改由 `serena-agent` PyPI wheel 安裝, 不再從 git source (#2877) | code-memory MCP 的來源換了, 註冊與預設不變 |
-| proxy 端 tool search 預設開啟並修復被污染的 transcript (#2807, #2889) | wrapper 的 `--tool-search` 語意與預設 `true` 不變 |
+當前旗標面: `--1m --backend --code-graph --code-memory --learn --memory --no-mcp
+--no-proxy --port --region --serena-instructions --tool-search`. `hclaude` 帶 `--1m`, 理由
+見操作指引那兩條.
 
-逐條核對後**沒有變**的三件事: 每次 `wrap`/`unwrap` 仍呼叫
-`purge_context_tool_artifacts()` 且比對字串一字未改; `wrap claude` 仍負責設
-`ENABLE_TOOL_SEARCH`; `--1m` 的預設模型常數仍是 `claude-opus-4-8`.
-
-### v0.35 -> v0.36 (2026-08-20 發版, 同日對 0.36.0 原始碼與 live proxy 核對)
-
-**本機是從 0.34 直接跳到 0.36 的**, 沒有經過 0.35. 上面那個 v0.34 -> v0.35 小節記的是
-上游差異, 不是本機跑過的狀態.
-
-改到本文件結論的:
-
-| 變動 | 影響 |
-|---|---|
-| `--1m` 的預設模型可用 `HEADROOM_1M_MODEL` 覆寫, 內建預設升為 `claude-opus-5` (#2937, PR #2983) | 「預設模型陷阱」解除, 操作指引已改寫 |
-| proxy 端不再在算 context budget 之前剝掉 `[1m]` (#3073) | 1M session 不再被當 200k 計量; 同一個 PR 一併修掉約 2 倍的計價低估 |
-| 一批 CCR 串流修正 (#3092, #3094, #3102, #2953, #3142) | 上游這次動的確實是串流本身, 不只是壓縮策略 — 見下一節的撤除判準 |
-| `--no-ccr` 現在連 server-side response handling 也一起關掉 (#3101) | 撤除處置時的選項語意變了, 不能沿用舊理解 |
-
-對 0.36.0 原始碼逐條核對後**沒有變**的三件事: `purge_context_tool_artifacts()` 仍在
-`wrap`/`unwrap` 路徑上被呼叫 (3 處); `wrap claude` 仍負責設 `ENABLE_TOOL_SEARCH`;
-supported tools 清單仍無 `agy`.
-
-`headroom wrap claude` 的旗標面是 `--1m --backend --code-graph --code-memory --learn
---memory --no-mcp --no-proxy --port --region --serena-instructions --tool-search`. 本機
-`~/.zshrc` 的 block 原本不帶任何 headroom 專屬旗標, 所以升級本身沒有讓它失效. 但
-2026-08-21 為了讓 1M 成為預設, 已重跑 `scripts/install-zsh-functions.sh --apply` 把 `--1m`
-加進 `hclaude` — 見操作指引那兩條.
-
-### CCR 串流失效與 `lossless` 處置 (0.35 的問題, 0.36 已修)
+## CCR 串流與 `lossless` 開關
 
 **你這台有沒有套用過, 要當場查, 不要從這裡推**:
 
@@ -174,20 +149,22 @@ grep "Proxy started" -A12 ~/.headroom/logs/proxy.log | grep tool_injection
 這兩件在不同部署上答案不同, 所以本文件不記錄任何一台的答案 —— 2026-08-20 就是有人記了,
 而那個答案在另一台是相反的.
 
-這節保留的理由有兩個: 它是唯一寫下這個開關「設在哪, 怎麼查, 怎麼撤」的地方, 而 0.36 的
-CCR 修正 (#3092, #3094, #3102, #2953, #3142) 動的正是串流那條路徑 — 也就是下面那條撤除
-判準要求先確認的事, 這次確認得到.
+這節保留的理由是: 它是唯一寫下這個開關「設在哪, 怎麼查, 怎麼撤」的地方. 這個處置本來是
+上游串流缺陷的暫時繞道, 而上游已經修掉串流本身 (#3092, #3094, #3102, #2953, #3142) ——
+也就是下面那條撤除判準要求先確認的事.
 
 **這是上游 bug 的暫時處置, 不由本 repo 管理.** 開關住在 machine-local 的
 `~/.headroom/settings.json`, 與 profile, port 同級, 不進 git.
 
 CCR (Compress-Cache-Retrieve) 壓掉大塊工具輸出, 留下 `<<ccr:...>>` marker, 並注入
-`headroom_retrieve` 讓模型需要時取回原文 — 有損壓縮**加上**還原路徑. 0.35 遇到串流請求時
-會把上游改成非串流以便在伺服器端處理取回 (`ccr_streaming_retrieve_buffered_non_stream`),
-而回吐給 client 的內容可能解析不了, 症狀是 HTTP 200 但 body 是空的或壞的.
+`headroom_retrieve` 讓模型需要時取回原文 — 有損壓縮**加上**還原路徑. 這個開關存在的原因是
+上游曾在遇到串流請求時把它改成非串流以便在伺服器端處理取回
+(`ccr_streaming_retrieve_buffered_non_stream`), 而回吐給 client 的內容可能解析不了 ——
+症狀是 HTTP 200 但 body 是空的或壞的. 上游已修掉串流本身; 這節留著是為了「開關設在哪,
+怎麼查, 怎麼撤」.
 
 處置用 `lossless` 而不是 `no-ccr`: 依上游自己的說明 `--no-ccr` 是 lossy compression with no
-recovery path, 壓掉的工具輸出救不回來; lossless 只做無損轉換, 代價僅是省得比較少. 0.35 原始碼
+recovery path, 壓掉的工具輸出救不回來; lossless 只做無損轉換, 代價僅是省得比較少. 讀原始碼
 確認它一次清掉 `ccr_inject_marker` 與 `ccr_inject_tool` — 沒有 marker, 也沒有工具可注入,
 那條串流轉換就失去入口, 不是繞過它.
 
@@ -220,7 +197,8 @@ lossless 只強制 `ccr_inject_tool` 為 false.
 
 ### Antigravity CLI
 
-本機安裝的 v0.36.0 仍沒有 `headroom wrap agy` (supported tools 清單無此項);
+Headroom 目前沒有 `headroom wrap agy` (`headroom wrap --help` 的 supported tools 清單無此項,
+2026-08-21 確認);
 上游 [PR #1044](https://github.com/headroomlabs-ai/headroom/pull/1044)
 仍 open (2026-08-14 最後更新), 曾以限定 Google Cloud Code host 的 process-scoped
 TLS MITM 提案. 不要用無效 base URL 環境變數, 修改 `/etc/hosts`, 信任 system-wide CA,
