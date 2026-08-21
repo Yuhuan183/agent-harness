@@ -2991,6 +2991,39 @@ class VersionAttestationTests(unittest.TestCase):
             "make the date - the thing that makes staleness detectable - into "
             "the way to avoid being checked")
 
+    def test_only_a_floor_is_measured_against_this_machine(self) -> None:
+        """The narrowing of 2026-08-21, and why it is structural.
+
+        This check existed for one shape - a document attesting a local version
+        while the machine ran another - and machine-local version records left
+        the guidance tier the same day by policy. What remained were upstream
+        versions, which a local binary cannot adjudicate, and on a shared
+        repository an exact version that is right where it was written reads as
+        a discrepancy everywhere else.
+
+        Prose sniffing was tried and abandoned: the research row that records
+        upstream and *not* this machine matched a locality pattern on the very
+        word it uses to disclaim locality. So the rule is the line's shape, not
+        its wording, and both directions are asserted here.
+        """
+        module = load_module("evidence_check", ROOT / "scripts" / "evidence-check.py")
+        self.assertFalse(hasattr(module, "LOCALITY"),
+                         "prose sniffing came back; a regex cannot separate a "
+                         "claim from its negation")
+
+        verdicts = {row["verdict"] for row in module.audit_versions()}
+        self.assertFalse(
+            {"match", "differs"} & verdicts,
+            "an exact version was compared against this machine; only floors are")
+        self.assertIn("not-local", verdicts,
+                      "upstream versions must be named as such, not dropped")
+        self.assertIn("floor-met", verdicts,
+                      "floors are the portable claim and must still be checked")
+
+        # A floor the machine meets exactly is a met floor, not an attestation.
+        self.assertEqual(module.verdict_for("0.45", "0.45.0", True), "floor-met")
+        self.assertEqual(module.verdict_for("9.9", "0.45.0", True), "floor-unmet")
+
     def test_it_reports_and_never_fails(self) -> None:
         # Same contract as the rest of this script: a stale attestation is a
         # fact to weigh. Made fail-closed, the cheapest way to stay green would
@@ -3004,7 +3037,11 @@ class VersionAttestationTests(unittest.TestCase):
         self.assertIn("attestations", report)
         for row in report["versions"]:
             self.assertIn(row["verdict"], {
-                "match", "differs", "floor-met", "floor-unmet", "unprobeable"})
+                # `not-local` joined on 2026-08-21: an exact version in a
+                # tracked document is about upstream or about history, and a
+                # local binary adjudicates neither. Only floors are compared.
+                "match", "differs", "floor-met", "floor-unmet", "unprobeable",
+                "not-local"})
 
 
 class ResidentPoolReportTests(unittest.TestCase):
