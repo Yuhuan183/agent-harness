@@ -16,6 +16,7 @@ set -u
 SHA="${1:-885e2ca4d842d139e9aef4e48d366c63cb1b8013}"
 BASE="https://raw.githubusercontent.com/mattpocock/skills/$SHA"
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
+unreachable=0
 
 # path                                   sha256(first 16)   bytes
 read -r -d '' EXPECTED <<'ROWS' || true
@@ -32,7 +33,8 @@ while read -r path want_hash want_bytes; do
   out="$tmp/$(printf '%s' "$path" | tr '/' '_')"
   code=$(curl -sS -w '%{http_code}' -o "$out" "$BASE/$path")
   if [ "$code" != "200" ]; then
-    printf '  %-44s HTTP %s\n' "$path" "$code"; fail=1; continue
+    printf '  %-44s UNREACHABLE (HTTP %s)\n' "$path" "$code"
+    unreachable=1; continue
   fi
   got_hash=$(shasum -a 256 "$out" | cut -c1-16)
   got_bytes=$(wc -c < "$out" | tr -d ' ')
@@ -45,6 +47,12 @@ while read -r path want_hash want_bytes; do
 done <<< "$EXPECTED"
 
 echo
+if [ "$unreachable" -ne 0 ]; then
+  echo "could not fetch every file - that is not the same as a change."
+  echo "A SHA that does not exist and a network failure both land here;"
+  echo "check the ref resolves before concluding anything."
+  exit 1
+fi
 if [ "$fail" -eq 0 ]; then
   echo "the ledger in docs/research/upstream-distillation-ledger.md describes these bytes"
 else
