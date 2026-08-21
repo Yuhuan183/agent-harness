@@ -19,25 +19,26 @@ upstream in four places.
 
 **Read the source, not the notes about it.** A release note states intent; the
 code states behaviour, and the gap between them is where the useful detail sits.
-On 2026-08-21 a changelog line said a fallback model had become configurable;
-the installed `wrap.py` showed the constant, the environment variable that
-overrides it, and that the resolution is idempotent — three facts worth having
-that the note did not carry. Read whole: a one-file upstream in full, and for a
-larger one the files the rules actually live in rather than the index that
-points at them.
+A note that a value became configurable will not tell you the default it falls
+back to, the variable that overrides it, or whether setting it twice is safe —
+the file does, and those are the facts a decision needs. Read whole: a one-file
+upstream in full, and for a larger one the files the rules actually live in
+rather than the index that points at them.
 
 Locate the pin in this order, and do not stop at the first miss: the skill's
 `ATTRIBUTION.md`; the skill body, where the source may be a single sentence; the
-research tier. On 2026-08-21 a survey checked the first and third, found
-nothing, and reported the skill had no upstream — it was in the second the whole
-time.
+research tier. Provenance is recorded wherever it was convenient at the time, so
+a search that checks the conventional places and stops will report that a
+derived skill has no upstream.
 
 Three things about pins, each from a specific miss:
 
-- **The pin is a commit, not a release.** `cablate/baton` added a whole section
-  after `v0.1.1`; anyone distilling from the tag would have shipped without it.
-- **Forks version independently.** `pilotfish` was at v1.3.10 while its Codex
-  fork was at 1.7.1. The numbers are not comparable and neither is the content.
+- **The pin is a commit, not a release.** A tag names a moment, not the state
+  you read. Anything merged after it is invisible to a tag-based recheck, and
+  whole sections arrive that way.
+- **A fork keeps its own version line.** Comparing version numbers across a fork
+  and its parent compares nothing; resolve both to commits before saying which
+  is ahead.
 - **A pin lives where it resolves.** Full SHA in `ATTRIBUTION.md` and the
   research tier; never a bare short SHA in a deployed file (`docs/README.md`
   rule 9). A dead citation has already survived in a deployed file once because
@@ -50,10 +51,12 @@ here by design. A keyword search therefore under-reports, and its silence looks
 like a finding.
 
 Enumerate upstream's rules, then for each one ask whether a local equivalent
-exists **in concept**, reading the sections it would live in. Calibrate any
-probe before believing it: on 2026-08-21 a shell probe answered "no local
-equivalent" for all ten of an upstream's rules, twice, both times from a quoting
-bug — the correct answer was eight of ten covered.
+exists **in concept**, reading the sections it would live in.
+
+**Calibrate the probe before believing it.** A search that returns nothing looks
+exactly like a search that is broken, and the broken one is the more likely of
+the two when the pattern is written in a hurry. Run it first against something
+you already know is there; only then is its silence evidence.
 
 ## Give every rule a disposition
 
@@ -103,8 +106,9 @@ same bar as any other change here, and write the plan before the edit:
   decide which one you are landing and say so.
 - **Every new guard is mutation-checked in both directions.** Break the
   mechanism, watch the guard go red with the message you expected, restore.
-  A guard that stays green under mutation is not evidence; two on 2026-08-21
-  passed for the wrong reason and only mutation found it.
+  A guard can pass for a reason unrelated to what it claims to check, and from
+  the outside that is indistinguishable from working. Mutation is the only cheap
+  way to tell the difference.
 - **A rule landing on one provider lands on its twin**, in that side's idiom,
   and names anything the other side already had so the two do not read as
   alternatives.
@@ -117,9 +121,9 @@ same bar as any other change here, and write the plan before the edit:
 
 ## Land it in the same pass
 
-Adopt and implement together, or the record lies. On 2026-08-21 a table said
-"gap, recommend adopting" for a rule that had landed hours earlier in the same
-session.
+Adopt and implement together, or the record lies. A disposition written before
+the work lands describes an intention, and nothing goes back to correct it when
+the landing happens later, differently, or not at all.
 
 Where each part goes:
 
@@ -158,11 +162,12 @@ where the leverage is.
 Do the synthesis **against the layer a finding belongs to**, not against a list
 of upstreams. Then:
 
-- **Count the lineage before counting the votes.** A fork is not a second
-  source: `pilotfish-codex` agreeing with `pilotfish` is one position, not two,
-  and a record that notes the derivation without saying what it costs the
-  evidence reads like three parties agreeing (2026-08-21, in this repo's own
-  notes). Independence is a date question and usually answerable from git.
+- **Count the lineage before counting the votes.** A fork inherits its parent's
+  positions, so the two agreeing is one position. Derivation is usually recorded
+  somewhere and almost never weighed, which lets a comparison table read as
+  several parties agreeing when it holds one lineage and one observer. Ask of
+  each source whether it reached the rule independently; that is normally a
+  question of which came first, and history answers it.
 - **Two genuinely independent upstreams reaching the same rule raises its
   weight** above either alone — that is what happened to the missing-verifier
   rule, and the landed version is the intersection plus the sharper clause
@@ -183,11 +188,10 @@ could falsify it is a summary.
 Half of the recheck is mechanical now, and half is not.
 
 `scripts/upstream-pin-report.py` answers "did any upstream move", derived
-from the `ATTRIBUTION.md` files so a newly distilled skill joins it the day
-its attribution lands. That is the step that was missing: on 2026-08-21 an
-upstream was found twelve commits past its pin only because somebody went
-looking, and the first run of that report immediately found a second one 32
-commits out that had never been rechecked at all.
+from the `ATTRIBUTION.md` files so a newly distilled skill joins it the day its
+attribution lands. Without it, a pin only looks stale to whoever happens to
+check, and a hash-verifying recheck stays green while upstream walks away —
+because a SHA pins content and content does not change under it.
 
 What stays manual is everything after. `scripts/upstream-recheck.sh` and
 `docs/research/upstream-distillation-ledger.md` verify bytes for one upstream
