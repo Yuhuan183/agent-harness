@@ -3338,6 +3338,65 @@ class ContextInflowReportTests(unittest.TestCase):
             self.assertIn("no session", result.stdout)
 
 
+class UpstreamPinReportTests(unittest.TestCase):
+    """`upstream-recheck.sh` verifies the bytes a SHA pins, so it stays green
+    when upstream moves - that is the design. Nothing asked the other question
+    until 2026-08-21, when `mattpocock/skills` turned out to be twelve commits
+    past its recorded pin and only a manual look found it.
+
+    The registry is derived from the attributions rather than listed, so the two
+    properties worth holding are that it reads all three shapes those files use,
+    and that a fetch it could not complete never reads as "not moved"."""
+
+    SCRIPT = ROOT / "scripts/upstream-pin-report.py"
+
+    def _module(self):
+        return load_module("upstream_pin_report", self.SCRIPT)
+
+    def test_it_reads_every_shape_an_attribution_states_its_source_in(self) -> None:
+        shapes = {
+            # `**Source**:` plus `**Reviewed commit**:`
+            "a": "- **Source**: <https://github.com/one/alpha>\n"
+                 "- **Reviewed commit**: `" + "1" * 40 + "`\n",
+            # a bare URL on its own line plus `- Commit:` as a link
+            "b": "https://github.com/two/beta\n\n- Commit: [`" + "2" * 40 + "`]"
+                 "(https://github.com/two/beta/commit/" + "2" * 40 + ")\n",
+            # the zh-TW shape: `- 專案：[name](url)` plus `- 蒸餾自：`
+            "c": "- 專案：[gamma](https://github.com/three/gamma)\n"
+                 "- 蒸餾自：`" + "3" * 40 + "`（2026-07-18 的 master）\n",
+            # names no repository at all - must be skipped, not guessed at
+            "d": "Adapted from a talk. No repository, no commit.\n",
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            for name, body in shapes.items():
+                (root / name).mkdir()
+                (root / name / "ATTRIBUTION.md").write_text(body, encoding="utf-8")
+            # the same upstream shipped twice, as task-observer really is
+            (root / "twin").mkdir()
+            (root / "twin" / "ATTRIBUTION.md").write_text(shapes["b"], encoding="utf-8")
+
+            found = self._module().parse_attributions(root)
+            by_repo = {e["repo"]: e for e in found}
+            self.assertEqual(sorted(by_repo),
+                             ["one/alpha", "three/gamma", "two/beta"],
+                             "a shape went unread, or the sourceless one was guessed at")
+            self.assertEqual(by_repo["one/alpha"]["pin"], "1" * 40)
+            self.assertEqual(by_repo["three/gamma"]["pin"], "3" * 40)
+            self.assertEqual(sorted(by_repo["two/beta"]["skills"]), ["b", "twin"],
+                             "one upstream shipped twice must be one entry")
+
+    def test_a_fetch_it_cannot_complete_is_never_reported_as_current(self) -> None:
+        """The distinction the whole report rests on. Offline this takes the
+        network-error branch and online the 404 branch; both must land on
+        `unreachable`, because `current` would say an upstream had not moved
+        when nobody asked it."""
+        result = self._module().moved(
+            "agent-harness-no-such-org-9f3a/no-such-repo", "0" * 40)
+        self.assertEqual(result["state"], "unreachable")
+        self.assertNotEqual(result["state"], "current")
+
+
 class MemoryFreshnessReportTests(unittest.TestCase):
     """A memory entry arrives as background context, not as something anyone
     opens, so a path inside one can rot for months while still sounding

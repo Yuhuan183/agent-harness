@@ -587,3 +587,38 @@ ATTRIBUTION 逐字引用過上游散文, 而來源現在沒有破折號了.
 
 流程上學到的一條, 已補進 skill: **算收斂之前先算血緣**. 「兩個獨立上游」這句話沒有說怎麼
 判斷獨立, 而 fork 看起來就像第二個來源.
+
+#### 2026-08-21 上游 pin 漂移報告: 第一次跑就找到一個沒人看過的 32 commit 缺口
+
+`upstream-recheck.sh` 驗的是「這個 SHA 釘住的位元組還是不是帳本說的那些」, 所以上游移動
+它不會紅 —— **那是設計, 不是缺陷**. 缺的是另一個問題: pin 還是不是上游供應的那個. 那個問題
+以前沒有任何機制問過, 對任何一個上游都沒有.
+
+`scripts/upstream-pin-report.py` 補上它, 而且**從 ATTRIBUTION 推導而不是另立清單** ——
+新蒸餾的 skill 在它的 attribution 落地當天就自動納入. 第一次跑的結果:
+
+| 上游 | 狀態 |
+|---|---|
+| mattpocock/skills | 預設分支 +2 (動的是 grilling, 我們沒蒸餾的 skill) |
+| **Raymondhou0917/speak-human-tw** | **+32, 自 2026-07-24 起** |
+| rebelytics/one-skill-to-rule-them-all | 未動 |
+| cablate/baton | 未動 |
+
+**speak-human-tw 是 `readable-zh-tw` 的上游, 而它從來沒有被重查過.** 這是今天第二次
+「上游早就動了而我們不知道」, 而第一次是靠人碰巧去看才發現的.
+
+三件實作上的細節, 每件都來自當場踩到:
+
+- **五份 ATTRIBUTION 用三種格式寫來源** (`**Source**:` 加 `**Reviewed commit**:`;
+  裸 URL 加 `- Commit:`; zh-TW 的 `- 專案` 加 `- 蒸餾自` 兩個欄位, 後面接全形冒號). 解析寫成容錯的, 因為
+  「要不要統一格式」跟「現在能不能讀」是兩個決定.
+- **同一份 attribution 出貨兩次要算一個上游.** `task-observer` 兩棵樹各一份, 第一版把它
+  報成兩個.
+- **預設分支不等於 marketplace 供應的 pin.** mattpocock 在 pin 推進到 catalog 當前 SHA 的
+  同一小時就顯示 +2, 兩件事都為真. 報告因此說的是「repo 動了」, 而 pin 動沒動要問 catalog.
+
+**抓不到不等於沒動**: 網路失敗一律報 unreachable, 絕不報 current. 那條測試用一個必定不存在的
+repo, 所以離線在線走的是同一個結論.
+
+下一步不是自動化剩下那半. 讀 diff, 判斷值不值得跟, 逐條分類 —— 那些本來就不該機械化. 報告
+的作用是**告訴你去哪裡看**.
