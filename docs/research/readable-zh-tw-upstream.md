@@ -15,7 +15,7 @@
 | 專案 | [Raymondhou0917/speak-human-tw](https://github.com/Raymondhou0917/speak-human-tw) |
 | 作者 | Raymond Hou (雷蒙三十) |
 | 授權 | MIT |
-| 我方 pin | `2c27cca461faf4a2d670e1c2838dd154c24b523c` (2026-07-18 的 master) |
+| 我方 pin | `8f1cdb5ec52e46178f9d04a316bdf610466ee71c` (2026-08-21 的 master) |
 | 重查 | `scripts/readable-zh-tw-recheck.sh [sha]` |
 
 **2026-08-19 補上 SHA 之前, ATTRIBUTION 只寫版本號.** 那讓它成為
@@ -104,3 +104,26 @@ master**, v1.4.0 兩樣都沒有 —— 那就是我們實際讀的是 master �
 - **兩支近乎相同的重查腳本.** `scripts/upstream-recheck.sh` (Matt Pocock) 與
   `scripts/readable-zh-tw-recheck.sh` 只差 base URL 與檔案表. 這是把重查參數化的具體理由,
   但兩支還不算一個模式, 所以先記著不動.
+
+## 2026-08-21 重新溯源: 32 個 commit, 六個來源檔一個位元組沒動
+
+`upstream-pin-report.py` 第一次跑就報這個上游 **+32 (自 2026-07-24)**, 而它從蒸餾之後
+就沒有被重查過.
+
+**32 個裡有 28 個是每日自動 commit** —— GitHub Actions 更新 star history 圖表. 另外 4 個
+人為 commit 也全在講同一張圖 (加圖, 改檔名破 CDN 快取, 重畫 J 曲線). 動到的檔案是一支
+workflow, README 加 6 行, 一個 SVG, 一支產圖腳本 —— **沒有一個字是 prompt 內容**.
+
+`readable-zh-tw-recheck.sh` 對當前 master 跑, 六個來源檔 (`SKILL.md` 與五份
+reference) **全部 matches the pin**. 所以 pin 從 `2c27cca` 推進到 `8f1cdb5` 純粹
+是記帳, 內容沒有任何一個位元組不同.
+
+### 這一輪修掉的是工具而不是內容
+
+兩支重查腳本都把「抓不到」報成「和研究文件描述的不一樣」. 那兩件事不一樣 —— 一個是還沒
+知道, 一個是知道了而且變了 —— 而把它們混在一起, 正是 `upstream-pin-report.py` 的
+`unreachable` 分支存在的理由. 兩支都改成分開報, 並在退出前明說「SHA 不存在與網路失敗
+都會落到這裡」.
+
+發現的過程本身值得記: 我第一次跑用了打錯的 SHA, 腳本回 404 而訊息說「檔案和研究文件描述的
+不一樣」—— **一個打錯的字被報成了上游改動**.

@@ -22,9 +22,10 @@
 #       https://api.github.com/repos/Raymondhou0917/speak-human-tw/commits/master \
 #       | sed -n 's/.*"sha": "\([0-9a-f]\{40\}\)".*/\1/p' | head -1)"
 set -u
-SHA="${1:-2c27cca461faf4a2d670e1c2838dd154c24b523c}"
+SHA="${1:-8f1cdb5ec52e46178f9d04a316bdf610466ee71c}"
 BASE="https://raw.githubusercontent.com/Raymondhou0917/speak-human-tw/$SHA"
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
+unreachable=0
 
 # Only the files this repo actually derives from. `scenes.md` is listed because
 # our 判情境 table came from it; `examples.md` is not, because those examples were
@@ -47,7 +48,8 @@ while read -r path want_hash want_bytes; do
   out="$tmp/$(printf '%s' "$path" | tr '/' '_')"
   code=$(curl -sS -w '%{http_code}' -o "$out" "$BASE/$path")
   if [ "$code" != "200" ]; then
-    printf '  %-36s HTTP %s\n' "$path" "$code"; fail=1; continue
+    printf '  %-36s UNREACHABLE (HTTP %s)\n' "$path" "$code"
+    unreachable=1; continue
   fi
   got_hash=$(shasum -a 256 "$out" | cut -c1-16)
   got_bytes=$(wc -c < "$out" | tr -d ' ')
@@ -60,6 +62,12 @@ while read -r path want_hash want_bytes; do
 done <<< "$EXPECTED"
 
 echo
+if [ "$unreachable" -ne 0 ]; then
+  echo "could not fetch every file - that is not the same as a change;"
+  echo "a SHA that does not exist and a network failure both land here."
+  echo "Check the ref resolves before concluding anything."
+  exit 1
+fi
 if [ "$fail" -eq 0 ]; then
   echo "docs/research/readable-zh-tw-upstream.md describes these bytes"
 else
