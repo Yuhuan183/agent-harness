@@ -116,6 +116,8 @@ main 把派工與 QC 結果**獨立成固定紀錄**, 不混在一般說明裡, 
 
 ## 還沒貼合的部分
 
+- **成本沒有擁有者.** context 層講常駐預算, 這一層講 routing 與付費點, [playbook](../engineering-playbook.md) 講注意力稅 —— 三處各談一面, 而「這樣做值不值得」沒有歸屬. 2026-08-21 的[跨上游整合](../research/peer-harnesses.md#跨上游整合-2026-08-21)發現這是**三個派工上游都有而我們沒有的唯一一件**: Pilotfish 公開 Gate replay 的成本, codex 分支有品質校正後的成本度量與 v6 benchmark, baton 開篇就是 dispatch brake.
+
 - **並行幾乎沒有真實樣本.** ledger 裡絕大多數是單筆派工; 合批的判準寫得比用過的次數多.
 - **跨 provider 的額度擋不住, 只數得到.** verifier 額度只認 Claude 的拼法, 走 bridge 的那一側
   靠主 session 判斷 —— 而那不是漏做: bridge 的名字涵蓋所有 Codex 角色, 把它列進閘會誤擋

@@ -183,7 +183,7 @@ Nanako0129/pilotfish 改編到 Codex CLI, 2026-08-21 首次進入本文件. 對�
 
 | 分支的設計 | 本專案現況 | 裁決 |
 |---|---|---|
-| 七個角色: `scout`, `plan-verifier`, `executor`, `mech-executor`, `security-reviewer`, `security-executor`, `verifier` | 同樣七個, 只有 `explore` 對 `scout` 的命名不同 | **獨立收斂**, 不動. 兩邊各自演化到同一組邊界, 是這組切法本身站得住的證據 |
+| 七個角色: `scout`, `plan-verifier`, `executor`, `mech-executor`, `security-reviewer`, `security-executor`, `verifier` | 同樣七個, 只有 `explore` 對 `scout` 的命名不同 | **獨立收斂, 但只算兩票**. 本專案的七個角色在 2026-07-20 初版就存在, 早於 07-22 採用 Pilotfish 兩天, 所以我們這一側不是從那裡來的; 而這個分支繼承自 Pilotfish, 所以它和 Pilotfish 是同一票. 見[跨上游整合](#跨上游整合-2026-08-21) |
 | review intent 每回合可選 `fast`/`default`/`strict`, 但**不得覆蓋必要核准與安全閘** | 逃生口同樣不繞過核准; 見[授權](../architecture/architecture.md#授權-每一道機制停在誰手上) | **獨立收斂**, 不動 |
 | **review-service circuit breaker**: reviewer/verifier 收據缺席時一次有界重試, 然後進入明確等待狀態; 且「review 服務失效不是使用者決策」, 不得據以宣告 readiness, 驗證, 憑證或對外寫入 | 原本只規定 verifier 的額度與放置點, 沒有一條說 verifier 沒回來時該怎麼辦 | **已落地** (2026-08-21). 與 [cablate/baton 的 fall-back 規則](#cablatebaton-baton-dispatch-的上游)合併成一條, 兩支 dispatch skill 各帶一份 |
 | 三個 tier (luna/terra/sol) 之中 **terra 沒有任何角色在用** —— luna 跑例行執行與驗證, sol 只給 `plan-verifier` 與安全審查那類窄邊界 | H/X 兩檔 | **佐證現況**. 一個獨立實作定義了三檔又空著中間那檔, 是「檔位不是越多越好」的外部證據 |
@@ -241,6 +241,82 @@ scope fix」. 那個 scope fix 是 release 之後的 commit
 [`scripts/upstream-recheck.sh`](../../scripts/upstream-recheck.sh) 與
 [蒸餾帳本](upstream-distillation-ledger.md) 也都只綁那一個上游 —— 也就是說,
 **這個 repo 有一套可覆核的蒸餾程序, 但它只覆蓋一個上游**, baton 與兩支 Pilotfish 都在外面.
+
+## 跨上游整合 (2026-08-21)
+
+前面每一節回答的是「這個上游有沒有我們漏掉的東西」. 這一節回答的是不同的問題: **四個上游
+加起來, 對我們的設計說了什麼**. 按層做, 不按上游做.
+
+參與的四個: mattpocock/skills (寫作與除錯技藝), cablate/baton (派工治理),
+Nanako0129/pilotfish 與其 Codex 分支 miyago9267/pilotfish-codex, LangChain Deep Agents.
+
+### 一, 收斂要先數血緣, 不然會多算票
+
+**pilotfish-codex 是 Pilotfish 的 fork, 所以它和 Pilotfish 是同一票, 不是兩票.**
+比較表一直有記「改編自 Nanako0129/pilotfish」, 但沒有一句說這件事會影響證據的權重 ——
+於是 2026-08-21 的紀錄把七個角色寫成「兩邊各自演化」, 讀起來像三方同意.
+
+查了日期之後結論仍然成立, 但理由不同: 本專案的七個角色在 **2026-07-20 初版**就存在
+(executor, Explore, mech-executor, plan-verifier, security-executor, security-reviewer,
+verifier), 而 Pilotfish 是 **07-22** 才進到這個 repo. 我們這一側**不是**從那裡來的, 所以
+「我們」與「Pilotfish 血系」確實是兩個獨立來源 —— 兩票, 不是三票.
+
+**推翻條件**: 找得到 2026-07-20 之前的紀錄顯示角色切分參考過 Pilotfish, 這一條就垮.
+
+### 二, 每一個同業都有而我們沒有的, 只有一件: 成本
+
+| 上游 | 成本在它那裡是什麼 |
+|---|---|
+| Pilotfish | v1.3.6 起公開自己的 Gate replay 方法**與成本** |
+| pilotfish-codex | v6 benchmark: weighted tokens, median wall time, equivalent cost; 另有品質校正後的成本度量 |
+| cablate/baton | 開篇就是 dispatch brake —— 派工要先過自己的 overhead |
+
+三個派工上游各自把成本當成**一等的, 被量測的軸**. 本專案有成本判準 (Cost test 就是
+baton 那條), 但**沒有一份文件擁有它**: context 層講常駐預算, graph 層講 routing 與付費點,
+playbook 講注意力稅, 三處各談一面, 而「這樣做值不值得」沒有歸屬.
+
+這件事原本掛在待辦清單上, 性質是「純粹的裁決題, 沒有時間壓力」. **三個獨立上游都有而我們
+沒有, 把它從家務事變成缺口.**
+
+**推翻條件**: 寫得出一段話說明為什麼本專案的形狀不需要一個成本的擁有者 —— 例如成本已經
+完全被那三處的機制覆蓋, 沒有任何決策落在它們之間. 寫不出來, 就是缺一份文件.
+
+### 三, 我們有而沒有人有的: 雙生對稱 —— 是優勢, 但守衛有洞
+
+沒有任何一個上游把同一套規則同時維護在兩個 provider 上並要求逐條對齊. pilotfish-codex
+看起來最接近, 但它是**移植**不是雙生: 它自己走版號, 明說上游版本只當來源引用.
+
+這是本專案的邊, 而且不是空談 —— `test_contracts.py` 五十支測試裡有 **28 支同時斷言兩側**.
+
+**但它的一次真實漂移不是測試抓到的.** 2026-08-19 那次 (deliverable-path 條款兩側規則不同,
+Claude 說了該怎麼做而 Codex 只說了禁止) 是**在同一輪 review 裡讀出來的**. 測試斷言的是
+片語, 而一條規則可以兩側片語都在, 意思卻不同 —— 這正是 `contract-operator-delta` 存在的
+理由.
+
+**推翻條件**: 往後如果有一次雙生測試在**真實漂移**上變紅 (不是改名), 這個機制就是承重的;
+如果漂移持續是靠人讀出來的, 那 28 支斷言是文件, 不是閘.
+
+### 四, 上游彼此不同意的地方: 角色之上要不要有一層互動模式
+
+- **Pilotfish v1.3.9 與其分支**: 有. 先決定互動形狀 (execute / explore_then_plan /
+  co_discover), 再指派角色.
+- **cablate/baton**: 沒有. 選 execution primitive, 沒有 intent 層.
+- **Deep Agents**: 沒有. 用 middleware 組合能力.
+
+本專案兩次都判**不採用**, 理由是 client 自己的 plan mode 已經承擔「廣泛請求先唯讀」.
+
+**不同意本身就是結論**: 這不是同業的既定做法, 三條血系裡兩條沒有它. 我們的拒絕因此不是
+逆勢, 是多數 —— 而先前兩次拒絕的理由各自寫在自己那一列, 沒有人看得出這件事.
+
+**推翻條件**: 三條血系裡有第二條加上互動模式層, 或者本機出現一次「因為沒有互動模式層而
+走錯形狀」的可觀察案例.
+
+### 這次整合沒有做的
+
+只用了 `peer-harnesses.md` 這一份的內容加上日期查證. `clause-pricing`,
+`model-evidence`, `lifecycle-replay` 與 `trap-experiments` 四份共約 38,000 字
+的本機實驗證據**沒有進到這一輪** —— 它們回答的是「我們自己量到什麼」, 而這一輪問的是
+「同業說了什麼」. 兩者要對起來是下一輪的事.
 
 ## 採用效果與驗證
 

@@ -152,9 +152,15 @@ where the leverage is.
 Do the synthesis **against the layer a finding belongs to**, not against a list
 of upstreams. Then:
 
-- **Two independent upstreams reaching the same rule raises its weight** above
-  either one alone — that is what happened to the missing-verifier rule, and the
-  landed version is the intersection plus the sharper clause either added.
+- **Count the lineage before counting the votes.** A fork is not a second
+  source: `pilotfish-codex` agreeing with `pilotfish` is one position, not two,
+  and a record that notes the derivation without saying what it costs the
+  evidence reads like three parties agreeing (2026-08-21, in this repo's own
+  notes). Independence is a date question and usually answerable from git.
+- **Two genuinely independent upstreams reaching the same rule raises its
+  weight** above either alone — that is what happened to the missing-verifier
+  rule, and the landed version is the intersection plus the sharper clause
+  either added.
 - **A rule every upstream has and we do not** is a gap until someone writes down
   why our shape does not need it.
 - **A rule we have and no upstream does** is either our own edge or an
