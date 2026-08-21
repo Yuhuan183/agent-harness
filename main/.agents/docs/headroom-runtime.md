@@ -1,43 +1,25 @@
 # Headroom Runtime Guide
 
-> **2026-08-20 本機查核, 四層全部觀察到**: CLI 是 `headroom-ai 0.36.0`, 與 PyPI latest
-> 及 GitHub release tag `v0.36.0` (皆 2026-08-20) 同版; `install status` 回報
-> `persistent-service` 是 `running` / `Healthy: yes`; `/health` 自己說 `0.36.0`.
-> proxy 版本是**問出來的**, 不是從 CLI 推的. `headroom wrap` 的 supported tools 清單
-> 仍無 `agy`. `/settings` 是 `{}`, 啟動 banner 含 `tool_injection` — 本機沒有設過
-> `lossless`, 見「版本轉換」的 CCR 那節.
+> **本機版本查核不寫在這裡, 這是刻意的.** 這是共用 repo, 而每個部署各有自己的版本 ——
+> 一則「本機 CLI 是 X」在寫它的那台是事實, 在別台就是假話, 而讀的人分不出來. 2026-08-20
+> 那批紀錄正是這樣出事的: 兩個部署的觀察被寫成同一個「本機」, 然後拿其中一台的 log 去
+> 撤回另一台的真實紀錄. 原文留在 Git 歷史與
+> [landing-log](../../../docs/research/landing-log.md), 那裡的職責就是記錄推翻的過程.
 >
-> **同日撤回 0.35.0 的兩則本機查核**, 但兩則的證據強度不同, 分開講:
+> 要知道你這台在跑什麼, **當場問四個來源**, 而且第四個不能是問 CLI 得來的:
 >
-> 08-17 那則是**被本機 log 決定性推翻的**. `~/.headroom/logs/proxy.log*` 從 2026-08-03
-> 到 08-20 連續覆蓋, 其中只有三次 `Headroom Proxy started`: 08-10 (`0.34.0`),
-> 08-13 22:14 (`0.34.0`), 08-20 20:22 (`0.36.0`). 08-13 到 08-20 之間沒有任何一次重啟,
-> 所以「已重啟, `/health` 自己說 0.35.0」不可能為真 — 當時跑著的是 08-13 起的 `0.34.0`.
-> `~/.headroom/settings.json` 至今不存在, `{"lossless": true}` 從未寫入過.
+> ```bash
+> headroom --version                                   # CLI
+> uv tool list | grep headroom                         # 裝了什麼
+> curl -s http://127.0.0.1:8787/health                 # 跑著的 proxy 自報
+> grep "Proxy started" ~/.headroom/logs/proxy.log*     # 啟動橫幅 (旁證)
+> ```
 >
-> 08-14 那則的 CLI 版本**沒有被 log 推翻, 而是無法重現**. 當時 proxy 停著, CLI 版本本來
-> 就不會在 log 留痕, 所以那則不可證也不可否證. 但 2026-08-20 升級前實測 CLI 自報 `0.34.0`,
-> 而使用者確認本機是 0.34 直升 0.36 從未裝過 0.35 — 一個裝過又退回的 0.35.0 沒有任何佐證,
-> 所以這則按「與後續觀察矛盾」撤回, 不按「已證明為假」撤回.
+> 前三個都可能一致地錯 —— 升級了 CLI 卻沒 `headroom install restart`, 三者會有兩者說新版
+> 而實際跑的是舊的. 啟動橫幅是唯一不經由 CLI 的紀錄, 也是唯一能把 uptime 對上的.
 >
-> 這是 `docs/research/landing-log.md` 已經記過一次的錯誤重演 —
-> 「2026-08-10 本機查核: CLI 與 proxy 都是 0.34.0」寫下的當天本機其實是 0.33.0. 兩次
-> 都是把**打算升到的版本**當成**已經在跑的版本**寫進查核紀錄. 下面兩則原文保留而不刪改:
-> 被推翻的紀錄要留著才看得出錯在哪, 這與「較舊的紀錄不因較新的紀錄作廢」是兩回事 —
-> 那條規則管的是先後, 這裡管的是真假.
->
-> ~~2026-08-14 本機查核: CLI 是 `headroom-ai 0.35.0`, 與 PyPI latest 及 GitHub release <!-- retracted 2026-08-20 -->
-> tag `v0.35.0` (兩者皆 2026-08-13) 同版. **proxy 版本這次沒有觀察到** —
-> `headroom install status` 回報本機的 `persistent-service` deployment 是
-> `stopped` / `Healthy: no`, 停著的服務問不出版本, 升級後也尚未 `install restart`.~~
-> (CLI 版本部分已推翻; 「問不出停著的服務」這個方法論結論仍然成立.)
->
-> ~~**2026-08-17 補上那個缺口**: `persistent-service` 已重啟, `install status` 回報
-> `running` / `Healthy: yes`, 而 `/health` 自己說 `0.35.0`. `/settings` 是
-> `{"lossless": true}`, 啟動 banner 少了 `tool_injection`.~~ (整則推翻, 見上.)
->
-> 2026-08-10 的更前一次查核 (CLI 與 proxy 皆 0.34.0, 舊 context-tool 旗標被 `wrap claude`
-> 拒絕) 與 log 相符, 維持原樣.
+> 可攜的宣稱只有**下限**: 「需要 0.34 以上」在每台都成立, 「這台裝的是某一版」只在一台成立.
+> 本文件其餘部分寫的是下限與跨機器行為, 不寫確切版本.
 
 > 只記錄跨機器的架構, 操作邊界與版本轉換. venv, PID, port 與 profile 名稱屬 machine-local state, 不進 git.
 
@@ -181,13 +163,20 @@ supported tools 清單仍無 `agy`.
 
 ### CCR 串流失效與 `lossless` 處置 (0.35 的問題, 0.36 已修)
 
-**本機從未套用過這個處置.** `~/.headroom/settings.json` 至今不存在, 0.36 的啟動 banner
-含 `tool_injection`, `/settings` 是 `{}` — CCR 是全開的預設狀態. 本機也沒跑過 0.35, 所以
-下面描述的症狀在這台沒有發生過.
+**你這台有沒有套用過, 要當場查, 不要從這裡推**:
+
+```bash
+cat ~/.headroom/settings.json 2>/dev/null || echo "沒套用過"
+grep "Proxy started" -A12 ~/.headroom/logs/proxy.log | grep tool_injection
+```
+
+有 `{"lossless": true}` 就是套用過; banner 含 `tool_injection` 表示 CCR 是全開的預設狀態.
+這兩件在不同部署上答案不同, 所以本文件不記錄任何一台的答案 —— 2026-08-20 就是有人記了,
+而那個答案在另一台是相反的.
 
 這節保留的理由有兩個: 它是唯一寫下這個開關「設在哪, 怎麼查, 怎麼撤」的地方, 而 0.36 的
 CCR 修正 (#3092, #3094, #3102, #2953, #3142) 動的正是串流那條路徑 — 也就是下面那條撤除
-判準要求先確認的事, 這次確認得到. 若日後在別台機器或別的版本重新遇到, 從這裡開始.
+判準要求先確認的事, 這次確認得到.
 
 **這是上游 bug 的暫時處置, 不由本 repo 管理.** 開關住在 machine-local 的
 `~/.headroom/settings.json`, 與 profile, port 同級, 不進 git.
