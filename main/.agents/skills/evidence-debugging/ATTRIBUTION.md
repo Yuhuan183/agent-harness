@@ -5,7 +5,7 @@ Derived from Matt Pocock's agent skills.
 - **Source**: <https://github.com/mattpocock/skills>
 - **Upstream skill**: `skills/engineering/diagnosing-bugs/SKILL.md`
 - **Reviewed release**: `v1.2.3` (2026-08-06)
-- **Reviewed commit**: `068b6e0c62393147daf03530149cdce209c93da8` — the Claude
+- **Reviewed commit**: `885e2ca4d842d139e9aef4e48d366c63cb1b8013` — the Claude
   marketplace pin resolved on 2026-08-17, not the release tag. The two disagree
   by twelve commits while the version string does not move, so the SHA is the
   only thing that identifies what was read.

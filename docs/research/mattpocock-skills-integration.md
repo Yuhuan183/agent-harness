@@ -3,7 +3,7 @@
 - 研究日期: 2026-08-14; 上游重查與第一批原始碼精讀 2026-08-17
 - 上游: [mattpocock/skills](https://github.com/mattpocock/skills)
 - 研究基準 (2026-08-14): Claude marketplace catalog `f8f7402b0ff3b88bf311d2efedeb6aad5841d0bb`; upstream pin `8b78b531ab965735c5dc74f6f7a219e1e37326df`; release `v1.2.3` (`6acc160e4e0cd062dbbbd7a1b26ae92855edf07e`)
-- **目前 marketplace pin (2026-08-17): `068b6e0c62393147daf03530149cdce209c93da8`** — 見[上游 pin 三天內就動了](#上游-pin-三天內就動了)
+- **目前 marketplace pin (2026-08-21): `885e2ca4d842d139e9aef4e48d366c63cb1b8013`** — 前一個是 `068b6e0` (2026-08-17), 中間 12 個 commit, 蒸餾來源的**內容沒有實質變動**, 見[2026-08-21 重新溯源](#2026-08-21-重新溯源-上游動了-12-個-commit-規則一條沒動)
 - 本地基準: branch `new-artificialanalysis`; HEAD `8d5d2e18e0fca9c341429bd6ce8a51040d5e4f10`
 
 > 本文件保存上游事實, 方案比較與採用決策. 實作順序, 檔案範圍, 驗收與停止條件在
@@ -281,6 +281,45 @@ repo 反覆在別的載體上重新發現的同一件事 (帶日期的查核宣�
 否定面 (不要一次寫完所有檢查), 把正面規則丟掉了.
 
 所以那條規則的正確歸屬不是「未來某個 skill 的唯一價值」, 而是**這次蒸餾漏掉的一條**.
+
+## 2026-08-21 重新溯源: 上游動了 12 個 commit, 規則一條沒動
+
+先解析當前 marketplace pin 再比對, 而不是重讀這份文件. Pin 從 `068b6e0` 前進到
+`885e2ca`, 中間 12 個 commit (2026-08-17 ~ 08-19).
+
+**12 個裡有 4 件不是標點**: 移掉 grill-with-docs 的「It assumes one writer」一節;
+wait-what 改成沿 `CONTEXT-MAP.md` 找對的 `CONTEXT.md`; 把 SKILL.md description
+裡沒引號的冒號補上引號; 以及全 repo 移除 em-dash. **前三件都不在我們蒸餾的檔案上. **
+
+### 四個被釘的檔案, 逐位元組
+
+| 上游檔案 | sha256 前 16 | bytes |
+|---|---|---|
+| `diagnosing-bugs/SKILL.md` | `573142d2…` → `77f3cf31…` | 8614 → 8529 |
+| `tdd/SKILL.md` | `6875cbca…` → `cb01f66b…` | 3578 → 3549 |
+| `tdd/tests.md` | 未變 | 2214 |
+| `tdd/mocking.md` | 未變 | 1481 |
+
+兩份 reference **完全沒動**. 另外兩份各少 85 與 29 bytes, 而那正是破折號的重量.
+
+**把標點與空白全部去掉只比字母**, 剩下的差異只有連接詞: `try them` 被刪, 以及插入
+`that`, `and`, `so`, `as`, `it` —— 那是把破折號子句改寫成 `(…)`,
+`:` 與 `,` 之後的文法修補. **沒有任何一條規則變動**, 所以既有蒸餾全部維持有效.
+
+### 處置
+
+- **Pin 前進到 `885e2ca`**, 七個站點連同帳本的兩組雜湊一起動; `upstream-recheck.sh`
+  在新 pin 上跑綠. 歷史引用 (`8b78b53`, `068b6e0`) 原樣保留 —— 它們記的是當時讀了什麼.
+- **上游新增的寫作規則「不用 em-dash」: 不採用.** 那是上游的自家文風, 沒有給出會轉移過來的
+  理由; 本專案的標點由 [docs/README.md 規則 7](../README.md) 與 `readable-zh-tw` 管.
+  記下來是因為兩份 ATTRIBUTION 逐字引用過上游散文, 而來源現在沒有破折號了 —— 下次再引要
+  以新 pin 取證.
+
+### 這次**沒有**做的事
+
+兩份 ATTRIBUTION 都寫著還欠一次逐字用詞比對 ("Re-classify every section, not only the ones
+already listed"). **上游這次只動標點, 並不能免掉那件事** —— 它要比對的是我們的分類對不對,
+不是上游有沒有變. 那筆債還在.
 
 ## 本機證據: CCR 事件同時檢驗了這兩個 skill
 
