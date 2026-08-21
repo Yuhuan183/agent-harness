@@ -39,9 +39,13 @@ class DocumentInventoryTests(unittest.TestCase):
                 path.relative_to(ROOT).as_posix()
                 for path in (ROOT / root).rglob("*.md")
             )
+        # Derived, not named. This read `.agents/skills/harness-review`
+        # literally, so `upstream-distillation` landed beside it on 2026-08-21
+        # uncovered and unmentioned - the same shape as an unclassified `docs/`
+        # subdirectory, which is the failure `pattern_precedence` warns about.
         candidates.update(
             path.relative_to(ROOT).as_posix()
-            for path in (ROOT / ".agents/skills/harness-review").rglob("*.md")
+            for path in (ROOT / ".agents/skills").rglob("*.md")
         )
         patterns = (
             self.inventory["reviewed_current_guidance"]

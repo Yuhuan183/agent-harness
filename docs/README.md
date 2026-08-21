@@ -25,6 +25,7 @@
 | 跑行為 trap eval | [evals/traps/](../evals/traps/) 各 README | [QC 說明](qc-explainer.md) 取證段 |
 | 跑多回合 lifecycle replay | [evals/replay/](../evals/replay/) | [存活判準](research/lifecycle-replay.md) |
 | 深度審查本 repo 設計 | [harness-review](../.agents/skills/harness-review/SKILL.md) (dev-only) | [orchestration 不變量](plans/orchestration-state.md) |
+| 重查上游或蒸餾一個新的 | [upstream-distillation](../.agents/skills/upstream-distillation/SKILL.md) (dev-only) | [peer-harnesses](research/peer-harnesses.md) |
 | 決定下一步做什麼 | [待辦方向](research/README.md#待辦方向) | [orchestration 不變量](plans/orchestration-state.md) |
 
 ## 文件責任

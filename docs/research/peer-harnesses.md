@@ -185,7 +185,7 @@ Nanako0129/pilotfish 改編到 Codex CLI, 2026-08-21 首次進入本文件. 對�
 |---|---|---|
 | 七個角色: `scout`, `plan-verifier`, `executor`, `mech-executor`, `security-reviewer`, `security-executor`, `verifier` | 同樣七個, 只有 `explore` 對 `scout` 的命名不同 | **獨立收斂**, 不動. 兩邊各自演化到同一組邊界, 是這組切法本身站得住的證據 |
 | review intent 每回合可選 `fast`/`default`/`strict`, 但**不得覆蓋必要核准與安全閘** | 逃生口同樣不繞過核准; 見[授權](../architecture/architecture.md#授權-每一道機制停在誰手上) | **獨立收斂**, 不動 |
-| **review-service circuit breaker**: reviewer/verifier 收據缺席時一次有界重試, 然後進入明確等待狀態; 且「review 服務失效不是使用者決策」, 不得據以宣告 readiness, 驗證, 憑證或對外寫入 | **無等價.** 本專案只規定 verifier 的額度與放置點, 沒有任何一條說 verifier 沒回來時該怎麼辦 | **缺口, 建議採用**. 見[待辦方向](README.md#待辦方向) |
+| **review-service circuit breaker**: reviewer/verifier 收據缺席時一次有界重試, 然後進入明確等待狀態; 且「review 服務失效不是使用者決策」, 不得據以宣告 readiness, 驗證, 憑證或對外寫入 | 原本只規定 verifier 的額度與放置點, 沒有一條說 verifier 沒回來時該怎麼辦 | **已落地** (2026-08-21). 與 [cablate/baton 的 fall-back 規則](#cablatebaton-baton-dispatch-的上游)合併成一條, 兩支 dispatch skill 各帶一份 |
 | 三個 tier (luna/terra/sol) 之中 **terra 沒有任何角色在用** —— luna 跑例行執行與驗證, sol 只給 `plan-verifier` 與安全審查那類窄邊界 | H/X 兩檔 | **佐證現況**. 一個獨立實作定義了三檔又空著中間那檔, 是「檔位不是越多越好」的外部證據 |
 | intent routing 先於角色: `execute` / `explore_then_plan` / `co_discover` 三種初始模式由請求形狀決定 | 無等價; client 自身的 plan mode 已承擔「廣泛請求先唯讀」 | **不採用**, 與 v1.3.9「互動模式先於工作者」同一裁決 |
 | `direction_checkpoint`: 續行 / 轉向 / 回退 / 再問, 四個出口 | 計數式的「同一 readiness-unit 兩次自動修訂後交還使用者」 | **不同機制, 同一關切**. 我們的是次數上限, 它的是決策點; 目前不換 |
