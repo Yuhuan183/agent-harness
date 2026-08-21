@@ -8,6 +8,7 @@ changes, which is a supplement to parity and never a substitute for it.
 Findings and check failures are printed to stdout for the active session.
 The hook is fail-open, but its throttle advances only after the checks complete.
 """
+import importlib.util
 import json
 import os
 import re
@@ -168,6 +169,71 @@ def load_project_skill_names(root):
         raise ValueError("project skill inventory does not match source directories")
     return names
 
+def last_completed_run():
+    """Epoch of the last completed run, from what the stamp *says*.
+
+    The throttle used to read the stamp's mtime, which is metadata anyone can
+    move without the run happening: a restore, an rsync or a touch makes an
+    overdue audit look fresh, and the audit then skips itself with no signal.
+    Observed on 2026-08-21 with a stamp whose content said 08-12 and whose mtime
+    said 08-19 - nine days without a run, reported as two. The content is
+    written only by a completed run (see the stamp write below), so it is the
+    field that means what the throttle needs. mtime stays as the fallback for a
+    stamp written before this change or corrupted since; a missing stamp reads
+    as "never ran".
+    """
+    try:
+        with open(STAMP, encoding="utf-8") as stream:
+            return float(stream.read().strip())
+    except (OSError, ValueError):
+        pass
+    try:
+        return os.path.getmtime(STAMP)
+    except OSError:
+        return float("-inf")
+
+
+def carrier_validated_on():
+    """Runtime that leaf-redispatch records as having carried `agent_type`.
+
+    Read from the sibling hook rather than duplicated here: one constant, and
+    an operator who advances it edits the file the gate actually lives in.
+    """
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "leaf-redispatch.py")
+    try:
+        with open(path, encoding="utf-8") as stream:
+            source = stream.read()
+    except OSError:
+        return None
+    match = re.search(r"^CARRIER_VALIDATED_ON\s*=\s*\((\d+),\s*(\d+),\s*(\d+)\)",
+                      source, re.MULTILINE)
+    return tuple(map(int, match.groups())) if match else None
+
+
+def live_runtime_version():
+    """This machine's Claude Code version, or None when it cannot be read.
+
+    Reuses runtime-guard's cached probe so an upgrade invalidates both at once;
+    falls back to nothing rather than to a stale answer, because a wrong version
+    here would silence the finding it is supposed to raise. The environment
+    override exists only for deterministic tests.
+    """
+    forced = os.environ.get("AGENT_RUNTIME_VERSION")
+    if forced:
+        match = re.search(r"\b(\d+)\.(\d+)\.(\d+)\b", forced)
+        return tuple(map(int, match.groups())) if match else None
+    guard = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         "runtime-guard.py")
+    try:
+        spec = importlib.util.spec_from_file_location("runtime_guard", guard)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.parse_version(module.probe_version())
+    except Exception:  # noqa: BLE001 - an unreadable probe is "unknown", not a failure
+        return None
+
+
 # Held outside the run so that a run stopped part-way still reports what it
 # managed to find. Losing the partial findings would make an overrun look like
 # a clean session, which is the failure the budget exists to make visible.
@@ -175,7 +241,7 @@ findings = []
 checks_completed = True
 
 try:
-    if os.path.exists(STAMP) and time.time() - os.path.getmtime(STAMP) < PERIOD:
+    if time.time() - last_completed_run() < PERIOD:
         sys.exit(0)
 
     claude_dir = os.path.expanduser("~/.claude")
@@ -795,6 +861,28 @@ try:
                 "(main/claude/hooks/verifier-quota.py)"
             )
     except (OSError, ValueError, AttributeError):
+        pass
+
+    # leaf-redispatch cannot be audited the same way: its carrier is absent on
+    # every healthy dispatch and present only on the violation it exists to
+    # refuse, so "never fired" and "can no longer fire" produce identical
+    # evidence. The runtime version is the only thing that moves, and the field
+    # is undocumented payload shape that a release may change without saying so.
+    try:
+        validated = carrier_validated_on()
+        live = live_runtime_version()
+        if validated and live and live > validated:
+            findings.append(
+                "leaf-redispatch carrier unvalidated on this runtime: the gate "
+                f"reads `agent_type`, last observed on Claude Code "
+                f"{'.'.join(map(str, validated))}, and this machine runs "
+                f"{'.'.join(map(str, live))}. Nothing here can tell a fleet that "
+                "never re-dispatches from a gate that stopped seeing its field. "
+                "Re-validate with one dispatch whose leaf attempts a nested "
+                "dispatch (expect exit 2), then advance CARRIER_VALIDATED_ON in "
+                "main/claude/hooks/leaf-redispatch.py"
+            )
+    except (OSError, ValueError):
         pass
 
     if checks_completed:

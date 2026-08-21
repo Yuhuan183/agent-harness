@@ -183,6 +183,20 @@ def read_repo(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
+def carrier_pin() -> str:
+    """The runtime `leaf-redispatch` records as having carried `agent_type`.
+
+    Read from the hook so no test restates it: a pin that two files disagree
+    about is worse than no pin, and the gate is the file an operator advances.
+    """
+    match = re.search(
+        r"^CARRIER_VALIDATED_ON\s*=\s*\((\d+),\s*(\d+),\s*(\d+)\)",
+        read_repo("main/claude/hooks/leaf-redispatch.py"), re.MULTILINE)
+    if match is None:
+        raise AssertionError("leaf-redispatch must pin its validated runtime")
+    return ".".join(match.groups())
+
+
 def deployed_skill_files() -> set[str]:
     """Every skill this repo ships, in the deployed spelling `read()` accepts.
 

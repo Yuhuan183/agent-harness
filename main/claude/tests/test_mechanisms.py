@@ -1,5 +1,7 @@
 """Deterministic mechanisms: hooks, sync preflight, statusline, guards."""
+import ast
 import shutil
+import time
 import uuid
 
 from support import *  # noqa: F401,F403
@@ -205,6 +207,57 @@ class MechanismTests(unittest.TestCase):
         self.assertIn("leaf-redispatch.py", commands[0])
         self.assertEqual(sum("leaf-redispatch.py" in command
                              for command in commands), 1)
+
+    def _integrity_run(self, temp_home: str, age_days: float,
+                       mtime_days: float, extra_env: dict | None = None):
+        """Run the audit against a stamp whose content and mtime disagree."""
+        hook = ROOT / "main/claude/hooks/weekly-integrity.py"
+        stamp = Path(temp_home) / ".claude" / "telemetry" / ".integrity-last-run"
+        stamp.parent.mkdir(parents=True, exist_ok=True)
+        now = time.time()
+        stamp.write_text(str(int(now - age_days * 86400)), encoding="utf-8")
+        os.utime(stamp, ((now - mtime_days * 86400),) * 2)
+        env = {**os.environ, "HOME": temp_home, **(extra_env or {})}
+        return subprocess.run([sys.executable, str(hook)], env=env,
+                              check=True, capture_output=True, text=True)
+
+    def test_weekly_integrity_throttles_on_the_recorded_run_not_the_mtime(self) -> None:
+        # mtime is metadata a restore, an rsync or a touch can move without the
+        # run happening; only the content is written by a completed run. A stamp
+        # whose mtime says "fresh" and whose content says "overdue" is the case
+        # that skipped this audit for nine days on 2026-08-21.
+        with tempfile.TemporaryDirectory() as temp_home:
+            overdue = self._integrity_run(temp_home, age_days=8, mtime_days=0)
+            self.assertIn("issues found", overdue.stdout)
+
+        with tempfile.TemporaryDirectory() as temp_home:
+            fresh = self._integrity_run(temp_home, age_days=0, mtime_days=8)
+            self.assertEqual(fresh.stdout, "")
+
+    def test_weekly_integrity_reports_an_unvalidated_leaf_redispatch_carrier(self) -> None:
+        # The gate's carrier is absent on every healthy dispatch, so no count
+        # separates "never fired" from "can no longer fire". The runtime version
+        # is the only observable that moves, and it must be read from the pin in
+        # the hook itself rather than restated here.
+        major, minor, patch = (int(part) for part in carrier_pin().split("."))
+
+        with tempfile.TemporaryDirectory() as temp_home:
+            newer = self._integrity_run(
+                temp_home, age_days=8, mtime_days=8,
+                extra_env={"AGENT_RUNTIME_VERSION":
+                           f"{major}.{minor}.{patch + 1} (Claude Code)"})
+            self.assertIn("leaf-redispatch carrier unvalidated", newer.stdout)
+            self.assertIn("CARRIER_VALIDATED_ON", newer.stdout)
+
+        for label, version in (("same", (major, minor, patch)),
+                               ("older", (major, minor, max(patch - 1, 0)))):
+            with tempfile.TemporaryDirectory() as temp_home:
+                quiet = self._integrity_run(
+                    temp_home, age_days=8, mtime_days=8,
+                    extra_env={"AGENT_RUNTIME_VERSION":
+                               ".".join(map(str, version))})
+                self.assertNotIn("leaf-redispatch carrier", quiet.stdout,
+                                 f"a {label} runtime must not ask for re-validation")
 
     def test_weekly_integrity_stamps_only_after_completed_checks(self) -> None:
         hook = ROOT / "main/claude/hooks/weekly-integrity.py"
@@ -434,7 +487,14 @@ class MechanismTests(unittest.TestCase):
             }) + "\n", encoding="utf-8")
 
             env = {**os.environ, "HOME": temp_home,
-                   "AGENT_HARNESS_REPO": str(ROOT)}
+                   "AGENT_HARNESS_REPO": str(ROOT),
+                   # Runtime currency is a different subject with its own test:
+                   # the carrier check fires on a correctly deployed machine
+                   # whose CLI has moved past the validated version, which is a
+                   # true finding and would make this deployment test red on
+                   # every upgrade. Pin the version so this one varies only the
+                   # thing it is about.
+                   "AGENT_RUNTIME_VERSION": carrier_pin()}
             # The ledger paths are read from HOME; an inherited override would
             # point the hook at this machine's real telemetry.
             env.pop("AGENT_EXPERIENCE_LEDGER", None)
@@ -1243,7 +1303,16 @@ class MechanismTests(unittest.TestCase):
             encoding="utf-8"
         )
         namespace: dict = {}
-        exec(source[:source.index("try:\n    if os.path.exists(STAMP)")], namespace)
+        # Exec every top-level node except the run block. Slicing on a literal
+        # line of the hook coupled this test to incidental wording and broke the
+        # moment the throttle was rewritten; the run block is the module's only
+        # top-level `try`, which is a structural fact rather than a spelling.
+        body = ast.parse(source).body
+        run_block = next(i for i, node in enumerate(body)
+                         if isinstance(node, ast.Try))
+        prelude = body[:run_block]
+        exec(compile(ast.Module(body=prelude, type_ignores=[]),
+                     "<weekly-integrity prelude>", "exec"), namespace)
 
         entries = namespace["load_deployment_manifest"](str(ROOT))
         manifest_modes = {mode for _, _, mode in entries}
