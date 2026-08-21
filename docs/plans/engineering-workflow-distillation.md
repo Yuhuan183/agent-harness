@@ -175,7 +175,7 @@ false-positive 檢查:
 第一次探測差點因此被報成「skill 在 Codex 上不能用」的嚴重缺陷, 是對照組 (`$readable-zh-tw`
 同樣句式) 擋下來的.
 
-## 三個 skill 的分工
+## 兩個 skill 的分工
 
 | 情況 | 誰 |
 |---|---|
@@ -283,15 +283,12 @@ replay 量不出來的原因是它需要一個「模型會做錯」的題目, �
 
 ## Upstream recheck workflow
 
-沒有自動更新器. 之後要重查時:
+流程由 [upstream-distillation](../../.agents/skills/upstream-distillation/SKILL.md) (dev-only)
+擁有, 這裡不再複述 —— 同一份步驟寫兩處會各自漂移.
 
-1. Resolve current upstream release, marketplace pin and full commit SHA.
-2. Compare only source skills named in each attribution file.
-3. Produce a table: `upstream change | local coverage | adopt/adapt/reject | required test`.
-4. Re-open local tuning before deciding; do not treat a newer upstream instruction as higher authority.
-5. Port selected changes through normal tests.
-6. Update attribution SHA only after the selected diff is reviewed; never advance the pin merely
-   because a check ran.
+有偵測器, 沒有自動套用器: [`scripts/upstream-pin-report.py`](../../scripts/upstream-pin-report.py)
+由各 `ATTRIBUTION.md` 推導出上游清單, 回答「有沒有人動了」, 但要不要跟進由人讀 diff 決定.
+本計畫在這件事上只留一條約束: **pin 只在選定的 diff 被審過之後才前進, 不因為跑過檢查而前進.**
 
 ## Rollback
 

@@ -221,3 +221,67 @@ class DocumentInventoryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DocumentCoherenceTests(unittest.TestCase):
+    """Two defects the 2026-08-21 review found, both invisible to link checking.
+
+    `docs/agent-engineering.md` (the six-layer analysis) was folded into
+    `docs/architecture/architecture.md` on 2026-08-20. Every link still
+    resolved, so nothing complained while the index kept describing one file as
+    two documents with opposite contents, and while the paragraph that arrived
+    from the folded file sat beside the one it duplicated. A checker that only
+    follows links cannot see either.
+    """
+
+    #: Short enough to catch a two-line CJK paragraph: the duplicate that
+    #: started this ran to 58 characters, and a 60-character floor missed it.
+    MIN_PARAGRAPH = 30
+
+    def _markdown(self) -> list[Path]:
+        paths = [ROOT / "README.md"]
+        for root in ("docs", "main"):
+            paths += [p for p in (ROOT / root).rglob("*.md")
+                      if "__pycache__" not in p.parts]
+        return paths
+
+    def test_no_paragraph_is_repeated_verbatim_in_one_document(self) -> None:
+        offenders = []
+        for path in self._markdown():
+            seen: dict[str, int] = {}
+            fenced = False
+            for block in re.split(r"\n\s*\n", path.read_text(encoding="utf-8")):
+                stripped = block.strip()
+                if stripped.count("```") % 2:
+                    fenced = not fenced
+                    continue
+                if fenced or stripped.startswith(("|", "#", "```", "-", "*", ">")):
+                    continue
+                key = " ".join(stripped.split())
+                if len(key) < self.MIN_PARAGRAPH:
+                    continue
+                seen[key] = seen.get(key, 0) + 1
+                if seen[key] == 2:
+                    offenders.append(
+                        f"{path.relative_to(ROOT)}: {key[:60]}")
+        self.assertEqual(offenders, [], "verbatim duplicate paragraph(s): "
+                                        + "; ".join(offenders))
+
+    def test_the_responsibility_table_gives_each_document_one_row(self) -> None:
+        """Two rows for one file is how a document acquires two contradictory
+        job descriptions. Rows whose `保存內容` is a dash are pointers to an
+        owner declared elsewhere in the same table, so they are not owners and
+        do not collide."""
+        table = read_repo("docs/README.md").split("## 文件責任", 1)[1]
+        owners: dict[str, str] = {}
+        collisions = []
+        for line in table.splitlines():
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            if len(cells) < 4 or cells[0] in ("層", "---") or cells[2] in ("—", ""):
+                continue
+            for target in re.findall(r"\]\(([^)]+\.(?:md|json))\)", cells[1]):
+                if target in owners:
+                    collisions.append(f"{target}: {owners[target]} vs {cells[0]}")
+                owners[target] = cells[0]
+        self.assertEqual(collisions, [],
+                         "one document, two owning rows: " + "; ".join(collisions))
