@@ -8,7 +8,7 @@
 | 你要做什麼 | 從哪裡開始 | 接著看 |
 |---|---|---|
 | 由上而下讀懂整套架構 | [架構總覽](architecture/architecture.md) | [根 README](../README.md) |
-| 從最小單位往上看懂 agent engineering | [分層剖析](architecture/architecture.md) | [架構總覽](architecture/architecture.md), [Playbook](engineering-playbook.md) |
+| 從最內層往外看懂 agent engineering | [context](architecture/context-engineering.md) | [harness](architecture/harness-engineering.md), [loop](architecture/loop-engineering.md), [graph](architecture/graph-engineering.md) |
 | 評估一個升級提案 | [升級評估: 五個問題](architecture/architecture.md#六-升級評估-五個問題) | [跨層的兩條軸](architecture/architecture.md#四-跨層的兩條軸), [evidence-ladder](../main/.agents/skills/evidence-ladder/SKILL.md) |
 | 理解整體架構與資料流 | [根 README](../README.md) | [Harness Engineering Playbook](engineering-playbook.md) |
 | 安裝, 同步或回滾 | [配置與部署](setup.md) | [Claude README](../main/claude/README.md), [Codex README](../main/codex/README.md) |
@@ -33,27 +33,26 @@
 每份文件對應[四層](architecture/architecture.md#三-四層地圖)的哪一層寫在第一欄. 有四件橫跨所有
 層, 標成「跨層」: 證據 (憑什麼算數), 部署 (規則怎麼真的到機器上), 授權 (誰有權決定)
 與成本 (值不值得). 有兩層的規範不在
-`docs/` 底下 —— ② Context 與 ③ Loop 由出貨的 skill 擁有, 那欄直接指過去.
+`docs/` 底下 —— Context 與 Loop 由出貨的 skill 擁有, 那欄直接指過去.
 
 | 層 | 文件 | 保存內容 | 不保存內容 |
 |---|---|---|---|
-| 跨層 · 地圖 | [架構總覽](architecture/architecture.md) | 完整資料流, 核心想法, 四層地圖, 跨層的兩條軸與四件橫跨的事, 升級評估的五個問題 | 每一層自己的職責與實作 (在四份層文件), 跨專案方法論 (在 playbook), 會過期的量測值 (指向腳本) |
+| 跨層 · 地圖 | [架構總覽](architecture/architecture.md) | 完整資料流, 核心想法, 四層地圖, 跨層的兩條軸, 四件橫跨的事, 升級評估的五個問題, 層與層之間 | 每一層自己的職責, 實作與已知失效 (在四份層文件), 跨專案方法論 (在 playbook), 實驗原始數據 (在 research/), 會過期的量測值 (指向腳本) |
 | Context | [context-engineering](architecture/context-engineering.md) | 模型看到什麼: 一條子句怎麼寫, 一個 window 裡放什麼 | 預算的判定表與驗收 (在契約瘦身) |
 | Harness | [harness-engineering](architecture/harness-engineering.md) | 模型周圍: 工具, 權限, 監控, 防護欄 | 每道 hook 的攔截條件 (在 hook 系統) |
 | Loop | [loop-engineering](architecture/loop-engineering.md) | 單一 agent 的迴路: 規劃 → 執行 → 驗證 → 重試, 各自的停止條件 | 派工形狀與 brief (在 baton-dispatch) |
 | Graph | [graph-engineering](architecture/graph-engineering.md) | 多 agent 協作: 誰先做, 誰並行, 做完給誰; QC 與五個狀態 | QC 規則字面 (在派工 skill), 狀態承載物 (在派工生命週期) |
-| 跨層 · 全六層 | [分層剖析](architecture/architecture.md) | 六層各自的職責, 實作, 儀器, 已知失效與升級判準; 跨層的兩條軸; 升級評估的五個問題 | 跨專案通則的完整論證 (在 playbook), 這個系統的骨幹敘事 (在架構總覽), 實驗原始數據 (在 research/) |
-| 跨層 · 通則 | [Harness Engineering Playbook](engineering-playbook.md) | 可跨專案複用的設計與驗證方法, 以及每條通則的完整論證 | 當前 route pins, 實驗原始數據, 本 repo 逐層的實作 (在分層剖析) |
-| ① 子句 | [契約瘦身規範](contract-slimming.md) | CLAUDE.md/AGENTS.md 的內容判定, 預算原則與驗收 | 歷史歷程, 當前 orchestration 狀態 |
-| ② Context | 規範在 [contract-slimming](contract-slimming.md) 與 [headroom-runtime](../main/.agents/docs/headroom-runtime.md) | — | — |
-| ③ Loop | 規範在 [baton-dispatch](../main/claude/skills/baton-dispatch/SKILL.md) | — | — |
-| ④ Harness | [Hook 系統](hook-system.md) | fail-open/fail-closed 語意, 逐事件清單, 為何值得信任 | hook 內部實作細節 (各 hook 檔內 docstring) |
-| ⑤ Graph | [QC 白話說明](qc-explainer.md) | 為什麼需要 QC, 四個步驟各吃什麼, 白話的取證說明 | 有約束力的 QC 規則字面 (在兩份派工 skill) |
-| ⑤ Graph | [派工生命週期](dispatch-lifecycle.md) | 派工五個狀態的承載物, 不成立的推論, 驗證清單 | 派工形狀與 QC (baton-dispatch), provider 選擇 (provider-routing) |
-| ⑤ Graph | [Fable 5 安全 fallback](research/fable-5-fallback.md) | 用 Fable 5 時怎麼避免被切到 Opus, 以及可行性邊界 | 本 repo 的跨 provider fallback 規則 (在 provider-routing) |
-| ⑥ Evidence | [研究摘要](research/README.md) | benchmark 快照, 成本口徑, 案例取捨, 研究缺口; `research/` 底下唯一的現行結論來源 | runtime 強制規則, 現行 route pins, 逐次查核的原始紀錄 (在 [landing-log](research/landing-log.md)) |
-| ⑥ Evidence | [Matt Pocock skills 導入研究](research/mattpocock-skills-integration.md) | 上游快照, 工作流比較, 相容性, 採用與拒絕理由 | 實作進度, runtime skill 本體 |
-| ⑥ Evidence | [2026-07-28 統一稽核](document-audit.md) | 那一次稽核的六維度結果與範圍信封 | 之後的變更 (信封是活的, 見該文件的注記) |
+| 跨層 · 通則 | [Harness Engineering Playbook](engineering-playbook.md) | 可跨專案複用的設計與驗證方法, 以及每條通則的完整論證 | 當前 route pins, 實驗原始數據, 本 repo 逐層的實作 (在四份層文件) |
+| Context · 子句 | [契約瘦身規範](contract-slimming.md) | CLAUDE.md/AGENTS.md 的內容判定, 預算原則與驗收 | 歷史歷程, 當前 orchestration 狀態 |
+| Context | 規範在 [contract-slimming](contract-slimming.md) 與 [headroom-runtime](../main/.agents/docs/headroom-runtime.md) | — | — |
+| Loop | 規範在 [baton-dispatch](../main/claude/skills/baton-dispatch/SKILL.md) | — | — |
+| Harness | [Hook 系統](hook-system.md) | fail-open/fail-closed 語意, 逐事件清單, 為何值得信任 | hook 內部實作細節 (各 hook 檔內 docstring) |
+| Graph | [QC 白話說明](qc-explainer.md) | 為什麼需要 QC, 四個步驟各吃什麼, 白話的取證說明 | 有約束力的 QC 規則字面 (在兩份派工 skill) |
+| Graph | [派工生命週期](dispatch-lifecycle.md) | 派工五個狀態的承載物, 不成立的推論, 驗證清單 | 派工形狀與 QC (baton-dispatch), provider 選擇 (provider-routing) |
+| Graph | [Fable 5 安全 fallback](research/fable-5-fallback.md) | 用 Fable 5 時怎麼避免被切到 Opus, 以及可行性邊界 | 本 repo 的跨 provider fallback 規則 (在 provider-routing) |
+| 跨層 · 證據 | [研究摘要](research/README.md) | benchmark 快照, 成本口徑, 案例取捨, 研究缺口; `research/` 底下唯一的現行結論來源 | runtime 強制規則, 現行 route pins, 逐次查核的原始紀錄 (在 [landing-log](research/landing-log.md)) |
+| 跨層 · 證據 | [Matt Pocock skills 導入研究](research/mattpocock-skills-integration.md) | 上游快照, 工作流比較, 相容性, 採用與拒絕理由 | 實作進度, runtime skill 本體 |
+| 跨層 · 證據 | [2026-07-28 統一稽核](document-audit.md) | 那一次稽核的六維度結果與範圍信封 | 之後的變更 (信封是活的, 見該文件的注記) |
 | 跨層 · 部署 | [配置與部署](setup.md) | bootstrap, apply, 驗收與回滾步驟 | 模型選擇理由 |
 | 跨層 · 計畫 | [Engineering workflow 蒸餾實作計畫](plans/engineering-workflow-distillation.md) | 已核准方向, 分階段 scope, gates, rollback 與 completion criteria | 上游研究全文, 已部署狀態 |
 | 跨層 · 清單 | [Orchestration 不變量](plans/orchestration-state.md) | 八條必須成立的性質, 各自指向擁有者; 改動前後逐條檢查用 | 每條的論證與實作 (在四份層文件) |

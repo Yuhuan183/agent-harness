@@ -120,8 +120,6 @@ main/codex/scripts/model-routing resolve --surface claude-bridge --priority qual
 
 診斷型 hook (delegation audit, experience pending, weekly integrity) 一律 fail-open, 避免本機工具故障阻塞正常工作. 刻意 fail-closed 的是六個有界 gate: commit test gate 的 Bash 與 git pre-commit 兩側 (紅套件或逾時擋 commit), leaf-redispatch (leaf 嘗試再派工), runtime guard 的 PreToolUse gate (版本過舊或未知時擋受限 reviewer 派工), verifier 額度 (同一個 prompt 內的第二個 outcome verifier), 與 managed-target-guard (寫入 manifest 整份託管的 HOME 檔案). 它們各自只在狹窄條件下攔截; 真正的 correctness gate 仍由 focused tests, contract tests, 主 session QC 與必要時的獨立 verifier 負責. hook 系統的完整語意見 [hook 系統](docs/hook-system.md).
 
-診斷型 hook (delegation audit, experience pending, weekly integrity) 一律 fail-open, 避免本機工具故障阻塞正常工作. 刻意 fail-closed 的是六個有界 gate: commit test gate 的 Bash 與 git pre-commit 兩側 (紅套件或逾時擋 commit), leaf-redispatch (leaf 嘗試再派工), runtime guard 的 PreToolUse gate (版本過舊或未知時擋受限 reviewer 派工), verifier 額度 (同一個 prompt 內的第二個 outcome verifier), 與 managed-target-guard (寫入 manifest 整份託管的 HOME 檔案). 它們各自只在狹窄條件下攔截; 真正的 correctness gate 仍由 focused tests, contract tests, 主 session QC 與必要時的獨立 verifier 負責. hook 系統的完整語意見 [hook 系統](docs/hook-system.md).
-
 ## 管理邊界
 
 專案只管理可攜, 手寫且可 review 的配置. 以下保留為 machine-local, 不會被 Git 或自動部署覆蓋:
