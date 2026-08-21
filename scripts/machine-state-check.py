@@ -33,6 +33,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -49,8 +50,27 @@ VOLATILE = ("/debug/", "/projects/", "/history.jsonl", "/daemon.log", "/cache/",
             "/.runtime-version-cache")
 
 
-def snapshot(trees: tuple[str, ...]) -> tuple[dict[str, tuple[int, int]], int]:
-    state: dict[str, tuple[int, int]] = {}
+# Files at or below this are compared by content; larger ones by size and
+# nanosecond mtime. Comparing small files by stat alone missed a same-size
+# rewrite landing inside the same second (reproduced 2026-08-21) - which is
+# exactly the shape of a state file whose counter or timestamp keeps its length.
+# Content rather than mtime for those, so a touch that changes nothing does not
+# read as a change. Hashing this tree costs about 2 seconds.
+HASH_LIMIT = 1 << 20
+
+
+def fingerprint(path: str, size: int, mtime_ns: int) -> tuple:
+    if size > HASH_LIMIT:
+        return (size, mtime_ns)
+    try:
+        with open(path, "rb") as handle:
+            return ("h", hashlib.blake2b(handle.read(), digest_size=16).digest())
+    except OSError:
+        return (size, mtime_ns)
+
+
+def snapshot(trees: tuple[str, ...]) -> tuple[dict[str, tuple], int]:
+    state: dict[str, tuple] = {}
     skipped = 0
     for tree in trees:
         root = os.path.expanduser(tree)
@@ -64,7 +84,7 @@ def snapshot(trees: tuple[str, ...]) -> tuple[dict[str, tuple[int, int]], int]:
                     info = os.stat(path)
                 except OSError:
                     continue
-                state[path] = (info.st_size, int(info.st_mtime))
+                state[path] = fingerprint(path, info.st_size, info.st_mtime_ns)
     return state, skipped
 
 
@@ -110,7 +130,8 @@ def main() -> int:
     what = args.command or "套件"
     print(f"{what}: {'綠' if observed.returncode == 0 else '紅 - 下面的差異可能只是它沒跑完'}")
     if not (added or removed or changed):
-        print(f"{what} 跑完, 這台機器沒有任何改變.")
+        print(f"{what}跑完, 這台機器沒有任何改變." if what == "套件"
+              else f"跑完 {what}, 這台機器沒有任何改變.")
         return 0
     for label, paths in (("新增", added), ("刪除", removed), ("改動", changed)):
         if paths:
