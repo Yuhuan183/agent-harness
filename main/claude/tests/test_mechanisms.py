@@ -221,6 +221,33 @@ class MechanismTests(unittest.TestCase):
         return subprocess.run([sys.executable, str(hook)], env=env,
                               check=True, capture_output=True, text=True)
 
+    def test_weekly_integrity_schedules_its_version_probe_on_the_deadline(self) -> None:
+        """Every subprocess in this run is handed out by `budget()`.
+
+        A warm cache answers in about a millisecond, so the cost is invisible
+        until it is not: the cold path is a subprocess, and it follows a CLI
+        upgrade, which is the one time this check has anything to say. A probe
+        outside the deadline spends time already given away, and spends it
+        silently - with no `budget()` call there is nothing left to raise, so
+        the overrun is not even reported as a timeout.
+        """
+        namespace: dict = {}
+        exec_weekly_integrity_prelude(namespace)
+        # An exhausted deadline must stop the probe, not shorten it.
+        namespace["_deadline"] = time.monotonic() - 1
+        environ = dict(os.environ)
+        os.environ.pop("AGENT_RUNTIME_VERSION", None)
+        try:
+            with self.assertRaises(namespace["DeadlineExhausted"]):
+                namespace["live_runtime_version"]()
+            # The override answers from the payload, so it schedules nothing and
+            # must stay readable even past the deadline.
+            os.environ["AGENT_RUNTIME_VERSION"] = "9.9.9"
+            self.assertEqual(namespace["live_runtime_version"](), (9, 9, 9))
+        finally:
+            os.environ.clear()
+            os.environ.update(environ)
+
     def test_weekly_integrity_throttles_on_the_recorded_run_not_the_mtime(self) -> None:
         # mtime is metadata a restore, an rsync or a touch can move without the
         # run happening; only the content is written by a completed run. A stamp
@@ -1307,12 +1334,7 @@ class MechanismTests(unittest.TestCase):
         # line of the hook coupled this test to incidental wording and broke the
         # moment the throttle was rewritten; the run block is the module's only
         # top-level `try`, which is a structural fact rather than a spelling.
-        body = ast.parse(source).body
-        run_block = next(i for i, node in enumerate(body)
-                         if isinstance(node, ast.Try))
-        prelude = body[:run_block]
-        exec(compile(ast.Module(body=prelude, type_ignores=[]),
-                     "<weekly-integrity prelude>", "exec"), namespace)
+        exec_weekly_integrity_prelude(namespace)
 
         entries = namespace["load_deployment_manifest"](str(ROOT))
         manifest_modes = {mode for _, _, mode in entries}

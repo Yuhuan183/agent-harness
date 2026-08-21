@@ -218,18 +218,27 @@ def live_runtime_version():
     falls back to nothing rather than to a stale answer, because a wrong version
     here would silence the finding it is supposed to raise. The environment
     override exists only for deterministic tests.
+
+    Scheduled through `budget()` like every other subprocess in this run. A warm
+    cache answers in about a millisecond, but the cold path is a subprocess, and
+    the cold path is exactly the one that follows a CLI upgrade - which is when
+    this check has something to say. Skipping the deadline here would spend time
+    it had already handed out, and silently: without `budget()` there is nothing
+    to raise, so the overrun would not even be reported.
     """
     forced = os.environ.get("AGENT_RUNTIME_VERSION")
     if forced:
+        # No subprocess, so nothing to schedule.
         match = re.search(r"\b(\d+)\.(\d+)\.(\d+)\b", forced)
         return tuple(map(int, match.groups())) if match else None
+    slice_seconds = budget(5)
     guard = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                          "runtime-guard.py")
     try:
         spec = importlib.util.spec_from_file_location("runtime_guard", guard)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        return module.parse_version(module.probe_version())
+        return module.parse_version(module.probe_version(slice_seconds))
     except Exception:  # noqa: BLE001 - an unreadable probe is "unknown", not a failure
         return None
 

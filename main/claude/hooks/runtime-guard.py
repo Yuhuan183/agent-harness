@@ -34,8 +34,13 @@ def parse_version(raw):
     return tuple(map(int, match.groups())) if match else None
 
 
-def probe_version():
-    """Return the raw version string, re-probing only when the binary changed."""
+def probe_version(timeout=5):
+    """Return the raw version string, re-probing only when the binary changed.
+
+    `timeout` lets a caller that is itself under a deadline hand down the slice
+    it actually has, instead of this function spending a cap the caller already
+    gave away. The default is the gate's own cap, so the gate path is unchanged.
+    """
     binary = shutil.which("claude")
     if binary:
         stat = os.stat(binary)
@@ -58,7 +63,7 @@ def probe_version():
             ["claude", "--version"],
             capture_output=True,
             text=True,
-            timeout=5,
+            timeout=timeout,
             check=False,
         )
         raw = f"{result.stdout} {result.stderr}"

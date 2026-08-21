@@ -1,6 +1,8 @@
 """Shared fixtures and helpers for the contract test suite."""
 from __future__ import annotations
 
+import ast
+
 import json
 import os
 import re
@@ -181,6 +183,20 @@ def read_repo(path: str) -> str:
     spellings, which silently rewrites a real repo path like
     `main/.agents/...` - fine for manifest work, wrong for a file listing."""
     return (ROOT / path).read_text(encoding="utf-8")
+
+
+def exec_weekly_integrity_prelude(namespace: dict) -> None:
+    """Define the hook's helpers without running its checks.
+
+    Everything before the module's single top-level `try` is definitions; that
+    block is the run. Slicing on a literal line of the file coupled a test to
+    incidental wording once already, so the boundary is taken structurally.
+    """
+    source = read_repo("main/claude/hooks/weekly-integrity.py")
+    body = ast.parse(source).body
+    run_block = next(i for i, node in enumerate(body) if isinstance(node, ast.Try))
+    exec(compile(ast.Module(body=body[:run_block], type_ignores=[]),
+                 "<weekly-integrity prelude>", "exec"), namespace)
 
 
 def carrier_pin() -> str:
