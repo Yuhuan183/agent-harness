@@ -1,6 +1,6 @@
 # 同業 agent harness 拆解
 
-> 對齊日期: Pilotfish 段 2026-08-08 (v1.3.10); Deep Agents 段 2026-08-20 (0.7.7). 只保留會影響本專案設計的存續結論.
+> 對齊日期: Pilotfish 段 2026-08-21 (仍是 v1.3.10); pilotfish-codex 段 2026-08-21 (1.7.1); Deep Agents 段 2026-08-20 (0.7.7). 只保留會影響本專案設計的存續結論.
 
 ## 這份文件回答什麼
 
@@ -116,6 +116,13 @@ v1.3.8 那輪期間 Claude Code 自 2.1.220 更新到 2.1.221; v1.3.9 與 v1.3.1
 
 另外 v1.3.8 修正了自己的回溯分類器, 把 child-agent 工具與 main session 分開, 並比對已完成的 Agent 結果. 歷史結果由 0/20 更正為 7/20 通過 dispatch-reachability. 但二十次嘗試最終都落在同樣的十二個修改路徑與 12/12 fixture 測試.
 
+### 2026-08-21 重查: 上游沒有動
+
+最後一次 push 是 2026-08-07T22:26Z, 最新 release 仍是 v1.3.10 (2026-08-07). 也就是說
+上一次對齊之後**上游一次都沒有動**, 下面整段維持有效, 不需要重讀.
+
+值得記下來是因為「沒有變」和「沒有查」在文件上長得一樣. 這一行讓下一個人知道是哪一種.
+
 ### 與本專案的比較
 
 | Pilotfish 存續設計 | 本專案現況 | 裁決 |
@@ -161,6 +168,43 @@ v1.3.8 那輪期間 Claude Code 自 2.1.220 更新到 2.1.221; v1.3.9 與 v1.3.1
 本專案的 `test_contracts.py` 同樣以「短語存在」為主要保護. 所以壓縮常駐契約時不能只跑測試: 必須對壓縮前後做逐句對照, 特別檢查連接詞, 範圍限定詞與否定詞 - 這三類的改動不會動到任何被斷言的短語.
 
 第三個修正來自 v1.3.9 與 v1.3.10 的落差, 是上面那一條的時間軸版本: **靜態測試綠燈不等於出貨的那份位元組被行為認證過**. v1.3.9 的 39/39 靜態測試跑的是新政策, 而 6/6 的行為結果跑的是舊快照; 兩個數字擺在同一篇 release note 裡, 讀起來像同一份東西通過了兩種檢查. 上游自己標了限定並在下一版補跑, 但沒有標的話, 這種組合無法從外部分辨. 本專案的形狀完全相同: 275 條靜態斷言隨改隨跑, s7 的行為結果只在散文裡以 commit SHA 交代對應版本.
+
+## pilotfish-codex 1.5-1.7 (Codex CLI 分支)
+
+[miyago9267/pilotfish-codex](https://github.com/miyago9267/pilotfish-codex) 從
+Nanako0129/pilotfish 改編到 Codex CLI, 2026-08-21 首次進入本文件. 對齊到 1.7.1
+(2026-08-11, 最後 push 同日).
+
+**先講版本序**: 它自己走語意版號, 上游版本只當來源引用 —— 分支在 1.7.1 而本體在 v1.3.10,
+兩個數字沒有可比性. 安裝的版本戳在 `AGENTS.md` policy block 裡的 HTML 註解
+(`<!-- pilotfish-codex vX.Y.Z -->`), 與本專案用 manifest 加 parity 檢查是同一類做法.
+
+### 蒸餾結果
+
+| 分支的設計 | 本專案現況 | 裁決 |
+|---|---|---|
+| 七個角色: `scout`, `plan-verifier`, `executor`, `mech-executor`, `security-reviewer`, `security-executor`, `verifier` | 同樣七個, 只有 `explore` 對 `scout` 的命名不同 | **獨立收斂**, 不動. 兩邊各自演化到同一組邊界, 是這組切法本身站得住的證據 |
+| review intent 每回合可選 `fast`/`default`/`strict`, 但**不得覆蓋必要核准與安全閘** | 逃生口同樣不繞過核准; 見[授權](../architecture/architecture.md#授權-每一道機制停在誰手上) | **獨立收斂**, 不動 |
+| **review-service circuit breaker**: reviewer/verifier 收據缺席時一次有界重試, 然後進入明確等待狀態; 且「review 服務失效不是使用者決策」, 不得據以宣告 readiness, 驗證, 憑證或對外寫入 | **無等價.** 本專案只規定 verifier 的額度與放置點, 沒有任何一條說 verifier 沒回來時該怎麼辦 | **缺口, 建議採用**. 見[待辦方向](README.md#待辦方向) |
+| 三個 tier (luna/terra/sol) 之中 **terra 沒有任何角色在用** —— luna 跑例行執行與驗證, sol 只給 `plan-verifier` 與安全審查那類窄邊界 | H/X 兩檔 | **佐證現況**. 一個獨立實作定義了三檔又空著中間那檔, 是「檔位不是越多越好」的外部證據 |
+| intent routing 先於角色: `execute` / `explore_then_plan` / `co_discover` 三種初始模式由請求形狀決定 | 無等價; client 自身的 plan mode 已承擔「廣泛請求先唯讀」 | **不採用**, 與 v1.3.9「互動模式先於工作者」同一裁決 |
+| `direction_checkpoint`: 續行 / 轉向 / 回退 / 再問, 四個出口 | 計數式的「同一 readiness-unit 兩次自動修訂後交還使用者」 | **不同機制, 同一關切**. 我們的是次數上限, 它的是決策點; 目前不換 |
+| grounding floor (禁無據臆測) 與 stopping ceiling (禁失控分析) | evidence ladder 與最短驗證迴路 | 已落地, 口徑不同 |
+| Windows: 避開 POSIX-only 假設, 並用 LF 正規化維持 fixture hash 一致 | 指紋機制沒有跨平台考量 | **不採用但記著**. 本專案目前單平台; 真要跨平台時, 換行正規化是指紋會先壞掉的地方 |
+
+### 為什麼分支值得單獨看
+
+它不是翻譯. 兩週內從 1.5.1 走到 1.7.1, 動的是安裝架構 (Codex marketplace layout,
+PowerShell installer, 跨平台 CI), 執行期切分 (Hybrid runtime: 常駐 root bootstrap 最小化,
+其餘打包成 Codex plugin 的 skill), 以及上面那個 circuit breaker —— 每一項都是本體沒有的.
+
+**常駐最小化那一項尤其是獨立收斂**: 它把 orchestration 拆成「一定要在場的 bootstrap」加上
+「按需載入的 skill」, 理由和本專案把契約留常駐, `baton-dispatch` 按需載入完全一樣
+(見 [context 層](../architecture/context-engineering.md)).
+
+1.5.1 還公開了一個負面結果: native Sol transport 跑得穩, 但切換的品質/成本自評
+`5/10`, 而 release note 明說這一版不宣稱該項達標. 願意把自評分數寫進 release note 的
+上游, 它的正面數字才有重量.
 
 ## 採用效果與驗證
 

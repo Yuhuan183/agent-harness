@@ -324,8 +324,15 @@ def attribution_patterns() -> list[tuple[re.Pattern[str], str]]:
     # Longest spelling first so `headroom-ai 0.34.0` is read as the package and
     # not as `headroom` followed by something starting with a hyphen.
     spellings.sort(key=lambda pair: len(pair[0]), reverse=True)
-    return [(re.compile(re.escape(spelling) + ATTRIBUTION, re.IGNORECASE),
-             canonical) for spelling, canonical in spellings]
+    # And a left boundary, because longest-first only settles spellings this
+    # scanner knows. `pilotfish-codex 1.7.1` is a different project's release and
+    # was read as a claim about the Codex CLI, producing three differs against
+    # the local 0.149.0 the moment that upstream entered the research notes
+    # (2026-08-21). A tool name preceded by a word character or a hyphen is part
+    # of a longer name, not the name.
+    return [(re.compile(r"(?<![\w-])" + re.escape(spelling) + ATTRIBUTION,
+                        re.IGNORECASE), canonical)
+            for spelling, canonical in spellings]
 
 
 def same_version(claimed: str, here: str) -> bool:
