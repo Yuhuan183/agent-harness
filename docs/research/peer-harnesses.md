@@ -214,7 +214,7 @@ v0.1.1 (2026-07-10), 最後 push 2026-07-16, 之後沒有再動.
 `baton-dispatch` 的本文寫著它是「a local distillation of cablate/baton v0.1.1 plus a
 scope fix」. 那個 scope fix 是 release 之後的 commit
 [`0ab4d2ec5c69820001eeac2a12fab2c87fd3e943`](https://github.com/cablate/baton/commit/0ab4d2ec5c69820001eeac2a12fab2c87fd3e943)
-(2026-07-16, "Preserve delegated scope expansion"), 已經落在
+(2026-07-16, "Prevent delegated scope expansion"), 已經落在
 `baton-dispatch` 的 Run design 段. **完整 SHA 記在這裡而不是 skill 本文**, 因為部署檔裡的
 裸短 SHA 讀的人解不開 ([docs/README.md 規則 9](../README.md)).
 
