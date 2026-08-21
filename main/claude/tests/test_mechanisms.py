@@ -333,6 +333,67 @@ class MechanismTests(unittest.TestCase):
             self.assertNotIn("check failed", git_managed_drift.stdout)
             self.assertTrue(stamp.exists())
 
+    def _integrity_stdout(self, rows: list[dict]) -> str:
+        """Run the weekly check over a ledger of `rows` in a scratch HOME."""
+        with tempfile.TemporaryDirectory() as home:
+            telemetry = Path(home) / ".agents/telemetry"
+            telemetry.mkdir(parents=True, exist_ok=True)
+            (telemetry / "experience.jsonl").write_text(
+                "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+            (telemetry / "experience-pending.jsonl").write_text("", encoding="utf-8")
+            env = {**os.environ, "HOME": home, "AGENT_HARNESS_REPO": str(ROOT)}
+            env.pop("AGENT_EXPERIENCE_LEDGER", None)
+            env.pop("AGENT_EXPERIENCE_PENDING", None)
+            return subprocess.run(
+                [sys.executable, str(ROOT / "main/claude/hooks/weekly-integrity.py")],
+                env=env, capture_output=True, text=True).stdout
+
+    def test_a_bridge_verifier_the_quota_cannot_see_is_counted_afterwards(self) -> None:
+        """The disclosed half of `verifier-quota`, measured instead of assumed.
+
+        That gate keys on `subagent_type`; a Codex verifier reached through the
+        bridge arrives under the bridge's name, which covers every Codex role,
+        so listing it would refuse a second *implementation* dispatch in the
+        same prompt. The gate says so about itself and stops there. Nothing
+        then told anyone whether the disclosed gap was ever exercised - and
+        checking the ledger on 2026-08-21 said it had not been, across 112
+        dispatches the hook could see. A gap nobody can count is indistinguishable
+        from one that does not matter.
+
+        Detection, not prevention: the ledger carries the role because QC wrote
+        it there, which is the field the payload never had. Reported as a count
+        and a question rather than a violation, because the quota is per prompt
+        and the ledger has no prompt id - a long session legitimately spends one
+        verifier per task.
+        """
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        base = {"ts": now, "schema": 3, "task_class": "verify",
+                "outcome": "accepted", "profile": "default", "model": "gpt-5.4",
+                "effort": "high", "route_source": "explicit"}
+        recon = {**base, "role": "explore", "provider": "claude",
+                 "request_source": "claude-code", "session": "sess-B"}
+        bridge = {**base, "role": "verifier", "provider": "codex",
+                  "request_source": "claude-code-plugin-codex", "session": "sess-A"}
+        native = {**base, "role": "verifier", "provider": "claude",
+                  "request_source": "claude-code", "session": "sess-A"}
+
+        # Booleans before assertions: this hook prints every finding it has, and
+        # `assertIn` against that puts a screenful of unrelated deployment drift
+        # into the failure message of a test about one line.
+        quiet = self._integrity_stdout([recon])
+        self.assertFalse("Codex bridge" in quiet,
+                         "a week with no bridge verifier must say nothing")
+
+        alone = self._integrity_stdout([recon, bridge])
+        self.assertTrue("ran through the Codex bridge" in alone,
+                        "a bridge verifier went uncounted")
+        self.assertTrue("None shared a session with a native verifier" in alone,
+                        "one bridge verifier alone is not evidence of a double spend")
+
+        both = self._integrity_stdout([recon, bridge, native])
+        self.assertTrue("1 of them shared a session with a native verifier" in both,
+                        "a bridge verifier beside a native one is the case to look at")
+
     def test_weekly_integrity_says_nothing_about_a_correctly_deployed_system(self) -> None:
         """A freshly synced HOME must produce no findings at all.
 

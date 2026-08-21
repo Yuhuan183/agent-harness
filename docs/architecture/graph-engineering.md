@@ -117,5 +117,8 @@ main 把派工與 QC 結果**獨立成固定紀錄**, 不混在一般說明裡, 
 ## 還沒貼合的部分
 
 - **並行幾乎沒有真實樣本.** ledger 裡絕大多數是單筆派工; 合批的判準寫得比用過的次數多.
-- **跨 provider 的額度看不見.** verifier 額度只認 Claude 的拼法, 走 bridge 的那一側靠
-  主 session 判斷.
+- **跨 provider 的額度擋不住, 只數得到.** verifier 額度只認 Claude 的拼法, 走 bridge 的那一側
+  靠主 session 判斷 —— 而那不是漏做: bridge 的名字涵蓋所有 Codex 角色, 把它列進閘會誤擋
+  同一輪的第二個**實作**派工. 2026-08-21 起 `weekly-integrity` 事後數它 (ledger 有 payload
+  缺的角色欄位, 因為那是 QC 之後寫進去的), 所以現在是**預防不了但看得見**. 實測到那天為止,
+  hook 看得到的 112 筆派工裡, 沒有任何一輪花掉兩個 outcome verifier.
