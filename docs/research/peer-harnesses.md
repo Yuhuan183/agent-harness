@@ -258,7 +258,9 @@ Nanako0129/pilotfish 與其 Codex 分支 miyago9267/pilotfish-codex, LangChain D
 
 查了日期之後結論仍然成立, 但理由不同: 本專案的七個角色在 **2026-07-20 初版**就存在
 (executor, Explore, mech-executor, plan-verifier, security-executor, security-reviewer,
-verifier), 而 Pilotfish 是 **07-22** 才進到這個 repo. 我們這一側**不是**從那裡來的, 所以
+verifier), 而 Pilotfish 是 **07-22** 才進到這個 repo. 那棵樹底下是九個檔案 —— 多出來的
+`security-reviewer-xhigh` 與 `security-executor-xhigh` 是同一個角色的另一個檔位,
+不是第八, 第九個角色. 我們這一側**不是**從那裡來的, 所以
 「我們」與「Pilotfish 血系」確實是兩個獨立來源 —— 兩票, 不是三票.
 
 **推翻條件**: 找得到 2026-07-20 之前的紀錄顯示角色切分參考過 Pilotfish, 這一條就垮.
@@ -286,7 +288,7 @@ playbook 講注意力稅, 三處各談一面, 而「這樣做值不值得」沒�
 沒有任何一個上游把同一套規則同時維護在兩個 provider 上並要求逐條對齊. pilotfish-codex
 看起來最接近, 但它是**移植**不是雙生: 它自己走版號, 明說上游版本只當來源引用.
 
-這是本專案的邊, 而且不是空談 —— `test_contracts.py` 五十支測試裡有 **28 支同時斷言兩側**.
+這是本專案的邊, 而且不是空談 —— `test_contracts.py` 五十支測試裡有 **12 支真的讀取兩棵樹底下的路徑**. (另有 16 支只是文中提到兩個 provider; 第一版把 28 支都算成斷言, 高估了一倍以上. 判準是「函式體同時讀 `.claude/` 與 `.codex/` 下的檔案」, 可以重算.)
 
 **但它的一次真實漂移不是測試抓到的.** 2026-08-19 那次 (deliverable-path 條款兩側規則不同,
 Claude 說了該怎麼做而 Codex 只說了禁止) 是**在同一輪 review 裡讀出來的**. 測試斷言的是
@@ -294,7 +296,7 @@ Claude 說了該怎麼做而 Codex 只說了禁止) 是**在同一輪 review 裡
 理由.
 
 **推翻條件**: 往後如果有一次雙生測試在**真實漂移**上變紅 (不是改名), 這個機制就是承重的;
-如果漂移持續是靠人讀出來的, 那 28 支斷言是文件, 不是閘.
+如果漂移持續是靠人讀出來的, 那 12 支斷言是文件, 不是閘.
 
 ### 四, 上游彼此不同意的地方: 角色之上要不要有一層互動模式
 
