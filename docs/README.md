@@ -30,14 +30,15 @@
 
 ## 文件責任
 
-每份文件對應[四層](architecture/architecture.md#三-四層地圖)的哪一層寫在第一欄. 有四件橫跨所有
-層, 標成「跨層」: 證據 (憑什麼算數), 部署 (規則怎麼真的到機器上), 授權 (誰有權決定)
-與成本 (值不值得). 有兩層的規範不在
+每份文件對應[四層](architecture/architecture.md#三-四層地圖)的哪一層寫在第一欄, 判準見
+[什麼算一層](architecture/architecture.md#什麼算一層). 有四件不屬於任何一層, 標成「跨層」:
+證據 (憑什麼算數), 授權 (誰有權決定) 與成本 (值不值得) 是問出來的, 部署 (規則怎麼真的到機
+器上) 是每一層共用的同一條管線. 有兩層的規範不在
 `docs/` 底下 —— Context 與 Loop 由出貨的 skill 擁有, 那欄直接指過去.
 
 | 層 | 文件 | 保存內容 | 不保存內容 |
 |---|---|---|---|
-| 跨層 · 地圖 | [架構總覽](architecture/architecture.md) | 完整資料流, 核心想法, 四層地圖, 跨層的兩條軸, 四件橫跨的事, 升級評估的五個問題, 層與層之間 | 每一層自己的職責, 實作與已知失效 (在四份層文件), 跨專案方法論 (在 playbook), 實驗原始數據 (在 research/), 會過期的量測值 (指向腳本) |
+| 跨層 · 地圖 | [架構總覽](architecture/architecture.md) | 完整資料流, 核心想法, 四層地圖與什麼算一層, 跨層的兩條軸, 四件不屬於任何一層的事, 升級評估的五個問題, 層與層之間 | 每一層自己的職責, 實作與已知失效 (在四份層文件), 跨專案方法論 (在 playbook), 實驗原始數據 (在 research/), 會過期的量測值 (指向腳本) |
 | Context | [context-engineering](architecture/context-engineering.md) | 模型看到什麼: 一條子句怎麼寫, 一個 window 裡放什麼 | 預算的判定表與驗收 (在契約瘦身) |
 | Harness | [harness-engineering](architecture/harness-engineering.md) | 模型周圍: 工具, 權限, 監控, 防護欄 | 每道 hook 的攔截條件 (在 hook 系統) |
 | Loop | [loop-engineering](architecture/loop-engineering.md) | 單一 agent 的迴路: 規劃 → 執行 → 驗證 → 重試, 各自的停止條件 | 派工形狀與 brief (在 baton-dispatch) |
