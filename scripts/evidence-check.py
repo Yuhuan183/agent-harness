@@ -123,7 +123,10 @@ FLOOR = re.compile(
     # English floors beside it. Without it, `Headroom v0.34 起已移除 …` filed as a
     # discrepancy on every run - a permanent finding about a sentence that is
     # still true, which is how a report teaches people to skip it.
-    r"以上|至少|\d\S*\s*起|or newer|or later|at least|minimum|\bmin\b|>=|\+ ")
+    # `0.45+` is the same statement as `0.45 以上` and was read as an exact
+    # version until 2026-08-21, when a comment saying `rtk 0.45+` reported
+    # `match` on a machine that happened to run 0.45.0.
+    r"以上|至少|\d\S*\s*起|or newer|or later|at least|minimum|\bmin\b|>=|\d\+|\+ ")
 
 # A dated section title is a record of what was checked then, not a claim about
 # now. `#### 2026-08-10 查核結果 (Headroom 0.34 升級)` names the version it was
@@ -131,6 +134,31 @@ FLOOR = re.compile(
 # preserve. Links to such a heading carry the same text and the same exemption.
 HISTORY = re.compile(r"^#{1,6}\s+20\d\d-\d\d-\d\d|\]\(\S*#20\d\d-\d\d-\d\d")
 
+# Only floors are compared against this machine, and that is a narrowing.
+#
+# The check was built for one shape: a document attesting "verified locally
+# 0.34.0" while the machine ran 0.33.0. On 2026-08-21 it had six subjects and
+# not one was that shape - two stated what PyPI and GitHub publish, one was a
+# journal line recording a *wrong* past claim and reporting `match` because the
+# machine had since caught up, one was a floor spelled `0.45+`, and two were
+# real floors. Every `match` was a coincidence, and on a shared repository an
+# exact version that is right on the machine that wrote it reads as a
+# discrepancy on every other one.
+#
+# Deciding from the prose whether a line is about this machine was tried first
+# and does not work: the research currency row saying "upstream only, not this
+# machine" matched a locality pattern on the very word it uses to disclaim
+# locality. A regex cannot separate a claim from its negation.
+#
+# So the rule is structural. Machine-local version records left the guidance
+# tier on 2026-08-21 by policy, which means an exact version in a tracked
+# document is now about upstream or about history, and a local binary
+# adjudicates neither. Floors stay: a stated minimum is portable, true on every
+# machine, and the one version statement a shared repository can hold.
+#
+# What this gives up, stated plainly: nothing mechanical now catches a
+# machine-local version record reappearing in the guidance tier. That boundary
+# is a policy and not a gate.
 # Two ways a version on a line is not a claim about this machine now.
 #
 # `retracted`: the document itself has already declared it false. The
@@ -362,10 +390,14 @@ def verdict_for(claimed: str, here: str | None, is_floor: bool) -> str:
     """How a claimed version stands against what the machine reports."""
     if here is None:
         return "unprobeable"
-    if same_version(claimed, here):
-        return "match"
+    # Floors first. A floor the machine meets exactly used to report `match`,
+    # which read as "a local attestation was verified" - and after 2026-08-21
+    # there is no such category left, so the label would be the only one of its
+    # kind and would mean something it does not.
     if is_floor:
         return "floor-met" if as_tuple(here) >= as_tuple(claimed) else "floor-unmet"
+    if same_version(claimed, here):
+        return "match"
     return "differs"
 
 
@@ -403,11 +435,21 @@ def audit_versions() -> list[dict[str, object]]:
             if HISTORY.search(line) or NOT_A_LIVE_CLAIM.search(line):
                 continue
             for tool, claimed in attributions_in(line):
+                is_floor = bool(FLOOR.search(line))
+                # A floor is portable and belongs to every machine; an exact
+                # version only means something here if the line says it is
+                # about here. Anything else states what upstream publishes,
+                # and comparing that to a local binary is a category error
+                # that happens to pass on whichever machine wrote it.
+                if not is_floor:
+                    rows.append({"site": f"{relative}:{number}", "tool": tool,
+                                 "claimed": claimed, "local": None,
+                                 "verdict": "not-local"})
+                    continue
                 here = local_version(tool)
                 rows.append({"site": f"{relative}:{number}", "tool": tool,
                              "claimed": claimed, "local": here,
-                             "verdict": verdict_for(
-                                 claimed, here, bool(FLOOR.search(line)))})
+                             "verdict": verdict_for(claimed, here, is_floor)})
     return rows
 
 
@@ -464,11 +506,12 @@ def main() -> int:
     print()
     tally = {verdict: sum(1 for row in versions if row["verdict"] == verdict)
              for verdict in ("match", "differs", "floor-met", "floor-unmet",
-                             "unprobeable")}
+                             "unprobeable", "not-local")}
     print(f"version attestations: {len(versions)} attributed, "
           f"{tally['match']} match, {tally['differs']} differ, "
           f"{tally['floor-met']} floors met, {tally['floor-unmet']} unmet, "
-          f"{tally['unprobeable']} unprobeable")
+          f"{tally['unprobeable']} unprobeable, "
+          f"{tally['not-local']} about upstream rather than this machine")
     for row in versions:
         if row["verdict"] not in ("differs", "floor-unmet"):
             continue
