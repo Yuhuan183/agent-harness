@@ -2808,6 +2808,47 @@ class VersionAttestationTests(unittest.TestCase):
         self.assertEqual(
             "floor-unmet", module.verdict_for("2.1.207", "2.1.99", is_floor=True))
 
+    def test_a_pinned_condition_is_exempt_but_a_local_check_is_not(self) -> None:
+        # `pinned` covers a version frozen by what the line describes: the build
+        # a finished batch was probed against, the release a cited paper read.
+        # The asymmetry is the point - a doc's own "checked on <date>, CLI was X"
+        # stays unexempt, because that is the shape the 2026-08-20 Headroom drift
+        # hid in.
+        module = self._module()
+        condition = "Every row probed on 2026-08-12 against Claude Code 2.1.226"
+        self.assertIn(("claude code", "2.1.226"), module.attributions_in(condition))
+        self.assertFalse(module.NOT_A_LIVE_CLAIM.search(condition))
+        self.assertTrue(module.NOT_A_LIVE_CLAIM.search(
+            condition + " <!-- pinned 2026-08-21 -->"))
+
+        local = "2026-08-14 本機查核: CLI 是 `headroom-ai 0.35.0`"
+        self.assertFalse(module.NOT_A_LIVE_CLAIM.search(local))
+
+    def test_a_retracted_claim_is_exempt_only_with_a_dated_marker(self) -> None:
+        # The 2026-08-20 Headroom round retracted two version claims and left
+        # the wrong sentences standing, because the evidence tier records what
+        # was checked including what was overturned. Both halves matter: the
+        # marker has to silence the retracted line, and the same line without it
+        # has to still fire - an exemption that fires on prose alone would be a
+        # way to hide a stale version rather than to record a corrected one.
+        module = self._module()
+        claim = "~~2026-08-14 本機查核: CLI 是 `headroom-ai 0.35.0`~~"
+        self.assertIn(("headroom", "0.35.0"), module.attributions_in(claim))
+        self.assertFalse(module.NOT_A_LIVE_CLAIM.search(claim))
+
+        marked = claim + " <!-- retracted 2026-08-20 -->"
+        self.assertTrue(module.NOT_A_LIVE_CLAIM.search(marked))
+
+        # Undated, and a bare mention of the word, stay unexempt: the marker is
+        # a record, not a switch.
+        for near_miss in (
+            claim + " <!-- retracted -->",
+            claim + " (retracted)",
+            claim + " <!-- retracted 2026-08 -->",
+        ):
+            with self.subTest(line=near_miss):
+                self.assertFalse(module.NOT_A_LIVE_CLAIM.search(near_miss))
+
     def test_a_truncated_claim_still_matches_the_release_it_names(self) -> None:
         # Prose writes `headroom 0.34`; the binary answers `0.34.0`. Treating
         # that as a difference would bury the real ones.

@@ -1,20 +1,43 @@
 # Headroom Runtime Guide
 
-> 2026-08-14 本機查核: CLI 是 `headroom-ai 0.35.0`, 與 PyPI latest 及 GitHub release
+> **2026-08-20 本機查核, 四層全部觀察到**: CLI 是 `headroom-ai 0.36.0`, 與 PyPI latest
+> 及 GitHub release tag `v0.36.0` (皆 2026-08-20) 同版; `install status` 回報
+> `persistent-service` 是 `running` / `Healthy: yes`; `/health` 自己說 `0.36.0`.
+> proxy 版本是**問出來的**, 不是從 CLI 推的. `headroom wrap` 的 supported tools 清單
+> 仍無 `agy`. `/settings` 是 `{}`, 啟動 banner 含 `tool_injection` — 本機沒有設過
+> `lossless`, 見「版本轉換」的 CCR 那節.
+>
+> **同日撤回 0.35.0 的兩則本機查核**, 但兩則的證據強度不同, 分開講:
+>
+> 08-17 那則是**被本機 log 決定性推翻的**. `~/.headroom/logs/proxy.log*` 從 2026-08-03
+> 到 08-20 連續覆蓋, 其中只有三次 `Headroom Proxy started`: 08-10 (`0.34.0`),
+> 08-13 22:14 (`0.34.0`), 08-20 20:22 (`0.36.0`). 08-13 到 08-20 之間沒有任何一次重啟,
+> 所以「已重啟, `/health` 自己說 0.35.0」不可能為真 — 當時跑著的是 08-13 起的 `0.34.0`.
+> `~/.headroom/settings.json` 至今不存在, `{"lossless": true}` 從未寫入過.
+>
+> 08-14 那則的 CLI 版本**沒有被 log 推翻, 而是無法重現**. 當時 proxy 停著, CLI 版本本來
+> 就不會在 log 留痕, 所以那則不可證也不可否證. 但 2026-08-20 升級前實測 CLI 自報 `0.34.0`,
+> 而使用者確認本機是 0.34 直升 0.36 從未裝過 0.35 — 一個裝過又退回的 0.35.0 沒有任何佐證,
+> 所以這則按「與後續觀察矛盾」撤回, 不按「已證明為假」撤回.
+>
+> 這是 `docs/research/landing-log.md` 已經記過一次的錯誤重演 —
+> 「2026-08-10 本機查核: CLI 與 proxy 都是 0.34.0」寫下的當天本機其實是 0.33.0. 兩次
+> 都是把**打算升到的版本**當成**已經在跑的版本**寫進查核紀錄. 下面兩則原文保留而不刪改:
+> 被推翻的紀錄要留著才看得出錯在哪, 這與「較舊的紀錄不因較新的紀錄作廢」是兩回事 —
+> 那條規則管的是先後, 這裡管的是真假.
+>
+> ~~2026-08-14 本機查核: CLI 是 `headroom-ai 0.35.0`, 與 PyPI latest 及 GitHub release <!-- retracted 2026-08-20 -->
 > tag `v0.35.0` (兩者皆 2026-08-13) 同版. **proxy 版本這次沒有觀察到** —
 > `headroom install status` 回報本機的 `persistent-service` deployment 是
-> `stopped` / `Healthy: no`, 停著的服務問不出版本, 升級後也尚未 `install restart`.
-> `headroom wrap` 的 supported tools 清單仍無 `agy` (`wrap agy` 回 `No such command`).
-> 這只證明本機安裝版本, 不證明 live service capability.
+> `stopped` / `Healthy: no`, 停著的服務問不出版本, 升級後也尚未 `install restart`.~~
+> (CLI 版本部分已推翻; 「問不出停著的服務」這個方法論結論仍然成立.)
 >
-> **2026-08-17 補上那個缺口**: `persistent-service` 已重啟, `install status` 回報
-> `running` / `Healthy: yes`, 而 `/health` 自己說 `0.35.0` — 這次 proxy 版本是**觀察到的**,
-> 不是從 CLI 推的. `/settings` 是 `{"lossless": true}`, 啟動 banner 少了 `tool_injection`.
->
-> 兩則都留著, 因為上面那則是「問不出來」的紀錄, 而這則是問出來之後的答案. 前一則不因後一則作廢.
+> ~~**2026-08-17 補上那個缺口**: `persistent-service` 已重啟, `install status` 回報
+> `running` / `Healthy: yes`, 而 `/health` 自己說 `0.35.0`. `/settings` 是
+> `{"lossless": true}`, 啟動 banner 少了 `tool_injection`.~~ (整則推翻, 見上.)
 >
 > 2026-08-10 的更前一次查核 (CLI 與 proxy 皆 0.34.0, 舊 context-tool 旗標被 `wrap claude`
-> 拒絕) 同樣是當時的紀錄, 不因後續更新而改寫.
+> 拒絕) 與 log 相符, 維持原樣.
 
 > 只記錄跨機器的架構, 操作邊界與版本轉換. venv, PID, port 與 profile 名稱屬 machine-local state, 不進 git.
 
@@ -91,8 +114,10 @@ Claude App 使用 OAuth 直連, 不經 proxy, 只能透過 MCP 做手動文字�
 
 ## 操作指引
 
-- **Claude**: 需要 Headroom 時使用 `hclaude`; Auto Mode 使用 `hclaude-auto`. 底層是 `headroom wrap claude`. 只有 context 明確不足時才加 `--1m`, 而且加之前要先讀下面那條. 0.35 的 CCR 在串流路徑上會壞, 處置是 machine-local 的, 見「版本轉換」的 CCR 那節.
-- **`--1m` 的預設模型陷阱**: 自訂 `ANTHROPIC_BASE_URL` 之下, Claude Code 的 `/model` 選擇不會傳到 API, 只有帶 `[1m]` 後綴的 model id 才會送出 `context-1m` beta header. `--1m` 的做法是在啟動的 process 上設 `ANTHROPIC_MODEL`; 它會保留使用者自己設過的 model, 但 `ANTHROPIC_MODEL` 未設時退回 Headroom 內建的常數 (0.34.0 與 0.35.0 都是 `claude-opus-4-8`). 也就是在乾淨 shell 直接下 `--1m` 會把 session 釘在 Opus 4.8 而不是當前選的模型. 要用就自己一起指定 `ANTHROPIC_MODEL`, 並在 session 內確認實際 model id. 0.35 只修掉相鄰的另一個洞: 顯式傳進去的 `--model` 現在也會被補上 `[1m]` (upstream #2915, PR #2922); 0.34 是 `--model` 蓋過 env var, `--1m` 靜默失效而回落 200k. **預設模型的陷阱沒有跟著修掉.**
+- **Claude**: 需要 Headroom 時使用 `hclaude`; Auto Mode 使用 `hclaude-auto`. 底層是 `headroom wrap claude --1m`, 2026-08-21 起**預設就是 1M context**, 見下面兩條.
+- **`--1m`: 0.36 兩端都修好了**. 自訂 `ANTHROPIC_BASE_URL` 之下, Claude Code 的 `/model` 選擇不會傳到 API, 只有帶 `[1m]` 後綴的 model id 才會送出 `context-1m` beta header; 不加 `--1m` 就是 200k. 0.36 一次修掉兩端 — wrapper 端的預設模型常數改成 `claude-opus-5` 並可用 `HEADROOM_1M_MODEL` 覆寫 (upstream #2937, PR #2983), proxy 端則不再在算 context budget 之前就把 `[1m]` 剝掉 (#3073). 0.34/0.35 的兩個坑都不必再繞: 乾淨 shell 下 `--1m` 不會再把 session 釘在 Opus 4.8, 1M session 也不會再被當成 200k 計量且低估計價約 2 倍.
+- **旗標位置是關鍵, 不要「整理」它.** `--` 之後的東西全部歸 `claude_args`, 所以 `--1m` 必須在 `--` 之前. 對真正的 command object 實測: `['--1m', ...]` 得到 `context_1m=True`, 而 `['--', '--1m', ...]` 得到 `False` 並把旗標原樣交給 `claude` 執行檔 — session 靜靜地停在 200k, 沒有任何錯誤訊息. 2026-08-21 之前 `hclaude` 正是後者. 代價是: 沒設過 `ANTHROPIC_MODEL` 時 session 會被釘在 Headroom 的預設 (0.36 為 `claude-opus-5`), 要換用 `HEADROOM_1M_MODEL`. 另一條路是在 `~/.zshrc` 設 `ANTHROPIC_MODEL="claude-opus-5[1m]"` (wrap 用 `os.environ.copy()` 所以會生效), 但那會釘死每一個 session 並讓 `/model` 選單失效 — upstream #2983 明講這是它要取代的 workaround, 不建議.
+- **沒有 1M→200k 的降級階梯.** 0.36 release note 的 “make `--1m` fallback model configurable” 指的是「未指定 model 時要用哪個 model」, 不是 context 大小的 fallback. `[1m]` 是向 Anthropic 請求 1M tier, 有沒有資格是帳號層級的事; 沒資格就是 API 報錯, 不會自動退回 200k.
 - **on-demand tool loading (`--tool-search`)**: 自訂 `ANTHROPIC_BASE_URL` 會讓 Claude Code 關閉 tool deferral, 改成一次載入所有 tool schema, 吃掉數十 K 的 local context (upstream issue #746). v0.34 的 `wrap claude` 因此會設 `ENABLE_TOOL_SEARCH`, 預設 `true`. 可用值 `true`/`1`/`yes`/`on`, `false`/`0`/`no`/`off`, `auto`, `auto:N` (N 為 0-100); 打錯會直接報錯而不是默默關掉. 優先序是 `--tool-search` 旗標 > 環境裡既有的 `ENABLE_TOOL_SEARCH` (原封不動) > 內建預設; 空字串視同未設. Read/Edit/Bash 這類內建工具永遠不會被延後載入, agent loop 不受影響. 若採 always-on routing (下面的 `persistent-service`), 這個變數要跟 base URL 一起常駐, 否則原生 `claude` 會在沒有 deferral 的情況下走 proxy.
 - **Codex**: 需要 Headroom 時使用 `hcodex`; Auto Mode 使用 `hcodex-auto`. 底層是 `headroom wrap codex`, 不依賴預先存在的永久 provider.
 - **Antigravity CLI**: 原生 Auto Mode 使用 `agy-auto` (`agy --mode accept-edits`). Headroom 入口保留為 `hagy`/`hagy-auto`, 但會先確認安裝版本真的提供 `headroom wrap agy`; 沒有就 exit 127, 不能降級成未壓縮的 `agy`.
@@ -130,10 +155,42 @@ Claude App 使用 OAuth 直連, 不經 proxy, 只能透過 MCP 做手動文字�
 `purge_context_tool_artifacts()` 且比對字串一字未改; `wrap claude` 仍負責設
 `ENABLE_TOOL_SEARCH`; `--1m` 的預設模型常數仍是 `claude-opus-4-8`.
 
-### 0.35 的 CCR 在 Claude 串流路徑上會壞
+### v0.35 -> v0.36 (2026-08-20 發版, 同日對 0.36.0 原始碼與 live proxy 核對)
+
+**本機是從 0.34 直接跳到 0.36 的**, 沒有經過 0.35. 上面那個 v0.34 -> v0.35 小節記的是
+上游差異, 不是本機跑過的狀態.
+
+改到本文件結論的:
+
+| 變動 | 影響 |
+|---|---|
+| `--1m` 的預設模型可用 `HEADROOM_1M_MODEL` 覆寫, 內建預設升為 `claude-opus-5` (#2937, PR #2983) | 「預設模型陷阱」解除, 操作指引已改寫 |
+| proxy 端不再在算 context budget 之前剝掉 `[1m]` (#3073) | 1M session 不再被當 200k 計量; 同一個 PR 一併修掉約 2 倍的計價低估 |
+| 一批 CCR 串流修正 (#3092, #3094, #3102, #2953, #3142) | 上游這次動的確實是串流本身, 不只是壓縮策略 — 見下一節的撤除判準 |
+| `--no-ccr` 現在連 server-side response handling 也一起關掉 (#3101) | 撤除處置時的選項語意變了, 不能沿用舊理解 |
+
+對 0.36.0 原始碼逐條核對後**沒有變**的三件事: `purge_context_tool_artifacts()` 仍在
+`wrap`/`unwrap` 路徑上被呼叫 (3 處); `wrap claude` 仍負責設 `ENABLE_TOOL_SEARCH`;
+supported tools 清單仍無 `agy`.
+
+`headroom wrap claude` 的旗標面是 `--1m --backend --code-graph --code-memory --learn
+--memory --no-mcp --no-proxy --port --region --serena-instructions --tool-search`. 本機
+`~/.zshrc` 的 block 原本不帶任何 headroom 專屬旗標, 所以升級本身沒有讓它失效. 但
+2026-08-21 為了讓 1M 成為預設, 已重跑 `scripts/install-zsh-functions.sh --apply` 把 `--1m`
+加進 `hclaude` — 見操作指引那兩條.
+
+### CCR 串流失效與 `lossless` 處置 (0.35 的問題, 0.36 已修)
+
+**本機從未套用過這個處置.** `~/.headroom/settings.json` 至今不存在, 0.36 的啟動 banner
+含 `tool_injection`, `/settings` 是 `{}` — CCR 是全開的預設狀態. 本機也沒跑過 0.35, 所以
+下面描述的症狀在這台沒有發生過.
+
+這節保留的理由有兩個: 它是唯一寫下這個開關「設在哪, 怎麼查, 怎麼撤」的地方, 而 0.36 的
+CCR 修正 (#3092, #3094, #3102, #2953, #3142) 動的正是串流那條路徑 — 也就是下面那條撤除
+判準要求先確認的事, 這次確認得到. 若日後在別台機器或別的版本重新遇到, 從這裡開始.
 
 **這是上游 bug 的暫時處置, 不由本 repo 管理.** 開關住在 machine-local 的
-`~/.headroom/settings.json`, 與 profile, port 同級, 不進 git; 這節只記邊界與怎麼查.
+`~/.headroom/settings.json`, 與 profile, port 同級, 不進 git.
 
 CCR (Compress-Cache-Retrieve) 壓掉大塊工具輸出, 留下 `<<ccr:...>>` marker, 並注入
 `headroom_retrieve` 讓模型需要時取回原文 — 有損壓縮**加上**還原路徑. 0.35 遇到串流請求時
@@ -174,9 +231,9 @@ lossless 只強制 `ccr_inject_tool` 為 false.
 
 ### Antigravity CLI
 
-本機安裝的 v0.35.0 仍沒有 `headroom wrap agy` (supported tools 清單無此項);
+本機安裝的 v0.36.0 仍沒有 `headroom wrap agy` (supported tools 清單無此項);
 上游 [PR #1044](https://github.com/headroomlabs-ai/headroom/pull/1044)
-仍 open (2026-08-13 有更新), 曾以限定 Google Cloud Code host 的 process-scoped
+仍 open (2026-08-14 最後更新), 曾以限定 Google Cloud Code host 的 process-scoped
 TLS MITM 提案. 不要用無效 base URL 環境變數, 修改 `/etc/hosts`, 信任 system-wide CA,
 或未 review 的 branch 假裝完成整合.
 後續 stable release 若加入 `agy`, 須重新驗證 capability probe, MCP config path,

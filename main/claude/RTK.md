@@ -22,7 +22,14 @@ rtk's own installer. Keep it that way:
   makes it a silent no-op: filtering stops and nothing reports it. `which -a rtk`
   must not resolve into either path. This repo's own `rtk hook claude` command
   matches none of the cleanup's markers and is not at risk (re-checked against
-  Headroom 0.35.0 source, 2026-08-14; the marker list is unchanged since 0.34.0).
+  Headroom 0.36.0 source, 2026-08-20: the pruned hook-command markers are
+  `rtk-rewrite`, `rtk rewrite`, `lean-ctx-rewrite`, `lean-ctx-redirect` and
+  `lean-ctx hook`, none of which is a substring of `rtk hook claude`). The
+  stamp this line used to carry named 0.35.0 as of 2026-08-14 and was retracted
+  on 2026-08-20: that version is not reproducible on this machine and the owner
+  reports going 0.34 straight to 0.36. What the earlier re-check actually read
+  is therefore unknown, so no continuity is claimed across those versions — the
+  list above is what 0.36.0 contains, verified, and nothing more.
 - `rtk gain` ends with `[warn] No hook installed — run rtk init -g`. Expected here;
   it only means rtk did not install the hook itself. Do not act on it.
 - Codex gets no hook: `rtk hook` supports claude, cursor, gemini, copilot, droid and

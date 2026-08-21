@@ -131,6 +131,40 @@ FLOOR = re.compile(
 # preserve. Links to such a heading carry the same text and the same exemption.
 HISTORY = re.compile(r"^#{1,6}\s+20\d\d-\d\d-\d\d|\]\(\S*#20\d\d-\d\d-\d\d")
 
+# Two ways a version on a line is not a claim about this machine now.
+#
+# `retracted`: the document itself has already declared it false. The
+# 2026-08-20 Headroom round left two of them standing on purpose: the evidence
+# tier records what was checked, including what was later overturned, so the
+# wrong sentence stays visible next to the reason it was wrong. Reporting those
+# forever is the FLOOR problem again - a permanent finding about a line that is
+# not a claim any more, which is how a report earns the right to be skimmed.
+#
+# Three deliberate narrowings, because an exemption is also a way to silence a
+# real finding:
+#   * The marker carries a date, so it is a record rather than a switch.
+#   * It has to sit on the same line as the version, so it cannot be set once at
+#     the top of a file and quietly cover every claim below it.
+#   * It is an HTML comment, invisible when rendered - a reader sees the prose
+#     retraction the author had to write anyway, not the token that silenced the
+#     scanner.
+# Marking a *live* claim retracted does not hide a stale version; it writes a
+# falsehood into the prose, which is a worse defect than a row in this report.
+# `pinned`: the version is frozen by whatever the line describes and was never
+# meant to track the local install - the release a cited paper reverse-engineered,
+# or the build a finished batch of runs was probed against. Those never come true
+# again, so without this they are permanent rows; and rewriting them to today's
+# version would falsify a citation or an experimental condition, which is the
+# opposite of what this instrument is for. Note the asymmetry that keeps it
+# honest: a doc's own "checked on <date>, CLI was X" line stays unexempt, because
+# that is the shape the 2026-08-20 Headroom drift hid in and the shape this
+# instrument earns its keep on.
+#
+# The date on either marker is when the marker was applied, not when the fact
+# was true - an exemption should say who took it out and when.
+NOT_A_LIVE_CLAIM = re.compile(
+    r"<!--\s*(?:retracted|pinned)\s+20\d\d-\d\d-\d\d\s*-->")
+
 
 def tracked_markdown() -> list[Path]:
     listed = subprocess.run(
@@ -359,7 +393,7 @@ def audit_versions() -> list[dict[str, object]]:
         relative = path.relative_to(ROOT).as_posix()
         for number, line in enumerate(
                 path.read_text(encoding="utf-8").splitlines(), 1):
-            if HISTORY.search(line):
+            if HISTORY.search(line) or NOT_A_LIVE_CLAIM.search(line):
                 continue
             for tool, claimed in attributions_in(line):
                 here = local_version(tool)
