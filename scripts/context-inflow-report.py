@@ -27,6 +27,18 @@ framing, injected content the transcript does not record as an attachment, and
 tool results stored differently from how they are sent all land in the gap. That
 gap is the honest limit of this instrument and is printed on every run.
 
+Which side is wrong was settled on 2026-08-21, and it is this one. The token
+curve is sound: a 200k session compacted six times at 165,746, 162,450, 166,939,
+166,569 and 166,538 - five values inside 4,500 of each other, at the point
+auto-compaction fires. A measure that systematically inflated would not converge
+like that. The per-request deltas do carry an artifact - one request grew 23,594
+tokens against 4,592 recorded characters, with `cache_read` going from 0 to
+28,992 while `cache_creation` stayed at 33,848, which is a cache being
+re-segmented and one span landing in both buckets - and that explains the
+factor's spread from 0.29 to 3.80 rather than its median. Separating the two
+needs a token count of the payload actually sent, which a transcript does not
+contain.
+
 Evidence class: machine-local. This reads one developer's transcripts, so it
 says what this machine's work looks like, not what the repo mandates.
 
