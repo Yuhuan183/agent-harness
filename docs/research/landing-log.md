@@ -507,3 +507,29 @@ repo 政策存放的具體後果.
   (HTTP 200 但 body 壞掉) 是同一類失效, 只是成因不同.
 - 查法: GitHub releases API 與 raw README/CHANGELOG, 不是讀我們自己的筆記. 角色表, tier
   指派與 circuit breaker 三項都回到上游原文核對過, 沒有只採信 release note 的摘要.
+
+#### 2026-08-21 蒸餾: 兩個上游指向同一個洞
+
+承上一則的重查, 把 [cablate/baton](https://github.com/cablate/baton) —— `baton-dispatch`
+的上游 —— 也逐條核對了. 它自 2026-07-16 起沒有再動.
+
+- **十條規則裡八條有等價寫法, 兩條沒有.** 缺的是「派工基礎設施持續失敗就退回自己做」與
+  「一個 slice 做完是檢查點, 不是開下一階段的授權」. 本專案原本的 stop 規則**全部在 leaf
+  內部** (3 次修復-驗證循環, 2 次徒勞查找), 而 cost test 講的是派工**之前**該不該派 ——
+  中間那段「派出去之後一直拿不到東西」沒有人管.
+- **同一個洞被兩個彼此獨立的上游指到.** baton 說「退回直接執行」, pilotfish-codex 1.6.1
+  的 circuit breaker 說「一次有界重試, 然後進入明確等待, 而且不得宣告已驗證」. 落地取兩者
+  交集, 加上後者那句最鋒利的: **失去一個 agent 不是使用者的決策**, 不能當成選項丟回去.
+- 兩側 skill 各加一條, 預算各自刻意調高並寫明淨值 (baton-dispatch +74, leaf-dispatch +113).
+  Codex 側多一句, 因為它本來就有這件事的**帳務**面 (`--cancel` 對 `failed`), 新規則要把
+  兩者接起來, 不能讓人讀成二擇一.
+
+**程序上的發現比內容更值得記.** `baton-dispatch` 沒有 ATTRIBUTION 檔, 上游只寫在 skill
+本文一句話裡, 所以第一次找 (查 ATTRIBUTION 與 docs) 找不到, 是使用者直接指出來的. 而
+`scripts/upstream-recheck.sh` 與[蒸餾帳本](upstream-distillation-ledger.md) 都只綁
+mattpocock/skills —— **可覆核的蒸餾程序存在, 但只覆蓋一個上游**, baton 與兩支 Pilotfish
+都在它外面. 這一輪的三次重查全是手工做的.
+
+一個自找的錯誤留著當記錄: 我把完整 SHA 寫進 skill 本文, 被規則 9 的守衛擋下 —— 部署檔裡的
+裸短 SHA 讀的人解不開, 而上一次正是這樣讓一個失效的引用留在部署檔裡. 完整 SHA 現在記在
+[peer-harnesses](peer-harnesses.md#cablatebaton-baton-dispatch-的上游), 那裡解得開.

@@ -206,6 +206,42 @@ PowerShell installer, 跨平台 CI), 執行期切分 (Hybrid runtime: 常駐 roo
 `5/10`, 而 release note 明說這一版不宣稱該項達標. 願意把自評分數寫進 release note 的
 上游, 它的正面數字才有重量.
 
+## cablate/baton (baton-dispatch 的上游)
+
+[cablate/baton](https://github.com/cablate/baton), 2026-08-21 重查. 最新 release
+v0.1.1 (2026-07-10), 最後 push 2026-07-16, 之後沒有再動.
+
+`baton-dispatch` 的本文寫著它是「a local distillation of cablate/baton v0.1.1 plus a
+scope fix」. 那個 scope fix 是 release 之後的 commit
+[`0ab4d2ec5c69820001eeac2a12fab2c87fd3e943`](https://github.com/cablate/baton/commit/0ab4d2ec5c69820001eeac2a12fab2c87fd3e943)
+(2026-07-16, "Preserve delegated scope expansion"), 已經落在
+`baton-dispatch` 的 Run design 段. **完整 SHA 記在這裡而不是 skill 本文**, 因為部署檔裡的
+裸短 SHA 讀的人解不開 ([docs/README.md 規則 9](../README.md)).
+
+### 2026-08-21 逐條核對: 兩條沒有本地對應
+
+把上游七節的每一條規則對回本專案的兩支 dispatch skill 與兩份常駐契約, 十條裡八條有等價
+寫法, 兩條沒有:
+
+| 上游規則 | 本專案 | 處置 |
+|---|---|---|
+| Fall back to direct execution when delegation infrastructure is unavailable or repeatedly fails | 只有**派工前**的成本判準 (「payoff 不明就直接做」), 沒有**派工後持續失敗**的規則. 既有的 stop 全在 leaf 內部 (3 次修復-驗證循環, 2 次徒勞查找) | **採用** |
+| Treat completion of the current vertical slice as a checkpoint; do not automatically dispatch the next phase | 有五次 pass 上限與兩次自動修訂上限, 沒有一條說做完一個 slice 不等於可以開下一個 | **採用** |
+
+第一條和 [pilotfish-codex 的 circuit breaker](#pilotfish-codex-15-17-codex-cli-分支)
+是同一個洞的兩面: 上游 baton 說「退回自己做」, codex 分支說「一次有界重試, 然後明確等待,
+而且不得宣告已驗證」. **兩個彼此獨立的上游指向同一處**, 這比任一邊單獨說更有份量, 所以
+落地的寫法取兩者的交集加上後者那句最鋒利的 —— 失去一個 agent **不是使用者的決策**.
+
+### 這次查核暴露的程序問題
+
+`baton-dispatch` 沒有 ATTRIBUTION 檔, 而另外四支蒸餾來的 skill 都有. 上游只寫在 skill
+本文的一句話裡, 所以第一次找的時候 (查 ATTRIBUTION 檔與 docs) 找不到, 得使用者直接指出來.
+四支有 ATTRIBUTION 的 skill 共用同一個上游 (mattpocock/skills), 而
+[`scripts/upstream-recheck.sh`](../../scripts/upstream-recheck.sh) 與
+[蒸餾帳本](upstream-distillation-ledger.md) 也都只綁那一個上游 —— 也就是說,
+**這個 repo 有一套可覆核的蒸餾程序, 但它只覆蓋一個上游**, baton 與兩支 Pilotfish 都在外面.
+
 ## 採用效果與驗證
 
 預期效果:
