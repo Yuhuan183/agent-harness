@@ -97,6 +97,7 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 | 來源 | 查核時的狀態 | 查核日 | 注意 |
 |---|---|---|---|
 | Pilotfish | latest release tag `v1.3.10`, tag commit `7a7f71b...`; 最後 push 2026-08-07 | 2026-08-21 | 上游發版頻率高於本文件重查頻率 - 四天內出了 v1.3.9 與 v1.3.10 兩版, 引用前先確認 tag |
+| cablate/baton | release `v0.1.1` (2026-07-10), 最後 push 2026-07-16, 之後未動 | 2026-08-21 | `baton-dispatch` 的上游. 逐條核對後兩條沒有本地對應, 都已採用; 完整 pin 與核對表在 [peer-harnesses](peer-harnesses.md#cablatebaton-baton-dispatch-的上游) |
 | pilotfish-codex | release `1.7.1` (2026-08-11, 最後 push 同日); 自走版號, 與上游 v1.3.10 不可比 | 2026-08-21 | Codex CLI 分支, 不是翻譯. 七個角色與本專案只差 `scout`/`explore` 命名; 帶了一個本專案沒有的 review-service circuit breaker, 見 [peer-harnesses](peer-harnesses.md#pilotfish-codex-15-17-codex-cli-分支) |
 | Deep Agents | PyPI stable `0.7.7`; CLI `deepagents-code 0.1.58` (2026-08-19); `deepagents-acp 0.0.10` | 2026-08-20 | 三個 package 各自發版, 版本序不同步, 分開報. 兩週內主線是 session 身分穿過壓縮, 與本專案 `dispatch_id` 的載體同一件事, 見 [peer-harnesses](peer-harnesses.md#2026-08-20-重查-主線移到-session-身分) |
 | Headroom | PyPI `headroom-ai 0.36.1`; GitHub latest release tag `v0.36.1` (皆 2026-08-21); PR #1044 仍 open. **0.36.1 是安全性釋出** (外部評估 WEB-01–07, upstream #2207), 另修 proxy 重試耗盡時回 502 而非 200 (#3083) | 2026-08-21 | **只記上游, 不記本機.** 這是共用 repo, 各部署版本不同, 而本機版本寫進共用文件會在別台被讀成事實 —— 2026-08-21 查出 08-20 那批本機紀錄混了兩個部署, 詳見 [landing-log](landing-log.md). 要知道自己那台跑什麼, 照 `main/.agents/docs/headroom-runtime.md` 開頭那四個來源當場問 |

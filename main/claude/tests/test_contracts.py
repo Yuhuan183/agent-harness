@@ -1516,7 +1516,18 @@ class DocumentationBudgetTests(unittest.TestCase):
             # the relation cost 40 words; tightening the paragraph returned 9
             # and merging the duplicated trigger-ownership sentence in the same
             # section returned another 9.
-            ".claude/skills/baton-dispatch/SKILL.md": 1197,
+            # +74 (2026-08-21): two rules with no local equivalent, found by
+            # rechecking the upstream this file distils. `cablate/baton` says to
+            # fall back to direct execution when delegation repeatedly fails,
+            # and `miyago9267/pilotfish-codex` 1.6.1 adds that a missing
+            # reviewer receipt is not a user decision and permits no readiness
+            # claim - two independent upstreams pointing at the same hole. Every
+            # stop rule here was inside a leaf; nothing said what main may claim
+            # when a leaf returns nothing. The second rule is upstream's slice
+            # checkpoint. Written tight and not displaced: the sections they
+            # land in state each rule once and there was nothing to trade.
+            # Measured 1271 + ~2%.
+            ".claude/skills/baton-dispatch/SKILL.md": 1297,
             # QC mechanics and fixed records belong to baton-dispatch; keep
             # provider-routing focused on route, fallback, and eligibility.
             ".claude/skills/provider-routing/SKILL.md": 1300,
@@ -1541,7 +1552,12 @@ class DocumentationBudgetTests(unittest.TestCase):
             # 6 more from the "same surface" clause this section already stated
             # once. Measured size moved 1098 -> 1123; the file had been sitting
             # two words under its ceiling rather than on it.
-            ".codex/skills/leaf-dispatch/SKILL.md": 1123,
+            # +113 (2026-08-21): the twin of the entry above, plus one clause
+            # the Claude side does not need - this side already had the ledger
+            # half of a lost leaf (`--cancel` versus `failed`), so the new rule
+            # names it to keep the two from being read as alternatives.
+            # Measured 1212 + ~2%.
+            ".codex/skills/leaf-dispatch/SKILL.md": 1236,
             # The four below were unbudgeted until 2026-07-30: the ceiling
             # existed on the three files someone had remembered, not on the
             # tier, so the largest dispatch-time surface in the repo

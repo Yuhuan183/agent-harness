@@ -111,12 +111,20 @@ construct across the scope first
 repository-wide, live, or expensive gates; preserve partial evidence when
 stopping.
 
+A dispatch returning nothing usable is not a result: re-brief once, then stop
+dispatching it — work directly or report it unverified. An absent verifier is
+never a pass, so nothing gated on it may be claimed: readiness, verification,
+credentials, or any outward write. A lost leaf is not a user decision; do not
+hand it over as one. Its ledger side is above: `--cancel` a launch that never
+ran, log `failed` for one that did.
+
 For large work, define a program envelope for shared constraints and
 independently approvable execution slices. Give each readiness unit a stable
 ID; each slice names its ready envelope, prerequisites, owner, rollback, and
 acceptance. Review the envelope first, then only the next executable slice;
 unrelated downstream slices do not block approval, and shared blockers cannot
-be hidden by cosmetic splitting.
+be hidden by cosmetic splitting. Finishing a slice is a checkpoint, not
+authority to dispatch the next phase.
 
 Before the first readiness review of a security-sensitive unit, complete
 `security-reviewer` and carry every finding plus its disposition into the
