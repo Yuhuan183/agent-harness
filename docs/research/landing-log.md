@@ -487,3 +487,23 @@ repo 政策存放的具體後果.
   的 Headroom 列只留上游; [`RTK.md`](../../main/claude/RTK.md) 的版本戳記改標 `pinned`.
 - **這一則本身仍是本機紀錄**, 但它在證據層, 而這份日誌的規則是原始措辭不刪改 —— 推翻的
   過程就是這個目錄的產出.
+
+#### 2026-08-21 上游重查: 兩支 Pilotfish 與 Headroom
+
+- **Pilotfish 本體沒有動.** 最後 push 2026-08-07T22:26Z, 最新 release 仍是 v1.3.10. 上一次
+  對齊是 08-08, 所以既有蒸餾全部維持有效. 記下來是因為**「沒有變」和「沒有查」在文件上
+  長得一樣**, 而下一個人有權知道是哪一種.
+- **[pilotfish-codex](https://github.com/miyago9267/pilotfish-codex) 首次納入** (1.7.1,
+  2026-08-11). 它不是翻譯: 兩週內從 1.5.1 走到 1.7.1, 動的是安裝架構, 執行期切分與
+  review 失效處理, 每一項本體都沒有. 完整蒸餾在
+  [peer-harnesses](peer-harnesses.md#pilotfish-codex-15-17-codex-cli-分支).
+- **一個缺口, 一個獨立收斂, 一個佐證.** 缺口是 review-service circuit breaker —— 本專案
+  規定了 verifier 的額度與放置點, 沒有規定它缺席時怎麼辦, 已進[待辦方向](README.md#待辦方向).
+  獨立收斂是七個角色只差 `scout`/`explore` 一個命名, 以及常駐 bootstrap 最小化加按需 skill
+  的切法. 佐證是它定義了三個 tier 而中間那個 (terra) 沒有任何角色在用 —— 一個外部實作
+  自己空掉一檔, 比我們自己說「兩檔夠了」有力.
+- **Headroom 0.36.1 是安全性釋出**, 不只是修補: 外部評估 WEB-01–07 (upstream #2207), 另修
+  proxy 在上游連線重試耗盡時回 502 而非 200 (#3083). 後者和本 repo 記過的 CCR 症狀
+  (HTTP 200 但 body 壞掉) 是同一類失效, 只是成因不同.
+- 查法: GitHub releases API 與 raw README/CHANGELOG, 不是讀我們自己的筆記. 角色表, tier
+  指派與 circuit breaker 三項都回到上游原文核對過, 沒有只採信 release note 的摘要.

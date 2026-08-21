@@ -9,7 +9,7 @@
 `readable-zh-tw` 蒸餾自另一個上游, 它的 pin, 目標分岔與逐次同步紀錄獨立成篇, 見
 [readable-zh-tw 的上游](readable-zh-tw-upstream.md) (`scripts/readable-zh-tw-recheck.sh`).
 
-> 對齊日期: 2026-07-28, 上游與場域研究於 2026-08-08 重查 (Pilotfish v1.3.10), Deep Agents 於 2026-08-20 再查 (0.7.7). 這是目前專案採用決策的入口; 各來源的取證細節留在分題文件.
+> 對齊日期: 2026-07-28, 上游與場域研究於 2026-08-08 重查 (Pilotfish v1.3.10), Deep Agents 於 2026-08-20 再查 (0.7.7), Pilotfish 兩支與 Headroom 於 2026-08-21 再查 (Pilotfish 未動; pilotfish-codex 1.7.1 首次納入). 這是目前專案採用決策的入口; 各來源的取證細節留在分題文件.
 
 ## 這份文件回答什麼
 
@@ -96,9 +96,10 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 
 | 來源 | 查核時的狀態 | 查核日 | 注意 |
 |---|---|---|---|
-| Pilotfish | latest release tag `v1.3.10`, tag commit `7a7f71b...` | 2026-08-08 | 上游發版頻率高於本文件重查頻率 - 四天內出了 v1.3.9 與 v1.3.10 兩版, 引用前先確認 tag |
+| Pilotfish | latest release tag `v1.3.10`, tag commit `7a7f71b...`; 最後 push 2026-08-07 | 2026-08-21 | 上游發版頻率高於本文件重查頻率 - 四天內出了 v1.3.9 與 v1.3.10 兩版, 引用前先確認 tag |
+| pilotfish-codex | release `1.7.1` (2026-08-11, 最後 push 同日); 自走版號, 與上游 v1.3.10 不可比 | 2026-08-21 | Codex CLI 分支, 不是翻譯. 七個角色與本專案只差 `scout`/`explore` 命名; 帶了一個本專案沒有的 review-service circuit breaker, 見 [peer-harnesses](peer-harnesses.md#pilotfish-codex-15-17-codex-cli-分支) |
 | Deep Agents | PyPI stable `0.7.7`; CLI `deepagents-code 0.1.58` (2026-08-19); `deepagents-acp 0.0.10` | 2026-08-20 | 三個 package 各自發版, 版本序不同步, 分開報. 兩週內主線是 session 身分穿過壓縮, 與本專案 `dispatch_id` 的載體同一件事, 見 [peer-harnesses](peer-harnesses.md#2026-08-20-重查-主線移到-session-身分) |
-| Headroom | PyPI `headroom-ai 0.36.1`; GitHub latest release tag `v0.36.1` (皆 2026-08-21); PR #1044 仍 open | 2026-08-21 | **只記上游, 不記本機.** 這是共用 repo, 各部署版本不同, 而本機版本寫進共用文件會在別台被讀成事實 —— 2026-08-21 查出 08-20 那批本機紀錄混了兩個部署, 詳見 [landing-log](landing-log.md). 要知道自己那台跑什麼, 照 `main/.agents/docs/headroom-runtime.md` 開頭那四個來源當場問 |
+| Headroom | PyPI `headroom-ai 0.36.1`; GitHub latest release tag `v0.36.1` (皆 2026-08-21); PR #1044 仍 open. **0.36.1 是安全性釋出** (外部評估 WEB-01–07, upstream #2207), 另修 proxy 重試耗盡時回 502 而非 200 (#3083) | 2026-08-21 | **只記上游, 不記本機.** 這是共用 repo, 各部署版本不同, 而本機版本寫進共用文件會在別台被讀成事實 —— 2026-08-21 查出 08-20 那批本機紀錄混了兩個部署, 詳見 [landing-log](landing-log.md). 要知道自己那台跑什麼, 照 `main/.agents/docs/headroom-runtime.md` 開頭那四個來源當場問 |
 | mattpocock/skills | Claude marketplace pin `068b6e0`; release tag `v1.2.3` (2026-08-06); `plugin.json` version `1.2.3`; 25 skills | 2026-08-17 | **版本號不會告訴你內容變了** - 08-14 到 08-17 之間 pin 前進 12 個 commit, 而 tag, version 與 skill 數全部沒動. 逐字引用上游 SKILL.md 前先重解析 pin, 見 [mattpocock-skills-integration.md](mattpocock-skills-integration.md) |
 | Artificial Analysis Intelligence Index | **v4.1.1** (August 2026-current) | 2026-08-14 | 點版本會回溯重算全部分數 - v4.1.1 只換了 𝜏³-Banking 的 dataset 與三項評測的 grader, 前緣分數就整體上移約 2 分. 引用絕對值前先確認版本, 見 [model-evidence.md](model-evidence.md) |
 | OpenAI prompting guidance | [Latest model guide](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.6#prompting-best-practices) | - | 目前 canonical 文件 |
@@ -169,6 +170,16 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 | 5 | ⑤ 退場 | **不成立, 但門檻選錯對象** | 有連續 5 次, 但幾乎全是 commit-gate 的紅套件重試 - 那是機制在運作 | denial log (只記錄, 不設門檻) |
 
 那時還欠著三件, 到 2026-08-12 收束成一件: negative control fixture (方向 4) 已落地為 s8 arm B 並跑過每臂 30 次; description 接不接得住隱晦措辭 (方向 3 衍生) 已測且**判定無定論, 退場**; **lifecycle replay 也在同日補齊並跑完第一批** — 四項判準, 三份事前登記情境, 15 個 run. 三件都收束了, 開著的換成新的三件 (見下).
+
+**2026-08-21 新增一條, 不在上面那條軸上.** 五個階段講的是一條常駐規則的一生; 這一條講的是
+派工迴路: **驗證者沒有回來時該怎麼辦.** 本專案寫了 verifier 的額度與放置點, 沒有寫缺席.
+pilotfish-codex 1.6.1 的 circuit breaker 給了一個成形的答案 —— 一次有界重試, 然後進入
+明確等待狀態, 而且「review 服務失效**不是**使用者決策」, 不得據以宣告 readiness, 驗證,
+憑證或對外寫入.
+
+推翻條件: 找得到一次派工, verifier 沒有回傳結果, 而主 session 仍然把工作當成已驗證交出去 ——
+或者反過來, 證明本專案的收束流程在缺席時本來就會停下, 那這一條就不成立. 目前 ledger 太薄,
+兩者都還沒有樣本.
 
 這些查核的完整紀錄搬到 [landing-log.md](landing-log.md) 了 —— 它是一份**日誌**, 而本文是**總結**, 兩者長在一起時 sprawl guard 就會燒. 每一則的標題自帶日期, 從那份文件的目次直接找: 本文不再抄一份逐則連結, 因為手抄別人的目次每多一則就多一個會過期的地方, 而它原本宣稱的「依日期由新到舊」已經不成立了.
 

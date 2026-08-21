@@ -2667,6 +2667,40 @@ class TrapSurfaceTests(unittest.TestCase):
         "s11-pointer-redundancy": 0,
     }
 
+    def test_a_tool_name_inside_a_longer_name_is_not_that_tool(self) -> None:
+        """A version attestation is only useful if it is about the right tool.
+
+        `pilotfish-codex 1.7.1` is another project's release, and the scanner
+        read it as a claim about the Codex CLI - three `differs` against the
+        local 0.149.0 the day that upstream entered the research notes
+        (2026-08-21). Longest-spelling-first only settles names this scanner
+        already knows, so the boundary has to be on the left of the match.
+
+        Both directions, because a boundary that is too eager silences the real
+        claims this instrument exists to catch.
+        """
+        module = load_module("evidence_check", ROOT / "scripts" / "evidence-check.py")
+        patterns = module.attribution_patterns()
+
+        def hits(text: str, tool: str) -> bool:
+            return any(canon == tool and pattern.search(text)
+                       for pattern, canon in patterns)
+
+        # No backticks between the name and the number in the negative cases.
+        # `ATTRIBUTION` only crosses whitespace, commas and colons, so a
+        # backticked version blocks the match for an unrelated reason and a test
+        # written that way passes whether or not the boundary exists - the first
+        # version of this test did, and the mutation stayed green.
+        for text, tool, expected in (
+            ("Codex CLI 是 codex 0.149.0", "codex", True),
+            ("本機 headroom 0.36.1", "headroom", True),
+            ("PyPI headroom-ai 0.36.1", "headroom", True),
+            ("pilotfish-codex 1.7.1 首次納入", "codex", False),
+            ("pilotfish-codex: 1.6.1 的 circuit breaker", "codex", False),
+        ):
+            with self.subTest(text=text, tool=tool):
+                self.assertEqual(hits(text, tool), expected)
+
     def test_no_trap_gains_a_result_row_that_cannot_be_dated(self) -> None:
         """`evidence-check` counts unstamped rows and always exits 0; this holds the line.
 
