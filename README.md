@@ -147,7 +147,7 @@ git diff --check
 scripts/sync.sh
 ```
 
-六支只報不擋的工具, 不在上面的驗收鏈裡, 因為它們回答的是「現在長什麼樣」而不是「這次改動對不對」:
+九支只報不擋的工具, 不在上面的驗收鏈裡, 因為它們回答的是「現在長什麼樣」而不是「這次改動對不對」:
 
 ```bash
 scripts/evidence-check.py         # SHA 引用是否還解得開; trap 結果列的量測面指紋是否還是出貨版本
@@ -156,6 +156,9 @@ scripts/resident-pool-report.py   # 這台機器實際的常駐 skill 描述量,
 scripts/zh-tw-usage-report.py     # 本 repo 自己的中文有沒有用到它出貨在校正的中國用語
 scripts/codename-gloss-report.py  # 說明類文件有沒有直接丟出內部代號而不解釋
 scripts/denial-report.py          # 這些閘實際擋了多少次, 擋在什麼理由上
+scripts/context-inflow-report.py  # 真實工作階段裡, 窗口實際被什麼填滿 (常駐只佔約 15%)
+scripts/memory-freshness-report.py # CLI 記憶裡指涉的路徑與連結是否還解得開
+scripts/machine-state-check.py     # 跑套件 (或任一指令) 會不會改到 repo 以外的東西
 ```
 
 `scripts/contract-operator-delta.py` 刻意不在這張表: 它是契約精簡流程裡的佐證步驟, 不是

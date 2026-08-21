@@ -3051,7 +3051,16 @@ class ReportOnlyToolTests(unittest.TestCase):
         it.
         """
         readme = read_repo("README.md")
-        numerals = {"三": 3, "四": 4, "五": 5, "六": 6, "七": 7}
+        # Runs past the current count on purpose. The map stopped at 七 and the
+        # inventory reached 九 on 2026-08-21, at which point the guard could not
+        # read the numeral at all and failed with "the README states how many
+        # there are" - a guard that goes blind rather than red is the worse
+        # failure, because the message points at the document instead of itself.
+        # Single characters only: the pattern below is a one-character class, so
+        # a two-character numeral would match its first half and read 十一 as 10.
+        # Passing 十 means widening the pattern, not just this map.
+        numerals = {"三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8,
+                    "九": 9, "十": 10}
         stated = re.search(rf"([{''.join(numerals)}])支只報不擋的工具", readme)
         self.assertIsNotNone(stated, "the README states how many there are")
 
@@ -3128,6 +3137,150 @@ class DenialReportTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("2 unparseable line(s)", result.stdout)
             self.assertIn("1 row(s)", result.stdout)
+
+
+class ContextInflowReportTests(unittest.TestCase):
+    """Two numbers with different confidence share one screen here, and the whole
+    point of the report is that a reader can tell them apart. Floor and peak come
+    straight from `usage`; the attribution is a CJK-aware estimate that
+    under-counts real growth by a factor that is not constant. A version that
+    printed the shares without the factor beside them would read as measurement.
+    """
+
+    SCRIPT = ROOT / "scripts/context-inflow-report.py"
+
+    def _transcript(self, directory: Path, floor: int, peak: int) -> None:
+        """A session whose window grows from `floor` to `peak` over 30 requests."""
+        lines = []
+        for index in range(30):
+            share = index / 29
+            lines.append(json.dumps({
+                "type": "assistant",
+                "message": {
+                    "content": [{"type": "tool_use", "id": f"t{index}",
+                                 "name": "Bash", "input": {"command": "ls" * 40}}],
+                    "usage": {"input_tokens": int(floor + (peak - floor) * share),
+                              "output_tokens": 10},
+                },
+            }))
+            lines.append(json.dumps({
+                "type": "user",
+                "message": {"content": [{"type": "tool_result",
+                                         "tool_use_id": f"t{index}",
+                                         "content": "output " * 200}]},
+            }))
+        (directory / "s.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    def _run(self, directory: Path, *extra: str):
+        return subprocess.run(
+            [sys.executable, str(self.SCRIPT), "--transcripts", str(directory), *extra],
+            capture_output=True, text=True)
+
+    def test_it_separates_what_it_measured_from_what_it_estimated(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self._transcript(Path(temp_dir), floor=40_000, peak=200_000)
+            result = self._run(Path(temp_dir), "--json")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(result.stdout)
+            # exact: read back out of the usage numbers it was given
+            self.assertEqual(report["floor_median"], 40_000)
+            self.assertEqual(report["peak_median"], 200_000)
+            self.assertAlmostEqual(report["floor_share_median"], 0.2, places=6)
+            # estimated: the factor has to be reported, not folded in silently
+            self.assertIsNotNone(report["factor_median"])
+            self.assertIn("Bash", report["results"])
+
+            human = self._run(Path(temp_dir))
+            self.assertIn("沒有估算成分", human.stdout)
+            self.assertIn("當排序讀", human.stdout,
+                          "the shares are printed without saying how to read them")
+
+    def test_a_directory_with_nothing_in_it_reports_instead_of_failing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = self._run(Path(temp_dir))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("no session", result.stdout)
+
+
+class MemoryFreshnessReportTests(unittest.TestCase):
+    """A memory entry arrives as background context, not as something anyone
+    opens, so a path inside one can rot for months while still sounding
+    authoritative. All four ways it can rot are checked, because a report that
+    catches three of them reads exactly like one that catches all four."""
+
+    SCRIPT = ROOT / "scripts/memory-freshness-report.py"
+
+    def _run(self, directory: Path):
+        return subprocess.run(
+            [sys.executable, str(self.SCRIPT), "--memory-dir", str(directory),
+             "--json"], capture_output=True, text=True)
+
+    def test_it_finds_every_way_a_memory_goes_stale(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            memory = Path(temp_dir)
+            (memory / "a.md").write_text(
+                "看 `main/claude/GONE.md`, 也見 [[nowhere]].\n", encoding="utf-8")
+            (memory / "MEMORY.md").write_text(
+                "- [x](vanished.md) — y\n", encoding="utf-8")
+            report = json.loads(self._run(memory).stdout)
+            self.assertEqual([r["path"] for r in report["missing_paths"]],
+                             ["main/claude/GONE.md"])
+            self.assertEqual([r["link"] for r in report["dangling_links"]],
+                             ["nowhere"])
+            self.assertEqual(report["not_in_index"], ["a.md"])
+            self.assertEqual(report["index_rows_without_a_file"], ["vanished.md"])
+
+    def test_a_live_reference_and_a_listed_entry_are_not_flagged(self) -> None:
+        """The other half. An index regex without MULTILINE matches only the
+        first row, and the first run of this report called two correctly-indexed
+        memories missing (2026-08-21) - a false positive is how a report becomes
+        one nobody reads."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            memory = Path(temp_dir)
+            for name in ("a", "b", "c"):
+                (memory / f"{name}.md").write_text(
+                    "見 `scripts/sync.sh` 與 [[a]].\n", encoding="utf-8")
+            (memory / "MEMORY.md").write_text(
+                "- [A](a.md) — x\n- [B](b.md) — y\n- [C](c.md) — z\n",
+                encoding="utf-8")
+            report = json.loads(self._run(memory).stdout)
+            self.assertEqual(report["missing_paths"], [])
+            self.assertEqual(report["dangling_links"], [])
+            self.assertEqual(report["not_in_index"], [])
+            self.assertEqual(report["index_rows_without_a_file"], [])
+
+
+class MachineStateCheckTests(unittest.TestCase):
+    """It exists because the denial-log bleed was found by hand and nothing would
+    have found the next one. So the property that matters is that it notices a
+    write - a version that always printed "no change" would have looked correct
+    every day of the twelve this ran undetected."""
+
+    SCRIPT = ROOT / "scripts/machine-state-check.py"
+
+    def _run(self, tree: Path, command: str):
+        return subprocess.run(
+            [sys.executable, str(self.SCRIPT), "--trees", str(tree),
+             "--command", command, "--json"], capture_output=True, text=True)
+
+    def test_it_names_the_file_a_command_wrote(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tree = Path(temp_dir)
+            (tree / "kept.txt").write_text("x", encoding="utf-8")
+            report = json.loads(self._run(tree, f"echo hi > {tree}/leaked.txt").stdout)
+            self.assertEqual([Path(p).name for p in report["added"]], ["leaked.txt"])
+            self.assertEqual(report["changed"], [])
+            self.assertEqual(report["removed"], [])
+
+    def test_a_command_that_writes_nothing_reports_nothing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tree = Path(temp_dir)
+            (tree / "kept.txt").write_text("x", encoding="utf-8")
+            report = json.loads(self._run(tree, "true").stdout)
+            self.assertEqual(report["added"], [])
+            self.assertEqual(report["changed"], [])
+            self.assertEqual(report["removed"], [])
+            self.assertEqual(report["watched"], 1)
 
 
 class CodenameGlossReportTests(unittest.TestCase):
