@@ -1,7 +1,7 @@
 ---
 name: upstream-distillation
 description: |
-  Recheck an upstream this repo distils from, classify every rule it carries, and land the result across the right document tiers. Use when rechecking a pinned upstream, surveying a new one, adding or advancing a pin, or asking whether an upstream change is already covered here. Trigger on "重查上游", "蒸餾", "upstream 有沒有更新", "這條我們有沒有", or a new peer project worth surveying. Do not use for reviewing this repo's own design (harness-review), for establishing a claim in general (evidence-ladder), or for reading a changelog you do not intend to act on. Repo-root dev-only; never add it to the deployment manifest.
+  Read an upstream this repo distils from, classify every rule it carries, plan the landing against this repo's own development rules, and synthesise findings across upstreams into guidance. Use when rechecking a pinned upstream, surveying a new one, advancing a pin, asking whether an upstream change is already covered here, or asking what several research reports add up to. Trigger on "重查上游", "蒸餾", "溯源", "upstream 有沒有更新", "這條我們有沒有", "研究報告整合", or a new peer project worth surveying. Do not use for reviewing this repo's own design (harness-review), for establishing a claim in general (evidence-ladder), or for reading a changelog you do not intend to act on. Repo-root dev-only; never add it to the deployment manifest.
 ---
 
 # Upstream Distillation
@@ -16,6 +16,15 @@ like one that still does.
 Fetch upstream. Re-reading our own notes is not a recheck — the ATTRIBUTION
 files say so because a same-day reading held in memory once under-credited
 upstream in four places.
+
+**Read the source, not the notes about it.** A release note states intent; the
+code states behaviour, and the gap between them is where the useful detail sits.
+On 2026-08-21 a changelog line said a fallback model had become configurable;
+the installed `wrap.py` showed the constant, the environment variable that
+overrides it, and that the resolution is idempotent — three facts worth having
+that the note did not carry. Read whole: a one-file upstream in full, and for a
+larger one the files the rules actually live in rather than the index that
+points at them.
 
 Locate the pin in this order, and do not stop at the first miss: the skill's
 `ATTRIBUTION.md`; the skill body, where the source may be a single sentence; the
@@ -52,6 +61,13 @@ One of: **已落地** (already true here), **採用**, **改造後採用**, **�
 with the reason, or **佐證** — upstream evidence for something already decided.
 A rule left unclassified is the one that goes missing.
 
+The report is complete when it carries five things: every upstream rule with its
+disposition; **what was checked** to decide each one, not just the verdict; a pin
+that resolves; the date; and **what was not checked**. The last is the one that
+gets dropped, and dropping it turns a partial pass into something that reads like
+a full audit — `baton-dispatch`'s attribution says its wording pass is still
+owed, precisely so nobody assumes otherwise.
+
 Two dispositions people skip:
 
 - **"Upstream did not move" is a result.** Record the date and the last commit.
@@ -70,6 +86,28 @@ Lower it when the rule assumes a shape this repo does not have, and say which
 shape rather than "not applicable". Prefer the intersection of two upstreams'
 answers plus the sharpest clause either one adds; that is a smaller rule than
 either and it carries both arguments.
+
+## Plan the landing against this repo's own rules
+
+An adopted rule is not a paragraph to paste. Turn it into a plan that clears the
+same bar as any other change here, and write the plan before the edit:
+
+- **A rule that changes behaviour needs the check that fails first.** If nothing
+  could have failed before the rule existed, it is a preference, not a rule —
+  decide which one you are landing and say so.
+- **Every new guard is mutation-checked in both directions.** Break the
+  mechanism, watch the guard go red with the message you expected, restore.
+  A guard that stays green under mutation is not evidence; two on 2026-08-21
+  passed for the wrong reason and only mutation found it.
+- **A rule landing on one provider lands on its twin**, in that side's idiom,
+  and names anything the other side already had so the two do not read as
+  alternatives.
+- **Budgeted files need displacement or a deliberate raise** carrying the
+  measurement and the reason beside the number.
+- **Touching the prompt surface means rewriting the census**; a changed contract
+  phrase may be pinned by a test, and `contract-operator-delta` will show
+  operator drift a string test cannot.
+- **Deployed files carry no bare short SHA.** The pin goes where it resolves.
 
 ## Land it in the same pass
 
@@ -92,6 +130,41 @@ Where each part goes:
 Then re-run the suite: skills on the prompt surface need
 `scripts/prompt-surface-census.py --write`, and a changed contract phrase may be
 pinned by a test that will tell you.
+
+## Re-trace rather than diff against our own record
+
+An existing distillation is a claim, not a baseline. When an upstream moves, the
+question is not only "what is new" but "was the previous classification right" —
+a re-fetch once found four sections that under-credited upstream, and a table
+here went stale inside the session that wrote it. Re-classify every rule, not
+only the ones already listed; the entries that exist are the ones someone
+already thought about, and the failure lives among the ones nobody did.
+
+Advancing a pin without re-classifying is how a rule goes missing silently. A
+pin that moved is not by itself a reason to follow it.
+
+## Synthesise across upstreams, not one at a time
+
+The per-upstream pass answers "did we miss anything from this one". It cannot
+answer "what do all of them together say about our design", and that question is
+where the leverage is.
+
+Do the synthesis **against the layer a finding belongs to**, not against a list
+of upstreams. Then:
+
+- **Two independent upstreams reaching the same rule raises its weight** above
+  either one alone — that is what happened to the missing-verifier rule, and the
+  landed version is the intersection plus the sharper clause either added.
+- **A rule every upstream has and we do not** is a gap until someone writes down
+  why our shape does not need it.
+- **A rule we have and no upstream does** is either our own edge or an
+  unexamined assumption. Say which, with what would decide it.
+- **Where upstreams disagree, the disagreement is the finding.** Record both
+  positions and what would settle it rather than picking the more recent one.
+
+The output is either a change to the architecture documents or a recorded
+conclusion, and both carry a refutation condition. A synthesis with nothing that
+could falsify it is a summary.
 
 ## Known limit
 
