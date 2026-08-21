@@ -20,8 +20,7 @@
     "main/.agents/*.md",
     "main/.agents/docs/*.md",
     "main/.agents/skills/**/*.md",
-    ".agents/skills/harness-review/*.md",
-    ".agents/skills/harness-review/**/*.md"
+    ".agents/skills/**/*.md"
   ],
   "evidence_not_current_guidance": [
     "docs/plans/orchestration-history.md",
