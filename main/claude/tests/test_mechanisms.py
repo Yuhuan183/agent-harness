@@ -222,6 +222,38 @@ class MechanismTests(unittest.TestCase):
         return subprocess.run([sys.executable, str(hook)], env=env,
                               check=True, capture_output=True, text=True)
 
+    def test_every_copy_of_the_word_unit_counts_the_same(self) -> None:
+        """Three files spell the budget unit, and they must agree.
+
+        `support.word_count` decides whether a change passes; the two reports
+        decide what a reader believes about the same files. A copy that drifts
+        fails nothing - it produces a second, quieter set of numbers that look
+        like the first, which is how a headroom figure ends up disagreeing with
+        the ceiling that gates it. The escapes and the literal characters are
+        two spellings of one range, so this compares behaviour, not source.
+        """
+        import importlib.util
+
+        sample = ("\u7e41\u9ad4\u4e2d\u6587\u4e00\u53e5\u8a71 with English words, a link "
+                  "https://example.invalid/a/b/c and \u6a19\u9ede, \u5168\u5f62\u3002\u6df7\u5728\u4e00\u8d77\n"
+                  "\ttabs   and    runs\n")
+        counters = {"support": word_count}
+        for script in ("scripts/resident-pool-report.py",
+                       "scripts/budget-drift-report.py"):
+            spec = importlib.util.spec_from_file_location(
+                script.replace("/", "_").replace("-", "_"), ROOT / script)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            counters[script] = module.word_count
+
+        answers = {name: counter(sample) for name, counter in counters.items()}
+        self.assertEqual(len(set(answers.values())), 1,
+                         f"the budget unit disagrees across copies: {answers}")
+        # A unit that returns the same wrong thing everywhere would pass the
+        # line above too, so pin what the unit is: every CJK character counts,
+        # or Chinese prose walks through every ceiling in the repo.
+        self.assertGreater(answers["support"], len(sample.split()))
+
     def test_surface_fingerprint_reads_history_the_way_it_reads_the_tree(self) -> None:
         """A historical fingerprint must be composed exactly like a live one.
 
@@ -3385,12 +3417,18 @@ class ReportOnlyToolTests(unittest.TestCase):
         # read the numeral at all and failed with "the README states how many
         # there are" - a guard that goes blind rather than red is the worse
         # failure, because the message points at the document instead of itself.
-        # Single characters only: the pattern below is a one-character class, so
-        # a two-character numeral would match its first half and read 十一 as 10.
-        # Passing 十 means widening the pattern, not just this map.
+        # Past 十 the numeral is two characters, so the pattern is an
+        # alternation with the longer form first: a character class would match
+        # the 十 in 十一 and read eleven as ten - a guard that silently reads the
+        # wrong number is worse than one that cannot read at all. Widened when
+        # the inventory reached 十一 on 2026-08-24, which is what the previous
+        # note here said it would take.
         numerals = {"三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8,
-                    "九": 9, "十": 10}
-        stated = re.search(rf"([{''.join(numerals)}])支只報不擋的工具", readme)
+                    "九": 9, "十": 10, "十一": 11, "十二": 12, "十三": 13,
+                    "十四": 14, "十五": 15}
+        # Longest first, so 十一 never matches as 十.
+        alternation = "|".join(sorted(numerals, key=len, reverse=True))
+        stated = re.search(rf"({alternation})支只報不擋的工具", readme)
         self.assertIsNotNone(stated, "the README states how many there are")
 
         block = re.search(r"支只報不擋的工具.*?```bash\n(.*?)```", readme, re.S)
@@ -3411,7 +3449,7 @@ class ReportOnlyToolTests(unittest.TestCase):
         for path in guidance_markdown():
             if path == "README.md":
                 continue
-            for numeral in re.findall(rf"([{''.join(numerals)}])支只報不擋",
+            for numeral in re.findall(rf"({alternation})支只報不擋",
                                       read_repo(path)):
                 self.assertEqual(
                     numerals[numeral], len(listed),
