@@ -1094,9 +1094,9 @@ class MachineStateHygieneTests(unittest.TestCase):
         named = [path for path in docs if "commit-test-gate" in read_repo(path)]
         self.assertGreaterEqual(len(named), 3, "the gate is documented somewhere")
         for path in named:
-            self.assertIn("pre-commit", read_repo(path),
-                          f"{path}: describes the Bash commit gate without the "
-                          "git-side gate that covers what text cannot reach")
+            assert_names(self, "pre-commit", read_repo(path),
+                         f"{path}: describes the Bash commit gate without the "
+                         "git-side gate that covers what text cannot reach")
 
     def test_the_reviewer_boundary_counts_the_layers_it_lists(self) -> None:
         """A cardinality word and an enumeration are two claims, not one.
@@ -1334,9 +1334,9 @@ class MachineStateHygieneTests(unittest.TestCase):
         self.assertGreaterEqual(len(describing), 2,
                                 "the quota's scope is documented somewhere")
         for path in describing:
-            self.assertIn(bridge, read_repo(path),
-                          f"{path}: describes the verifier quota without naming "
-                          f"{bridge}, the outcome-verifier route it cannot count")
+            assert_names(self, bridge, read_repo(path),
+                         f"{path}: describes the verifier quota without naming "
+                         f"{bridge}, the outcome-verifier route it cannot count")
 
     def test_every_copy_of_the_leaf_record_has_the_same_fields(self) -> None:
         """A fixed record format kept in three files is three formats.

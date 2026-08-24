@@ -222,6 +222,34 @@ class MechanismTests(unittest.TestCase):
         return subprocess.run([sys.executable, str(hook)], env=env,
                               check=True, capture_output=True, text=True)
 
+    def test_a_document_assertion_reports_without_reprinting_the_document(self) -> None:
+        """The property is what the failure does *not* say.
+
+        `assertIn` renders both operands, so asserting a phrase against a file
+        puts the file in the output - twice this session a failing check emitted
+        the whole document it was checking. The suite is read by whatever runs
+        it, and a failure nobody can see past is one that gets skimmed.
+        """
+        document = "alpha " * 400 + "SENTINEL-NEEDLE-NOT-PRESENT-MARKER " + "beta " * 400
+        with self.assertRaises(AssertionError) as missing:
+            assert_names(self, "absent phrase", document, "docs/x.md: says why")
+        text = str(missing.exception)
+        self.assertIn("docs/x.md: says why", text, "the caller's reason must survive")
+        self.assertIn("absent phrase", text, "the missing phrase must be named")
+        self.assertIn(str(len(document)), text, "size stands in for the body")
+        self.assertNotIn("SENTINEL-NEEDLE-NOT-PRESENT-MARKER", text,
+                         "the document itself must not reach the message")
+        self.assertLess(len(text), 200, "a failure message is not a file dump")
+
+        # Present-and-should-not-be is the same rule in the other direction.
+        with self.assertRaises(AssertionError) as found:
+            assert_names(self, "alpha", document, "docs/x.md: still there",
+                         present=False)
+        self.assertNotIn("SENTINEL-NEEDLE-NOT-PRESENT-MARKER", str(found.exception))
+        # And a satisfied assertion says nothing at all.
+        assert_names(self, "alpha", document, "unreachable")
+        assert_names(self, "absent phrase", document, "unreachable", present=False)
+
     def test_rows_older_than_their_listing_are_not_counted_as_omissions(self) -> None:
         """44 of 45 dated result rows carry no fingerprint, and none of them could.
 

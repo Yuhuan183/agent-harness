@@ -199,6 +199,26 @@ def exec_weekly_integrity_prelude(namespace: dict) -> None:
                  "<weekly-integrity prelude>", "exec"), namespace)
 
 
+def assert_names(case, needle: str, document: str, message: str,
+                 present: bool = True) -> None:
+    """`assertIn` over a whole document, without printing the document.
+
+    unittest renders both operands into the failure message, so asserting a
+    phrase against a file puts the file in the output - 21 KB of architecture
+    prose to say one phrase was missing. The suite is read by whoever or
+    whatever is running it, and a failure nobody can see past is a failure that
+    gets skimmed.
+
+    Use it where the container is a document. Where it is a small fixture,
+    a toml, or a role file, the standard assertion's output is short enough to
+    be the evidence, and seeing it beats a message about it.
+    """
+    if (needle in document) is present:
+        return
+    verb = "does not contain" if present else "unexpectedly contains"
+    case.fail(f"{message} [{len(document)} chars, {verb} {needle!r}]")
+
+
 def carrier_pin() -> str:
     """The runtime `leaf-redispatch` records as having carried `agent_type`.
 
