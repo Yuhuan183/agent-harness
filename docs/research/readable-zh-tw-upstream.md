@@ -127,3 +127,25 @@ reference) **全部 matches the pin**. 所以 pin 從 `2c27cca` 推進到 `8f1cd
 
 發現的過程本身值得記: 我第一次跑用了打錯的 SHA, 腳本回 404 而訊息說「檔案和研究文件描述的
 不一樣」—— **一個打錯的字被報成了上游改動**.
+
+## 2026-08-24 重查: 三個 commit 全是機器人更新星數圖
+
+`8f1cdb5ec52e46178f9d04a316bdf610466ee71c` -> `aa37c20b`, 三個 commit,
+2026-08-22 到 08-24, 訊息全是「chore: 自動更新 Star History 星數成長圖
+(GitHub Actions)」, 動到的檔案只有一個: `assets/readme/star-history-real.svg`.
+
+`readable-zh-tw-recheck.sh` 對 pin 跑過, 六個來源檔全部 matches the pin. 內容沒有
+任何改變, pin 推進純屬記帳.
+
+### 這一輪改的是儀器
+
+`upstream-pin-report.py` 原本只說「MOVED +3」, 而那三個字沒辦法把「上游改了規則」
+和「機器人重畫了一張圖」分開 —— 要分開得自己去抓一次 diff, 這次就抓了. GitHub 的
+compare 回應**本來就帶著檔案清單**, 所以現在同一次呼叫多印一行:
+
+```text
+MOVED +3     Raymondhou0917/speak-human-tw  ...
+             touched assets/ (1)
+```
+
+一眼就看得出不必查. 同一份報告裡 mattpocock 那列印的是 `skills/ (4)`, 那個就值得查.

@@ -3,7 +3,7 @@
 - 研究日期: 2026-08-14; 上游重查與第一批原始碼精讀 2026-08-17
 - 上游: [mattpocock/skills](https://github.com/mattpocock/skills)
 - 研究基準 (2026-08-14): Claude marketplace catalog `f8f7402b0ff3b88bf311d2efedeb6aad5841d0bb`; upstream pin `8b78b531ab965735c5dc74f6f7a219e1e37326df`; release `v1.2.3` (`6acc160e4e0cd062dbbbd7a1b26ae92855edf07e`)
-- **目前 marketplace pin (2026-08-21): `885e2ca4d842d139e9aef4e48d366c63cb1b8013`** — 前一個是 `068b6e0` (2026-08-17), 中間 12 個 commit, 蒸餾來源的**內容沒有實質變動**, 見[2026-08-21 重新溯源](#2026-08-21-重新溯源-上游動了-12-個-commit-規則一條沒動)
+- **目前 pin (marketplace, 2026-08-17 解析): `885e2ca4d842d139e9aef4e48d366c63cb1b8013`** — 2026-08-24 查過預設分支已到 `5b15a47f2d7150f545fbcacbfe381787fc0230dc`, 前進 5 個 commit 而我們的兩個來源檔 blob id 兩端相同; **pin 沒有跟著動**, 因為它記的是 marketplace 送出什麼, 而這裡沒有安裝 plugin 解析不了. 見[2026-08-24 重查](upstream-distillation-ledger.md#2026-08-24-重查-上游前進五個-commit-我們的兩個來源檔一個位元組沒動). 再前一個是 `068b6e0` (2026-08-17), 那 12 個 commit 同樣沒動到蒸餾來源, 見[2026-08-21 重新溯源](#2026-08-21-重新溯源-上游動了-12-個-commit-規則一條沒動)
 - 本地基準: branch `new-artificialanalysis`; HEAD `8d5d2e18e0fca9c341429bd6ce8a51040d5e4f10`
 
 > 本文件保存上游事實, 方案比較與採用決策. 實作順序, 檔案範圍, 驗收與停止條件在

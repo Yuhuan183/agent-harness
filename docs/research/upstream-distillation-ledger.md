@@ -143,3 +143,78 @@ pin 散在 **7 個檔案**. 更新其中六個而漏掉第七個, 那一個會�
 少算是計畫明說唯一不能弄錯的方向 (把 substantial portion 說成概念重寫). 所以現在的做法是:
 **先抓上游, 逐節列表, 再寫分類**, 而不是讀完憑印象分類. `scripts/upstream-recheck.sh`
 讓下一次覆核從同一個起點開始.
+
+## 2026-08-24 重查: 上游前進五個 commit, 我們的兩個來源檔一個位元組沒動
+
+`885e2ca4d842d139e9aef4e48d366c63cb1b8013` -> `5b15a47f2d7150f545fbcacbfe381787fc0230dc`, 五個 commit,
+2026-08-20 到 08-21.
+
+**查了什麼.** 用 blob SHA 直接比對兩個來源檔在 pin 與 head 的內容:
+`skills/engineering/diagnosing-bugs/SKILL.md` 兩端都是 `061c25a5`,
+`skills/engineering/tdd/SKILL.md` 兩端都是 `8fc08671`. 逐位元組相同, 所以
+`evidence-debugging` 與 `test-first-change` 的分類不必重跑, pin 推進純屬記帳.
+
+五個 commit 動到的是別的地方: `skills/productivity/grilling/SKILL.md` (+7/-1,
+純排版 —— 在連續問題之間加一條 `---`), 兩個 changeset, 一行 `.gitignore`,
+以及一個**新 skill**.
+
+### 新 skill `implement-spec`: 逐條分類
+
+上游把它放在 `skills/in-progress/`, 並標 `disable-model-invocation: true` ——
+它自己說這是未完成的東西. 但它談的是派工拓樸, 和 `baton-dispatch` 同一層, 所以
+逐條看:
+
+| 上游規則 | 處置 | 依據 |
+|---|---|---|
+| ticket 是 **task graph** 不是步驟清單, 永遠有一個 **frontier** | 佐證 | 我方的 program envelope 與 slice 已有 prerequisites 與 ready envelope; 「frontier」這個詞沒有, 而它指的是**同時可抓的全部**, 我方是一次一個 slice |
+| 溝通稀疏, 主要用 **context pointer**, 不重複 pointer 已經帶到的資訊 | 佐證 | `SKILL.md` 的「Brief only minimum paths」與 brief 模板的「Minimum sources」是同一個工具; 上游多的那半句 (指了就別再貼一次) 見下方 |
+| implementer 盡量背景執行以求最大並行 | 已落地 | 「Launch every selected agent in one independent batch back-to-back」 |
+| exploration agent 把筆記存到 **repo 外的共用目錄**給後續 agent 讀 | 不採用 | 形狀不同: 我方所有綜合走 main, leaf 之間不交換產物. 共用暫存目錄會生出第二個整合點而且沒有 owner, 與不變量 1 (一個可寫 artifact 一個 owner) 相斥 |
+| 每個 implementer 有自己的 worktree 與 branch | 已落地 | 「isolated workspaces for competing writes」 |
+| 由 **merger subagent** 把完成的工作併回 PR 分支 | 不採用 | 形狀不同: 契約明文 main 擁有 integration 與 synthesis. 把合併派出去等於把最終判斷派出去 |
+| 每次完成後重算 frontier, 再開更多 implementer | 佐證 | 同第一列 |
+| 全部完成後跑 code review, 所有問題**用單一 subagent** 修 | 已落地 | 「run expensive or repository-wide gates after integration」加上 verifier 放在最小完整驗收邊界 |
+| 收尾清掉所有 worktree | 已落地 | QC 會抓 leaf 留下的暫存檔; worktree 由 runtime 的 `isolation: "worktree"` 自動清 |
+| `disable-model-invocation: true` | 佐證 | 我方不用這個欄位, 改由契約規定「決定要派工之後才載入」—— 機制不同, 意圖相同 |
+
+### 那半句沒有落地, 理由寫在這裡
+
+上游說「不要重複 pointer 已經帶到的資訊」. 我方有「Brief only minimum paths」
+(給幾個指標) 但沒有明說「已經給了路徑就別把內容再貼一次」. 這在我方的形狀下**更**
+成立, 因為 leaf 拿不到對話歷史, 所以 main 得決定什麼內嵌什麼指過去.
+
+沒有落地的理由是成本: `baton-dispatch/SKILL.md` 現在 1298/1300 字, 只剩兩個字的
+餘裕, 加一條子句要嘛擠掉別的, 要嘛帶著量測與理由調高天花板. 而這條規則目前**沒有
+對應的本機失效** —— 沒有任何一次 QC 抓到「brief 把指過去的內容又貼了一遍」.
+為一個意圖付預算, 正是這個 repo 說過不做的事.
+
+**推翻條件**: 出現一次 QC 或 replay 觀察到 brief 同時給了路徑又貼了該路徑的內容,
+就落地, 並在同一次 commit 帶上量測與理由.
+
+### pin 為什麼沒有跟著動
+
+第一版把 pin 推到了預設分支的 head, 那是錯的, 而且是安靜地錯: `Reviewed commit` 記的是
+**marketplace 送出什麼**, 2026-08-17 解析出 `885e2ca4`, 而 `upstream-pin-report.py` 比的是
+**預設分支**. 兩者是不同的東西 —— 這份研究本身就是為了那個差別而寫的 (marketplace pin
+超前 tag, 而 version 不動). 把後者寫進前者的欄位, 等於把整份研究的結論從紀錄裡拿掉,
+而且沒有任何檢查會紅.
+
+所以 pin 留在 marketplace 那一個, 另外加一列記預設分支查到哪裡. 這台機器沒有安裝 Claude
+plugin, 解析不了當前的 marketplace pin, 所以那一列只能是「預設分支到 X, 我們的檔案沒動」.
+
+**代價要講明白**: `upstream-pin-report.py` 會一直把這個上游報成 MOVED, 因為它比的是預設
+分支. 那不是誤報, 是它問的問題和 pin 記的東西不同. 要讓它停下來, 要嘛在這台機器上裝
+plugin 去解析 marketplace pin, 要嘛讓報告讀 `Upstream skill` 那一列去回答「我們的來源檔
+動了沒有」而不只是「分支動了沒有」. 後者比較便宜, 也比較接近真正的問題.
+
+### 順帶修掉一個編出來的數字
+
+同一次還把研究摘要的「25 skills」改成「26」, 理由是「上游多了一個 skill」—— 那是推的,
+不是數的. 實際數 (`skills/*/*/SKILL.md`) 在 pin 是 35, 在預設分支 head 是 36, 其中 7 個在
+`in-progress`. 原本的 25 也從來沒有人驗過. 現在那一格帶著計數規則與所在 commit.
+
+### 沒有查的
+
+`grilling` 之外的其他上游 skill 沒有重看 (head 上共 36 個, 我們取兩個) —— 這次只回答
+「我們的來源動了沒有」與「新出現的東西要不要」. 上游那五個 commit 以外的歷史沒有重新
+溯源. 當前的 marketplace pin 也沒有重新解析, 理由如上.
