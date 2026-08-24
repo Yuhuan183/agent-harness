@@ -1,5 +1,6 @@
 """Deterministic mechanisms: hooks, sync preflight, statusline, guards."""
 import ast
+import hashlib
 import shutil
 import time
 import uuid
@@ -220,6 +221,70 @@ class MechanismTests(unittest.TestCase):
         env = {**os.environ, "HOME": temp_home, **(extra_env or {})}
         return subprocess.run([sys.executable, str(hook)], env=env,
                               check=True, capture_output=True, text=True)
+
+    def test_surface_fingerprint_reads_history_the_way_it_reads_the_tree(self) -> None:
+        """A historical fingerprint must be composed exactly like a live one.
+
+        `evidence-check --drift` resolves a stale stamp by recomputing the
+        fingerprint at past commits, which only means something if the two
+        sources agree on the same bytes. The digests are cached by git object
+        id so a 51-path listing across 60 commits is a few hundred reads rather
+        than a few thousand; a cache keyed on anything else would return one
+        file's digest for another and still look plausible.
+        """
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "trap_surface_probe", ROOT / "evals/scripts/trap-surface.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        trap = "s8-spec-conflict"
+        head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
+                              capture_output=True, text=True, check=True).stdout.strip()
+
+        # Every path's digest at HEAD must match an independent computation.
+        for path in module.surface_paths(trap, head):
+            shown = subprocess.run(["git", "-C", str(ROOT), "show", f"{head}:{path}"],
+                                   capture_output=True, check=True)
+            self.assertEqual(module.digest_at(path, head),
+                             hashlib.sha256(shown.stdout).hexdigest(), path)
+
+        # And the composed fingerprint agrees with the one over the same tree.
+        clean = subprocess.run(["git", "-C", str(ROOT), "status", "--porcelain",
+                                "--", *module.surface_paths(trap)],
+                               capture_output=True, text=True, check=True).stdout
+        if not clean.strip():
+            self.assertEqual(module.fingerprint(trap, at=head)[0],
+                             module.fingerprint(trap)[0])
+
+        # The cache has to key on the object id, not the path. Within one
+        # commit the two are interchangeable, so a path-keyed cache passes
+        # every single-revision check and then serves one commit's digest for
+        # another. Take a path that actually changed and read it at both ends.
+        moved = None
+        for path in module.surface_paths(trap, head):
+            revs = subprocess.run(
+                ["git", "-C", str(ROOT), "log", "--format=%H", "--", path],
+                capture_output=True, text=True, check=True).stdout.split()
+            if len(revs) >= 2:
+                first = module.digest_at(path, revs[0])
+                for older in revs[1:]:
+                    if module.digest_at(path, older) != first:
+                        moved = (path, revs[0], older)
+                        break
+            if moved:
+                break
+        self.assertIsNotNone(
+            moved, "no surface path has two distinct versions, so this cannot "
+                   "check that the digest cache separates them")
+        path, newer, older = moved
+        self.assertNotEqual(module.digest_at(path, newer),
+                            module.digest_at(path, older), path)
+
+        # A revision that predates a listed file is "cannot say", not a crash.
+        with self.assertRaises(module.SurfaceIncomplete):
+            module.digest_at("evals/traps/s8-spec-conflict/does-not-exist", head)
 
     def test_weekly_integrity_schedules_its_version_probe_on_the_deadline(self) -> None:
         """Every subprocess in this run is handed out by `budget()`.

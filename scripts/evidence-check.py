@@ -278,7 +278,12 @@ def audit_citations() -> dict[str, list[dict[str, object]]]:
     return buckets
 
 
-def audit_traps() -> list[dict[str, object]]:
+# Long enough to name the files a reader would check, short enough that a
+# stamp from before a reorganisation does not bury the other surfaces.
+DRIFT_LIST = 10
+
+
+def audit_traps(drift: bool = False) -> list[dict[str, object]]:
     # `trap-surface.py` is not an importable module name (the hyphen), and
     # renaming it would break the command line it documents, so load it by path.
     location = ROOT / "evals" / "scripts" / "trap-surface.py"
@@ -309,7 +314,7 @@ def audit_traps() -> list[dict[str, object]]:
         # invent.
         dated_rows = [line for line in text.splitlines()
                       if line.startswith("| 2026-")]
-        rows.append({
+        record = {
             "trap": trap,
             "current": current,
             "result_rows": len(dated_rows),
@@ -317,8 +322,51 @@ def audit_traps() -> list[dict[str, object]]:
             "current_stamps": sum(1 for stamp in stamps if stamp == current),
             "stale_stamps": sum(1 for stamp in stamps if stamp != current),
             "unstamped_rows": max(0, len(dated_rows) - len(stamps)),
-        })
+        }
+        if drift:
+            record["drift"] = [
+                {"stamp": stamp, **surface_drift(module, trap, stamp, short)}
+                for stamp in dict.fromkeys(s for s in stamps if s != current)
+            ]
+        rows.append(record)
     return rows
+
+
+def surface_drift(module, trap: str, stamp: str, short: int) -> dict:
+    """Which listed files moved between the commit `stamp` names and HEAD.
+
+    Stale is one word for two situations that call for opposite actions: the
+    rules a result was produced under really did change, or a comment moved and
+    the fingerprint - a hash of whole file bytes - moved with it. Both print the
+    same way, so a reader with a mostly-stale board has no way to tell which
+    rows are worth re-running and stops reading the column.
+
+    A stamp names content, not a commit, so the commit has to be found: walk the
+    commits that touched this surface and recompute the fingerprint at each. The
+    listings here are short (9 to 51 paths) and so is their history (9 to 38
+    commits), which is why a search is affordable at all. Unresolved is a real
+    answer, not a failure: a stamp produced on a branch that was rebased, or
+    before a listed file existed, has no commit on this branch that reproduces
+    it.
+    """
+    listing = module.listing_for(trap).relative_to(module.ROOT).as_posix()
+    paths = module.surface_paths(trap)
+    log = subprocess.run(
+        ["git", "log", "--format=%H", "--", listing, *paths],
+        capture_output=True, text=True, cwd=module.ROOT)
+    for commit in log.stdout.split():
+        try:
+            if module.fingerprint(trap, at=commit)[0][:short] != stamp:
+                continue
+        except module.SurfaceIncomplete:
+            continue
+        changed = subprocess.run(
+            ["git", "diff", "--name-only", commit, "HEAD", "--", *paths],
+            capture_output=True, text=True, cwd=module.ROOT)
+        return {"commit": commit[:12],
+                "changed": sorted(changed.stdout.split()),
+                "surface_size": len(paths)}
+    return {"commit": None, "changed": [], "surface_size": len(paths)}
 
 
 def local_version(tool: str) -> str | None:
@@ -456,13 +504,16 @@ def audit_versions() -> list[dict[str, object]]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", action="store_true", help="machine-readable")
+    parser.add_argument("--drift", action="store_true",
+                        help="for each stale stamp, name the surface files that "
+                             "moved since (walks history; seconds, not instant)")
     parser.add_argument("--attestation-age", type=int, default=30,
                         metavar="DAYS",
                         help="list dated claims at least this old (default 30)")
     args = parser.parse_args()
 
     citations = audit_citations()
-    traps = audit_traps()
+    traps = audit_traps(args.drift)
     attestations = audit_attestations(date.today())
     versions = audit_versions()
 
@@ -495,6 +546,21 @@ def main() -> int:
               f"current {row['current_stamps']:>2}  "
               f"stale {row['stale_stamps']:>2}  "
               f"unstamped {row['unstamped_rows']:>3}")
+        for entry in row.get("drift", []):
+            if entry["commit"] is None:
+                print(f"      {entry['stamp']}  no commit on this branch "
+                      "reproduces it (rebased, or predates a listed file)")
+                continue
+            moved, listed = len(entry["changed"]), entry["surface_size"]
+            print(f"      {entry['stamp']} = {entry['commit']}, "
+                  f"{moved} of {listed} surface file(s) moved since:")
+            for path in entry["changed"][:DRIFT_LIST]:
+                print(f"        {path}")
+            if moved > DRIFT_LIST:
+                print(f"        ... and {moved - DRIFT_LIST} more")
+            if moved * 2 > listed:
+                print("        (most of the surface moved: read this as "
+                      "\"re-run\", not as a diff to judge)")
 
     print()
     aged = [row for row in attestations if row["age_days"] >= args.attestation_age]
