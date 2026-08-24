@@ -35,7 +35,14 @@ import sys
 # Newest Claude Code on which a leaf's Agent call was observed to carry
 # `agent_type`. Advance it only after re-observing that, never to silence the
 # weekly finding: the whole value of the pin is that it stops being true.
-CARRIER_VALIDATED_ON = (2, 1, 220)
+#
+# 2.1.241 (2026-08-24): a `general-purpose` leaf was briefed to attempt one
+# Agent dispatch. The gate refused it and the denial log recorded
+# `caller=general-purpose` - the field is still populated, and the boundary
+# still closes. That row is also the first time this gate has fired outside a
+# test, so before it the log could not have distinguished a live gate from a
+# dead one either.
+CARRIER_VALIDATED_ON = (2, 1, 241)
 
 try:  # Observability must never be able to break the boundary it observes.
     import denial_log
