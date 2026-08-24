@@ -3690,6 +3690,38 @@ class UpstreamPinReportTests(unittest.TestCase):
             self.assertEqual(sorted(by_repo["two/beta"]["skills"]), ["b", "twin"],
                              "one upstream shipped twice must be one entry")
 
+    def test_a_move_says_where_it_moved(self) -> None:
+        """A commit count cannot separate a rule change from a regenerated chart.
+
+        On 2026-08-24 one upstream read `MOVED +3` and all three commits were a
+        bot refreshing an SVG under `assets/`; the other read `MOVED +5` and the
+        commits were under `skills/`. Only one of those was worth a diff, and
+        the report said the same thing about both. The compare response already
+        carries the file list, so the answer costs no extra request.
+        """
+        module = self._module()
+        body = {
+            "ahead_by": 3,
+            "commits": [{"sha": "a" * 40,
+                         "commit": {"committer": {"date": "2026-08-22T00:00:00Z"}}}],
+            "files": [{"filename": "skills/engineering/tdd/SKILL.md"},
+                      {"filename": "skills/productivity/grilling/SKILL.md"},
+                      {"filename": "assets/readme/chart.svg"},
+                      {"filename": ".gitignore"}],
+        }
+        summary = module.summarise(body)
+        self.assertEqual(summary["state"], "moved")
+        self.assertEqual(summary["areas"],
+                         {"skills/": 2, "assets/": 1, ".gitignore": 1},
+                         "top-level areas are what separate a rule change from "
+                         "a regenerated asset")
+
+        # No file list is "cannot say where", not "moved nowhere": an upstream
+        # whose compare response omits files must not read as untouched.
+        quiet = module.summarise({"ahead_by": 1, "commits": []})
+        self.assertEqual(quiet["areas"], {})
+        self.assertEqual(quiet["state"], "moved")
+
     def test_a_fetch_it_cannot_complete_is_never_reported_as_current(self) -> None:
         """The distinction the whole report rests on. Offline this takes the
         network-error branch and online the 404 branch; both must land on

@@ -52,6 +52,9 @@ ROOT = Path(__file__).resolve().parents[1]
 REPO = re.compile(r"github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+?)(?:\.git)?(?=[)\s>/]|$)")
 SHA = re.compile(r"\b([0-9a-f]{40})\b")
 API = "https://api.github.com/repos/{repo}/compare/{base}...{head}"
+# Enough to tell "our source tree moved" from "a chart was regenerated" without
+# turning the line into a file list.
+AREAS = 4
 
 
 def parse_attributions(root: Path) -> list[dict]:
@@ -75,6 +78,36 @@ def parse_attributions(root: Path) -> list[dict]:
     return list(found.values())
 
 
+def summarise(body: dict) -> dict:
+    """Turn a compare response into the report's row.
+
+    Split from the fetch so it can be tested without a network: the fetch has
+    one interesting behaviour (a failure must never read as `current`) and this
+    has another, and testing them together means testing neither.
+    """
+    if not isinstance(body, dict) or "ahead_by" not in body:
+        return {"state": "unreachable",
+                "detail": str(body.get("message") if isinstance(body, dict) else body)[:80]}
+    # The same response already carries the file list, so "where did it move"
+    # costs nothing extra - and it is the question that decides whether the move
+    # is worth a recheck. On 2026-08-24 one upstream read `MOVED +3` and all
+    # three commits were a bot refreshing a chart under `assets/`, which a count
+    # alone cannot say. An absent list stays empty rather than being guessed at.
+    areas: dict[str, int] = {}
+    for changed in body.get("files") or []:
+        name = changed.get("filename", "")
+        head = name.split("/", 1)[0] + "/" if "/" in name else name
+        if head:
+            areas[head] = areas.get(head, 0) + 1
+    commits = body.get("commits") or [{}]
+    return {"state": "moved" if body["ahead_by"] else "current",
+            "ahead": body["ahead_by"],
+            "head": commits[-1].get("sha", "")[:8],
+            "areas": areas,
+            "since": (commits[0].get("commit", {})
+                      .get("committer", {}).get("date", ""))[:10]}
+
+
 def moved(repo: str, pin: str) -> dict:
     """How far the default branch is ahead of `pin`, or why we cannot say."""
     try:
@@ -86,13 +119,7 @@ def moved(repo: str, pin: str) -> dict:
             body = json.load(response)
     except (urllib.error.URLError, TimeoutError, ValueError, OSError) as error:
         return {"state": "unreachable", "detail": str(error)[:80]}
-    if not isinstance(body, dict) or "ahead_by" not in body:
-        return {"state": "unreachable", "detail": str(body.get("message"))[:80]}
-    return {"state": "moved" if body["ahead_by"] else "current",
-            "ahead": body["ahead_by"],
-            "head": (body.get("commits") or [{}])[-1].get("sha", "")[:8],
-            "since": ((body.get("commits") or [{}])[0]
-                      .get("commit", {}).get("committer", {}).get("date", ""))[:10]}
+    return summarise(body)
 
 
 def main() -> int:
@@ -120,6 +147,13 @@ def main() -> int:
         if entry["state"] == "moved":
             mark = f"MOVED +{entry['ahead']}"
             tail = f"  head {entry['head']}, first new commit {entry['since']}"
+            areas = sorted(entry.get("areas", {}).items(),
+                           key=lambda pair: (-pair[1], pair[0]))
+            if areas:
+                shown = ", ".join(f"{name} ({count})" for name, count in areas[:AREAS])
+                if len(areas) > AREAS:
+                    shown += f", +{len(areas) - AREAS} more"
+                tail += f"\n{'':14s}touched {shown}"
         elif entry["state"] == "current":
             mark, tail = "current", ""
         else:
