@@ -222,6 +222,40 @@ class MechanismTests(unittest.TestCase):
         return subprocess.run([sys.executable, str(hook)], env=env,
                               check=True, capture_output=True, text=True)
 
+    def test_rows_older_than_their_listing_are_not_counted_as_omissions(self) -> None:
+        """44 of 45 dated result rows carry no fingerprint, and none of them could.
+
+        The listings were added on 2026-08-08 and 2026-08-13; every one of those
+        rows was written before that. Read as a backlog the number invites the
+        one fix that would be wrong - attaching a fingerprint nobody measured,
+        either today's or one reconstructed from a date. The boundary is derived
+        from when each listing entered git, so a new suite gets it without
+        anyone setting it.
+        """
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "evidence_check_probe", ROOT / "scripts/evidence-check.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        rows = module.audit_traps()
+        self.assertTrue(rows, "no measured surfaces found at all")
+        for row in rows:
+            began = row.get("convention_began")
+            self.assertIsNotNone(
+                began, f"{row['trap']}: no creation date for its listing, so "
+                       "every row would read as an omission")
+            # A row cannot be older than the repository knows the listing to be.
+            self.assertLessEqual(row["predating_rows"], row["result_rows"],
+                                 row["trap"])
+
+        counted = sum(r["predating_rows"] for r in rows)
+        self.assertGreater(
+            counted, 0,
+            "no row predates its listing, which would mean either the traps "
+            "were re-dated or this boundary stopped being derived")
+
     def test_the_surface_reader_fails_loudly_rather_than_answering_wrong(self) -> None:
         """Two ways this reader can be wrong without looking wrong.
 

@@ -323,6 +323,12 @@ def audit_traps(drift: bool = False) -> list[dict[str, object]]:
         # invent.
         dated_rows = [line for line in text.splitlines()
                       if line.startswith("| 2026-")]
+        # Split the unstamped rows on the only line that means anything: rows
+        # older than the listing had nothing to record, rows younger than it
+        # were supposed to record something and did not.
+        began = convention_began(module, trap)
+        predating = sum(1 for line in dated_rows
+                        if began and line[2:12] < began and "[surface " not in line)
         record = {
             "trap": trap,
             "current": current,
@@ -331,6 +337,8 @@ def audit_traps(drift: bool = False) -> list[dict[str, object]]:
             "current_stamps": sum(1 for stamp in stamps if stamp == current),
             "stale_stamps": sum(1 for stamp in stamps if stamp != current),
             "unstamped_rows": max(0, len(dated_rows) - len(stamps)),
+            "convention_began": began,
+            "predating_rows": predating,
         }
         if drift:
             record["drift"] = [
@@ -339,6 +347,25 @@ def audit_traps(drift: bool = False) -> list[dict[str, object]]:
             ]
         rows.append(record)
     return rows
+
+
+def convention_began(module, trap: str) -> str | None:
+    """The day this trap's surface listing first existed.
+
+    A result row cannot carry a fingerprint from before there was anything to
+    fingerprint. 44 of the 45 dated rows in this tree are older than their own
+    listing, and counting them as omissions makes the column read as a backlog
+    that could be worked off - it cannot, and the only way to clear it would be
+    to attach a number nobody measured. Derived from git rather than written
+    down per trap, so a new suite gets the right boundary without anyone
+    remembering to set one.
+    """
+    rel = module.listing_for(trap).relative_to(module.ROOT).as_posix()
+    added = subprocess.run(
+        ["git", "log", "--diff-filter=A", "--format=%ad", "--date=short",
+         "--follow", "--", rel],
+        capture_output=True, text=True, cwd=module.ROOT).stdout.split()
+    return added[-1] if added else None
 
 
 def surface_drift(module, trap: str, stamp: str, short: int) -> dict:
@@ -560,6 +587,15 @@ def main() -> int:
               f"current {row['current_stamps']:>2}  "
               f"stale {row['stale_stamps']:>2}  "
               f"unstamped {row['unstamped_rows']:>3}")
+        if row.get("predating_rows"):
+            # Stated beside the counts, not inside them: `stamped` counts every
+            # stamp in the file and `unstamped_rows` subtracts it from the dated
+            # rows, so a stamp written outside a row already makes those two
+            # disagree. Nesting a third number under one of them would present
+            # that looseness as arithmetic.
+            print(f"      {row['predating_rows']} dated row(s) predate this "
+                  f"trap's listing (added {row['convention_began']}), so they "
+                  "could not have been stamped")
         for entry in row.get("drift", []):
             if entry["commit"] is None:
                 print(f"      {entry['stamp']}  no commit on this branch "
