@@ -138,15 +138,19 @@ def main() -> int:
 
     first: dict[str, tuple[str, int]] = {}
     raises: collections.Counter[str] = collections.Counter()
-    last_raise: dict[str, str] = {}
+    # Ceilings have gone down as well as up - `.codex/AGENTS.contract.md` went
+    # 590 -> 540 when a clause moved out - and counting a tightening as a raise
+    # would report the ratchet slipping in exactly the case where it held.
+    drops: collections.Counter[str] = collections.Counter()
+    last_move: dict[str, str] = {}
     previous: dict[str, int] = {}
     for _, day, mapping in revisions:
         for path, ceiling in mapping.items():
             if path not in first:
                 first[path] = (day, ceiling)
             elif path in previous and ceiling != previous[path]:
-                raises[path] += 1
-                last_raise[path] = day
+                (raises if ceiling > previous[path] else drops)[path] += 1
+                last_move[path] = day
         previous = mapping
 
     rows = []
@@ -160,8 +164,9 @@ def main() -> int:
             "first": started,
             "now": ceiling,
             "raises": raises[path],
+            "drops": drops[path],
             "growth_pct": (ceiling - started) / started * 100 if started else 0.0,
-            "last_raise": last_raise.get(path),
+            "last_move": last_move.get(path),
             "used": used,
             "headroom_pct": None if used is None else (ceiling - used) / ceiling * 100,
         })
@@ -171,32 +176,41 @@ def main() -> int:
         print(json.dumps({"source": SOURCE, "budgets": rows}, indent=2))
         return 0
 
-    moved = [r for r in rows if r["raises"]]
-    still = [r for r in rows if not r["raises"]]
+    moved = [r for r in rows if r["raises"] or r["drops"]]
+    still = [r for r in rows if not (r["raises"] or r["drops"])]
     print(f"word ceilings in {SOURCE}: {len(rows)} with a literal ceiling"
           + (f" plus {len(elsewhere)} defined elsewhere" if elsewhere else "")
           + f", {len(revisions)} revisions of the binding")
     print()
-    print(f"raised at least once ({len(moved)}):")
+    print(f"moved at least once ({len(moved)}):")
     for row in sorted(moved, key=lambda r: -r["growth_pct"]):
-        print(f"  {row['raises']}x  {row['first']:>5} -> {row['now']:<5} "
+        moves = f"{row['raises']}up"
+        if row["drops"]:
+            moves += f"/{row['drops']}down"
+        print(f"  {moves:>9}  {row['first']:>5} -> {row['now']:<5} "
               f"{row['growth_pct']:+6.1f}%  since {row['added']}, "
-              f"last {row['last_raise']}  {row['path']}")
+              f"last {row['last_move']}  {row['path']}")
     print()
-    print(f"never raised since added ({len(still)}):")
+    print(f"never moved since added ({len(still)}):")
     for row in sorted(still, key=lambda r: r["path"]):
         print(f"        {row['now']:>5}          since {row['added']}  {row['path']}")
 
     started_total = sum(r["first"] for r in rows)
     now_total = sum(r["now"] for r in rows)
-    share = (max((r["now"] - r["first"] for r in rows), default=0)
-             / max(now_total - started_total, 1) * 100)
+    net = now_total - started_total
     print()
-    print(f"total: {started_total} -> {now_total} "
-          f"({(now_total - started_total) / started_total * 100:+.1f}%), "
-          f"{sum(r['raises'] for r in rows)} raises across {len(moved)} file(s)")
-    print(f"  concentration: the single largest raise accounts for {share:.0f}% "
-          "of all growth, so read the rows and not this line")
+    print(f"total: {started_total} -> {now_total} ({net / started_total * 100:+.1f}%), "
+          f"{sum(r['raises'] for r in rows)} up and "
+          f"{sum(r['drops'] for r in rows)} down across {len(moved)} file(s)")
+    if net > 0:
+        widest = max(r["now"] - r["first"] for r in rows)
+        print(f"  concentration: the single widest increase accounts for "
+              f"{widest / net * 100:.0f}% of the net, so read the rows and not "
+              "this line")
+    else:
+        # Dividing by a net of zero or less would print a number that looks like
+        # a share and is not one.
+        print("  net growth is not positive, so there is no share to report")
     # The state this repo has already paid for once: on 2026-08-03 a contract
     # sitting at exactly 540/540 was compressed into a sentence that lost its
     # subject and inverted the guarantee the clause existed to make. Zero

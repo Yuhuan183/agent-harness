@@ -222,6 +222,45 @@ class MechanismTests(unittest.TestCase):
         return subprocess.run([sys.executable, str(hook)], env=env,
                               check=True, capture_output=True, text=True)
 
+    def test_the_surface_reader_fails_loudly_rather_than_answering_wrong(self) -> None:
+        """Two ways this reader can be wrong without looking wrong.
+
+        A listed file that is gone used to exit with an actionable line. Reading
+        a revision turned that into an exception, and an exception nobody
+        catches is a traceback where a sentence used to be.
+
+        `ls-tree --format` needs git 2.36. An older git prints usage and exits
+        non-zero; reading its stdout regardless yields an empty tree, at which
+        point every path looks absent and every stamp looks unresolvable - a
+        report about the tool, presented as a report about this repository.
+        """
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "trap_surface_loud", ROOT / "evals/scripts/trap-surface.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        # A path the working tree does not have is "incomplete", which callers
+        # are expected to catch and turn back into that sentence.
+        with self.assertRaises(module.SurfaceIncomplete):
+            module.digest_at("evals/traps/does-not-exist.md", None)
+
+        # A broken ls-tree must not land in the same bucket: absent-at-revision
+        # and cannot-ask are different answers.
+        real_run = subprocess.run
+        try:
+            module.subprocess.run = lambda cmd, **kw: (
+                subprocess.CompletedProcess(cmd, 129, "", "usage: git ls-tree")
+                if "ls-tree" in cmd else real_run(cmd, **kw))
+            module._TREE.clear()
+            with self.assertRaises(RuntimeError) as raised:
+                module.digest_at("evals/traps/s8-spec-conflict/README.md", "HEAD")
+            self.assertIn("2.36", str(raised.exception))
+        finally:
+            module.subprocess.run = real_run
+            module._TREE.clear()
+
     def test_every_copy_of_the_word_unit_counts_the_same(self) -> None:
         """Three files spell the budget unit, and they must agree.
 

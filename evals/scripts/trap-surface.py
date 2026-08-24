@@ -70,10 +70,24 @@ _BLOB_DIGEST: dict[str, str] = {}
 
 
 def _tree(at: str) -> dict[str, str]:
+    """path -> object id at a revision.
+
+    `--format` on ls-tree needs git 2.36. An older git prints a usage error and
+    exits non-zero, and reading stdout regardless would hand back an empty map -
+    at which point every path looks absent, every stamp looks unresolvable, and
+    the report says something about this repository that is really about the
+    tool. So the exit status is checked and the failure is loud.
+    """
     if at not in _TREE:
         listed = subprocess.run(
             ["git", "-C", str(ROOT), "ls-tree", "-r", "--format=%(objectname) %(path)", at],
             capture_output=True, text=True)
+        if listed.returncode != 0:
+            raise RuntimeError(
+                f"git ls-tree failed for {at}: {listed.stderr.strip()}; "
+                "`--format` needs git 2.36 or newer")
+        # split(" ", 1) keeps paths containing spaces intact: the object id
+        # never has one, so the first space is always the separator.
         _TREE[at] = dict(
             reversed(line.split(" ", 1)) for line in listed.stdout.splitlines() if " " in line)
     return _TREE[at]

@@ -301,7 +301,16 @@ def audit_traps(drift: bool = False) -> list[dict[str, object]]:
     # `evals/replay/` sits one directory shallower than the traps do.
     for trap in module.traps():
         listing = module.listing_for(trap)
-        current = fingerprint(trap)[0][:short]
+        try:
+            current = fingerprint(trap)[0][:short]
+        except module.SurfaceIncomplete as gone:
+            # trap-surface used to exit with this message itself. Reading a
+            # revision made it an exception instead, and an exception nobody
+            # catches turns an actionable line into a traceback.
+            rows.append({"trap": trap, "current": None, "missing": str(gone),
+                         "result_rows": 0, "stamped": 0, "current_stamps": 0,
+                         "stale_stamps": 0, "unstamped_rows": 0})
+            continue
         readme = listing.parent / "README.md"
         text = readme.read_text(encoding="utf-8") if readme.exists() else ""
         stamps = STAMP.findall(text)
@@ -540,6 +549,11 @@ def main() -> int:
     print()
     print("trap evidence:")
     for row in traps:
+        if row.get("missing"):
+            print(f"  {row['trap']:<22} surface unreadable: lists "
+                  f"{row['missing']}, which is gone; fix the surface before "
+                  "trusting any fingerprint")
+            continue
         print(f"  {row['trap']:<22} surface {row['current']}  "
               f"dated-rows {row['result_rows']:>3}  "
               f"stamps {row['stamped']:>2}  "
