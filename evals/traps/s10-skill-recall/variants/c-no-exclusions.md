@@ -41,8 +41,8 @@ Cross-provider routing — H/X profiles, GPT↔Claude fallback, codex bridge res
 ## readable-zh-tw
 
 繁體中文可讀性：審查與改寫對外文字，砍廢話、校正中國用語與標點，讓它好讀。
-觸發：「去 AI 味」「說人話」「這段好 AI」「改自然一點」「校對再發」、問版面怎麼排，或檢查電子報、社群貼文、銷售頁、文案、客服信、簡報、公告的語感。
-Triggers: "de-AI this text", "make it sound human", "how should this be laid out", "polish this zh-TW copy before publishing".
+觸發：「去 AI 味」「說人話」「這段好 AI」「改自然一點」「校對再發」「潤飾一下用字」、問版面怎麼排，或檢查電子報、社群貼文、銷售頁、文案、客服信、簡報、公告的語感。技術文檔（README、docs、skill）裡的中文敘述同樣適用。
+Triggers: "de-AI this text", "make it sound human", "how should this be laid out", "polish this zh-TW copy before publishing"; also zh-TW prose in technical docs (README, docs, skills).
 
 ## task-observer
 

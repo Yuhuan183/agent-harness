@@ -122,7 +122,7 @@ class SharedSkillTests(unittest.TestCase):
     def test_readable_zh_tw_layout_and_attribution(self) -> None:
         base = "main/.agents/skills/readable-zh-tw"
         for ref in ("patterns", "taiwan-localization", "protected-list", "humanize",
-                    "rewrite-mode"):
+                    "rewrite-mode", "technical-docs"):
             self.assertTrue((ROOT / base / "references" / f"{ref}.md").is_file(), ref)
         self.assertTrue((ROOT / base / "agents/openai.yaml").is_file())
         meta = frontmatter(f"{base}/SKILL.md")
@@ -131,7 +131,7 @@ class SharedSkillTests(unittest.TestCase):
         self.assertIn("license: MIT", meta)
         skill = read(f"{base}/SKILL.md")
         for ref in ("patterns.md", "taiwan-localization.md", "protected-list.md",
-                    "humanize.md", "rewrite-mode.md"):
+                    "humanize.md", "rewrite-mode.md", "technical-docs.md"):
             self.assertIn(ref, skill)
         # The mode split is the 2026-08-19 rewrite's whole point, and which mode
         # is default is the half that decides behaviour: writing a reply is not

@@ -97,6 +97,24 @@ nineteenth `SELECT:` line raises `R5-malformed`, and a created
 the two exempt names are matched as exact paths, not basenames at any depth.
 `test_the_selection_grader_exit_zero_means_what_it_claims` runs these four.
 
+## The description widened on 2026-08-26
+
+`readable-zh-tw` gained one trigger phrasing and a clause saying it also covers
+zh-TW prose in technical docs, so the surface moved from `b11109e9` to
+`8b10e622`. Both levers still cut exactly what they name: `build.py` treats a
+lever that does not match exactly once as a hard error, and neither lever's
+bytes were touched, so B, C and D each still differ from pristine in one thing.
+
+What moved is the thing all four arms share. Every arm now carries
+`技術文檔（README、docs、skill）裡的中文敘述同樣適用` and `also zh-TW prose in
+technical docs` — positive scope, which is the half arm C's rows found was doing
+the work: those runs reasoned from `對外文字` plus the listed kinds rather than
+from the exclusions they no longer had. And this scope points at README, docs and
+skills, which sits closer to U09-U11's nginx-config, error-log and Python-code
+items than anything the older surface said. Whether that raises the over-trigger
+rate once the exclusions are cut is a question this widening opens; no row here
+answers it. Rows below are unstamped for the reason the next section gives.
+
 ## The bundle changed on 2026-08-17
 
 `evidence-debugging` and then `test-first-change` were added to the shared

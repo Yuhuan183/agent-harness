@@ -1242,11 +1242,21 @@ class DocumentationBudgetTests(unittest.TestCase):
         # true fails this test until the ceiling is raised, which is the right
         # shape - the flip is what buys the resident cost, so the flip is where
         # the decision belongs.
-        metadata_budgets = {"claude": 934, "codex": 525}
-        # The widest legitimate description today is readable-zh-tw at 176: it
+        # 934 -> 968 and 525 -> 559 on 2026-08-26, for readable-zh-tw's
+        # technical-doc scope. The rules themselves went into a reference, which
+        # is unbudgeted because nothing loads it until the skill is selected -
+        # but a reference the router never reaches is a file nobody opens, so
+        # the applicability had to be stated where selection happens. 32 words
+        # bought it on both providers: one trigger phrasing and one clause
+        # naming the document kinds, in zh-TW and English because this is the
+        # description users invoke in either language. The body absorbed only a
+        # pointer and stayed inside its own ceiling (2023 of 2090), so this is
+        # the only raise the change needed. Measured 949 and 548 + ~2%.
+        metadata_budgets = {"claude": 968, "codex": 559}
+        # The widest legitimate description today is readable-zh-tw at 209: it
         # states its triggers twice, in zh-TW and English, because it is the
         # one skill invoked by users in either language.
-        per_skill_budget = 180
+        per_skill_budget = 214
         for provider, budget in metadata_budgets.items():
             records = [record
                        for record in census["providers"][provider]["resident"]
@@ -1446,10 +1456,15 @@ class DocumentationBudgetTests(unittest.TestCase):
         frontmatter_text = frontmatter(".agents/skills/readable-zh-tw/SKILL.md")
         # Every phrasing a user is expected to invoke it by, in both languages.
         for trigger in ("去 AI 味", "說人話", "這段好 AI", "改自然一點",
-                        "校對再發", "審查", "改寫",
+                        "校對再發", "潤飾一下用字", "審查", "改寫",
                         "de-AI this text", "make it sound human",
                         "polish this zh-TW copy before publishing"):
             self.assertIn(trigger, frontmatter_text, f"lost trigger: {trigger}")
+        # The scope clause the 2026-08-26 ceiling raise was paid for: the
+        # technical-doc rules live in a reference, and this is the only text
+        # that routes anyone to them.
+        for scope in ("技術文檔", "technical docs"):
+            self.assertIn(scope, frontmatter_text, f"lost scope: {scope}")
         # The document kinds are the recall surface for "look at this <thing>"
         # phrasings; dropping one silently stops the skill matching that ask.
         for kind in ("電子報", "社群貼文", "銷售頁", "文案", "客服信",

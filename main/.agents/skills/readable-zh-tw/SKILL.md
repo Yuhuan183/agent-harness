@@ -2,9 +2,9 @@
 name: readable-zh-tw
 description: |
   繁體中文可讀性：審查與改寫對外文字，砍廢話、校正中國用語與標點，讓它好讀。
-  觸發：「去 AI 味」「說人話」「這段好 AI」「改自然一點」「校對再發」、問版面怎麼排，或檢查電子報、社群貼文、銷售頁、文案、客服信、簡報、公告的語感。
+  觸發：「去 AI 味」「說人話」「這段好 AI」「改自然一點」「校對再發」「潤飾一下用字」、問版面怎麼排，或檢查電子報、社群貼文、銷售頁、文案、客服信、簡報、公告的語感。技術文檔（README、docs、skill）裡的中文敘述同樣適用。
   不觸發：逐字翻譯、模仿特定品牌／個人 voice、事實查核、程式碼／log／設定檔。本 skill 管可讀性，不加個人風格。
-  Triggers: "de-AI this text", "make it sound human", "how should this be laid out", "polish this zh-TW copy before publishing". Not for: literal translation, brand-voice mimicry, fact-checking, code/log/config.
+  Triggers: "de-AI this text", "make it sound human", "how should this be laid out", "polish this zh-TW copy before publishing"; also zh-TW prose in technical docs (README, docs, skills). Not for: literal translation, brand-voice mimicry, fact-checking, code/log/config.
 license: MIT
 ---
 
@@ -33,6 +33,9 @@ license: MIT
 清單要鎖、沒有「作者」跟你是兩個人。看到那些字眼就是走錯模式了。
 
 ## 直出：一次寫對
+
+技術文檔（專案 README、`docs/*.md`、skill、設計說明）的中文敘述走的也是這個模式，下面各節
+照用，多出來的部分在 [technical-docs.md](references/technical-docs.md)。
 
 ### 1. 結論先行
 
@@ -110,11 +113,12 @@ license: MIT
 - 「好讀」不等於「有個人風格」：這份洗乾淨稿子，作者的聲音要作者自己加。
 - 事實查核不在範圍內（直出的止步條件是「自己去查」，改稿是「標註請作者查」）。
 - 不代作者生產經歷。
-- 本 skill 蒸餾改寫自 [speak-human-tw](https://github.com/Raymondhou0917/speak-human-tw) `2c27cca`（MIT，© 2026 Raymond Hou／雷蒙三十），見 [ATTRIBUTION.md](ATTRIBUTION.md)。2026-08-19 更名並分出直出模式，理由見該檔。
+- 本 skill 蒸餾改寫自 [speak-human-tw](https://github.com/Raymondhou0917/speak-human-tw)（MIT，© 2026 Raymond Hou／雷蒙三十）；蒸餾自哪一個 commit、以及每次重查的處置，都記在 [ATTRIBUTION.md](ATTRIBUTION.md)。2026-08-19 更名並分出直出模式，理由見該檔。
 
 ## 參考導航
 
 - 38 種 AI 痕跡：[references/patterns.md](references/patterns.md)
+- 技術文檔的專屬規則（直出）：[references/technical-docs.md](references/technical-docs.md)
 - 改稿六步與安全邊界：[references/rewrite-mode.md](references/rewrite-mode.md)
 - 保護清單與誤殺防護（改稿）：[references/protected-list.md](references/protected-list.md)
 - 正向人味目標（改稿）：[references/humanize.md](references/humanize.md)
