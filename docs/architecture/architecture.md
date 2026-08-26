@@ -6,7 +6,7 @@
 | 層 | 管什麼 | 細節 |
 |---|---|---|
 | **Graph** | 多個 agent 之間的協作: 誰先做, 誰並行, 做完給誰 | [graph-engineering](graph-engineering.md) |
-| **Loop** | 單一 agent 反覆進行: 規劃 → 執行 → 驗證 → 重試 | [loop-engineering](loop-engineering.md) |
+| **Loop** | 單一 agent 反覆走的迴路: 規劃 → 執行 → 驗證 → 重試 | [loop-engineering](loop-engineering.md) |
 | **Harness** | 模型周圍: 工具, 權限, 監控, 防護欄 | [harness-engineering](harness-engineering.md) |
 | **Context** | 模型看到什麼 | [context-engineering](context-engineering.md) |
 
@@ -71,8 +71,8 @@ flowchart TB
 
 1. **品質優先的派工**: main 保留架構與最終判斷, leaf 只做有界, 可驗收的工作. 直接執行是
    預設, 只有平行性, context 保護, fresh-context 獨立性或較低成本角色明顯值得開銷時才派工.
-2. **可調整但不漂移的 routing**: benchmark 只是外部先驗, 本機 reviewed dispatch-outcome
-   證據才負責修正選擇 — 而且改 preset 一定經人核准, 不在執行中偷換.
+2. **可調整但不漂移的 routing**: benchmark 只是外部先驗, 真正修正選擇的是本機經過 review
+   的派工結果 — 而且改 preset 一定經人核准, 不在執行中偷換.
 3. **跨平台一致契約**: Claude, Codex 與 Claude→Codex bridge 用對應角色與相同品質語意.
 4. **可恢復的部署**: source 是真相源, 同步前 preflight, 套用後 parity, 回滾靠 git 重新部署.
 
@@ -94,7 +94,7 @@ flowchart LR
     subgraph G["Graph — 多個 agent 之間的協作"]
         direction TB
         gg["誰先做 · 誰並行 · 做完給誰"]
-        subgraph L["Loop — 單一 agent 反覆進行"]
+        subgraph L["Loop — 單一 agent 反覆走的迴路"]
             direction TB
             ll["規劃 → 執行 → 驗證 → 重試"]
             subgraph H["Harness — 模型周圍"]
@@ -330,7 +330,7 @@ git review 與部署 —— 也就是說這一層的授權是**經由部署間�
 | Loop | 每一次重試都是一次完整往返 | 五次 pass 上限, ledger 的 `secs` 與 token 欄 |
 | Graph | 派工的 brief, 重建 context, 收集與 QC 全是純開銷 | Cost test (派工前), experience ledger (派工後) |
 
-**三個派工同業各自把成本當一等的被量測的軸**, 而這是[跨上游整合](../research/peer-harnesses.md#跨上游整合-2026-08-21)
+**三個派工同業都把成本當成要量的主軸之一**, 而這是[跨上游整合](../research/peer-harnesses.md#跨上游整合-2026-08-21)
 唯一找到「每一個同業都有而我們沒有」的一件. 有判準不等於有擁有者.
 
 三件已經量到而且會改決策的:

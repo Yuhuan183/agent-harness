@@ -42,19 +42,24 @@ id 會被拒絕. 沒跑起來的用 `--cancel` 退掉, 跑過的一律記帳 (�
 
 ## Plan readiness 與 discovery ownership
 
-大型工作先建立共享 constraints 的 program envelope, 再建立 independently approvable slices.
-每個 readiness unit 都要有 stable ID; slice 另帶 ready envelope, prerequisites, owner, rollback
-與 acceptance. `plan-verifier` 先審 envelope, 之後只審 next executable slice. `REVISE` 必須提供
-`Blocker`, `Evidence`, `Minimum revision`, `Acceptance check`; 同 unit 兩次自動 revision 後停下,
-不把上限當成 `READY`. Security-sensitive unit 在第一次 readiness review 前先完成 read-only
-security review, Plan 記錄每個 finding 的 disposition.
-Readiness 的承載物是帶 stable ID 的 Plan/brief 與該次 `plan-verifier` output; 兩次 revision
-由 main 對同一 ID 的輸出計數, 不是跨 prompt hook quota. 缺 ID, 只換 ID 或 cosmetic split
-都不能重設共享 blocker.
+大型工作先切成兩種單位, 分開審:
 
-平行 discovery 在 launch 前劃分 main-owned 與 agent-owned read scopes. Active agent scope
-暫時排他; 要重疊先 cancel/redirect. 同批 agents back-to-back 啟動, 全部 collected 後才做
-cross-surface synthesis. 這是避免重複讀與錯誤整合的 ownership boundary, 不是新的派工理由.
+- **program envelope**: 共用的目標與約束. 先審這一個.
+- **execution slice**: 可以單獨核准的執行段. 每一段自己寫出所屬的 envelope, 前置條件,
+  擁有者, rollback 與驗收方式; envelope 過了以後, 一次只審下一段.
+
+每個 readiness unit 都要有一個穩定的 ID. `plan-verifier` 回 `REVISE` 時必須附上 `Blocker`,
+`Evidence`, `Minimum revision` 與 `Acceptance check`; 同一個 ID 自動修訂兩次就停下, 把選項
+交還使用者, 不能把上限當成 `READY`. 涉及安全的單位在第一次 readiness review 之前要先做完
+唯讀的 security review, 並把每個 finding 與它的處置寫進 Plan.
+
+Readiness 的承載物是帶穩定 ID 的 Plan 或 brief, 加上那一次 `plan-verifier` 的輸出. 兩次修訂
+由 main 對同一個 ID 的輸出自己數, 不是 hook 的跨 prompt 額度. 沒有 ID, 只換一個 ID, 或是把
+一段拆成好看的兩段, 都不能把共用的 blocker 重設掉.
+
+平行 discovery 在啟動前先劃分讀取範圍: 哪些歸 main, 哪些歸各個 agent. 一個 agent 正在讀的
+範圍暫時排他, 要重疊就得先取消或改派它. 同一批 agent 連續啟動, 全部收回來之後才做跨面向的
+整合 (cross-surface synthesis). 這是避免重複讀與錯誤整合的擁有權邊界, 不是多派一次工的理由.
 
 ## 不成立的推論
 

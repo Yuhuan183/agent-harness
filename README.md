@@ -7,7 +7,7 @@ skills, routing 與監控機制納入 Git —— 讓全域 agent 配置可以 re
 它解決四件事:
 
 - **品質優先的派工**: main 保留架構與最終判斷; leaf 只處理有界, 可驗收的工作.
-- **可調整但不漂移的 routing**: benchmark 是先驗, 本機 reviewed dispatch-outcome 證據才負責修正選擇.
+- **可調整但不漂移的 routing**: benchmark 只是先驗, 真正修正選擇的是本機經過 review 的派工結果.
 - **跨平台一致契約**: Claude, Codex 與 Claude→Codex bridge 使用對應角色與相同品質語意.
 - **可恢復的全域部署**: source checkout 是真相源; 同步前先驗證, 套用後比對; 回滾靠 git 重新部署.
 
@@ -48,7 +48,7 @@ flowchart LR
 | 層 | 管什麼 | 細節 |
 |---|---|---|
 | **Graph** | 多個 agent 之間的協作: 誰先做, 誰並行, 做完給誰 | [graph-engineering](docs/architecture/graph-engineering.md) |
-| **Loop** | 單一 agent 反覆進行: 規劃 → 執行 → 驗證 → 重試 | [loop-engineering](docs/architecture/loop-engineering.md) |
+| **Loop** | 單一 agent 反覆走的迴路: 規劃 → 執行 → 驗證 → 重試 | [loop-engineering](docs/architecture/loop-engineering.md) |
 | **Harness** | 模型周圍: 工具, 權限, 監控, 防護欄 | [harness-engineering](docs/architecture/harness-engineering.md) |
 | **Context** | 模型看到什麼 | [context-engineering](docs/architecture/context-engineering.md) |
 

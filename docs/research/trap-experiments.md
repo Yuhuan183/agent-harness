@@ -62,7 +62,7 @@ fixture, 未申報的 scope 外改動, 以及殘留的 scratch 檔案. 方法論
 **推論**: 本 repo 的 leaf 正是這套方法價值最集中的族群 — 它們刻意 pinned 在中低檔位 (撰寫當時
 balanced 下 `explore` sonnet/low, `mech-executor` sonnet/medium, `executor` sonnet/high;
 07-23 起 executor 改 opus/medium, 見 route calibration 段), 無人看管, 由 main QC 把關. main
-以最高檔位運行, 而且已經有 `DECISION:`/`LEAF_DISPATCH`/`LEAF_RESULT` 這類決策點強制行; 它的
+以最高檔位執行, 而且已經有 `DECISION:`/`LEAF_DISPATCH`/`LEAF_RESULT` 這類決策點強制行; 它的
 nulls 顯示七步迴圈對高檔位 main 是純 token 稅. 所以借鑑面鎖定在 leaf 契約的決策點強制行,
 QC 的 fraud 清單和行為級 trap eval, 而不是引入整個迴圈, 或再疊一個 gate.
 

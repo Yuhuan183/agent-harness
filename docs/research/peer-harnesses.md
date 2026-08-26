@@ -90,7 +90,7 @@ Deep Agents 的價值不在提供另一套固定流程, 而在把幾個可組合
 ### v1.3.9-v1.3.10 增量
 
 13. **互動模式先於工作者選擇** (v1.3.9): 在 Baton, 生命週期與工作者之前先選互動形狀, 取第一個吻合的 - 結果不明走 `co_discover`, 方向廣或影響大走 `explore_then_plan` (第一回合維持唯讀, 只回一個可逆切片), 結果有界才走 `execute`. 執行只在對應的 readiness Gate 為 `READY` 時才走到 `user_approval`, 否則回報實際卡住或暫停在哪個 Gate. 設計來自 pilotfish-codex PR #14.
-14. **cue-free 限制被寫進文件** (v1.3.9): 更高優先級的 client 指令能壓過 Agent 派工, 而 user 層 `CLAUDE.md` 蓋不過它. 上游因此撤下「自動派工」的宣稱, 改成提供顯式的 `/pilotfish` 與 CLI wrapper 兩條啟用路徑. 同一版把 v1.3.8 之後加的 dispatch-rate harness 整個 revert.
+14. **cue-free 限制被寫進文件** (v1.3.9): 優先序更高的 client 指令能壓過 Agent 派工, 而 user 層 `CLAUDE.md` 蓋不過它. 上游因此撤下「自動派工」的宣稱, 改成提供顯式的 `/pilotfish` 與 CLI wrapper 兩條啟用路徑. 同一版把 v1.3.8 之後加的 dispatch-rate harness 整個 revert.
 15. **壓縮過的政策要重新做行為認證, 候選要綁回被測位元組** (v1.3.9 -> v1.3.10): v1.3.9 把主政策從 18,477 砍到 15,841 bytes (-14.3%), 37 個語意規則單位一個沒少, 但**出貨的那份只有靜態覆蓋** - 行為矩陣跑的是舊的 18,477 快照. 上游自己在 release 裡標明這件事, 沒有把行為結果掛到新位元組上. v1.3.10 才對 15,841 的那份重跑完整 explicit-opt-in 矩陣, 並把候選以「只差版本標記」的正規化綁回被測快照, 兩種形式都納入測試.
 
 ### 上游 runtime 證據的新進展

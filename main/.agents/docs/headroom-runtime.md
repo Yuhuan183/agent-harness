@@ -98,10 +98,32 @@ Claude App 使用 OAuth 直連, 不經 proxy, 只能透過 MCP 做手動文字�
 ## 操作指引
 
 - **Claude**: 需要 Headroom 時使用 `hclaude`; Auto Mode 使用 `hclaude-auto`. 底層是 `headroom wrap claude --1m`, 2026-08-21 起**預設就是 1M context**, 見下面兩條.
-- **`--1m`**: 自訂 `ANTHROPIC_BASE_URL` 之下, Claude Code 的 `/model` 選擇不會傳到 API, 只有帶 `[1m]` 後綴的 model id 才會送出 `context-1m` beta header; 不加 `--1m` 就是 200k. wrapper 端沒設 `ANTHROPIC_MODEL` 時會退到內建預設 `claude-opus-5`, 可用 `HEADROOM_1M_MODEL` 每個 shell 覆寫; 已設的 `ANTHROPIC_MODEL` 只會被補上後綴, 且是冪等的. proxy 端會把 `[1m]` 算進 context budget 再計價.
-- **旗標位置是關鍵, 不要「整理」它.** `--` 之後的東西全部歸 `claude_args`, 所以 `--1m` 必須在 `--` 之前. 對真正的 command object 實測: `['--1m', ...]` 得到 `context_1m=True`, 而 `['--', '--1m', ...]` 得到 `False` 並把旗標原樣交給 `claude` 執行檔 — session 靜靜地停在 200k, 沒有任何錯誤訊息. 2026-08-21 之前 `hclaude` 正是後者. 代價是: 沒設過 `ANTHROPIC_MODEL` 時 session 會被釘在 Headroom 的預設 `claude-opus-5`, 要換就用 `HEADROOM_1M_MODEL`. 另一條路是在 `~/.zshrc` 設 `ANTHROPIC_MODEL="claude-opus-5[1m]"` (wrap 用 `os.environ.copy()` 所以會生效), 但那會釘死每一個 session 並讓 `/model` 選單失效 — upstream #2983 明講這是它要取代的 workaround, 不建議.
+- **`--1m`**: 自訂 `ANTHROPIC_BASE_URL` 之下, Claude Code 的 `/model` 選擇不會傳到 API,
+  只有帶 `[1m]` 後綴的 model id 才會送出 `context-1m` beta header; 不加 `--1m` 就是 200k.
+  wrapper 端沒設 `ANTHROPIC_MODEL` 時會退到內建預設 `claude-opus-5`, 可用
+  `HEADROOM_1M_MODEL` 逐 shell 覆寫; 已設的 `ANTHROPIC_MODEL` 只會被補上後綴, 而且是冪等的.
+  proxy 端會把 `[1m]` 算進 context budget 再計價.
+- **旗標位置是關鍵, 不要「整理」它.** `--` 之後的東西全部歸 `claude_args`, 所以 `--1m` 必須
+  在 `--` 之前. 對真正的 command object 實測: `['--1m', ...]` 得到 `context_1m=True`, 而
+  `['--', '--1m', ...]` 得到 `False`, 並把旗標原樣交給 `claude` 執行檔 —— session 靜靜地停在
+  200k, 沒有任何錯誤訊息. 2026-08-21 之前 `hclaude` 正是後者.
+
+  代價是沒設過 `ANTHROPIC_MODEL` 時, session 會被釘在 Headroom 的預設 `claude-opus-5`, 要換
+  就用 `HEADROOM_1M_MODEL`. 另一條路是在 `~/.zshrc` 設
+  `ANTHROPIC_MODEL="claude-opus-5[1m]"` (wrap 用 `os.environ.copy()`, 所以會生效), 但那會
+  釘死每一個 session 並讓 `/model` 選單失效 —— upstream #2983 明講這是它要取代的 workaround,
+  不建議.
 - **沒有 1M→200k 的降級階梯.** release note 的 “make `--1m` fallback model configurable” 指的是「未指定 model 時要用哪個 model」, 不是 context 大小的 fallback. `[1m]` 是向 Anthropic 請求 1M tier, 有沒有資格是帳號層級的事; 沒資格就是 API 報錯, 不會自動退回 200k.
-- **on-demand tool loading (`--tool-search`)**: 自訂 `ANTHROPIC_BASE_URL` 會讓 Claude Code 關閉 tool deferral, 改成一次載入所有 tool schema, 吃掉數十 K 的 local context (upstream issue #746). `wrap claude` 因此會設 `ENABLE_TOOL_SEARCH`, 預設 `true`. 可用值 `true`/`1`/`yes`/`on`, `false`/`0`/`no`/`off`, `auto`, `auto:N` (N 為 0-100); 打錯會直接報錯而不是默默關掉. 優先序是 `--tool-search` 旗標 > 環境裡既有的 `ENABLE_TOOL_SEARCH` (原封不動) > 內建預設; 空字串視同未設. Read/Edit/Bash 這類內建工具永遠不會被延後載入, agent loop 不受影響. 若採 always-on routing (下面的 `persistent-service`), 這個變數要跟 base URL 一起常駐, 否則原生 `claude` 會在沒有 deferral 的情況下走 proxy.
+- **on-demand tool loading (`--tool-search`)**: 自訂 `ANTHROPIC_BASE_URL` 會讓 Claude Code
+  關閉 tool deferral, 改成一次載入所有 tool schema, 吃掉數十 K 的 local context
+  (upstream issue #746). `wrap claude` 因此會設 `ENABLE_TOOL_SEARCH`, 預設 `true`.
+
+  可用值是 `true`/`1`/`yes`/`on`, `false`/`0`/`no`/`off`, `auto`, `auto:N` (N 為 0-100);
+  打錯會直接報錯, 不會默默關掉. 優先序是 `--tool-search` 旗標 > 環境裡既有的
+  `ENABLE_TOOL_SEARCH` (原封不動) > 內建預設, 空字串視同未設. Read/Edit/Bash 這類內建工具
+  永遠不會被延後載入, agent loop 不受影響. 若採 always-on routing (下面的
+  `persistent-service`), 這個變數要跟 base URL 一起常駐, 否則原生 `claude` 會在沒有 deferral
+  的情況下走 proxy.
 - **Codex**: 需要 Headroom 時使用 `hcodex`; Auto Mode 使用 `hcodex-auto`. 底層是 `headroom wrap codex`, 不依賴預先存在的永久 provider.
 - **Antigravity CLI**: 原生 Auto Mode 使用 `agy-auto` (`agy --mode accept-edits`). Headroom 入口保留為 `hagy`/`hagy-auto`, 但會先確認安裝版本真的提供 `headroom wrap agy`; 沒有就 exit 127, 不能降級成未壓縮的 `agy`.
 - **權限**: 一般自動執行分別使用 Claude `--permission-mode auto`, Codex `-a on-request -s workspace-write`, Antigravity `--mode accept-edits`. `--dangerously-skip-permissions` 與 `--dangerously-bypass-approvals-and-sandbox` 不是 Auto Mode, 也不是 Headroom 的必要參數; 只有外層已有隔離環境時才能針對單次任務明確選用. 可重用的 shell functions 見 `docs/setup.md`.
@@ -117,7 +139,15 @@ Claude App 使用 OAuth 直連, 不經 proxy, 只能透過 MCP 做手動文字�
   `headroom install apply`, 只把 `--preset` 改為 `persistent-service`. 不要只複製別台
   機器的 profile, port 或 provider 值.
 - **套件管理**: CLI 由 `uv tool` 與 uv 管理的 Python 提供, `~/.local/bin/headroom` 是 MCP 設定應使用的絕對路徑.
-- **升級**: 先執行 `headroom update --check`, 再用 `headroom update` 或 `uv tool upgrade headroom-ai`. 升級後重開 wrapped session; `persistent-service` profile 執行 `headroom install restart --profile <profile>`, 再以 `headroom install status --profile <profile>` 確認 `running` 與 `Healthy: yes`. `headroom doctor` 另用來確認 CLI, proxy 與 routing; 它不能取代 deployment health. `persistent-task` 依上表重新 `apply` 或先轉為 `persistent-service`. 若這次升級改動了 `headroom wrap` 的參數, 還要重跑 `scripts/install-zsh-functions.sh --apply`: `~/.zshrc` 裡的舊 block 不會自己更新, `hclaude`/`hcodex` 會帶著失效旗標啟動而被 CLI 擋下.
+- **升級**: 先執行 `headroom update --check`, 再用 `headroom update` 或
+  `uv tool upgrade headroom-ai`. 升級後重開 wrapped session; `persistent-service` profile
+  執行 `headroom install restart --profile <profile>`, 再以
+  `headroom install status --profile <profile>` 確認 `running` 與 `Healthy: yes`.
+  `headroom doctor` 另用來確認 CLI, proxy 與 routing, 但它不能取代 deployment health.
+  `persistent-task` 依上表重新 `apply`, 或先轉為 `persistent-service`.
+
+  這次升級若改動了 `headroom wrap` 的參數, 還要重跑 `scripts/install-zsh-functions.sh --apply`:
+  `~/.zshrc` 裡的舊 block 不會自己更新, `hclaude`/`hcodex` 會帶著失效旗標啟動而被 CLI 擋下.
 - **Legacy Codex provider**: `headroom unwrap codex` 只認得目前的 auto-injected marker. 本機舊版 `# --- Headroom persistent provider ---` block 曾出現 CLI 宣稱成功但檔案未變; 必須直接檢查 `~/.codex/config.toml` 並以 `headroom doctor` 交叉驗證, 不得只採信成功訊息.
 - **`headroom learn`**: 預設只允許寫入 machine-local, gitignored 的學習檔. 不得未經 review 直接以 `--target CLAUDE.md`, `AGENTS.md` 或其他 tracked contract 覆寫專案規則.
 - **App 手動壓縮**: 只壓大型 read-only JSON, log, table 或 search output; 程式碼, 錯誤, 圖片與可編輯內容交給原始工具.

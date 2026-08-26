@@ -154,7 +154,7 @@ flowchart LR
 - `docs/research/*`;
 - `main/claude/plans/*`.
 
-直接跑 setup 會建立平行真相源. 蒸餾版只能更新既有 owner, 不能自行發明新的根文件布局.
+直接跑 setup 會建立平行真相源. 蒸餾版只能更新既有 owner, 不能自行發明新的根文件佈局.
 
 ### 外部 issue tracker
 

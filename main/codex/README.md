@@ -10,7 +10,7 @@
 
 | 路徑 | 職責 | 同步 |
 |---|---|---|
-| `AGENTS.contract.md` | Codex 全域工作契約源檔 (部署為 `~/.codex/AGENTS.md`; 改名避免在 .codex/ 內開 session 時重複載入) (outcome-first, 最小 scope, direct-first dispatch, 風險觸發的獨立驗證) | 自動 |
+| `AGENTS.contract.md` | Codex 全域工作契約源檔: outcome-first, 最小 scope, direct-first dispatch, 風險觸發的獨立驗證 (部署為 `~/.codex/AGENTS.md`; 改名避免在 .codex/ 內開 session 時重複載入) | 自動 |
 | `agents/*.toml` | 七個 Codex leaf 角色定義 (鏡像 Claude roles) | 自動 |
 | `model-routing.toml` | Codex main/leaf 的結構化 model-effort 先驗與 AA v4.1 快照 | 自動 |
 | `scripts/model-routing` | 驗證品質門檻並解析 profile; 共用核心在 `../.agents/scripts/routing_core.py` (缺失時報部署錯誤) | 自動 |
@@ -32,9 +32,10 @@
 
 `config.toml` 是機器狀態 (base URL, 憑證路徑, marketplace 來源, PID 等),
 **永不自動覆蓋**; 跨機器只透過 `config.merge.toml` 帶可攜設定, 套用方式見 `DEPLOY.md`.
-`model-routing.toml` 只是可查詢的 dispatch 建議, 不會改寫 `config.toml` 或目前 task; 本機
-`experience-ledger` 有足夠同角色/task class 樣本時, 其可接受率, 返工, 時間與同口徑 token 證據優先;
-native Codex 記錄來源為 `codex`, Claude bridge 為 `claude-code-plugin-codex`.
+`model-routing.toml` 只是可查詢的 dispatch 建議, 不會改寫 `config.toml` 或目前 task. 本機
+`experience-ledger` 在同角色, 同 task class 上累積到足夠樣本時, 它記的可接受率, 返工, 時間與
+同口徑 token 優先於這份建議; 記錄來源 native Codex 是 `codex`, Claude bridge 是
+`claude-code-plugin-codex`.
 Main route 只供開啟 task 前選擇; 執行中的 main 不會切換模型. Leaf route 依 resolver 的
 `invocation` 使用 spawn argument; 未來若啟用 Luna, 才使用另行註冊的 custom agent config. 切換模型時固定
 `fork_turns = "none"`, 由完整 brief 重建必要脈絡. 部署後從 `${CODEX_HOME:-$HOME/.codex}/scripts/model-routing` 執行; repo 內則
@@ -46,4 +47,4 @@ Main route 只供開啟 task 前選擇; 執行中的 main 不會切換模型. Le
 
 本機 Codex context/quota 診斷使用
 `${CODEX_HOME:-$HOME/.codex}/skills/experience-ledger/scripts/codex-usage`;
-預設輸出把最近一回合的實際 context 占用與累計 session token 分開, `--json` 可取得原始欄位.
+預設輸出把最近一回合的實際 context 佔用與累計 session token 分開, `--json` 可取得原始欄位.

@@ -1,4 +1,4 @@
-# 配置說明 (開發者 / 智慧體適用)
+# 配置說明 (開發者與 agent 適用)
 
 把 agent-harness 的可攜契約套用到本機全域配置的完整流程. 設計原則:
 **專案是唯一編修處, 全域是套用目標**; 機器狀態 (憑證, sessions, cache,
@@ -75,8 +75,9 @@ claude plugin install codex@openai-codex
 ```
 
 - **其他 Claude plugins** (figma, warp, ui-ux-pro-max…): 非本 repo 依賴. 要用的話
-  自行安裝, 並把 enable 設定寫在 `~/.claude/settings.local.json` — `settings.json`
-  `settings.json` 會以 ownership-aware `merge-json` 更新 repo 擁有的 hook group, 其他 top-level key 與第三方 group 會保留; 本機偏好仍建議放 `settings.local.json` (不入庫, 不同步).
+  自行安裝, 並把 enable 設定寫在 `~/.claude/settings.local.json`. `settings.json` 會以
+  ownership-aware `merge-json` 更新 repo 擁有的 hook group, 其他 top-level key 與第三方
+  group 會保留; 本機偏好仍建議放 `settings.local.json` (不入庫, 不同步).
 - **第三方 skills (lark 全套等)**: 本機自帶, 非必要依賴, 不列入本專案的
   `INSTALLED.txt`, 也不由本 repo 部署; managed merge 會保留其既有目錄.
   `.skill-lock.json` 只是 installer 的 machine-local 版本快照, 不是專案 skill ownership 清單, 也不由本 repo 追蹤或部署.
@@ -156,19 +157,33 @@ Headroom 沒有 CLI context tools; Claude/Codex wrapper 不傳入那類選項. R
 這些 lifecycle 指令. preset 轉換, 升級後 restart/re-apply 判斷與健康檢查見
 [`headroom-runtime.md`](../main/.agents/docs/headroom-runtime.md).
 
-`scripts/sync.sh` 的 dry-run 與 apply 都會先跑 JSON/shell/兩側 routing/Claude pins/contract tests; 任何失敗都在寫入前停止.
-所有可攜 source→HOME 映射只定義於 `scripts/deployment-manifest.tsv`; `sync.sh` 與 weekly integrity
-共同讀取它, 新增或改名部署成品時不得另建第二份清單.
-全域 `settings.json` 以 `merge-json` 模式部署 (manifest 第三欄), 因為這個檔案有三個寫入者: 本 repo,
-Claude Code 自己 (`/model`, `/effort`) 與第三方 hook 安裝程式. 合併以「所有權」而非位置判斷: 命令含
-`$HOME/.claude/hooks/` 或 `rtk hook claude` 的 hook group 屬本 repo, 整組替換 (過期指令會被更新而不是
-變成重複兩份); 其餘 group, repo 未定義的事件與 top-level key 一律原樣保留, `permissions.allow` 取聯集.
-每次執行都會列出保留了哪些項目. 因此不需要覆寫逃生口, `--accept-settings-overwrite` 已移除.
-`~/.codex/config.toml` 同理, 以 `merge-toml` 模式部署: 只寫入 `[agents]` 與 `[agents.*]`, 其餘 section, 註解與格式逐字保留; repo 未宣告的 `[agents.*]` (使用者自建 agent) 保留並回報. 兩者的部署後校驗都不是 byte 相等, 而是「重跑 merge 不再改變任何東西」, `sync.sh` 與 weekly integrity 都會驗. 若既有的 `~/.claude/CLAUDE.md` 或 `~/.codex/AGENTS.md`
-內容從未出現在本 repo 歷史 (別人的指引, 不是舊版契約), apply 也會停止: 先手動合併, 或明確用
-`--accept-contract-takeover` 接管. 切換 Claude preset 時, 先在 source checkout 執行
-`main/claude/scripts/model-routing activate-profile --profile <balanced|fast|quality_guarded>`, 確認 git diff,
-再 sync 並開新 session; 只改 `~/.claude` 會被 weekly integrity 視為相對 Git source 的 drift.
+`scripts/sync.sh` 的 dry-run 與 apply 都會先跑 JSON, shell, 兩側 routing, Claude pins 與
+contract tests; 任何一項失敗都在寫入前停止. 所有可攜的 source→HOME 映射只定義在
+`scripts/deployment-manifest.tsv`, `sync.sh` 與 weekly integrity 共讀這一份; 新增或改名部署
+成品時不得另建第二份清單.
+
+**兩個檔案是合併部署, 不是覆蓋**, 因為它們同時有別的寫入者:
+
+- **`settings.json`** (`merge-json`, manifest 第三欄). 三個寫入者: 本 repo, Claude Code 自己
+  (`/model`, `/effort`), 與第三方 hook 安裝程式. 合併看「所有權」而不是位置 —— 命令含
+  `$HOME/.claude/hooks/` 或 `rtk hook claude` 的 hook group 屬於本 repo, 整組替換 (所以過期
+  指令是被更新, 不會變成重複兩份); 其餘 group, repo 未定義的事件與 top-level key 一律原樣
+  保留, `permissions.allow` 取聯集. 每次執行都會列出保留了哪些項目, 因此不需要覆寫逃生口,
+  `--accept-settings-overwrite` 已移除.
+- **`~/.codex/config.toml`** (`merge-toml`). 只寫入 `[agents]` 與 `[agents.*]`; 其餘 section,
+  註解與格式逐字保留, repo 未宣告的 `[agents.*]` (使用者自建 agent) 保留並回報.
+
+兩者的部署後校驗都不是 byte 相等, 而是「重跑一次 merge 不再改變任何東西」, `sync.sh` 與
+weekly integrity 都會驗.
+
+另外兩件會讓 apply 停下或被判成 drift 的事:
+
+- 既有的 `~/.claude/CLAUDE.md` 或 `~/.codex/AGENTS.md` 內容從未出現在本 repo 歷史 (是別人的
+  指引, 不是舊版契約) 時, apply 停止. 先手動合併, 或明確用 `--accept-contract-takeover` 接管.
+- 切換 Claude preset 要在 source checkout 執行
+  `main/claude/scripts/model-routing activate-profile --profile <balanced|fast|quality_guarded>`,
+  確認 git diff, 再 sync 並開新 session. 只改 `~/.claude` 會被 weekly integrity 視為相對
+  Git source 的 drift.
 
 ## 驗收
 

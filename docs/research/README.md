@@ -51,7 +51,7 @@ harness 應該縮到「模型無法可靠自行維持, 且能被驗證」的邊�
 | 議題 | 衝突 | 裁決 | 理由 |
 |---|---|---|---|
 | 主動派工 | Pilotfish 鼓勵在合適形狀下主動 dispatch; 精簡 resident prompt 傾向少規則 | 保留三項成本測試, 未通過就 direct | 取得平行效益, 同時避免 delegation tax |
-| Batching | 上游示例偏向同形任務批次; 一般 checklist 容易按 request bullet 拆分 | 依 shared context, artifact, dependency, verification surface 分組 | 降低重建 context 與整合成本 |
+| Batching | 上游範例偏向同形任務批次; 一般 checklist 容易按 request bullet 拆分 | 依 shared context, artifact, dependency, verification surface 分組 | 降低重建 context 與整合成本 |
 | Plan 迭代 | verifier 可持續要求修正; 不中止會形成 churn | 同 readiness-unit 最多兩次自動實質修訂 | 把真正的選項交回使用者, 不假裝無限收斂 |
 | Bash 唯讀 | shell allowlist 想保留可執行重現; security review 證明 parser 可被 callbacks, 環境與 expansion 繞過 | Claude no-write roles 完全移除 Bash; 命令驗證轉 Codex read-only sandbox | 能力邊界比「解析任意 shell」可證明 |
 | Prompt 壓縮 | Pilotfish benchmark 支持壓縮; vendor guidance 仍要求清楚結構與關鍵約束 | 移除重複與過時敘述, 不刪除 authority, stop, QC 與安全邊界 | 壓縮是降低 resident tax, 不是追求最短 |
@@ -83,7 +83,7 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 | 阻斷性修復共用五次 pass 預算 + candidate-state fingerprint | **改造後採用** | 五次上限照採; 指紋改成每個 pass 自述「上次之後改了什麼」, 沒改就不重驗 |
 | readiness epoch 與一次最終 fresh readiness check | **不採用** | 維持現行硬性兩次上限, 不放寬 |
 | 互動模式先於工作者選擇 (v1.3.9) | **不採用** | client 的 plan mode 已承擔「廣泛請求先唯讀」; 理由見[明確不做的事](#明確不做的事) |
-| cue-free 限制: 更高優先級的 client 指令壓得過 user 層契約 (v1.3.9) | **採用** | 待辦方向 1. 本機另有當下可觀察的實例, 不只是借用上游結論 |
+| cue-free 限制: 優先序更高的 client 指令壓得過 user 層契約 (v1.3.9) | **採用** | 待辦方向 1. 本機另有當下可觀察的實例, 不只是借用上游結論 |
 | 壓縮後對出貨位元組重做行為認證, 候選綁回被測快照 (v1.3.9 -> v1.3.10) | **改造後採用** | 待辦方向 2. 接線既有 census 指紋, 不新建 Gate |
 
 **這些控制目前只有靜態契約與測試, 沒有行為證據.** 仍未證明的是長流程中的效果: 中斷後恢復, 連續 correction, 互相衝突的 leaf 結果, 以及真實 token 與 wall-clock 改善. 這些要靠 lifecycle replay 與 ledger 驗證. 不能把「測試存在」寫成「效果已證明」.
@@ -154,7 +154,7 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 | 階段 | 現有機制 | 新證據指出的缺口 |
 |---|---|---|
 | ① 進場: 憑什麼常駐 | 字數上限, 三項密度指標, 「刪掉會不會讓模型犯錯」 | 預算不分程序型與知識型, 而外部消融只推翻得了後者 |
-| ② 生效: 有機會被讀到嗎 | 無 | 常駐契約以 user context 進場, 服從是機率性的, 更高優先級指令壓得過它 |
+| ② 生效: 有機會被讀到嗎 | 無 | 常駐契約以 user context 進場, 服從是機率性的, 優先序更高的指令壓得過它 |
 | ③ 證明: 在哪一版位元組上證過 | census 的 `sha256`/`payload_sha256`, 275 條靜態斷言 | trap 結果表沒有指紋欄, 行為證據不帶有效期 |
 | ④ 反證: 會不會過度觸發 | s10 (量 skill 觸發詞的召回) 的 `c-no-exclusions` 變體, 只蓋 skill description | gate 層沒有「本來就不該觸發」的對照組 |
 | ⑤ 退場: 擋下來之後呢 | 六個有界 gate | 沒寫下擋下來要回什麼, 也沒在量連續拒絕 |

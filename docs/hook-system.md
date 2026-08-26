@@ -29,7 +29,7 @@ Hook 的「失敗模式」指的是它自己出錯時會怎樣, 這是設計時�
 
 | Hook | 事件 | 只在什麼條件攔截 | 逃生口 |
 |---|---|---|---|
-| [commit-test-gate](../main/claude/hooks/commit-test-gate.py) | PreToolUse[Bash] | 指令含 `git commit` 且目標 repo 的測試套件為紅 (或逾時). 「含」以 shell 實際會跑出什麼為準: hook 比對四份副本: 原字串, 去引號/反斜線後, 去掉展開段 (`$VAR`, `${...}`, `$(...)`, 反引號), 以及把讀得到的值代回去的那份, 所以 `g'i't com''mit`, 續行拆字, `g${E}it com${E}mit`, `G=git; $G commit` 都算命中; 子命令本身來自展開 (`git $C`) 另以結構判定為疑似 commit, 與值讀不讀得到無關. 目標同樣要能指名: cwd 之外, `git -C`, `--git-dir`, `--work-tree`, `cd`, `pushd` 的運算元與指令設的 `GIT_DIR=`/`GIT_WORK_TREE=` 都算; 未加引號者在分隔符收尾, 路徑前的選項先跳過 (`cd /repo; git commit` 與 `cd -- /repo` 都指 `/repo`); `$R`, `~`, 萬用字元先解析, 絕對路徑指不到目錄就以此為由擋下而非放行. 執行檔與參數雙雙來自展開 (`$G $C`), 或交給 `eval`/`sh -c` 的不可讀字串亦同, 代價是 `$EDITOR "$FILE"` 在有套件的 repo 會被擋. 文字層到此為止: 不帶 `commit` 字樣的 wrapper 由下一列的 pre-commit (Git argv 邊界) 接手. settings 前置過濾做不到這些, 改成「字串裡有展開就一律交給 hook 判斷」 | `AGENT_SKIP_TEST_GATE=1` 前綴 (用於刻意提交紅狀態) |
+| [commit-test-gate](../main/claude/hooks/commit-test-gate.py) | PreToolUse[Bash] | 指令含 `git commit` 且目標 repo 的測試套件為紅 (或逾時). 「含」與「目標」怎麼判定見[下一節](#怎麼認出一個-commit-以及它-commit-到哪裡) | `AGENT_SKIP_TEST_GATE=1` 前綴 (用於刻意提交紅狀態) |
 | [leaf-redispatch](../main/claude/hooks/leaf-redispatch.py) | PreToolUse[Agent] | caller `agent_type` 非空, 亦即 leaf 嘗試再派工 | 回到 main session 派工 |
 | [runtime-guard](../main/claude/hooks/runtime-guard.py) `--gate` | PreToolUse[Agent] | 派工受限 reviewer (verifier/plan-verifier/security-reviewer) 但 CLI 版本過舊或未知, 無法保證唯讀邊界 | 升級 CLI 重開 session, 或改在 main session 做 |
 | [verifier-quota](../main/claude/hooks/verifier-quota.py) | PreToolUse[Agent] | 同一 top-level task (以 prompt 為界) 派第二個 outcome verifier. **只認 Claude 的 `verifier`**: 走 `codex:codex-rescue` 的 Codex verifier 不計額度 (bridge 名稱不分角色, 列進去會誤擋同 prompt 的 Codex 實作派工), 這段仍屬判斷. **只有它自己狀態健康時會攔**: state 不可寫時兩個 verifier 都放行 (實測). 它是預算護欄不是安全邊界 | `AGENT_ALLOW_SECOND_VERIFIER=1` (確實是新任務時) |
@@ -38,7 +38,40 @@ Hook 的「失敗模式」指的是它自己出錯時會怎樣, 這是設計時�
 
 commit 的兩道閘是互補而非取代: Bash gate 涵蓋「agent 在**任何** repo 的 commit, 執行前」, pre-commit 涵蓋「**這個** repo 走 git hook 路徑的 commit, 不管指令怎麼拼」. 判斷本體 (套件集合, 直譯器下限, 300 秒預算, 訊息措辭) 只有一份, 由 pre-commit 匯入 commit-test-gate 共用. 安裝方式是 repo-local 的 `core.hooksPath`, 由 `sync.sh` 呼叫 `scripts/install-git-hooks.sh` 設定, `git config --unset core.hooksPath` 即可還原. 已被別的工具 (husky 之類) 佔用時不覆寫, 改為報錯並讓 sync 以非零狀態結束 — git 只允許一個 hooks 目錄, 怎麼串要人決定. 其他 clone 沒跑過 sync 就沒有這道閘.
 
-**client-side 關不掉的殘餘**: `--no-verify`, `-c core.hooksPath=…`, `commit-tree` 都能讓 git 不跑 hook; 藏進 wrapper script 後外層指令看不出痕跡, Bash gate 也攔不到. 本機沒有機制能關掉這段, 真正關得掉的是 server-side (CI, protected branch) — 這就是 enforcement 分層不停在 pre-commit 的原因.
+**client-side 關不掉的殘餘**: `--no-verify`, `-c core.hooksPath=…`, `commit-tree` 都能讓
+git 不跑 hook; 藏進 wrapper script 後外層指令看不出痕跡, Bash gate 也攔不到. 本機沒有機制能
+關掉這段, 真正關得掉的是 server-side (CI, protected branch) — 這就是 enforcement 分層不停在
+pre-commit 的原因.
+
+### 怎麼認出一個 commit, 以及它 commit 到哪裡
+
+Bash 側那一格判的不是字串相等, 所以拆開講. 兩個問題要分別答得出來.
+
+**這是不是 commit.** hook 比對四份副本: 原字串, 去引號與反斜線後的, 去掉展開段
+(`$VAR`, `${...}`, `$(...)`, 反引號) 的, 以及把讀得到的值代回去的那一份. 所以下面這幾種寫法
+都算命中:
+
+- `g'i't com''mit`
+- 用續行把字拆開
+- `g${E}it com${E}mit`
+- `G=git; $G commit`
+
+子命令本身來自展開時 (`git $C`), 另以結構判定為疑似 commit, 與值讀不讀得到無關.
+
+**它 commit 到哪個 repo.** 目標同樣要指得出來. 算數的來源是 cwd, `git -C`, `--git-dir`,
+`--work-tree`, `cd` 與 `pushd` 的運算元, 以及指令自己設的 `GIT_DIR=` 與 `GIT_WORK_TREE=`.
+解析規則三條:
+
+- 沒加引號的路徑在分隔符收尾, 路徑前的選項先跳過 (`cd /repo; git commit` 與 `cd -- /repo`
+  都指 `/repo`).
+- `$R`, `~` 與萬用字元先解析.
+- 絕對路徑指不到目錄時就以此為由擋下, 不放行.
+
+執行檔與參數雙雙來自展開 (`$G $C`), 或是交給 `eval` 與 `sh -c` 的不可讀字串, 一樣擋. 代價是
+`$EDITOR "$FILE"` 在有套件的 repo 會被擋.
+
+**文字層到此為止.** 不帶 `commit` 字樣的 wrapper 由 pre-commit 那一側 (Git argv 邊界) 接手.
+settings 的前置過濾做不到上面這些判定, 所以改成「字串裡有展開就一律交給 hook 判斷」.
 
 兩個設計要點:
 

@@ -9,7 +9,7 @@
 | 問題 | 在哪一節 | 一句話答案 |
 |---|---|---|
 | 常駐指令為什麼要瘦 | 常駐指令與 context | 規則會互相搶注意力, context 大不等於能無損用完 |
-| 現在到底占了多少 | 實際量測與操作分級 | 有本機基準快照與四段操作分級, 但那是專案啟發式, 不是供應商公布的故障線 |
+| 現在到底佔了多少 | 實際量測與操作分級 | 有本機基準快照與四段操作分級, 但那是專案啟發式, 不是供應商公布的故障線 |
 | 兩家官方怎麼說 | 供應商官方指引 | 都升級成帶數字的官方立場, 但數字都是**供應商自評** |
 
 三節收斂成同一條維運規則: **加規則前先找矛盾**. 肥大有預算擋得住, 矛盾沒有.
@@ -49,11 +49,11 @@
 # Claude: 最近 7 天每回合 prompt-context P50/P95, 並列出壓力最高的 sessions
 ~/.claude/scripts/usage-report --days 7 --by-session --top 20
 
-# Codex: 最近一回合實際占用, 剩餘 context, 以及帳號 quota
+# Codex: 最近一回合實際佔用, 剩餘 context, 以及帳號 quota
 ~/.codex/skills/experience-ledger/scripts/codex-usage
 ```
 
-| 占用 | 分級 | 操作 |
+| 佔用 | 分級 | 操作 |
 |---:|---|---|
 | `<30%` | low | 不需額外動作 |
 | `30–<50%` | watch | 保持單一主題, 階段邊界留下 checkpoint |
@@ -70,7 +70,7 @@ context-rot 證據與本專案的多層契約形狀; 後續應拿 P95 與返工/
   代理值, 輸出 P50/P95. 未知舊模型先用保守的 200k; 已知實際容量時用
   `--context-window` 覆寫.
 - Codex rollout 已提供 `last_token_usage.total_tokens` 與 `model_context_window`, 所以用兩者
-  算最近一回合占用. `total_token_usage` 是整個 session 累計消耗, 只能看成本, 不能拿來當
+  算最近一回合佔用. `total_token_usage` 是整個 session 累計消耗, 只能看成本, 不能拿來當
   當前 context occupancy.
 - account quota (例如 5h/weekly window) 是能不能繼續呼叫的限制; attention pressure 是
   單次判斷是否可能被長 context 稀釋. 兩者都要看, 但不能互相替代.
@@ -85,7 +85,7 @@ context-rot 證據與本專案的多層契約形狀; 後續應拿 P95 與返工/
 | Claude subagent/Sonnet 5 | 4.8% | 11.6% | leaf context 低 |
 
 同一時間的 Codex rollout 回報有效 `model_context_window=258,400`, 最近一回合約
-59.2k/22.9%, 屬 low; 整個 session 累計約 56.0M tokens, 證明累計量若誤當占用會得出完全
+59.2k/22.9%, 屬 low; 整個 session 累計約 56.0M tokens, 證明累計量若誤當佔用會得出完全
 錯誤的警報. 這個 258,400 是**當下 Codex runtime 的實際限制**, 操作判斷優先於上面
 GPT-5.6 Sol API 頁面的產品容量; snapshot 會隨 runtime, 模型與 session 更新, 應以指令重查.
 

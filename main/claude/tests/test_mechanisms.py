@@ -3985,12 +3985,17 @@ class TaiwanUsageReportTests(unittest.TestCase):
             self.assertIn("suggested", hit)
 
     def test_it_catches_the_term_it_was_built_for(self) -> None:
-        """Positive control. Without it this only proves the tree is clean."""
+        """Positive control. Without it this only proves the tree is clean.
+
+        The term is planted rather than mutated in place: tying the control to
+        a word surviving somewhere in the tree makes the control fail the day
+        the prose gets cleaned, which is the wrong way round.
+        """
         module = load_module("zh_tw_usage_report", self.SCRIPT)
         target = ROOT / "docs/setup.md"
         original = target.read_text(encoding="utf-8")
         try:
-            target.write_text(original.replace("智慧體", "智能體"),
+            target.write_text(original + "\n智能體 (planted positive control)\n",
                               encoding="utf-8")
             hits = module.sweep()
         finally:
