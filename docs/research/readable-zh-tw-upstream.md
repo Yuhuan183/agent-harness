@@ -15,7 +15,7 @@
 | 專案 | [Raymondhou0917/speak-human-tw](https://github.com/Raymondhou0917/speak-human-tw) |
 | 作者 | Raymond Hou (雷蒙三十) |
 | 授權 | MIT |
-| 我方 pin | `8f1cdb5ec52e46178f9d04a316bdf610466ee71c` (2026-08-21 的 master) |
+| 我方 pin | `aa37c20be932c56079ea73e8e7421770057b0835` (2026-08-24 的 master) |
 | 重查 | `scripts/readable-zh-tw-recheck.sh [sha]` |
 
 **2026-08-19 補上 SHA 之前, ATTRIBUTION 只寫版本號.** 那讓它成為
@@ -108,6 +108,10 @@ master**, v1.4.0 兩樣都沒有 —— 那就是我們實際讀的是 master �
 - **兩支近乎相同的重查腳本.** `scripts/upstream-recheck.sh` (Matt Pocock) 與
   `scripts/readable-zh-tw-recheck.sh` 只差 base URL 與檔案表. 這是把重查參數化的具體理由,
   但兩支還不算一個模式, 所以先記著不動.
+- **pin 寫在三個地方.** ATTRIBUTION, 本文上面那張表, 以及重查腳本的預設值. 2026-08-24 推進
+  到 `aa37c20b` 時只動了 ATTRIBUTION, 另外兩處停在 `8f1cdb5` 兩天. Matt Pocock 那個上游早就
+  有 `test_every_document_naming_the_upstream_pin_names_the_same_one` 綁著三處, 這個上游沒有
+  —— 機制只蓋了其中一邊. 2026-08-26 補上對稱的測試.
 
 ## 2026-08-21 重新溯源: 32 個 commit, 六個來源檔一個位元組沒動
 

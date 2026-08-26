@@ -2078,6 +2078,62 @@ class DocumentationBudgetTests(unittest.TestCase):
                 self.assertIsNotNone(found, f"{skill}: no full reviewed commit")
                 self.assertEqual(pin, found.group(1))
 
+    # The same three-site shape for the other upstream. `readable-zh-tw` is
+    # distilled from `speak-human-tw`, and its pin is stated in its ATTRIBUTION,
+    # in the research doc's table, and as the recheck script's default. Each
+    # site is paired with the pattern that reads its *operative* value, not any
+    # mention of it - see the test.
+    READABLE_PIN_SITES = (
+        ("docs/research/readable-zh-tw-upstream.md",
+         r"\| 我方 pin \| `([0-9a-f]{40})`"),
+        ("scripts/readable-zh-tw-recheck.sh",
+         r'SHA="\$\{1:-([0-9a-f]{40})\}"'),
+    )
+
+    def test_the_other_upstreams_pin_moves_everywhere_at_once(self) -> None:
+        """The mechanism above covered one upstream, so the other one drifted.
+
+        On 2026-08-24 `speak-human-tw`'s pin advanced 8f1cdb5 -> aa37c20b. The
+        ATTRIBUTION moved; the research doc's table and the recheck script's
+        default did not, and stayed two days behind until someone read all three
+        (2026-08-26). Nothing was wrong with the *bytes* - every advance on this
+        upstream has been star-history churn outside the six distilled files -
+        but the script was defaulting to a commit its own ATTRIBUTION no longer
+        claimed, which is what a pin exists to prevent.
+
+        Operative values, not presence, and that is the one place this differs
+        from the test above. Presence was the first draft and it passed against
+        a deliberately reverted default: both of these files narrate the pin
+        history in prose, so the current SHA appears in them whether or not the
+        line that does the work carries it. A check the drift walks straight
+        through is worse than none. The sites here each have exactly one
+        operative spelling - a table cell and a shell default - so the stricter
+        form is available; where it is not, presence is the honest fallback.
+
+        Deliberately a second test rather than a parameterisation of the one
+        above: this repo already records the two near-identical recheck scripts
+        as a reason to parameterise someday, on the grounds that two is not yet
+        a pattern (docs/research/readable-zh-tw-upstream.md).
+        """
+        stated = re.search(
+            r"蒸餾自：`([0-9a-f]{40})`",
+            read(".agents/skills/readable-zh-tw/ATTRIBUTION.md"))
+        self.assertIsNotNone(stated, "the attribution states no distilled commit")
+        pin = stated.group(1)
+
+        for name, pattern in self.READABLE_PIN_SITES:
+            with self.subTest(site=name):
+                path = ROOT / name
+                self.assertTrue(path.is_file(), "a pin site that no longer exists")
+                found = re.search(pattern, path.read_text(encoding="utf-8"))
+                self.assertIsNotNone(
+                    found, "no line matching this site's operative pin spelling; "
+                           "if the file was restructured, move the pattern with it")
+                self.assertEqual(
+                    pin, found.group(1),
+                    "states a different pin from the ATTRIBUTION; when it moves, "
+                    "every site in READABLE_PIN_SITES moves with it")
+
     def test_every_derived_skill_pins_a_commit_and_carries_its_licence(self) -> None:
         """A version string is not an identifier, and a licence name is not a licence.
 
