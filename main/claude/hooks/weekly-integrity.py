@@ -440,6 +440,39 @@ try:
         checks_completed = False
         findings.append(f"delegation audit failed: {exc}")
 
+    # The vendor renders system-prompt sections gated on a model capability, with
+    # no opt-out and two server-pushed tiers, so the state can move without a
+    # client update. Only movement is reported: the steady state is already
+    # written up in the research tier, and a check that speaks every week trains
+    # the reader to skip it.
+    bundle_script = os.path.join(claude_dir, "scripts", "prompt-bundle-report")
+    try:
+        if not os.access(bundle_script, os.X_OK):
+            checks_completed = False
+            findings.append(
+                f"client prompt-bundle probe unavailable at {bundle_script}; "
+                "vendor prompt-section drift not checked"
+            )
+        else:
+            bundle = subprocess.run(
+                [bundle_script],
+                capture_output=True,
+                text=True,
+                timeout=budget(15),
+            )
+            if bundle.returncode == 1:
+                findings.append("client prompt bundle moved:\n"
+                                + bundle.stdout.rstrip())
+            elif bundle.returncode != 0:
+                checks_completed = False
+                detail = (bundle.stderr or bundle.stdout).rstrip()
+                findings.append(
+                    f"client prompt-bundle probe failed (exit {bundle.returncode}):"
+                    f"\n{detail}")
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        checks_completed = False
+        findings.append(f"client prompt-bundle probe failed: {exc}")
+
     # A deployment without the resolver (e.g. a partially synced ~/.claude)
     # cannot run the pin-drift check; that is incomplete coverage, never a
     # silent skip — report it and withhold the throttle stamp.

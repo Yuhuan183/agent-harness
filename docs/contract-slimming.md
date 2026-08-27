@@ -40,6 +40,7 @@
 | 跨 session 要記得的個人事實與專案約束 | CLI 自動記憶層; 常駐契約不再承擔「怕忘記」 |
 | 工具用法與邊界 | 該工具的描述; 無法改描述時 (本 repo 的 RTK/Headroom) 常駐只留一行觸發句 |
 | 供應商 system prompt 已保證的行為 | 預設刪除 — 重述是稅, 牴觸是 bug; 僅「失效不可回復的安全條款」可具名例外保留 (原則 2b(b)) |
+| 改變整段回覆語域的**模式** (相對於可載入的**程序**) | Claude 端的 output style. 它未選用時不載入, 常駐成本為零, 而選用時渲染進 system prompt — 位階比以 user context 進場的常駐契約高. skill 是程序的家: 它的 description 每個 session 都列出, 跟契約一樣佔預算. Codex 端沒有對應面, 只能走 profile prompt |
 | 歷史決策, 實驗數據, 方法論 | Git, history, docs; 永不常駐 |
 
 ## 預算與強制

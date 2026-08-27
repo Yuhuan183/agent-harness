@@ -62,7 +62,7 @@ function MUs(e){ if(e===null)return null; return `# Output Style: ${e.name}\n${e
 
 output style 會**渲染進 system prompt**, 而且啟用時連開頭那句身分宣告都換成「照你的 Output Style 回答」. 對照今天另一份調查的結論 —— 我們的契約是以 user context 進場的 —— **output style 是少數由使用者擁有, 卻真的坐在 system prompt 那一層的東西**. 未選用時完全不載入, 常駐成本為零.
 
-判準因此可以寫成一句: **模式用 output style, 程序用 skill.** eli5 是模式 (它改的是整段回覆的語域), 不是程序. 誠實邊界: 這條只對 Claude Code 成立, Codex 端沒有對應面, 那側只能走 profile prompt 或當場請求.
+判準因此可以寫成一句: **模式用 output style, 程序用 skill.** 這條已經搬進 [契約瘦身規範](../contract-slimming.md#內容判定表) 的內容判定表 —— 那裡是規則的家, 這裡只留推導過程. eli5 是模式 (它改的是整段回覆的語域), 不是程序. 誠實邊界: 這條只對 Claude Code 成立, Codex 端沒有對應面, 那側只能走 profile prompt 或當場請求.
 
 本機 `~/.claude/output-styles/` 目前不存在, 所以這是新開一個面, 不是改一個既有的.
 

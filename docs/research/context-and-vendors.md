@@ -240,14 +240,18 @@ function RUs(e){
 
 本機當下的旗標狀態讓第三層直接生效: `~/.claude.json` 的 `cachedGrowthBookFeatures` 共 557 個鍵, 其中 `tengu_fennel_godwit` 是 `false` (killswitch 關著), `tengu_heron_brook` 根本沒被 cache (伺服器沒推字串, 所以走 fallback). 對照組是這份文件被寫出來的那個 session 本身: main 模型 `claude-opus-5[1m]`, 那兩行**逐字出現在它的 system prompt 裡**.
 
-可重跑:
+可重跑, 而且不再靠人記得跑: 上面三件事 (catalog 裡誰帶這個能力, 出廠字串還在不在, 兩個旗標現在是什麼值)
+已經收進 [`prompt-bundle-report`](../../main/claude/scripts/prompt-bundle-report), 部署後在
+`~/.claude/scripts/`:
 
 ```bash
-B="$(readlink -f "$(command -v claude)")"   # Homebrew cask 會指到 .../claude-code@latest/<ver>/claude
-grep -a -c "Do not call the AgentTool unless the user requested it" "$B"   # 2.1.247: 2
-python3 -c 'import re,sys;d=open(sys.argv[1],"rb").read();print([m.decode() for m,c in re.findall(rb"\{id:\"(claude-[a-z0-9\-]+)\",family:.{0,4000}?capabilities:\[(.*?)\]",d,re.S) if b"opus_5_prompt_bundle" in c])' "$B"
-jq -c '.cachedGrowthBookFeatures | {fennel_godwit: .tengu_fennel_godwit, heron_brook: (.tengu_heron_brook // "NOT CACHED")}' ~/.claude.json
+~/.claude/scripts/prompt-bundle-report          # 人看的
+~/.claude/scripts/prompt-bundle-report --json   # 機器看的
 ```
+
+它把每次觀測寫進 `~/.claude/telemetry/.prompt-bundle-state.json`, 只在**與上次不同**時 exit 1;
+`weekly-integrity` 每七天跑一次並把 exit 1 當 finding. 這是刻意的取捨 —— 穩態早就寫在這一節裡,
+每週重講一次只會訓練讀者跳過它. 它關不掉任何東西, 只回答「現在是什麼狀態, 跟上次一不一樣」.
 
 ### 為什麼契約攔不住它
 
@@ -278,4 +282,4 @@ jq -c '.cachedGrowthBookFeatures | {fennel_godwit: .tengu_fennel_godwit, heron_b
 
 **誠實邊界**: 以上是機制與位置的取證, 不是效果量測. 本機 `~/.claude/telemetry/delegation.jsonl` 判不了這件事 — 它只記發生過的派工, 不記沒發生的決定, 而 08-10 到 08-16 那段高峰是 replay 批次而非日常工作, 沒有可比的前後基準. issue 串裡有人給了 116 個 session 的前後對照 (Opus 4.8 常態使用 → Opus 5 整週零使用 → 口頭要求後恢復), 但那是別人的機器與別人的契約.
 
-**推翻條件**: (a) 任一路徑出現官方 opt-out (settings key 或 env var), 或 catalog 裡第二個模型帶上 `opus_5_prompt_bundle`; (b) 伺服器改推第一或第二層字串, 屆時上面「文字是那兩行」的部分立刻失效, 只有「有一塊我們控制不了的區塊」還成立. 兩者都靠上面那三行指令當場重查, 不要引用本節的日期.
+**推翻條件**: (a) 任一路徑出現官方 opt-out (settings key 或 env var), 或 catalog 裡第二個模型帶上 `opus_5_prompt_bundle`; (b) 伺服器改推第一或第二層字串, 屆時上面「文字是那兩行」的部分立刻失效, 只有「有一塊我們控制不了的區塊」還成立. 兩者都靠 `prompt-bundle-report` 當場重查, 不要引用本節的日期; 而 (b) 正是那支腳本被寫出來的理由.

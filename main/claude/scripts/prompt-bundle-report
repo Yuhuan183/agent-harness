@@ -1,0 +1,229 @@
+#!/usr/bin/env python3
+"""Report the vendor prompt sections this client renders that we did not write.
+
+Claude Code assembles its system prompt from named sections. Some are gated on a
+model *capability* (`opus_5_prompt_bundle`) rather than on anything a user can
+configure, and one of them - `heron_brook` - tells the model not to call the
+Agent tool unless the user asked. There is no settings key, no environment
+variable and no CLI flag that reaches it, and two of its three resolution tiers
+are pushed from the server, so it can change without a client update. See
+`docs/research/context-and-vendors.md` for the teardown.
+
+This does not turn anything off. It answers one question - what is the state
+right now, and is it the same state as last time - so that a behaviour change
+is diagnosable in a line instead of a binary teardown, and so that a measurement
+taken under one state is not compared against one taken under another.
+
+Usage: prompt-bundle-report [--json] [--binary PATH] [--config PATH] [--state PATH]
+Exit 0: unchanged since the recorded baseline, or baseline recorded on first run.
+Exit 1: the state moved, or the recorded baseline was unreadable and had to be
+        reset - either way a finding for the weekly report.
+Exit 2: could not probe (no readable client binary); nothing is recorded.
+"""
+import json
+import mmap
+import os
+import re
+import shutil
+import sys
+from datetime import date
+
+STATE = os.path.expanduser("~/.claude/telemetry/.prompt-bundle-state.json")
+CONFIG = os.path.expanduser("~/.claude.json")
+
+CAPABILITY = "opus_5_prompt_bundle"
+FLAG = "tengu_heron_brook"
+KILLSWITCH = "tengu_fennel_godwit"
+# One token for "the payload did not answer". Comparing it like any other value
+# is what makes "we could not read the flags last week either" a non-event.
+UNKNOWN = "unknown"
+VERSION_CACHE = os.path.expanduser("~/.claude/telemetry/.runtime-version-cache")
+# A fragment, not the rule. Matching the flag key and the wording separately is
+# what lets "they reworded the section" read differently from "they removed it".
+TEXT_FRAGMENT = b"unless the user requested it"
+CATALOG = re.compile(
+    rb'\{id:"(claude-[a-z0-9\-]+)",family:.{0,4000}?capabilities:\[(.*?)\]', re.S)
+
+# The fields that mean something changed. The client version is reported but
+# deliberately excluded: an upgrade that leaves the state alone is not news, and
+# alarming on it would train the reader to ignore this check.
+COMPARED = ("models", "text_present", "killswitch", "server_override")
+
+
+def client_version(binary):
+    """Reuse runtime-guard's cached probe rather than spawning a second one."""
+    try:
+        with open(VERSION_CACHE, encoding="utf-8") as handle:
+            cached = json.load(handle)
+        if cached.get("binary") and os.path.realpath(cached["binary"]) == binary:
+            return cached.get("raw", "").split()[0]
+    except (OSError, ValueError, IndexError, TypeError):
+        pass
+    return os.path.basename(os.path.dirname(binary)) or "unknown"
+
+
+def client_binary(override=None):
+    path = override or shutil.which("claude")
+    if not path:
+        return None
+    path = os.path.realpath(path)
+    return path if os.access(path, os.R_OK) else None
+
+
+def probe_binary(path):
+    """Which models carry the capability, and is the shipped wording still there."""
+    models, text_present = [], False
+    with open(path, "rb") as handle:
+        with mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) as data:
+            for model, capabilities in CATALOG.findall(data):
+                if CAPABILITY.encode() in capabilities:
+                    models.append(model.decode())
+            text_present = data.find(TEXT_FRAGMENT) != -1
+    return sorted(models), text_present
+
+
+def probe_flags(config_path):
+    """Read the cached flag payload.
+
+    Three answers, not two. A HOME with no config yet is the ordinary state of a
+    fresh deployment and must not read like an alarm; a config that exists and
+    will not parse is worth saying out loud. Both are `UNKNOWN` for comparison
+    purposes, and the distinction is carried in `flags_source`.
+    """
+    if not os.path.exists(config_path):
+        return {"flags_source": "no config file",
+                "killswitch": UNKNOWN, "server_override": UNKNOWN}
+    try:
+        with open(config_path, encoding="utf-8") as handle:
+            cached = json.load(handle).get("cachedGrowthBookFeatures") or {}
+    except (OSError, ValueError):
+        return {"flags_source": "config unreadable",
+                "killswitch": UNKNOWN, "server_override": UNKNOWN}
+    override = cached.get(FLAG)
+    return {
+        "flags_source": "cached payload",
+        "killswitch": cached.get(KILLSWITCH, "not cached"),
+        # The pushed string is vendor prompt text; its length is the signal, and
+        # copying it into a state file on disk buys nothing.
+        "server_override": (None if not isinstance(override, str) or not override.strip()
+                            else {"len": len(override.strip())}),
+    }
+
+
+def read_state(path):
+    """Return (previous_state, damaged).
+
+    "There is no baseline yet" and "the baseline is unreadable" are opposite
+    findings, and collapsing them is how a watch switches itself off quietly: a
+    corrupted state file would re-record a fresh baseline, report nothing, and
+    every movement before the next run would go unseen.
+    """
+    if not os.path.exists(path):
+        return None, False
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return json.load(handle), False
+    except (OSError, ValueError):
+        return None, True
+
+
+def write_state(path, state):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(state, handle, indent=1, sort_keys=True)
+        handle.write("\n")
+
+
+def describe(state):
+    lines = [f"client {state['client']}"]
+    if state["models"]:
+        lines.append(f"  {CAPABILITY}: {', '.join(state['models'])}")
+    else:
+        lines.append(f"  {CAPABILITY}: no model in this build carries it")
+    lines.append(f"  shipped wording present: {'yes' if state['text_present'] else 'no'}")
+    lines.append(f"  {KILLSWITCH}: {state['killswitch']}")
+    override = state["server_override"]
+    lines.append(f"  server-pushed {FLAG}: " + (
+        "unknown" if override == UNKNOWN
+        else "none" if override is None
+        else f"{override['len']} chars"))
+    lines.append(
+        "  => cannot tell whether the section is active: " + state["flags_source"]
+        if state["active"] == UNKNOWN
+        else f"  => section active on: {', '.join(state['models'])}"
+        if state["active"] else "  => section not active on this build")
+    return "\n".join(lines)
+
+
+def main(argv):
+    args = argv[1:]
+
+    def option(name):
+        return args[args.index(name) + 1] if name in args else None
+
+    binary = client_binary(option("--binary"))
+    if binary is None:
+        print("prompt-bundle-report: no readable claude binary; not probed",
+              file=sys.stderr)
+        return 2
+    models, text_present = probe_binary(binary)
+    flags = probe_flags(option("--config") or CONFIG)
+    # Tier 3 needs the capability, the shipped text and a killswitch that is not
+    # on. Tiers 1 and 2 are server-pushed and answer to none of those, which is
+    # why a pushed override counts as active on its own.
+    if flags["killswitch"] == UNKNOWN:
+        active = UNKNOWN
+    else:
+        active = bool(flags["server_override"]) or bool(
+            models and text_present and flags["killswitch"] is False)
+    state = {
+        "observed_on": date.today().isoformat(),
+        "client": client_version(binary),
+        "models": models,
+        "text_present": text_present,
+        "active": active,
+        **flags,
+    }
+
+    path = option("--state") or STATE
+    previous, damaged = read_state(path)
+    moved = previous is not None and any(
+        previous.get(field) != state[field] for field in COMPARED)
+    if previous is None:
+        state["baseline_since"] = state["observed_on"]
+    else:
+        state["baseline_since"] = (state["observed_on"] if moved
+                                   else previous.get("baseline_since", "unknown"))
+    write_state(path, state)
+
+    if "--json" in args:
+        print(json.dumps(state, indent=1, sort_keys=True))
+    else:
+        print("client prompt bundle"
+              + (" — CHANGED" if moved else " — BASELINE RESET" if damaged else ""))
+        print(describe(state))
+        if damaged:
+            print(f"  previous state file at {path} was unreadable and has been "
+                  "replaced; any movement since the last good run went unseen")
+        if moved:
+            for field in COMPARED:
+                if previous.get(field) != state[field]:
+                    print(f"  {field}: {previous.get(field)!r} -> {state[field]!r}")
+            print(f"  previous state held since {previous.get('baseline_since', 'unknown')}")
+        elif previous is None and not damaged:
+            print("  baseline recorded; a later run reports movement against it")
+        else:
+            print(f"  unchanged since {state['baseline_since']}")
+    # Damage is not movement, but it is the same instruction to the reader: look.
+    return 1 if (moved or damaged) else 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv))
+    except Exception as exc:  # noqa: BLE001
+        # Exit 1 is reserved for "the state moved". An internal error that fell
+        # through to the interpreter would exit 1 too, and the weekly report
+        # would raise a drift alarm about a probe that never probed anything.
+        print(f"prompt-bundle-report: probe failed: {exc!r}", file=sys.stderr)
+        sys.exit(2)

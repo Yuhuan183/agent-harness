@@ -493,6 +493,12 @@ class MechanismTests(unittest.TestCase):
             report = scripts_dir / "delegation-report"
             report.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
             report.chmod(0o755)
+            # Same shape as the routing resolver below: a probe this HOME does
+            # not carry is incomplete coverage, so the stamp would be withheld
+            # for a reason this test is not about.
+            bundle = scripts_dir / "prompt-bundle-report"
+            bundle.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            bundle.chmod(0o755)
             # Both routing resolvers present and green: coverage is complete.
             claude_routing = scripts_dir / "model-routing"
             claude_routing.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
@@ -610,6 +616,29 @@ class MechanismTests(unittest.TestCase):
             self.assertIn(".codex/AGENTS.md", git_managed_drift.stdout)
             self.assertNotIn("check failed", git_managed_drift.stdout)
             self.assertTrue(stamp.exists())
+            # A probe that reports movement is a finding, not a broken check:
+            # the vendor moved something, our coverage is intact, so the stamp
+            # still advances. A probe that fails is the opposite case, and it
+            # withholds the stamp like every other incomplete check here.
+            stamp.unlink()
+            bundle.write_text(
+                "#!/bin/sh\necho 'client prompt bundle - CHANGED'\nexit 1\n",
+                encoding="utf-8")
+            bundle.chmod(0o755)
+            moved = subprocess.run([sys.executable, str(hook)], env=env,
+                                   check=True, capture_output=True, text=True)
+            self.assertIn("client prompt bundle moved", moved.stdout)
+            self.assertNotIn("check failed", moved.stdout)
+            self.assertTrue(stamp.exists())
+
+            stamp.unlink()
+            bundle.write_text("#!/bin/sh\nexit 2\n", encoding="utf-8")
+            bundle.chmod(0o755)
+            broken = subprocess.run([sys.executable, str(hook)], env=env,
+                                    check=True, capture_output=True, text=True)
+            self.assertIn("prompt-bundle probe failed (exit 2)", broken.stdout)
+            self.assertFalse(stamp.exists())
+
 
     def _integrity_stdout(self, rows: list[dict]) -> str:
         """Run the weekly check over a ledger of `rows` in a scratch HOME."""
@@ -1937,6 +1966,149 @@ class MechanismTests(unittest.TestCase):
             capture_output=True, text=True, cwd=ROOT)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("contract operator delta:", result.stdout)
+
+
+class PromptBundleProbeTests(unittest.TestCase):
+    """The probe that watches the vendor prompt sections we cannot switch off.
+
+    It is an instrument, so what has to hold is instrument behaviour: it speaks
+    when the state moves, stays quiet when it does not, and never spends the
+    movement exit code on its own failure. That last one is not hypothetical -
+    the first version crashed on a HOME with no config file and exited 1, which
+    the weekly report would have read as a real drift alarm.
+    """
+
+    PROBE = ROOT / "main/claude/scripts/prompt-bundle-report"
+    # Enough of a catalog for the regex to bind, one model carrying the
+    # capability and one not, plus the shipped wording. Built here rather than
+    # read from the installed client so the assertions do not move when the
+    # user upgrades.
+    BINARY = (b'noise{id:"claude-opus-5",family:"opus",window:1e6,'
+              b'capabilities:["effort","opus_5_prompt_bundle"]}'
+              b'{id:"claude-sonnet-5",family:"sonnet",capabilities:["effort"]}'
+              b'later Do not call the AgentTool unless the user requested it.')
+
+    def probe(self, home, *, binary, config, state):
+        return subprocess.run(
+            [sys.executable, str(self.PROBE),
+             "--binary", str(binary), "--config", str(config), "--state", str(state)],
+            capture_output=True, text=True, env={**os.environ, "HOME": str(home)},
+        )
+
+    def write_config(self, path, **flags):
+        path.write_text(json.dumps({"cachedGrowthBookFeatures": flags}),
+                        encoding="utf-8")
+
+    def test_the_probe_speaks_on_movement_and_stays_quiet_otherwise(self) -> None:
+        with tempfile.TemporaryDirectory() as home:
+            home = Path(home)
+            binary, config, state = home / "claude", home / "c.json", home / "s.json"
+            binary.write_bytes(self.BINARY)
+            self.write_config(config, tengu_fennel_godwit=False)
+
+            first = self.probe(home, binary=binary, config=config, state=state)
+            self.assertEqual(first.returncode, 0, first.stderr)
+            self.assertIn("baseline recorded", first.stdout)
+            self.assertIn("claude-opus-5", first.stdout)
+            # The model that does not carry the capability must not be listed.
+            self.assertNotIn("claude-sonnet-5", first.stdout)
+
+            second = self.probe(home, binary=binary, config=config, state=state)
+            self.assertEqual(second.returncode, 0, second.stderr)
+            self.assertIn("unchanged since", second.stdout)
+
+            # Mutation: the killswitch the vendor controls flips on.
+            self.write_config(config, tengu_fennel_godwit=True)
+            moved = self.probe(home, binary=binary, config=config, state=state)
+            self.assertEqual(moved.returncode, 1, moved.stdout + moved.stderr)
+            self.assertIn("CHANGED", moved.stdout)
+            self.assertIn("killswitch: False -> True", moved.stdout)
+
+            # Restored: the movement back is also movement, and the run after it
+            # is quiet again. A guard that only fires once is a guard that has
+            # latched rather than one that is watching.
+            self.write_config(config, tengu_fennel_godwit=False)
+            back = self.probe(home, binary=binary, config=config, state=state)
+            self.assertEqual(back.returncode, 1, back.stdout)
+            quiet = self.probe(home, binary=binary, config=config, state=state)
+            self.assertEqual(quiet.returncode, 0, quiet.stdout)
+
+    def test_a_pushed_string_counts_as_active_without_the_capability_tier(self) -> None:
+        """Tiers 1 and 2 come from the server and ignore both gates below them."""
+        with tempfile.TemporaryDirectory() as home:
+            home = Path(home)
+            binary, config, state = home / "claude", home / "c.json", home / "s.json"
+            # No catalog and no shipped wording: tier 3 cannot fire here.
+            binary.write_bytes(b"a client build with neither")
+            self.write_config(config, tengu_fennel_godwit=True,
+                              tengu_heron_brook="pushed replacement text")
+            report = self.probe(home, binary=binary, config=config, state=state)
+            self.assertEqual(report.returncode, 0, report.stderr)
+            self.assertIn("=> section active on", report.stdout)
+            # The pushed text itself is vendor prompt content; only its size is
+            # kept, on disk and on screen.
+            self.assertIn("23 chars", report.stdout)
+            self.assertNotIn("pushed replacement text",
+                             state.read_text(encoding="utf-8"))
+
+    def test_probe_failure_never_borrows_the_movement_exit_code(self) -> None:
+        with tempfile.TemporaryDirectory() as home:
+            home = Path(home)
+            state = home / "s.json"
+            missing = self.probe(home, binary=home / "absent", config=home / "c.json",
+                                 state=state)
+            self.assertEqual(missing.returncode, 2, missing.stdout)
+            self.assertIn("not probed", missing.stderr)
+            # Nothing recorded, so the next real run still establishes a baseline
+            # rather than comparing against a state no probe ever observed.
+            self.assertFalse(state.exists())
+
+    def test_a_damaged_baseline_reports_itself_instead_of_resetting_quietly(self) -> None:
+        """The failure this repo keeps finding: a broken reader reading as no data.
+
+        A corrupted state file must not look like a first run. If it did, the
+        watch would re-arm against a fresh baseline, say nothing, and everything
+        that moved in between would be invisible.
+        """
+        with tempfile.TemporaryDirectory() as home:
+            home = Path(home)
+            binary, config, state = home / "claude", home / "c.json", home / "s.json"
+            binary.write_bytes(self.BINARY)
+            self.write_config(config, tengu_fennel_godwit=False)
+            self.probe(home, binary=binary, config=config, state=state)
+
+            state.write_text("{not json", encoding="utf-8")
+            damaged = self.probe(home, binary=binary, config=config, state=state)
+            self.assertEqual(damaged.returncode, 1, damaged.stdout)
+            self.assertIn("BASELINE RESET", damaged.stdout)
+            self.assertIn("went unseen", damaged.stdout)
+            # A first run is a different sentence, and must not appear here.
+            self.assertNotIn("baseline recorded", damaged.stdout)
+
+            # Re-armed, so the run after it is quiet again.
+            quiet = self.probe(home, binary=binary, config=config, state=state)
+            self.assertEqual(quiet.returncode, 0, quiet.stdout)
+
+    def test_a_home_without_a_config_file_is_not_an_alarm(self) -> None:
+        """The ordinary state of a freshly deployed HOME must read as unknown."""
+        with tempfile.TemporaryDirectory() as home:
+            home = Path(home)
+            binary, state = home / "claude", home / "s.json"
+            binary.write_bytes(self.BINARY)
+            report = self.probe(home, binary=binary, config=home / "absent.json",
+                                state=state)
+            self.assertEqual(report.returncode, 0, report.stdout + report.stderr)
+            self.assertIn("cannot tell whether the section is active", report.stdout)
+            self.assertIn("no config file", report.stdout)
+
+    def test_the_weekly_check_reads_movement_as_a_finding(self) -> None:
+        hook = (ROOT / "main/claude/hooks/weekly-integrity.py").read_text(
+            encoding="utf-8")
+        self.assertIn("prompt-bundle-report", hook)
+        # Exit 1 is the finding, anything else non-zero withholds the stamp -
+        # the same contract every other check in that hook is held to.
+        self.assertIn("client prompt bundle moved", hook)
+        self.assertIn("vendor prompt-section drift not checked", hook)
 
 
 class TrapGraderIntegrityTests(unittest.TestCase):

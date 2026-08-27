@@ -23,8 +23,21 @@ killswitch 保護, 而且沒有任何 env var 走得到它 (姊妹區塊有 env 
 輸了三條」, 現在多一個讀法: **那是位置在贏, 不是內容在贏**, 而供應商現在就站在那個位置上.
 
 取證與可重跑指令寫在 [context-and-vendors.md](context-and-vendors.md) 的 08-28 節, 對 trap
-數字的伴隨變因寫在 [model-evidence.md](model-evidence.md) 的 08-28 節. 落地方案未動任何
-deployed 檔案, 待決.
+數字的伴隨變因寫在 [model-evidence.md](model-evidence.md) 的 08-28 節.
+
+**同日稍晚落地了兩件**, 所以上面那句「待決」已經不成立. 一是
+[`prompt-bundle-report`](../../main/claude/scripts/prompt-bundle-report): 把手工那三個探針收成一支
+腳本, 記一份基準狀態, 只在**移動時** exit 1, 由 `weekly-integrity` 每七天跑. 二是把「模式用
+output style, 程序用 skill」從證據層搬進[契約瘦身規範](../contract-slimming.md#內容判定表)的內容
+判定表 —— 那是規則的家, 證據層只留推導過程.
+
+寫這支腳本的過程本身留下一條教訓, 值得記在這裡而不是註解裡: **第一版在沒有 `~/.claude.json` 的
+乾淨 HOME 上會拋例外, 而 Python 的未捕捉例外 exit 1 —— 正好是這支腳本用來表示「狀態變了」的碼.**
+週報會把一個從來沒探測成功的探針讀成真的漂移警報. 抓到它的不是我寫的測試, 是既有的
+`test_weekly_integrity_says_nothing_about_a_correctly_deployed_system` —— 那個「乾淨系統不該有任何
+finding」的測試. 現在腳本的三個出口是分開的: 0 沒動, 1 動了, 2 探測不成 (含內部錯誤).
+
+**Push 前的 review 又抓到同一個家族的第二個**: 基準狀態檔如果壞掉, 第一版會把它當成「還沒有基準」, 重記一份然後安靜地回 0 —— 也就是這個哨兵會把自己關掉, 而且不告訴任何人. 現在「檔案不存在」與「檔案讀不動」是兩句不同的話, 後者照樣重記基準, 但回 1 並明說「上一次好的觀測之後發生的移動沒被看到」.
 
 #### 2026-08-14: 方向 1 的推翻條件成立 — 契約有時候真的贏
 
