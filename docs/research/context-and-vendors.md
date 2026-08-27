@@ -11,8 +11,10 @@
 | 常駐指令為什麼要瘦 | 常駐指令與 context | 規則會互相搶注意力, context 大不等於能無損用完 |
 | 現在到底佔了多少 | 實際量測與操作分級 | 有本機基準快照與四段操作分級, 但那是專案啟發式, 不是供應商公布的故障線 |
 | 兩家官方怎麼說 | 供應商官方指引 | 都升級成帶數字的官方立場, 但數字都是**供應商自評** |
+| 有沒有我們沒寫的常駐內容 | 供應商注入的常駐段落 | 有一塊只長在 Opus 5 上, 位置比契約靠後, 而且沒有 opt-out |
 
-三節收斂成同一條維運規則: **加規則前先找矛盾**. 肥大有預算擋得住, 矛盾沒有.
+前三節收斂成同一條維運規則: **加規則前先找矛盾**. 肥大有預算擋得住, 矛盾沒有.
+第四節是這條規則的反面: 那個矛盾是別人寫進來的, 我們既看不見, 也刪不掉.
 
 ## 常駐指令與 context
 
@@ -201,3 +203,79 @@ Codex CLI 派工, 這些參數不在可控面上, 所以只記錄, 不接線; `n
 - [UNCERTAIN: 2607.27250 只有 2 個 agent, 3 個 repo, 17 個任務, 作者自述這題的證據基礎本身矛盾, 且報的是效果**上界**而非零效果. 當先驗用, 不當結論用.]
 - [已知假陽性, 不要追: `scripts/evidence-check.py` 會把上表的 `v2.1.88` 報成一筆版本差異 (本機是 2.1.226). 那個版號是**那篇逆向分析的對象**, 不是對本機的查核宣稱, 所以它本來就不該跟著本機版本走. 工具收緊到「版號緊貼工具名」之後仍抓得到它, 而再收緊會開始漏掉真的宣稱; 留著這一筆已知噪音, 比讓檢查變得抓不到東西好.]
 - [UNCERTAIN: 2604.14228 是釘在 client v2.1.88 的第三方逆向, 不是供應商陳述, client 改版即可能失效. 本機另有可觀察佐證 (見[研究摘要方向 1](README.md#待辦方向)), 但那是單一實例.]
+
+## 供應商注入的常駐段落: `heron_brook` 只長在 Opus 5 上 (2026-08-28)
+
+前面幾節問的都是「我們自己該寫多少」. 這節問第五個問題: **有沒有一段常駐內容不是我們寫的, 我們也刪不掉**. 有. 它在 prompt 裡的位置比契約更靠後, 而且整份 model catalog 裡只有 `claude-opus-5` 拿得到它.
+
+線索是 [anthropics/claude-code#80988](https://github.com/anthropics/claude-code/issues/80988) (2026-07-24 開, 32 則留言, 全部來自非官方帳號, 至 08-26 無官方回覆也無標籤). 那串的取證停在 client 2.1.245, 所以只當先驗; 下面每一條都在本機 **2.1.247** 重跑過.
+
+### 那段文字與它的閘 (已驗證, 本機 2.1.247)
+
+Claude Code 的 system prompt 由具名區塊組成. 其中一塊註冊名是 `heron_brook`, 硬編碼的預設內容是兩行:
+
+```
+Do not call the AgentTool unless the user requested it
+Do not use workflows or deep-research unless the user requested it
+```
+
+它分三層解析, 前兩層都來自伺服器, **只有第三層受 killswitch 保護**:
+
+```js
+function RUs(e){
+  let t=Ag()?.tengu_heron_brook;                 // 1. client_data 推的字串
+  if(typeof t==="string"&&t.trim()!=="") ...     //    直接用, 不看模型也不看 killswitch
+  let n=we("tengu_heron_brook","");              // 2. GrowthBook 字串旗標, 同上
+  if(n.trim()!=="") ...
+  if(Eqt(e)) return aqr;                         // 3. 硬編碼 fallback, 受能力閘
+  return null
+}
+```
+
+能力閘 (`Eqt`, 與五個姊妹區塊共用的 `mf` 同形) 要兩個條件同時成立: 模型帶 `opus_5_prompt_bundle` 能力, 且 `tengu_fennel_godwit` 為 false. 前者在 binary 內建的 model catalog 裡逐一查過, **17 個模型只有一個帶**:
+
+| 帶 `opus_5_prompt_bundle` | 不帶 |
+|---|---|
+| `claude-opus-5` | 其餘 16 個, 含 `claude-opus-4-8`, `claude-sonnet-5`, `claude-fable-5`, `claude-mythos-5` 與全部 4.x 世代 |
+
+本機當下的旗標狀態讓第三層直接生效: `~/.claude.json` 的 `cachedGrowthBookFeatures` 共 557 個鍵, 其中 `tengu_fennel_godwit` 是 `false` (killswitch 關著), `tengu_heron_brook` 根本沒被 cache (伺服器沒推字串, 所以走 fallback). 對照組是這份文件被寫出來的那個 session 本身: main 模型 `claude-opus-5[1m]`, 那兩行**逐字出現在它的 system prompt 裡**.
+
+可重跑:
+
+```bash
+B="$(readlink -f "$(command -v claude)")"   # Homebrew cask 會指到 .../claude-code@latest/<ver>/claude
+grep -a -c "Do not call the AgentTool unless the user requested it" "$B"   # 2.1.247: 2
+python3 -c 'import re,sys;d=open(sys.argv[1],"rb").read();print([m.decode() for m,c in re.findall(rb"\{id:\"(claude-[a-z0-9\-]+)\",family:.{0,4000}?capabilities:\[(.*?)\]",d,re.S) if b"opus_5_prompt_bundle" in c])' "$B"
+jq -c '.cachedGrowthBookFeatures | {fennel_godwit: .tengu_fennel_godwit, heron_brook: (.tengu_heron_brook // "NOT CACHED")}' ~/.claude.json
+```
+
+### 為什麼契約攔不住它
+
+區塊組裝順序在同一份 binary 裡讀得到, 那兩件事在裡面是分開的兩層:
+
+```js
+...ku(`memory${a}`, ...), ku("env_info_simple", ...), ku("language", ...), ku("output_style", ...),
+   ku("context_management", ...), ku("brief", ...), ku("act_dont_rederive", ...),
+   ku("delivering_work_max", ...), ku("overcorrection", ...), ku("subagent_steer_delegation", ...),
+   ku("heron_brook", ...), ku("willow_tern", ...), ku("autonomy_append", ...), ku("endconv_deferred_hint", ...)
+```
+
+`heron_brook` 落在整串的尾端. 而本 session 的直接觀察是: **契約內容根本不在這條 system prompt 鏈上** — `CLAUDE.contract.md` 的正文是以 `# claudeMd` 之名, 包在第一個 user turn 的 `<system-reminder>` 裡進場的. 這正好是 2604.14228 那條 UNCERTAIN 所宣稱的形狀, 在 2.1.247 上仍然成立, 而且說明了本 repo 自己 2026-08-14 那批 replay 為什麼會那樣: 四條規則各配一句正面矛盾的 `--append-system-prompt`, **派工預設那條 (`p4`) 注入勝 5/5** (見 [landing-log](landing-log.md#2026-08-14-方向-1-的推翻條件成立--契約有時候真的贏)). 同一個位置關係, 同一個方向, 只是這次寫那句話的不是我們.
+
+### 沒有可用的 opt-out (已驗證)
+
+- **`heron_brook` 沒有任何環境變數.** 姊妹區塊共用的 `gt(e,t,n){return e||mf(n)||...}` 第一個參數就是 env var (`CLAUDE_CODE_GAULT_KESTREL`, `CLAUDE_CODE_GORSE_PLOVER`, `CLAUDE_CODE_ACT_DONT_REDERIVE` 等), 但 `RUs` 直接呼叫 `Eqt`, 繞過那個 helper. 順帶一個對 issue 串的修正: 那些 env var 是 `e ||`, 只能**強制打開**, 本來就不是關閉開關.
+- **`CLAUDE_INTERNAL_FC_OVERRIDES` 是死碼.** 2.1.247 的 `getEnvironmentOverrides()` 第二行就 `return this.environmentOverridesParsed=!0,this.environmentOverrides;`, 讀 env 的那行在它下面, 永遠到不了.
+- **`--exclude-dynamic-system-prompt-sections` 反向.** 從組裝碼看, `excludeDynamicSections` 只影響 `memory`, `env_info`, `scratchpad` 三塊; 打開它是把記憶搬走, `heron_brook` 原地不動.
+- **killswitch 不是我們能碰的, 而且太寬.** `tengu_fennel_godwit` 同時管 `delivering_work_max`, `overcorrection`, `act_dont_rederive` 等五個姊妹區塊, 就算翻得動也是為了兩行賠掉五塊; 何況前兩層根本不看它.
+- 手改 `~/.claude.json` 的 `cachedGrowthBookFeatures` 無效, 那是啟動時會被伺服器覆寫的快取, 不是設定 (issue 串 08-26 的量測; 本機未重跑).
+
+### 對本專案的三個後果
+
+1. **受威脅的不是「派工變少」, 是那三個非選配的角色.** 本 repo 的契約本來就是 direct execution 為預設, 方向與這兩行一致. 真正的傷害在 `verifier` / `plan-verifier` / `security-reviewer` — 它們存在的理由是 fresh-context independence, 不是省時間. issue 串裡最一致的一條觀察是: 這段文字**擋不住規定性指令, 但打得贏裁量性指令**, 而本 repo 的 verifier 觸發條件寫在 `provider-routing` 裡, 形狀正是裁量性的. 更難察覺的是零 verifier 在本 repo 看起來完全正常 — 契約自己就寫「至多一個」.
+2. **skill 指示的派工不算 user request.** `baton-dispatch` 是決定要派工之後才載入的, `provider-routing` 的 security routing 同理. 由 skill 正文說「dispatch a reviewer」不會滿足 "unless the user requested it", 這是 issue 串裡 skill 作者那則的核心, 而本 repo 整個派工機制都掛在 skill 上.
+3. **跨模型比較被污染了.** Opus 5 比其他模型多帶六個 system prompt 區塊, 其中 `delivering_work_max` 與 `overcorrection` 講的正是「把工作做完」與「不要過度自我修正」— 那是 s7 (false completion) 量的東西. 所以 2026-08-04 那批 Opus 5 trap 重跑, 比的是**模型加 prompt bundle**, 不是模型; 見 [model-evidence.md](model-evidence.md) 同日補注.
+
+**誠實邊界**: 以上是機制與位置的取證, 不是效果量測. 本機 `~/.claude/telemetry/delegation.jsonl` 判不了這件事 — 它只記發生過的派工, 不記沒發生的決定, 而 08-10 到 08-16 那段高峰是 replay 批次而非日常工作, 沒有可比的前後基準. issue 串裡有人給了 116 個 session 的前後對照 (Opus 4.8 常態使用 → Opus 5 整週零使用 → 口頭要求後恢復), 但那是別人的機器與別人的契約.
+
+**推翻條件**: (a) 任一路徑出現官方 opt-out (settings key 或 env var), 或 catalog 裡第二個模型帶上 `opus_5_prompt_bundle`; (b) 伺服器改推第一或第二層字串, 屆時上面「文字是那兩行」的部分立刻失效, 只有「有一塊我們控制不了的區塊」還成立. 兩者都靠上面那三行指令當場重查, 不要引用本節的日期.

@@ -87,7 +87,19 @@ RESIDENT_CONTRACT_BUDGETS = {
     # instalments because it was decided in instalments. If a fifth arrives for
     # the same subject, the question is not the ceiling but whether the resident
     # layer is the right owner.
-    "codex": ContractBudget(".codex/AGENTS.contract.md", 630, 26, 175, 0.15, 0.25),
+    #
+    # 630 -> 645 on 2026-08-28, and it is the fifth raise the note above
+    # predicted, so it answers that question rather than skipping it: the
+    # resident layer is still the right owner, for the reason the layout
+    # invariant already gives - replies never load `readable-zh-tw`, so a
+    # reply-shape rule kept there applies to nothing. The clause is
+    # user-directed: explaining a concept should reach for an ASCII picture,
+    # not another paragraph. It joins the layout bullet instead of taking a
+    # rule slot, because "which form does this content want" is one thought and
+    # the bullet already carries the other two thirds of it. Measured 633; the
+    # Claude twin took the same sentence with no raise at all (495 of 520),
+    # which is a headroom difference rather than a content one.
+    "codex": ContractBudget(".codex/AGENTS.contract.md", 645, 26, 175, 0.15, 0.25),
 }
 
 

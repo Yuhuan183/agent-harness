@@ -8,6 +8,24 @@
 每一則都保留原始日期與原始措辭. 被後來的證據推翻的段落**不刪除**, 因為推翻的過程
 本身是這個目錄最主要的產出 —— 見 [README.md](README.md) 的驗證缺口一節.
 
+#### 2026-08-28: 契約上面還有一層, 而且那層只在 Opus 5 上長東西
+
+起點是別人的 bug report (claude-code#80988), 但它的取證停在 client 2.1.245, 所以整批在本機
+2.1.247 重跑. 查到的東西比原報告乾淨: `opus_5_prompt_bundle` 這個模型能力在 binary 內建的
+model catalog 裡**只掛在 `claude-opus-5` 一個模型上** (17 個逐一查過), 掛在它下面的區塊之一
+`heron_brook` 預設寫著「沒有使用者要求就不要呼叫 Agent 工具」, 三層解析裡只有第三層受
+killswitch 保護, 而且沒有任何 env var 走得到它 (姊妹區塊有 env var, 但那些是強制打開用的).
+
+**這則要記的重點不是那兩行字, 是位置.** 同一份 binary 讀得到區塊組裝順序, `heron_brook`
+落在尾端; 而本 repo 的契約根本不在那條鏈上 —— 它是以 `# claudeMd` 之名包在第一個 user turn
+的 `<system-reminder>` 裡進場的. 這正好解釋 08-14 那批 replay 的 `p4`: 用
+`--append-system-prompt` 寫一句與契約相反的派工規則, 注入勝 5/5. 當時把它讀成「契約在四條裡
+輸了三條」, 現在多一個讀法: **那是位置在贏, 不是內容在贏**, 而供應商現在就站在那個位置上.
+
+取證與可重跑指令寫在 [context-and-vendors.md](context-and-vendors.md) 的 08-28 節, 對 trap
+數字的伴隨變因寫在 [model-evidence.md](model-evidence.md) 的 08-28 節. 落地方案未動任何
+deployed 檔案, 待決.
+
 #### 2026-08-14: 方向 1 的推翻條件成立 — 契約有時候真的贏
 
 方向 1 從 2026-08-08 掛著未決, 理由是「推翻條件要 session 證據, repo artifact 判不出來」. 那句話對, 但推論錯: **判不出來不等於要等它自己發生, 可以建**.

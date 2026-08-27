@@ -3,7 +3,7 @@
 ## Working agreement
 
 - Respond in Traditional Chinese using Taiwan terminology. Keep code, identifiers, commands, comments, and commit messages in English. Reasoning and agent-to-agent briefs stay in precise, concise English; only user-facing replies switch to Traditional Chinese, and those answer to `readable-zh-tw`'s standard for prose a person reads.
-- Lead with the outcome. Keep conversation proportional and requested artifacts complete. Prose is the default; a list is for items that can be skipped, not for reasoning.
+- Lead with the outcome. Keep conversation proportional and requested artifacts complete. Prose is the default; a list is for items that can be skipped, not for reasoning. Use ASCII to visualize content when explaining concepts.
 - Cut filler in either register: no flattery, no preamble announcing what follows, no generic close, no hedging stacked two deep.
 - Prefer the simplest complete solution; preserve dirty worktrees and unrelated user work. Update existing documentation only when the requested change makes it stale.
 - To answer, review, diagnose, or plan: inspect and report. To change, build, or fix: make the in-scope local changes and validate non-destructively without asking — reading files, checking logs, editing in-scope code, and running tests need no approval.

@@ -21,7 +21,8 @@ flowchart BT
 | 節 | 日期 | 現在還算不算數 |
 |---|---|---|
 | Sonnet 5 effort 曲線與 executor 檔位修訂 | 2026-07-23 | 部分. BrowseComp 曲線已退役 (由 07-25 AA 節宣告); 同節的 executor@opus/medium trap 重跑結果仍有效 |
-| Opus 世代升級: 4.8 → Opus 5 | 2026-07-25 | 現行 |
+| Opus 世代升級: 4.8 → Opus 5 | 2026-07-25 | 現行, 但跨模型歸因見 08-28 節 |
+| 上面那批 Opus 5 數字帶著一個 client 側的伴隨變因 | 2026-08-28 | 現行 |
 | AA 換版重新取數: v4.1.1, 三家並列 | 2026-08-14 | **現行的外部先驗**, 要查數字先看這節 |
 | AA 重新取數: 完整 effort 階梯 | 2026-07-26 | 歷史 (v4.1). 數值由 08-14 節取代, 兩版不可並列; 四個結論的方向全部存活 |
 | AA 重新取數與 per-effort 曲線 | 2026-07-25 | 部分. 「opus/low 無分數」與「Sonnet 是唯一無逐檔證據的一格」兩項已被 07-26 取代, 其餘結論與數據不變 |
@@ -139,6 +140,32 @@ account's fixed UTC offset」. 這是把改寫當成逐字引用, 而現有 grad
 
 **一項方法教訓.** 這十一份報告是從 dispatch 的 output 檔逐字取出評分的.
 harness 通知渲染的文字與 agent 實際寫下的內容十一份全部不同 - 照通知評分會評到錯的文本.
+
+## 上面那批 Opus 5 數字帶著一個 client 側的伴隨變因 (2026-08-28)
+
+**已驗證 (本機 client 2.1.247 逐一取證, 細節與可重跑指令見
+[context-and-vendors.md](context-and-vendors.md#供應商注入的常駐段落-heron_brook-只長在-opus-5-上-2026-08-28))**:
+Claude Code 的 system prompt 有一組具名區塊掛在 `opus_5_prompt_bundle` 這個模型能力上,
+而 binary 內建 model catalog 的 17 個模型裡**只有 `claude-opus-5` 帶這個能力**.
+掛在它下面的至少有六塊, 其中三塊的主題與本目錄量的東西正面重疊:
+`delivering_work_max` (把交付做完到什麼程度), `overcorrection` (要不要回頭自我修正),
+`heron_brook` (沒有使用者要求就不要呼叫 Agent 工具).
+
+對本節上面那批數字的後果, 只有一句話但要寫清楚: **07-25 換代與 08-04 trap 重跑比的是
+「模型 + 這組 client 區塊」, 不是模型.** 兩件事都沒有被推翻 —— 換代決策本來就是
+user-directed, 而 s7/s8/s9 量的是本 repo 自己的 gate 在**現行執行環境**下的遵循率,
+那個環境就是含這組區塊的環境, 所以 pin 通過 regression 這個結論照樣成立. 失效的是另一件事:
+**任何「Opus 5 比 Opus 4.8 / Sonnet 5 / Fable 5 更會 (或更不會) 做完工作, 自我修正, 派工」
+的跨模型歸因**, 因為對照組拿不到這組區塊. s7 (false completion) 與 s11 尤其踩在
+`delivering_work_max` 與 `overcorrection` 的正上方.
+
+**因此的操作規則**: 跨模型 trap/replay 比較要嘛限制在同一個 bundle 狀態內, 要嘛在 `meta.json`
+的量測面 fingerprint 裡記下 client 版本與該次是否帶 bundle, 讓日後讀數的人看得到這個變因.
+單模型的縱向比較不受影響.
+
+**誠實邊界**: 這是**變因存在**的取證, 不是效果量測. 沒有人量過拿掉這組區塊的 Opus 5,
+本機也沒有辦法量 —— 沒有 opt-out. 所以正確的讀法是「這格的歸因不再乾淨」,
+不是「舊結論是錯的」.
 
 ## AA 換版重新取數: v4.1.1, 三家並列 (2026-08-14)
 
