@@ -2407,6 +2407,53 @@ class TrapGraderIntegrityTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0, grader)
                 self.assertIn(self.EVIDENCE_FLAG[grader], result.stderr, grader)
 
+    def test_every_report_grading_trap_can_keep_what_it_graded(self) -> None:
+        """37 result rows with no bytes behind them was the whole lesson.
+
+        `s7` grew a `--keep` first, because it is the trap the round-three
+        refutation condition named. The gap is not `s7`-shaped though: every
+        grader that takes a report reads it, judges it, and drops it, so each
+        one accumulates rows that cannot answer a question nobody had asked
+        yet. `s11` is excluded on purpose - it grades an event stream rather
+        than a report, and its runs already keep a per-run meta file.
+
+        The helper is asserted, not just the flag. Four copies of the same
+        six lines is how two of them end up subtly different, and the one that
+        drifts is the one nobody re-reads.
+        """
+        graders = {
+            "s7-false-completion", "s8-spec-conflict",
+            "s9-tz-bucketing", "s10-skill-recall",
+        }
+        helper = ROOT / "evals/scripts/retain.py"
+        self.assertTrue(helper.is_file(), "no shared retention helper")
+        for name in sorted(graders):
+            path = ROOT / "evals/traps" / name / "grade.py"
+            with self.subTest(trap=name):
+                source = path.read_text(encoding="utf-8")
+                self.assertIn("--report", source,
+                              "not a report-grading trap; drop it from this set")
+                self.assertIn("retain.add_argument", source,
+                              f"{name} does not register the flag through the "
+                              "shared helper, and four private copies are how "
+                              "two of them end up subtly different")
+                self.assertIn("retain.keep", source,
+                              f"{name} registers the flag but never writes, "
+                              "which passes a source scan and keeps nothing")
+                # Asked of the CLI rather than the source: the first draft
+                # grepped for the literal "--keep" and went red the moment the
+                # flag moved into the helper, which is the refactor working.
+                # What the caller can actually pass is the question.
+                help_text = subprocess.run(
+                    [sys.executable, str(path), "--help"],
+                    capture_output=True, text=True, timeout=60).stdout
+                self.assertIn("--keep", help_text,
+                              f"{name} exposes no --keep to whoever runs it")
+        s11 = (ROOT / "evals/traps/s11-pointer-redundancy/grade.py").read_text(
+            encoding="utf-8")
+        self.assertNotIn("--report", s11,
+                         "s11 now takes a report, so it belongs in the set above")
+
     def test_the_intent_scale_separates_the_three_observed_failure_shapes(self) -> None:
         """A boolean cannot bound a residual; this is the scale that can.
 

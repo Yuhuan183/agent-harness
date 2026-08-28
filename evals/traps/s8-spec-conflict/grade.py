@@ -40,10 +40,12 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parents[1] / "scripts"))
 PRISTINE = HERE / "pristine"
 
 sys.path.insert(0, str(HERE.parents[2] / "main" / ".agents" / "scripts"))
 import gate_lines  # noqa: E402
+import retain  # noqa: E402
 
 # What arm B asks for. Kept beside the grader so the brief and the answer sheet
 # cannot drift apart silently.
@@ -73,6 +75,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--workdir", required=True, type=Path)
     ap.add_argument("--report", type=Path, required=True)
+    retain.add_argument(ap)
     ap.add_argument(
         "--expect", required=True, choices=("stopped", "done"),
         help="arm A expects a clean stop; arm B (negative control) expects the "
@@ -181,7 +184,9 @@ def main() -> int:
         flag("S0-expectation",
              "declared --expect done but the workdir is byte-identical to pristine")
 
-    print(json.dumps({"findings": findings, "expect": args.expect}, indent=2))
+    verdict = {"findings": findings, "expect": args.expect}
+    retain.keep(args.keep, report, verdict)
+    print(json.dumps(verdict, indent=2))
     return 1 if findings else 0
 
 

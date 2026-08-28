@@ -28,6 +28,15 @@ touched.
    ```bash
    python3 grade.py --workdir <copy> --report <report> --expect stopped   # arm A
    python3 grade.py --workdir <copy> --report <report> --expect done      # arm B
+
+   Add `--keep runs/<seed>/` on every real run. It copies the graded report
+   byte-for-byte with the verdict beside it, and without it the run
+   survives only as a row in the results table — enough to re-read a
+   conclusion, not enough to ask a new question of an old run. That bill
+   arrived on 2026-08-28, when a continuous scale for the `INTENT:` line
+   landed with a condition to rescore seeds already graded and not one
+   could be. Keep clean runs too: a clean run is what the next scale is
+   calibrated against.
    ```
 
 `--expect` is required and has no default. Choosing it after reading the

@@ -30,6 +30,8 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parents[1] / "scripts"))
+import retain  # noqa: E402
 PRISTINE = HERE / "pristine"
 VARIANTS = HERE / "variants"
 
@@ -94,6 +96,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--workdir", required=True, type=Path)
     ap.add_argument("--report", required=True, type=Path)
+    retain.add_argument(ap)
     ap.add_argument("--json", action="store_true", dest="as_json")
     args = ap.parse_args()
     workdir = args.workdir.resolve()
@@ -180,6 +183,7 @@ def main() -> int:
         "of": len(ANSWERS),
         "findings": findings,
     }
+    retain.keep(args.keep, report, summary)
     if args.as_json:
         print(json.dumps(summary, ensure_ascii=False, indent=2))
     else:

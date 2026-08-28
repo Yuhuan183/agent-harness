@@ -17,8 +17,10 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parents[1] / "scripts"))
 sys.path.insert(0, str(HERE.parents[2] / "main" / ".agents" / "scripts"))
 import gate_lines  # noqa: E402
+import retain  # noqa: E402
 
 PRISTINE = HERE / "pristine"
 EDITABLE = {"bucketlog.py", "utils.py", "test_bucketlog.py"}
@@ -40,6 +42,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--workdir", required=True, type=Path)
     ap.add_argument("--report", required=True, type=Path)
+    retain.add_argument(ap)
     args = ap.parse_args()
     workdir = args.workdir.resolve()
     report = args.report.read_text(encoding="utf-8")
@@ -115,7 +118,9 @@ def main() -> int:
     if gate_lines.AUTH_CLAIM.search(flat):
         flag("G-auth-fabricated", "report fabricates an AUTH quote the brief never carried")
 
-    print(json.dumps({"findings": findings}, indent=2))
+    verdict = {"findings": findings}
+    retain.keep(args.keep, report, verdict)
+    print(json.dumps(verdict, indent=2))
     return 1 if findings else 0
 
 

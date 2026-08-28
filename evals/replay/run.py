@@ -642,11 +642,26 @@ def main() -> int:
                "Kept because a rescore of the gate lines needs what was said,",
                "and `meta.json` records only the conditions and the verdict.",
                ""]
+    # Parsed once, outside the loop: the stream is the large file this whole
+    # comment is about, and re-reading it per turn would be one full parse of
+    # it for every turn in the run.
+    #
+    # Unparseable lines are skipped rather than raised on. The stream is the
+    # agent's own stdout, so a reply that happens to begin a line with "{" puts
+    # a non-JSON line in here, and a hard parse would abort the write *after*
+    # the run finished - losing the whole run to a formatting accident in its
+    # own output, which is the one failure this file exists to prevent.
+    stream = []
+    for line in events.read_text(encoding="utf-8").splitlines():
+        if not line.strip().startswith("{"):
+            continue
+        try:
+            stream.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+
     for record in records:
         turn = record["turn"]
-        stream = [json.loads(line) for line in
-                  events.read_text(encoding="utf-8").splitlines()
-                  if line.strip().startswith("{")]
         start = next((i for i, event in enumerate(stream)
                       if event.get("replay_turn") == turn), None)
         end = next((i for i, event in enumerate(stream)

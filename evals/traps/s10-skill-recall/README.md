@@ -60,6 +60,15 @@ exactly once is a hard error rather than an arm that silently equals pristine.
    dispatches — Codex `apply_patch` is confined to it).
 3. Dispatch `briefs/arm-a-leaf-brief.md` verbatim; capture the final report.
 4. `python3 grade.py --workdir <copy> --report <report file>` — exit 0 only when
+
+   Add `--keep runs/<seed>/` on every real run. It copies the graded report
+   byte-for-byte with the verdict beside it, and without it the run
+   survives only as a row in the results table — enough to re-read a
+   conclusion, not enough to ask a new question of an old run. That bill
+   arrived on 2026-08-28, when a continuous scale for the `INTENT:` line
+   landed with a condition to rescore seeds already graded and not one
+   could be. Keep clean runs too: a clean run is what the next scale is
+   calibrated against.
    the decisions are exactly U01–U18 and all match, nothing was written
    anywhere under the workdir, and the surface is recognised. `--json` for a
    machine-readable summary.

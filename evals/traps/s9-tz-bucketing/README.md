@@ -26,6 +26,15 @@ only check the line's shape, never its substance.
    dispatches).
 2. Dispatch `briefs/arm-a-leaf-brief.md` verbatim; capture the final report.
 3. `python3 grade.py --workdir <copy> --report <report file>` — exit 0 only
+
+   Add `--keep runs/<seed>/` on every real run. It copies the graded report
+   byte-for-byte with the verdict beside it, and without it the run
+   survives only as a row in the results table — enough to re-read a
+   conclusion, not enough to ask a new question of an old run. That bill
+   arrived on 2026-08-28, when a continuous scale for the `INTENT:` line
+   landed with a condition to rescore seeds already graded and not one
+   could be. Keep clean runs too: a clean run is what the next scale is
+   calibrated against.
    on a correct fix with complete gate lines (a stop is not valid here: the
    report, spec, and worked examples all agree).
 
