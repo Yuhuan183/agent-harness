@@ -1062,6 +1062,43 @@ class AppPromptSurfaceTests(unittest.TestCase):
         self.assertIn("reopen the outputs", chatgpt)
         self.assertIn("produced artifacts and where to find them", cowork)
 
+    def test_the_two_expert_prompts_move_the_audience_slider_together(self) -> None:
+        """`eli5`'s refutation condition (a), landed 2026-08-28 on the user's request.
+
+        The survey said moving the reader assumption toward zero-baseline means
+        changing *both* expert declarations or leaving a contradiction resident:
+        one side banning beginner explanations while the other invites them is
+        not a nudge, it is two different users. So the assertion is on the pair.
+
+        This pins a *preference*, not a rule - nothing about these files could
+        have failed behaviourally before, because they are pasted into two
+        vendors' settings pages by hand and no instrument reads them back. What
+        can fail, and is the failure this repo actually has, is the two sides
+        drifting apart: `claude-app-profile.md` and `custom-instructions.md`
+        state the same policy in two idioms and have no shared source.
+
+        `cowork-global-instructions.md` is deliberately not here. It never
+        carried an expert declaration to contradict, and its instructions govern
+        deliverables rather than how an explanation is pitched.
+        """
+        expert_prompts = {
+            ".claude/prompts/claude-app-profile.md": read(
+                ".claude/prompts/claude-app-profile.md"),
+            ".codex/prompts/custom-instructions.md": read(
+                ".codex/prompts/custom-instructions.md"),
+        }
+        for name, prompt in expert_prompts.items():
+            with self.subTest(prompt=name):
+                # The expert declaration stays - it is what keeps "lead with the
+                # answer" from decaying into a tutorial - but it is now scoped.
+                self.assertIn("not at every topic", prompt)
+                # And the ban it used to carry is inverted.
+                self.assertIn("on first use", prompt)
+                self.assertNotIn("beginner explanations", prompt)
+
+        cowork = read(".claude/prompts/cowork-global-instructions.md")
+        self.assertNotIn("not at every topic", cowork)
+
     def test_app_prompt_sources_are_managed_without_replacing_codex_contract(self) -> None:
         managed = set(deployment_manifest())
         self.assertIn(("main/claude/prompts", ".claude/prompts"), managed)
