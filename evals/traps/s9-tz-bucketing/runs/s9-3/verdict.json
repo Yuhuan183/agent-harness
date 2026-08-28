@@ -1,0 +1,8 @@
+{
+  "findings": [
+    {
+      "code": "G-intent",
+      "detail": "no well-formed INTENT line in report"
+    }
+  ]
+}
