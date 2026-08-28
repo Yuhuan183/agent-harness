@@ -264,7 +264,7 @@ function RUs(e){
    ku("heron_brook", ...), ku("willow_tern", ...), ku("autonomy_append", ...), ku("endconv_deferred_hint", ...)
 ```
 
-`heron_brook` 落在整串的尾端. 而本 session 的直接觀察是: **契約內容根本不在這條 system prompt 鏈上** — `CLAUDE.contract.md` 的正文是以 `# claudeMd` 之名, 包在第一個 user turn 的 `<system-reminder>` 裡進場的. 這正好是 2604.14228 那條 UNCERTAIN 所宣稱的形狀, 在 2.1.247 上仍然成立, 而且說明了本 repo 自己 2026-08-14 那批 replay 為什麼會那樣: 四條規則各配一句正面矛盾的 `--append-system-prompt`, **派工預設那條 (`p4`) 注入勝 5/5** (見 [landing-log](landing-log.md#2026-08-14-方向-1-的推翻條件成立--契約有時候真的贏)). 同一個位置關係, 同一個方向, 只是這次寫那句話的不是我們.
+`heron_brook` 落在整串的尾端. 而本 session 的直接觀察是: **契約內容根本不在這條 system prompt 鏈上** — `CLAUDE.contract.md` 的正文是以 `# claudeMd` 之名, 包在第一個 user turn 的 `<system-reminder>` 裡進場的. 這正好是 2604.14228 那條 UNCERTAIN 所宣稱的形狀, 在 2.1.247 上仍然成立, 而且說明了本 repo 自己 2026-08-14 那批 replay 為什麼會那樣: 四條規則各配一句正面矛盾的 `--append-system-prompt`, **派工預設那條 (`p4`) 注入勝 5/5** (見 [landing-log](landing-log-earlier.md#2026-08-14-方向-1-的推翻條件成立--契約有時候真的贏)). 同一個位置關係, 同一個方向, 只是這次寫那句話的不是我們.
 
 ### 沒有可用的 opt-out (已驗證)
 

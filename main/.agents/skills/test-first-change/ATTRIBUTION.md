@@ -12,9 +12,11 @@ Derived from Matt Pocock's agent skills.
   marketplace pin resolved on 2026-08-17, not the release tag. The two disagree
   by twelve commits while the version string does not move, so the SHA is the
   only thing that identifies what was read.
-- **Default branch checked**: `5b15a47f2d7150f545fbcacbfe381787fc0230dc` on 2026-08-24. Five commits ahead of the
+- **Default branch checked**: `6654f6b60cd9d5be8b54c6fafe44346dabeb3b76` on 2026-08-28. Eight commits ahead of the
   pin, and the file this skill derives from has the same blob id at both, so
-  nothing was re-classified. The pin stays where it is because it names a
+  nothing was re-classified. The three commits since the 2026-08-24 check add one
+  new upstream skill (`retro`) in the `in-progress` bucket, classified rule by
+  rule in the ledger. The pin stays where it is because it names a
   different thing - what the marketplace serves - and that cannot be re-resolved
   from here. Survey in `docs/research/upstream-distillation-ledger.md`.
 - **Licence note**: the earlier pin was the Claude

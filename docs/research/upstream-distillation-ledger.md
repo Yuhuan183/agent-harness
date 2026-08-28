@@ -183,10 +183,21 @@ pin 散在 **7 個檔案**. 更新其中六個而漏掉第七個, 那一個會�
 (給幾個指標) 但沒有明說「已經給了路徑就別把內容再貼一次」. 這在我方的形狀下**更**
 成立, 因為 leaf 拿不到對話歷史, 所以 main 得決定什麼內嵌什麼指過去.
 
-沒有落地的理由是成本: `baton-dispatch/SKILL.md` 現在 1298/1300 字, 只剩兩個字的
-餘裕, 加一條子句要嘛擠掉別的, 要嘛帶著量測與理由調高天花板. 而這條規則目前**沒有
-對應的本機失效** —— 沒有任何一次 QC 抓到「brief 把指過去的內容又貼了一遍」.
-為一個意圖付預算, 正是這個 repo 說過不做的事.
+沒有落地的理由有兩條, 而**第一條在 2026-08-28 查出來是錯的**.
+
+~~成本: `baton-dispatch/SKILL.md` 現在 1298/1300 字, 只剩兩個字的餘裕.~~
+**1298/1300 是 `provider-routing/SKILL.md` 的數字**, 被寫到了 baton 頭上.
+當場量 (`budget-drift-report.py` 的同一支 `word_count`): `baton-dispatch` 是
+**1269/1297, 餘裕 28 字 (2.2%)**, 而且它根本不在報告的「under 2% headroom」那張表裡 ——
+那張表上有九份檔案, 沒有一份是它. 一句話塞得下, 不必位移也不必調高天花板.
+
+**第二條理由仍然成立, 而且它本來就是承重的那一條**: 這條規則目前**沒有對應的本機
+失效** —— 沒有任何一次 QC 抓到「brief 把指過去的內容又貼了一遍」. 為一個意圖付預算,
+正是這個 repo 說過不做的事. 處置因此不變, 但**理由只剩一條**, 而且是比較弱的那一種
+(缺證據, 不是缺空間).
+
+這則本身值得記: 兩條理由並列時, 只要有一條是硬的 (數字), 另一條就不會被檢查. 而錯的
+正好是硬的那一條 —— 它看起來最不需要複查.
 
 **推翻條件**: 出現一次 QC 或 replay 觀察到 brief 同時給了路徑又貼了該路徑的內容,
 就落地, 並在同一次 commit 帶上量測與理由.
@@ -218,3 +229,111 @@ plugin 去解析 marketplace pin, 要嘛讓報告讀 `Upstream skill` 那一列�
 `grilling` 之外的其他上游 skill 沒有重看 (head 上共 36 個, 我們取兩個) —— 這次只回答
 「我們的來源動了沒有」與「新出現的東西要不要」. 上游那五個 commit 以外的歷史沒有重新
 溯源. 當前的 marketplace pin 也沒有重新解析, 理由如上.
+
+## 2026-08-28 重查: 上游再前進三個 commit, 兩個來源檔仍然一個位元組沒動
+
+`5b15a47f2d7150f545fbcacbfe381787fc0230dc` -> `6654f6b60cd9d5be8b54c6fafe44346dabeb3b76`,
+三個 commit, 全在 2026-08-24. 累計對 marketplace pin `885e2ca4` 已經是八個 commit.
+
+**查了什麼.** `scripts/upstream-recheck.sh` 對舊 pin 與新 head 各跑一次, 四個檔案
+兩次全部 matches the ledger —— 不只是「compare 說沒動到」, 是重抓後逐位元組相同.
+`evidence-debugging` 與 `test-first-change` 的分類不必重跑.
+
+三個 commit 動的全是同一件事: 一個**新 skill `retro`**, 加上它的 `agents/openai.yaml`
+與 `in-progress/README.md` 的一行索引. 沒有碰 `engineering/`.
+
+### 新 skill `retro`: 逐條分類
+
+上游自己標了三重保留 —— `in-progress/` 桶, `disable-model-invocation: true`, 索引
+裡寫 `STUB: design notes only, not functional yet`. 依蒸餾規則這要**降低權重**. 但它
+談的是「怎麼改善 agent 的環境」, 和本 repo 的 `task-observer` + `experience-ledger` +
+架構文件同一層, 所以還是逐條看:
+
+| 上游規則 | 處置 | 依據 |
+|---|---|---|
+| 先載 `writing-for-agents` 取寫作規範 | 不採用 | 形狀不同: 我方的寫作規範是 repo 規則 (`docs/README.md` 6-8) 加 `readable-zh-tw`, 由 `zh-tw-usage-report.py` 與 contract tests 盯, 不是 retro 流程裡的一次載入 |
+| 讀該 session 的**第一手來源**, 必要時翻本機 session log; 未指定就用當前 session | 已落地 | `evidence-debugging` 要求跑得出來的重現而非回憶; `experience-ledger` 的 hook 直接從 transcript 取 route (`route_source: transcript-verified`); `context-inflow-report.py` 讀本機真實 session 算窗口組成 |
+| 候選類別: **Navigation** —— 找檔案花多久, 有沒有隱性相依, 要不要加導航指標 | 已落地 | `docs/README.md` 規則 1 (一條規則一個真相源, 其餘連結指過去) 與「依目的閱讀」入口就是這件事 |
+| 候選類別: **Automated checks** —— 哪些錯誤可以被 lint/type/test 攔下 | 已落地, 而且更細 | `docs/architecture/architecture.md` 軸二把手段分成散文/措辭/承載物/閘/儀器五級, 各帶強制力, 可觀測性與本機證據. 上游的「加個自動檢查」是這張表的第四級 |
+| 候選類別: **Coding standards** —— 該給 **reviewer agent** 加規則, 而不是給實作者 | 已落地 | `harness-review` 是 repo-root dev-only, 明文不進部署清單 —— 審查規範本來就不在常駐面, 只在審查時載入. 上游的成本論證 (實作者上下文壓力最大, 審查者拿到的是 diff) 與我方軸一 (常駐/派工/拉取/機械, 誰付幾次) 是同一個論證的兩種座標 |
+| 候選類別: **Global AGENTS.md** —— 太大時把 steering 指令移去標準或檢查 | 已落地 | 字數預算是棘輪, 成長要位移或帶量測調高; `prompt-surface-census.py` 分 resident/dispatch/roles 三桶, `budget-drift-report.py` 讀歷史看棘輪有沒有變橡皮圖章 |
+| 候選類別: **Tool economy** —— 昂貴或 token 效率差的工具呼叫與自訂 MCP | 部分落地 | `usage-report`, `codex-usage`, `headroom-protocol` 各管一段; `context-inflow-report.py` 量的正是「窗口實際被什麼填滿」. 沒有的是把它當成**回顧時的固定提問**, 而不是想到才跑 |
+| 候選類別: **No-ops** —— 找出 steering 檔裡不改變行為的指令 | **佐證, 並暴露一個缺口** | 見下節 |
+| 候選類別: **Information access** —— 提高 agent 拿得到的資訊 (tee dev server log, 第三方唯讀權限) | 佐證 | 本 repo 十支「只報不擋」的腳本就是這條的實作, 軸二把「儀器」列為可觀測性最高的一級, 理由一模一樣: 閘只在攔下來時留痕, 儀器連「什麼都沒發生」都回報 |
+| 候選依**嚴重度**排序呈現 | **不採用 —— 這是一處實質分歧** | 見下節 |
+| `CLAUDE.md`/`AGENTS.md` 進每個 agent 的窗口, 要極省著用, 通常只放導航指標 | 已落地 | 軸一那張表逐格寫明誰付幾次, 並且點出反直覺的那條: skill 的 `description` 是常駐的, 本文不是 |
+| `CODING_STANDARDS.md` 在審查時讀而非實作時讀; 超過 1,000 行加導航指標 | 形狀不同 | 同「Coding standards」那列; 我方沒有這個檔, 對應物是 dev-only skill 加 `docs/` 拉取層, 而 `docs/` 刻意沒有字數預算 |
+| docs 當被指過去的參考檔; 寫新的之前先找現有的 | 已落地 | `docs/README.md` 規則 1 與 4, 由 `document-inventory.json` 與 `test_document_inventory.py` 界定 |
+| skill 用來放文件 (因為 description 會進窗口) 或使用者觸發的指令 | 已落地 | 同軸一; census 就是按這個切桶的 |
+| `agents/openai.yaml` 帶 `allow_implicit_invocation: false`, 與 `disable-model-invocation: true` 成對 | **佐證 —— 但這條不是這次才有的, 見下節** | 上游把同一條規則落在兩個 provider, 各用該側的慣用寫法, 那正是本 repo 的雙生規則. 我方軸一也已經記過這個欄位的成本後果 (Codex 上 `allow_implicit_invocation: false` 的 skill 連 description 都不注入) |
+
+### 這條佐證在樹上躺了一個半月, 三次重查都沒看見
+
+`agents/openai.yaml` **不是 `retro` 帶來的**. 它是 2026-07-13 的
+`feat: add Codex agents/openai.yaml metadata to every skill` 一次鋪到每一支
+skill 的慣例, 在我方 pin `885e2ca4` 上就已經有 35 份, 到 head 是 37 份 —— 每一支
+skill 都有一份, 沒有例外.
+
+也就是說: **本 repo 最看重的那條規則 (同一條規則落在兩個 provider, 各用該側的
+慣用寫法), 上游一直在做, 而我們三次重查都沒有把它記下來.**
+
+**為什麼會漏.** 三次重查問的都是同一個問題 —— 「我們取的那幾個 `SKILL.md` 動了
+沒有」, 加上「diff 裡有沒有新東西」. 這兩個問題都答對了, 而且答案都是對的. 漏掉的
+是第三個問題: **上游這棵樹的形狀本身有沒有在講一條規則.** 每一支 skill 旁邊都掛一份
+另一個 provider 的設定檔, 這件事不會出現在任何一次 diff 裡, 因為它從來沒有變過.
+
+蒸餾規則裡「重新分類每一條, 不是只看已經列出來的那些」講的正是這件事, 而這次是它第
+一次在**新增以外**的方向上被驗證: 已經列出來的條目會被重看, 從來沒被列出來的不會.
+
+**下次怎麼不再漏**: 重查時除了讀 diff, 至少對 head 的 tree 做一次形狀清點 ——
+數一數有幾種副檔名, 有沒有哪個檔名在幾乎每個目錄裡都出現. 這次的 tree API 一次呼叫
+就答得出來, 成本是一行 `recursive=1`.
+
+### No-ops: 我們量過, 但沒有在掃
+
+上游把「找出不改變行為的指令」列成回顧類別. 本 repo 不只同意, 還**量到過一個** ——
+「在契約裡提到一支 skill 會不會讓它比較容易被載入」問了兩次, `s11` 跑 90 個 run,
+replay 的 `d1`/`d2` 又在派工路徑上加 21 個, 答案都是**零位移**. 同一把尺沒有瞎:
+2026-08-15 拿掉語言子句, 中文輸出從 5/5 掉到 0/5.
+
+所以方法有, 證據有, **例行的掃描沒有**. 缺的不是儀器而是提問時機: 目前一條子句要被
+懷疑成 no-op, 得有人先想到去為它設一次對照.
+
+**為什麼不現在補一支腳本.** 架構文件在相鄰的一個問題上已經寫過理由, 而且適用:
+「那是讀紀錄的判斷不是腳本查得到的事實 —— 寫一支只會產出誤報, 而誤報比留白糟」.
+一支「找不改變行為的句子」的腳本, 在靜態文本上分不出「沒人違規」與「規則無效」,
+那正是軸二說儀器才分得出來的那件事, 而分得出來的儀器是 eval, 不是 grep.
+
+**落地的是提問, 不是腳本**: 上游這條的價值在把它變成**回顧時必問的一格**, 而不是
+靈光一閃. 這次不動 skill 本體 —— `task-observer` 是使用者授權才寫的質性紀錄, 塞一張
+七格清單進去會把它變成背景遙測, 那是它 ATTRIBUTION 明文改掉上游設計的地方.
+
+**推翻條件**: 出現第二個被證實的零位移子句, 而它是靠有人偶然想到才被抓到的, 就把
+這七格清單落到一個明確的位置 (最可能是 `harness-review` 的檢查面, 因為它已經是
+dev-only 且不進部署清單), 並在同一次 commit 帶上量測與位移.
+
+### 排序分歧: 嚴重度 vs 證據強度 × 成本
+
+上游說「依嚴重度排序呈現候選」. 本 repo 的研究摘要**明文拒絕**這個排法:
+
+> 排序原則是**證據強度 × 成本**, 不是影響力大小. 理由: 影響力是估出來的, 查得到的是
+> 前兩者. 用估出來的量當主排序鍵, 等於讓最會講故事的那條排第一.
+
+兩邊都不是筆誤, 而是對同一件事的不同判斷. 上游的排法在**人來裁決**的場景下比較自然
+—— 嚴重度是人一眼就估得出來的東西. 我方的排法防的是**agent 自己產生候選**時的偏誤:
+估出來的影響力由產生候選的那一方給, 它沒有成本去高估.
+
+**什麼會了結這場分歧**: 本機累積到夠多的改善候選, 兩種排法各跑一次, 比對前三名的
+實際落地效果. 目前候選數不足以支撐這個比較, 所以兩種立場都記著, 不挑近的那個.
+
+### 沒有查的
+
+上游 head 上共 37 個 `skills/*/*/SKILL.md`, 這次只讀了新增的 `retro` 與它的
+`openai.yaml`; 其餘 skill 沒有重看. `grilling` 在 2026-08-20 的排版改動已在
+[08-24 那節](#2026-08-24-重查-上游前進五個-commit-我們的兩個來源檔一個位元組沒動)
+處置過, 這次沒有重新分類. **當前的 marketplace pin 依舊沒有重新解析** —— 這台機器
+沒裝 Claude plugin, 理由與代價同上一節.
+
+這次做了一次 tree 形狀清點 (`recursive=1`), 抓到 `agents/openai.yaml` 那條; 但清點
+只做了「檔名在幾乎每個目錄裡重複出現」這一種形狀, 沒有查 `.changeset/`,
+`plugin.json` 或 README 分桶規則裡有沒有別的規則. 那些仍然沒查.

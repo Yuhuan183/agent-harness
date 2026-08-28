@@ -98,12 +98,14 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 | 來源 | 查核時的狀態 | 查核日 | 注意 |
 |---|---|---|---|
 | Pilotfish | latest release tag `v1.3.10`, tag commit `7a7f71b...`; 最後 push 2026-08-07 | 2026-08-21 | 上游發版頻率高於本文件重查頻率 - 四天內出了 v1.3.9 與 v1.3.10 兩版, 引用前先確認 tag |
-| cablate/baton | release `v0.1.1` (2026-07-10), 最後 push 2026-07-16, 之後未動 | 2026-08-21 | `baton-dispatch` 的上游. 逐條核對後兩條沒有本地對應, 都已採用; 完整 pin 與核對表在 [peer-harnesses](peer-harnesses.md#cablatebaton-baton-dispatch-的上游) |
+| cablate/baton | release `v0.1.1` (2026-07-10); pin `0ab4d2ec5c69820001eeac2a12fab2c87fd3e943` 就是最後一個 commit (2026-07-16), 之後未動 | 2026-08-28 | `baton-dispatch` 的上游. 逐條核對後兩條沒有本地對應, 都已採用; 完整 pin 與核對表在 [peer-harnesses](peer-harnesses.md#cablatebaton-baton-dispatch-的上游) |
 | pilotfish-codex | release `1.7.1` (2026-08-11, 最後 push 同日); 自走版號, 與上游 v1.3.10 不可比 | 2026-08-21 | Codex CLI 分支, 不是翻譯. 七個角色與本專案只差 `scout`/`explore` 命名; 帶了一個本專案沒有的 review-service circuit breaker, 見 [peer-harnesses](peer-harnesses.md#pilotfish-codex-15-17-codex-cli-分支) |
 | Deep Agents | PyPI stable `0.7.7`; CLI `deepagents-code 0.1.58` (2026-08-19); `deepagents-acp 0.0.10` | 2026-08-20 | 三個 package 各自發版, 版本序不同步, 分開報. 兩週內主線是 session 身分穿過壓縮, 與本專案 `dispatch_id` 的載體同一件事, 見 [peer-harnesses](peer-harnesses.md#2026-08-20-重查-主線移到-session-身分) |
 | Headroom | PyPI `headroom-ai 0.36.1`; GitHub latest release tag `v0.36.1` (皆 2026-08-21); PR #1044 仍 open. **0.36.1 是安全性釋出** (外部評估 WEB-01–07, upstream #2207), 另修 proxy 重試耗盡時回 502 而非 200 (#3083) | 2026-08-21 | **只記上游, 不記本機.** 這是共用 repo, 各部署版本不同, 而本機版本寫進共用文件會在別台被讀成事實 —— 2026-08-21 查出 08-20 那批本機紀錄混了兩個部署, 詳見 [landing-log](landing-log.md). 要知道自己那台跑什麼, 照 `main/.agents/docs/headroom-runtime.md` 開頭那四個來源當場問 |
-| mattpocock/skills | marketplace pin `885e2ca4d842d139e9aef4e48d366c63cb1b8013` (2026-08-17 解析); 預設分支 2026-08-24 在 `5b15a47f2d7150f545fbcacbfe381787fc0230dc`; release tag `v1.2.3` (2026-08-06); `plugin.json` version `1.2.3`; `skills/*/*/SKILL.md` 數 36, 其中 7 個在 `in-progress` | 2026-08-24 | **版本號不會告訴你內容變了** - 08-14 到 08-17 之間 marketplace pin 前進 12 個 commit, 而 tag 與 version 沒動. 下次看什麼: 我們的兩個來源檔 blob id 有沒有變, 而不是 commit 數 - 08-21 到 08-24 那五個 commit 一個都沒碰到它們, 見 [ledger 的 08-24 重查](upstream-distillation-ledger.md#2026-08-24-重查-上游前進五個-commit-我們的兩個來源檔一個位元組沒動) |
-| `anthropics/claude-plugins-community` 的 `eli5` | path 最後 commit `863e70dc7cff21a2facc749e40a7ecd1a5d19833` (2026-08-21); marketplace 共 2,282 個 plugin 條目 | 2026-08-28 | 一條也沒採, 所以沒有 ATTRIBUTION 也沒有 recheck 腳本. 逐條裁決與推翻條件在 [community-skills-survey.md](community-skills-survey.md) |
+| mattpocock/skills | marketplace pin `885e2ca4d842d139e9aef4e48d366c63cb1b8013` (2026-08-17 解析); 預設分支 2026-08-28 在 `6654f6b60cd9d5be8b54c6fafe44346dabeb3b76`, 對 pin 前進 8 個 commit; release tag `v1.2.3` (2026-08-06); `plugin.json` version `1.2.3`; `skills/*/*/SKILL.md` 數 37, 其中 8 個在 `in-progress`; 每支 skill 各帶一份 `agents/openai.yaml` | 2026-08-28 | **版本號不會告訴你內容變了** - 08-14 到 08-17 之間 marketplace pin 前進 12 個 commit, 而 tag 與 version 沒動. 下次看什麼: 我們的兩個來源檔 blob id 有沒有變 (至今三輪重查都沒變), **再加一次 tree 形狀清點** - `agents/openai.yaml` 這條雙生規則從 2026-07-13 就在樹上, 三次只讀 diff 的重查全部沒看見, 見 [ledger 的 08-28 重查](upstream-distillation-ledger.md#2026-08-28-重查-上游再前進三個-commit-兩個來源檔仍然一個位元組沒動) |
+| Raymondhou0917/speak-human-tw | pin `ee860be6fb190cbc53dc1d45a2a47c9c9c680243` (2026-08-27 的 master); 對前一個 pin 前進 3 個 commit | 2026-08-28 | `readable-zh-tw` 的上游. 連續三輪都是機器人重畫星數圖: `2c27cca` -> head 共 38 個 commit 只動四個檔案, 六個來源檔逐位元組沒動. 下次看 `upstream-pin-report.py` 的 `touched` 那行有沒有 `assets/` 以外的路徑, 逐次處置在 [readable-zh-tw-upstream](readable-zh-tw-upstream.md) |
+| rebelytics/one-skill-to-rule-them-all | pin `281f13466cd3a73e9ebc9d210907748e1941a3dd` (`v2.0.0`); 最後 push 2026-07-17, 之後未動 | 2026-08-28 | `task-observer` 的上游. **「沒動」是結果, 不是「沒查」** - 這一列存在就是為了把兩者分開 |
+| `anthropics/claude-plugins-community` 的 `eli5` | path 最後 commit `863e70dc7cff21a2facc749e40a7ecd1a5d19833` (2026-08-21); marketplace 共 2,282 個 plugin 條目 | 2026-08-28 | 七條裡六條沒採; **同日 R1 的推翻條件 (a) 由使用者觸發**, 兩份 app prompt 的專家宣告一起改成「expert at my own work, not at every topic」. 落地的是改造版不是上游原句, 所以仍然沒有 ATTRIBUTION. 逐條裁決與新推翻條件在 [community-skills-survey.md](community-skills-survey.md) |
 | Claude Code client 的注入區塊 | `opus_5_prompt_bundle` 只掛在 `claude-opus-5` (catalog 17 個模型逐一查); `heron_brook` 的兩行預設文字在該機 2.1.247 生效中, `tengu_fennel_godwit=false`, `tengu_heron_brook` 未 cache | 2026-08-28 | **版本是機器本機的, 旗標是伺服器推的**, 兩邊都不該從這張表讀. 這一格只登記「有這個東西」; 當場查用 `~/.claude/scripts/prompt-bundle-report` (`weekly-integrity` 每週跑, 只在狀態移動時出聲), 完整取證在 [context-and-vendors.md](context-and-vendors.md) 的 08-28 節 |
 | Artificial Analysis Intelligence Index | **v4.1.1** (August 2026-current) | 2026-08-14 | 點版本會回溯重算全部分數 - v4.1.1 只換了 𝜏³-Banking 的 dataset 與三項評測的 grader, 前緣分數就整體上移約 2 分. 引用絕對值前先確認版本, 見 [model-evidence.md](model-evidence.md) |
 | OpenAI prompting guidance | [Latest model guide](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.6#prompting-best-practices) | - | 目前 canonical 文件 |
@@ -161,7 +163,7 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 | ④ 反證: 會不會過度觸發 | s10 (量 skill 觸發詞的召回) 的 `c-no-exclusions` 變體, 只蓋 skill description | gate 層沒有「本來就不該觸發」的對照組 |
 | ⑤ 退場: 擋下來之後呢 | 六個有界 gate | 沒寫下擋下來要回什麼, 也沒在量連續拒絕 |
 
-排序照舊是**證據強度 × 成本**. **lifecycle replay 2026-08-12 跑完第一批** (15 個 run), 所以它從待辦移出; 見下方 [2026-08-12 判準 2 與第一批](landing-log.md#2026-08-12-判準-2-備妥-replay-有了自己的-harness) 與 [lifecycle-replay.md](lifecycle-replay.md). 一批 n=5 的下界撐不起任何「控制成立」的結論, 下一批要問的是**第 3 回合那個排擠假說**, 而不是把同一批再跑一次.
+排序照舊是**證據強度 × 成本**. **lifecycle replay 2026-08-12 跑完第一批** (15 個 run), 所以它從待辦移出; 見下方 [2026-08-12 判準 2 與第一批](landing-log-earlier.md#2026-08-12-判準-2-備妥-replay-有了自己的-harness) 與 [lifecycle-replay.md](lifecycle-replay.md). 一批 n=5 的下界撐不起任何「控制成立」的結論, 下一批要問的是**第 3 回合那個排擠假說**, 而不是把同一批再跑一次.
 
 **現況一覽 (2026-08-10 收束).** 五條的推翻條件查了四條, 而**四條的原始理由全部不成立** - 這批的命中率是 0/4, 比上一批七條裡活兩條還低. 這不是規劃品質差, 是「每條自帶推翻條件」在做它該做的事; 真正該擔心的是某批全部命中.
 
@@ -182,6 +184,12 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 cablate/baton 的「持續失敗就退回直接執行」—— 所以沒有停在待辦, 直接落地成兩支 dispatch
 skill 各一條規則. **還沒有證據的是效果**: ledger 裡目前沒有任何一次「派工後拿不到結果」的
 真實樣本, 所以這條規則是照兩個上游的經驗寫的, 不是照我們自己的.
+
+**2026-08-28 開了第二輪跨上游整合, 目前是準備狀態.** 第一輪只用了同業拆解那一份, 四份
+本機實驗證據 (約 38,000 字) 沒進去; 第二輪問的是「同業的**說**與我們的**量**對不對得起來」.
+領頭假說連數字一起寫在開跑前: 同業都在賭常駐規則的**量**, 而我們量到的是**措辭**在做事
+(拿掉 83% 的契約 p=0.68 動不了那條規則; 改一句話遵守率 15%→48%, p=0.0000014). 三條推翻
+條件與待讀清單在 [peer-harnesses](peer-harnesses.md#跨上游整合第二輪-2026-08-28-開始準備-尚未完成).
 
 這些查核的完整紀錄搬到 [landing-log.md](landing-log.md) 了 —— 它是一份**日誌**, 而本文是**總結**, 兩者長在一起時 sprawl guard 就會燒. 每一則的標題自帶日期, 從那份文件的目次直接找: 本文不再抄一份逐則連結, 因為手抄別人的目次每多一則就多一個會過期的地方, 而它原本宣稱的「依日期由新到舊」已經不成立了.
 
@@ -238,7 +246,8 @@ skill 各一條規則. **還沒有證據的是效果**: ledger 裡目前沒有�
 | [clause-pricing.md](clause-pricing.md) | 從 lifecycle-replay 分出來的一條線: 能不能用產出品質給常駐子句定價 |
 | [local-experiments.md](local-experiments.md) | 本機任務結果 |
 | [community-skills-survey.md](community-skills-survey.md) | 第三方社群 skill 的逐條裁決與整合方案 |
-| [landing-log.md](landing-log.md) | 每一次查核的原始紀錄與原始措辭, 含被後來證據推翻的段落 |
+| [landing-log.md](landing-log.md) | 每一次查核的原始紀錄與原始措辭, 含被後來證據推翻的段落; 2026-08-20 起 |
+| [landing-log-earlier.md](landing-log-earlier.md) | 同上, 2026-08-08 至 08-14. 2026-08-28 依期間拆出, 因為 `DOC_SPRAWL_CEILING` 燒了而那道閘指名的處置是拆檔不是調高常數 |
 | [prompt-surface-census.json](prompt-surface-census.json) | deterministic resident/role surface 快照 |
 
 ### 上游與蒸餾 — 這些能力從哪來

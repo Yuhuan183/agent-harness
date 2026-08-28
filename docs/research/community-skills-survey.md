@@ -36,7 +36,7 @@ Topic: $ARGUMENTS
 
 | # | 上游規則 | 裁決 | 查了什麼 |
 |---|---|---|---|
-| R1 | 讀者假定為零基礎 | **不採用** | `main/claude/prompts/claude-app-profile.md` 與 `main/codex/prompts/custom-instructions.md` 都明寫 "Treat me as an expert ... no beginner explanations". 做成預設就是正面矛盾, 而矛盾是兩家官方指引都點名最貴的失敗形態 |
+| R1 | 讀者假定為零基礎 | **原判不採用, 2026-08-28 推翻條件 (a) 成立, 改判改造後採用** | 原理由: 兩份 app prompt 都明寫 "Treat me as an expert ... no beginner explanations", 做成預設就是正面矛盾. 使用者當日要求把讀者假定往零基礎移, 條件 (a) 因此成立, 依它自己寫的處置**同時**改兩份宣告. 落地的不是上游原句, 見下節 |
 | R2 | 輸出是 HTML artifact | **不採用** | 形狀不合: 本 repo 雙 provider, Codex 端沒有 artifact 面; 部署清單裡也沒有 `.claude/commands/`. 139 個 guidance/skill 檔案零個 HTML 產出面 |
 | R3 | 圖是主體, 不是插圖 | **已落地, 且是更可攜的版本** | 契約 2026-08-28 新增「Use ASCII to visualize content when explaining concepts.」ASCII 在終端機, 在 Codex, 在 transcript 三處都成立; HTML artifact 只在 Claude 的一個介面成立 |
 | R4 | 字要少 | **已落地** | 兩份契約的「Lead with the outcome. Keep conversation proportional」與 filler 禁令 |
@@ -45,6 +45,45 @@ Topic: $ARGUMENTS
 | R7 | 以 marketplace plugin 發佈 | **不採用** | 該 marketplace 的 `marketplace.json` 有 **2,282** 個 plugin 條目, 其中 2,277 個 source 指向第三方 repo, 只有 5 個在庫內. 為了 321 bytes 開這個供應鏈面不划算; 現行 `extraKnownMarketplaces` 只有一個 (openai-codex) |
 
 **沒有產生 ATTRIBUTION**: 一條也沒採. R3/R4 是同日使用者直接指示落地的, 時間上早於這份調查, 所以它們**不是**從 eli5 衍生的 —— eli5 在這裡是佐證, 不是來源.
+
+### 2026-08-28: 條件 (a) 成立, 兩份宣告一起動
+
+使用者要求讀者假定「更偏向零基礎一點」. **一點**是關鍵字, 所以落地的不是上游那句
+「解釋給完全不懂的人聽」—— 那會把 audience 旋鈕直接推到底, 順帶撞掉同一段裡的
+「先給答案, 不要填充」.
+
+改的是**專家宣告的範圍**, 不是把它拿掉:
+
+```
+                     舊                          新
+  Treat me as an expert.        Treat me as an expert
+  ...                             - expert at my own work,
+  Do not add ... beginner           not at every topic.
+  explanations.                   Explain an unfamiliar term ...
+                                    from the ground up on first use;
+       ↑ 禁止解釋                    this buys understanding, never length.
+                                         ↑ 要求解釋, 但綁住長度
+```
+
+三件事刻意保留: 「先給直接答案」「只給改變得了決策的推理」「不要複述問題, 不要填充,
+不要奉承」. 拿掉的只有 `beginner explanations` 那半句 —— 它是**禁止解釋**, 而使用者要的是
+**不要假設我懂這一個東西**. 兩者不是同一件事, 而舊句子把它們綁在一起.
+
+「this buys understanding, never length」是本地加的, 沒有上游對應. 它防的是這條規則
+最可能的失效: 把「解釋清楚」讀成「多寫幾段」, 而那正是同一份 prompt 另外三句在擋的東西.
+
+**這是偏好, 不是規則, 而且明說.** 這兩個檔案是人工貼進兩家廠商設定頁的, 沒有任何儀器
+讀得回來, 所以在它們身上「行為上會不會失敗」根本問不了. 真正會失敗而且本 repo 真的
+失敗過的是**兩側漂移**: 兩份用兩種語氣講同一條政策, 沒有共用來源.
+`test_the_two_expert_prompts_move_the_audience_slider_together` 守的是那一件, 雙向
+mutation 驗過 (改一側 → 紅在該側並指名檔案 → 還原 → 綠).
+
+`cowork-global-instructions.md` **刻意沒動**: 它從來沒有專家宣告可以矛盾, 而它管的是
+交付物不是解釋的深淺. 測試明文斷言它**不**帶這條, 免得日後有人為了「三份一致」順手加上去.
+
+**新的推翻條件**: 出現一次使用者嫌解釋太長或太淺 —— 那表示旋鈕轉過頭, 要收的是
+「from the ground up」而不是整條; 或者 Cowork 端出現一次「因為沒有這條而把交付物寫成
+教學」的實例, 那時第三份才進範圍.
 
 ### 整合方案
 

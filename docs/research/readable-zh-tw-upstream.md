@@ -15,7 +15,7 @@
 | 專案 | [Raymondhou0917/speak-human-tw](https://github.com/Raymondhou0917/speak-human-tw) |
 | 作者 | Raymond Hou (雷蒙三十) |
 | 授權 | MIT |
-| 我方 pin | `aa37c20be932c56079ea73e8e7421770057b0835` (2026-08-24 的 master) |
+| 我方 pin | `ee860be6fb190cbc53dc1d45a2a47c9c9c680243` (2026-08-27 的 master, 2026-08-28 查) |
 | 重查 | `scripts/readable-zh-tw-recheck.sh [sha]` |
 
 **2026-08-19 補上 SHA 之前, ATTRIBUTION 只寫版本號.** 那讓它成為
@@ -157,3 +157,25 @@ MOVED +3     Raymondhou0917/speak-human-tw  ...
 ```
 
 一眼就看得出不必查. 同一份報告裡 mattpocock 那列印的是 `skills/ (4)`, 那個就值得查.
+
+## 2026-08-28 重查: 又是三個 commit, 又全是星數圖
+
+`aa37c20be932c56079ea73e8e7421770057b0835` -> `ee860be6fb190cbc53dc1d45a2a47c9c9c680243`,
+三個 commit, 2026-08-25 到 08-27, 訊息全是「chore: 自動更新 Star History 星數成長圖
+(GitHub Actions)」, 動到的檔案只有一個: `assets/readme/star-history-real.svg`.
+
+**查了什麼.** `readable-zh-tw-recheck.sh` 對舊 pin 與新 head 各跑一次, 六個來源檔
+兩次全部 matches —— 不只是「沒動到我們取的檔」, 是逐位元組相同. 上一輪加的檔案清單
+那一行先報了 `touched assets/ (1)`, 抓 diff 只是確認它沒說謊.
+
+這是連續第三輪同樣的結果. 把範圍拉到最早那個 pin: `2c27cca` -> `ee860be6` 是 **38 個
+commit**, 而整段只動了**四個檔案** —— 一個 workflow, 一支產圖腳本, README, 以及那張
+SVG. 六個來源檔自 2026-07-18 起一個位元組都沒動過. 內容分岔已經穩定在
+[目標分岔](#目標分岔-這是同步策略的前提)那張表上, 不是同步落後.
+
+**下次看什麼**: 不是 commit 數, 是 `touched` 那一行有沒有出現 `assets/` 以外的東西.
+星數圖是機器人每天跑的, 所以這個上游的 MOVED 幾乎恆真而幾乎恆不必查; 真正該停下來的
+訊號是清單裡出現 `SKILL.md` 或 `references/`.
+
+**推翻條件**: `upstream-pin-report.py` 對這個上游報出 `assets/` 以外的路徑, 就重跑
+逐條分類, 而不是只推進 pin.

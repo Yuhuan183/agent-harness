@@ -3,7 +3,7 @@
 - 研究日期: 2026-08-14; 上游重查與第一批原始碼精讀 2026-08-17
 - 上游: [mattpocock/skills](https://github.com/mattpocock/skills)
 - 研究基準 (2026-08-14): Claude marketplace catalog `f8f7402b0ff3b88bf311d2efedeb6aad5841d0bb`; upstream pin `8b78b531ab965735c5dc74f6f7a219e1e37326df`; release `v1.2.3` (`6acc160e4e0cd062dbbbd7a1b26ae92855edf07e`)
-- **目前 pin (marketplace, 2026-08-17 解析): `885e2ca4d842d139e9aef4e48d366c63cb1b8013`** — 2026-08-24 查過預設分支已到 `5b15a47f2d7150f545fbcacbfe381787fc0230dc`, 前進 5 個 commit 而我們的兩個來源檔 blob id 兩端相同; **pin 沒有跟著動**, 因為它記的是 marketplace 送出什麼, 而這裡沒有安裝 plugin 解析不了. 見[2026-08-24 重查](upstream-distillation-ledger.md#2026-08-24-重查-上游前進五個-commit-我們的兩個來源檔一個位元組沒動). 再前一個是 `068b6e0` (2026-08-17), 那 12 個 commit 同樣沒動到蒸餾來源, 見[2026-08-21 重新溯源](#2026-08-21-重新溯源-上游動了-12-個-commit-規則一條沒動)
+- **目前 pin (marketplace, 2026-08-17 解析): `885e2ca4d842d139e9aef4e48d366c63cb1b8013`** — 2026-08-28 查過預設分支已到 `6654f6b60cd9d5be8b54c6fafe44346dabeb3b76`, 對 pin 前進 8 個 commit 而我們的兩個來源檔重抓後逐位元組相同; **pin 沒有跟著動**, 因為它記的是 marketplace 送出什麼, 而這裡沒有安裝 plugin 解析不了. 見[2026-08-28 重查](upstream-distillation-ledger.md#2026-08-28-重查-上游再前進三個-commit-兩個來源檔仍然一個位元組沒動)與[2026-08-24 重查](upstream-distillation-ledger.md#2026-08-24-重查-上游前進五個-commit-我們的兩個來源檔一個位元組沒動). 再前一個是 `068b6e0` (2026-08-17), 那 12 個 commit 同樣沒動到蒸餾來源, 見[2026-08-21 重新溯源](#2026-08-21-重新溯源-上游動了-12-個-commit-規則一條沒動)
 - 本地基準: branch `new-artificialanalysis`; HEAD `8d5d2e18e0fca9c341429bd6ce8a51040d5e4f10`
 
 > 本文件保存上游事實, 方案比較與採用決策. 實作順序, 檔案範圍, 驗收與停止條件在
@@ -325,7 +325,7 @@ already listed"). **上游這次只動標點, 並不能免掉那件事** —— 
 
 2026-08-17 處理 Headroom 0.35 CCR 失效的整個過程, 事後對照這兩個 skill **兩邊都不及格**. <!-- retracted 2026-08-20 -->
 這不是借來的論證, 是同一天在這個 repo 上發生的事, 完整經過在
-[landing-log](landing-log.md) 與 `main/.agents/docs/headroom-runtime.md`.
+[landing-log-earlier](landing-log-earlier.md) (0.34 與 0.35 兩則) 與 `main/.agents/docs/headroom-runtime.md`.
 
 > **2026-08-20 補注: 上面這句的版本前提已撤回.** 本機從未安裝 0.35, 也從未套用過
 > `lossless` 處置, 當時跑著的 proxy 是 `0.34.0`; 依據見 landing-log 的
