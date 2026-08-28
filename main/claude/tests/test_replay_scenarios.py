@@ -203,10 +203,20 @@ class ReplayScenarioTests(unittest.TestCase):
         # are needed: this one catches the key being dropped, the loop above
         # catches it holding last month's grants.
         source = (self.REPLAY / "run.py").read_text(encoding="utf-8")
+        # Two separate claims, because the first draft asserted one literal
+        # spelling and went red on 2026-08-28 when the recorded copy grew a
+        # `$HOME` fold - a change that preserved exactly what the assertion
+        # exists to protect. The key must be recorded, and its value must come
+        # from the same producer the harness hands to the CLI; how that value is
+        # spelled on the way in is not this test's business.
         self.assertIn(
-            '"granted_tools": allowed_tools(', source,
+            '"granted_tools":', source,
             "meta.json stops recording the grant list, leaving the boolean as "
             "the only record of what an execution grant meant that day")
+        self.assertIn(
+            "allowed_tools(", source,
+            "the recorded grants no longer derive from the producer the run "
+            "actually used, so the record can drift from the grant silently")
 
     def test_the_widget_grader_reads_the_seal_of_the_fixture_that_ran(self) -> None:
         """`grade_e1` grades two fixtures now, and each has its own seal.

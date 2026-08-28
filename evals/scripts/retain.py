@@ -20,23 +20,47 @@ shares its regexes.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
+
+# A leaf is told its workdir as an absolute path, so it quotes one back in
+# almost every report. The part that carries meaning is the location inside the
+# tree; the username and machine layout are not evidence and this repository is
+# published. Applied at the moment of writing, so no retained artefact ever
+# holds one and no reviewer has to notice - which is the step that failed on
+# 2026-08-28, when 600 occurrences across two usernames had accumulated and the
+# reviewer looked at fresh ones and called them pre-existing convention.
+_REPO_ABS = re.compile(r"/Users/[A-Za-z0-9._-]+/WorkSpace/agent-harness")
+_HOME_ABS = re.compile(r"/Users/[A-Za-z0-9._-]+")
+
+
+def redact(text: str) -> str:
+    """Replace machine-local absolute paths with stable placeholders.
+
+    Longest first: the repository root is more specific than the home root, and
+    folding the home first would leave `<HOME>/WorkSpace/agent-harness` behind.
+    """
+    return _HOME_ABS.sub("<HOME>", _REPO_ABS.sub("<REPO>", text))
 
 
 def keep(target: Path | None, report: str, verdict: dict) -> None:
     """Copy the graded report and its verdict into `target`.
 
     A no-op when `target` is None, so adding the flag breaks no existing
-    invocation. The report is written byte-for-byte as graded rather than
-    re-serialised: a rescore compares against what the grader actually saw, and
-    a normalising round-trip would quietly change the thing being preserved.
+    invocation. The report is written as graded except that machine-local
+    absolute paths are redacted - stated here rather than claimed byte-for-byte,
+    because a claim of exactness that is not exact is worse than the redaction.
+    Nothing a rescore reads is affected: the gate lines, the reasoning and the
+    file names all survive, only the home prefix changes.
     """
     if target is None:
         return
     target.mkdir(parents=True, exist_ok=True)
-    (target / "report.md").write_text(report, encoding="utf-8")
+    (target / "report.md").write_text(redact(report), encoding="utf-8")
+    # The verdict quotes the report's own text back in its findings, so it
+    # carries the same paths and needs the same treatment.
     (target / "verdict.json").write_text(
-        json.dumps(verdict, indent=2) + "\n", encoding="utf-8")
+        redact(json.dumps(verdict, indent=2)) + "\n", encoding="utf-8")
 
 
 def add_argument(parser) -> None:

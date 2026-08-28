@@ -1071,6 +1071,50 @@ class MachineStateHygieneTests(unittest.TestCase):
         for warning in expected:
             self.assertIn(f"Claude routing: {warning}", dry_run.stdout)
 
+    def test_no_tracked_file_carries_a_machine_local_home_path(self) -> None:
+        """A username is not evidence, and this repository is published.
+
+        Run artefacts, `meta.json` files and prose had been accumulating
+        absolute home paths since before the current machine: 463 occurrences
+        under one former username and 139 under the present one, across 71
+        tracked files. Nothing objected, and on 2026-08-28 the reviewer
+        (me) looked straight at newly added ones and waved them past as
+        "pre-existing convention, not a new leak". Precedent is not a reason;
+        it is how this reached 600 occurrences.
+
+        What the path carries that matters is the location *within* the repo or
+        the home, and that survives redaction. What it carries that must not
+        ship is who and where the machine belongs to.
+
+        Redaction happens at the point of writing - `retain.keep` and the
+        replay runner both apply it - so this asserts the property rather than
+        chasing the writers, and a future writer that forgets is caught here
+        rather than at review.
+        """
+        # `git ls-files` rather than `tracked_markdown()`: that helper is
+        # markdown-only and excludes `evals/`, which is precisely where the
+        # run artefacts carrying these paths live.
+        offenders = {}
+        for relative in git("ls-files").stdout.split():
+            path = ROOT / relative
+            if not path.is_file():
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            # The test file naming the pattern is the one place it must appear.
+            if relative == "main/claude/tests/test_deployment.py":
+                continue
+            hits = re.findall(r"/Users/(?!<)[A-Za-z0-9._-]+", text)
+            if hits:
+                offenders[relative] = sorted(set(hits))[:3]
+        self.assertEqual(
+            {}, offenders,
+            "machine-local home paths in tracked files; redact to <HOME> or "
+            "<REPO> - the location inside the tree is the informative part, "
+            "the username is not")
+
     def test_the_docs_never_present_one_half_of_the_gate_as_the_whole(self) -> None:
         """Neither boundary is the guarantee on its own, so neither is written alone.
 

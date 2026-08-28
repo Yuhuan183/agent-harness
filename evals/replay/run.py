@@ -669,7 +669,17 @@ def main() -> int:
         said = final_text(stream[start:end]) if start is not None else ""
         replies += [f"## Turn {turn}", "", "```text", said.rstrip() or
                     "(no result payload; see events.jsonl)", "```", ""]
-    (run_dir / "replies.md").write_text("\n".join(replies), encoding="utf-8")
+    # Redacted on write, like every other retained artefact: a session is told
+    # its workdir as an absolute path and quotes it back, and this repository is
+    # published. `retain.redact` is the one implementation so the traps and the
+    # replay runner cannot disagree about what a placeholder looks like.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    try:
+        from retain import redact
+    finally:
+        sys.path.pop(0)
+    (run_dir / "replies.md").write_text(
+        redact("\n".join(replies)), encoding="utf-8")
 
     final = run_dir / "workdir"
     shutil.rmtree(final, ignore_errors=True)
@@ -715,8 +725,13 @@ def main() -> int:
         # and the grant set has already changed once. The list travels with the
         # run so old and new stay comparable.
         "resident_skills": resident_skills(),
-        "granted_tools": allowed_tools(
-            str(spec.get("allow_execution", "")).lower() == "true"),
+        # Recorded with the home folded to `$HOME`. The grants handed to
+        # `--allowedTools` keep the real absolute path because the CLI needs it;
+        # what is written down does not, and the drift a reader looks for here
+        # is the grant *set* rather than which machine ran it.
+        "granted_tools": [grant.replace(str(Path.home()), "$HOME")
+                          for grant in allowed_tools(
+                              str(spec.get("allow_execution", "")).lower() == "true")],
         "commands_run": commands_run(events),
         "commands_executed": commands_executed(events),
         "deployed_contract_sha256": sha(DEPLOYED) if DEPLOYED.exists() else None,
@@ -734,7 +749,7 @@ def main() -> int:
         "expect_authority": spec.get("expect_authority"),
         "hooks": "live (user settings source; not suppressible without also "
                  "dropping the contract)",
-        "telemetry_diverted_to": str(run_dir / "telemetry"),
+        "telemetry_diverted_to": redact(str(run_dir / "telemetry")),
     }, indent=2, ensure_ascii=False), encoding="utf-8")
 
     print(f"run kept at {run_dir}", file=sys.stderr)
