@@ -128,22 +128,69 @@ def read_at(path: str, at: str | None) -> bytes:
     return shown.stdout
 
 
-def surface_paths(trap: str, at: str | None = None) -> list[str]:
+DEFAULT_GROUP = "surface"
+
+
+def surface_groups(trap: str, at: str | None = None) -> dict[str, list[str]]:
+    """group -> paths, from a listing that may or may not declare groups.
+
+    A bracketed line opens a group and every path after it belongs to that
+    group until the next one; paths before any header fall in `surface`, which
+    is also where an ungrouped listing puts everything.
+
+    Groups exist because "the fingerprint moved" stopped being informative. The
+    replay surface covers ten skill bodies - one scenario is decided by eight
+    resident descriptions competing, so recording only the two under test would
+    leave their competitors unfingerprinted - and the accepted cost was that a
+    skill edit stales every row. Accepted, and then paid: 13 stamps, one
+    resolving. Reading the same listing in two halves lets a report say the
+    tested bytes held while the competing bytes moved, which is the distinction
+    a reader needs and a single hash cannot carry.
+    """
     listing = listing_for(trap)
     # The listing itself is versioned: a fingerprint from before a path was
     # added was composed over the shorter list, so read the list from the same
     # revision as the files.
     rel = listing.relative_to(ROOT).as_posix()
     raw_text = read_at(rel, at).decode("utf-8")
-    paths = []
+    groups: dict[str, list[str]] = {}
+    current = DEFAULT_GROUP
     for raw in raw_text.splitlines():
         line = raw.strip()
-        if line and not line.startswith("#"):
-            paths.append(line)
-    return sorted(paths)
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            current = line[1:-1].strip() or DEFAULT_GROUP
+            groups.setdefault(current, [])
+            continue
+        groups.setdefault(current, []).append(line)
+    return {name: sorted(paths) for name, paths in groups.items() if paths}
+
+
+def surface_paths(trap: str, at: str | None = None) -> list[str]:
+    """Every listed path, group headers removed, in the one order that hashes."""
+    flat: list[str] = []
+    for paths in surface_groups(trap, at).values():
+        flat.extend(paths)
+    return sorted(flat)
 
 
 def fingerprint(trap: str, at: str | None = None) -> tuple[str, list[dict[str, str]]]:
+    """Overall fingerprint plus per-member group, and the overall is unchanged.
+
+    The composition deliberately ignores groups: it walks the flat sorted path
+    list exactly as before, so adding headers to a listing does not move the
+    number. That property is what makes this adoptable - if declaring a group
+    restamped everything, landing it would cause the failure it fixes - and it
+    is asserted by
+    `test_declaring_surface_groups_does_not_move_the_fingerprint`.
+
+    Per-group digests are a second reading of the same bytes, reported beside
+    the overall rather than replacing it.
+    """
+    owner = {path: group
+             for group, paths in surface_groups(trap, at).items()
+             for path in paths}
     members = []
     binding = hashlib.sha256()
     for path in surface_paths(trap, at):
@@ -152,8 +199,23 @@ def fingerprint(trap: str, at: str | None = None) -> tuple[str, list[dict[str, s
         binding.update(b"\0")
         binding.update(digest.encode("ascii"))
         binding.update(b"\n")
-        members.append({"path": path, "sha256": digest})
+        members.append({"path": path, "sha256": digest,
+                        "group": owner.get(path, DEFAULT_GROUP)})
     return binding.hexdigest(), members
+
+
+def group_fingerprints(trap: str, at: str | None = None) -> dict[str, str]:
+    """Short digest per group, composed the same way the overall is."""
+    digests = {}
+    for group, paths in surface_groups(trap, at).items():
+        binding = hashlib.sha256()
+        for path in sorted(paths):
+            binding.update(path.encode("utf-8"))
+            binding.update(b"\0")
+            binding.update(digest_at(path, at).encode("ascii"))
+            binding.update(b"\n")
+        digests[group] = binding.hexdigest()[:SHORT]
+    return digests
 
 
 def traps() -> list[str]:

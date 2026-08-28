@@ -19,7 +19,29 @@
 # same trade this file already takes for the contract and the hooks.
 #
 # Recompute: evals/scripts/trap-surface.py --trap replay
+#
+# 2026-08-28: grouped. The overall fingerprint is unchanged by this - a group
+# header is a reading of the same listing, never a change to what is hashed,
+# and a test asserts that - but `evidence-check` can now say *which* half moved
+# instead of only that something did. That distinction is the whole point: the
+# comment above accepts that a skill edit stales every row, and by 2026-08-28
+# that acceptance had produced 13 stamps of which one resolved. A field that
+# always says stale is the permanent-alarm failure this repo already ruled on.
+#
+# [contract] the bytes a scenario grades directly - the resident contract, the
+#   hooks that carry dispatch state, and the runner and grader themselves. A
+#   move here really does invalidate a result.
+# [competitors] the resident skill bodies. They are fingerprinted because `e5`
+#   opens with a request naming no skill, so which one fires is decided by all
+#   the descriptions competing; but an edit to one of them does not invalidate a
+#   result that never depended on it.
+# [scenarios] the cell definitions and fixtures. A scenario edit invalidates
+#   that scenario's rows and no others, which a per-group digest can show.
+#
+[contract]
 main/claude/CLAUDE.contract.md
+
+[competitors]
 main/claude/skills/baton-dispatch/SKILL.md
 main/claude/skills/provider-routing/SKILL.md
 main/claude/skills/headroom-protocol/SKILL.md
@@ -29,6 +51,8 @@ main/claude/skills/task-observer/SKILL.md
 main/claude/skills/evidence-debugging/SKILL.md
 main/claude/skills/test-first-change/SKILL.md
 main/claude/skills/evidence-ladder/SKILL.md
+
+[contract]
 main/claude/hooks/experience-pending.py
 main/claude/hooks/leaf-redispatch.py
 main/claude/hooks/runtime-guard.py
@@ -38,6 +62,8 @@ evals/replay/sandbox/sh
 evals/replay/sandbox/workdir-only.sb
 evals/replay/grade.py
 evals/replay/fixtures/build.py
+
+[scenarios]
 evals/replay/scenarios/r1-interrupted-resume.md
 evals/replay/scenarios/r2-successive-corrections.md
 evals/replay/scenarios/r2b-defused-cap.md

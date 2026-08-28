@@ -2454,6 +2454,66 @@ class TrapGraderIntegrityTests(unittest.TestCase):
         self.assertNotIn("--report", s11,
                          "s11 now takes a report, so it belongs in the set above")
 
+    def test_declaring_surface_groups_does_not_move_the_fingerprint(self) -> None:
+        """Round two's finding one, landed: which half moved, not just "moved".
+
+        `evidence-check` reports 13 measured-surface stamps of which one
+        resolves, and the staleness is by design - `evals/replay/surface.tsv`
+        covers ten skill bodies because one scenario is decided by eight
+        descriptions competing, so any skill edit stales every row. A field that
+        always says stale carries no information, which this repo has already
+        ruled on once: a permanent alarm is the same as no instrument, and
+        calibration changes the tool rather than the threshold.
+
+        The fix is to let a surface declare groups - the bytes under test, and
+        the bytes that merely compete - so a stamp can say the tested half held
+        while the competing half moved.
+
+        The constraint that makes it adoptable is asserted here: **declaring
+        groups must not move the overall fingerprint**. If it did, every one of
+        the existing stamps would go stale the moment the feature landed, which
+        is precisely the failure being fixed. Groups are therefore a reading of
+        the same listing, never a change to what is hashed.
+        """
+        sys.path.insert(0, str(ROOT / "evals" / "scripts"))
+        try:
+            import importlib
+            import trap_surface  # noqa: F401
+            importlib.reload(trap_surface)
+        except ImportError:
+            spec = importlib.util.spec_from_file_location(
+                "trap_surface", ROOT / "evals/scripts/trap-surface.py")
+            trap_surface = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(trap_surface)
+        finally:
+            sys.path.pop(0)
+
+        listing = ROOT / "evals/replay/surface.tsv"
+        before, _ = trap_surface.fingerprint("replay")
+        original = listing.read_text(encoding="utf-8")
+        try:
+            lines = original.splitlines()
+            grouped = []
+            placed = False
+            for line in lines:
+                stripped = line.strip()
+                if stripped and not stripped.startswith("#") and not placed:
+                    grouped.append("[tested]")
+                    placed = True
+                grouped.append(line)
+            listing.write_text("\n".join(grouped) + "\n", encoding="utf-8")
+            after, members = trap_surface.fingerprint("replay")
+            self.assertEqual(
+                before, after,
+                "declaring a group moved the overall fingerprint, so landing "
+                "this feature would stale every existing stamp - the exact "
+                "failure it exists to fix")
+            self.assertTrue(
+                all("group" in member for member in members),
+                "members carry no group, so a report cannot say which half moved")
+        finally:
+            listing.write_text(original, encoding="utf-8")
+
     def test_the_intent_scale_separates_the_three_observed_failure_shapes(self) -> None:
         """A boolean cannot bound a residual; this is the scale that can.
 
@@ -3176,14 +3236,21 @@ class TrapSurfaceTests(unittest.TestCase):
                     "which bytes produced them")
 
     def test_every_declared_surface_path_exists(self) -> None:
+        """Read through the tool's own parser, not a second one.
+
+        This walked the file itself and treated every non-comment line as a
+        path, which was true until 2026-08-28 when listings gained optional
+        `[group]` headers and four subtests started asserting that a file named
+        `[contract]` exists. A second parser for the same format is exactly the
+        drift the fingerprint exists to prevent, one level up.
+        """
+        module = load_module(
+            "trap_surface", ROOT / "evals" / "scripts" / "trap-surface.py")
         for trap in self._traps():
             listing = trap / "surface.tsv"
             if not listing.exists():
                 continue
-            for raw in listing.read_text(encoding="utf-8").splitlines():
-                path = raw.strip()
-                if not path or path.startswith("#"):
-                    continue
+            for path in module.surface_paths(trap.name):
                 with self.subTest(trap=trap.name, path=path):
                     self.assertTrue(
                         (ROOT / path).exists(),

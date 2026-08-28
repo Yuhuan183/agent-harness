@@ -284,6 +284,41 @@ scripts/evidence-check.py, 2026-08-28 當場跑
 **推翻條件**: 分組之後跑一次, 如果 13 個戳章仍然全部過期, 那分組沒有買到任何東西, 應該
 退回單一雜湊並承認這個欄位只是存證不是訊號.
 
+#### 落地了 (2026-08-28)
+
+**設計上唯一難的一條是「宣告分組不能改變 overall 指紋」.** 若會改, 這個功能落地的當下就
+讓 16 個現存戳章全部作廢 —— 正好是它要修的那個失效. 所以分組是**同一份清單的另一種讀法**,
+不是改變被雜湊的東西: composition 照舊走扁平排序後的路徑清單, 分組只在旁邊另算一份.
+`test_declaring_surface_groups_does_not_move_the_fingerprint` 守這一條, 而六個 suite 的
+指紋在分組前後**一個都沒動**.
+
+`evals/replay/surface.tsv` 分成三組, 依「動了之後結果還算不算數」切:
+
+| 組 | 內容 | 動了代表什麼 |
+|---|---|---|
+| `contract` | 常駐契約, 帶派工狀態的 hooks, runner 與 grader | 結果真的失效 |
+| `competitors` | 十份常駐 skill 本文 | **不代表失效** —— 它們在清單裡是因為 `e5` 那格由所有描述競爭決定, 但一個沒被那格依賴的 skill 改了, 不動搖結果 |
+| `scenarios` | cell 定義與 fixture | 只讓該情境的列失效 |
+
+**當場驗過它真的分得開**: 改一份 competitor → 只有 `competitors` 的 digest 移動
+(`69b2119e` → `904cd4ca`), `contract` 與 `scenarios` 不動; 改契約 → 只有 `contract` 移動
+(`47f5dea6` → `174df54b`). 兩者都會移動 overall —— 那是對的, overall 才是戳章持有的東西.
+
+**買到的是那個追問**: 以前只說得出「動了」, 現在說得出「動的是哪一半」.
+`evidence-check` 在有分組的 suite 底下多印一行:
+
+```text
+replay   surface 77af8f97  stamps 8  current 0  stale 8
+    groups: competitors 69b2119e  contract 47f5dea6  scenarios 520d7824
+```
+
+順帶抓到一個同型缺陷: `test_every_declared_surface_path_exists` 自己**另寫了一份 parser**
+去讀同一個檔, 於是分組落地當下它開始斷言「有個檔案叫 `[contract]`」. 已改成走工具本身的
+`surface_paths`. **同一個格式兩份 parser**, 正是指紋機制存在要防的那件事往上一層.
+
+**還沒做的**: 戳章格式沒有改, 仍然只記 overall. 要讓一個過期戳章自己說出「受測面沒動」,
+戳章本身得帶分組 digest —— 那會改變格式並讓既有 16 個戳章變成舊格式, 是另一次獨立的決定.
+
 ### 發現二: 我們有一層常駐, 而三個同業都沒有
 
 第一輪找到「每一個同業都有而我們沒有的只有一件: 成本」(已補上). 反方向這一輪才看清楚.

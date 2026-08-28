@@ -329,9 +329,19 @@ def audit_traps(drift: bool = False) -> list[dict[str, object]]:
         began = convention_began(module, trap)
         predating = sum(1 for line in dated_rows
                         if began and line[2:12] < began and "[surface " not in line)
+        # Per-group digests when the listing declares groups. Reported beside
+        # the overall, never instead of it: the overall is what a stamp holds,
+        # and the groups only answer the follow-up question a stale stamp
+        # raises - which half moved. A listing with no headers yields one group
+        # and this reads exactly as it did before.
+        try:
+            groups = module.group_fingerprints(trap)
+        except Exception:
+            groups = {}
         record = {
             "trap": trap,
             "current": current,
+            "groups": groups if len(groups) > 1 else {},
             "result_rows": len(dated_rows),
             "stamped": len(stamps),
             "current_stamps": sum(1 for stamp in stamps if stamp == current),
@@ -587,6 +597,12 @@ def main() -> int:
               f"current {row['current_stamps']:>2}  "
               f"stale {row['stale_stamps']:>2}  "
               f"unstamped {row['unstamped_rows']:>3}")
+        if row.get("groups"):
+            # The follow-up a stale stamp raises. Printed only where a listing
+            # declares groups, so the line appears where it says something.
+            parts = "  ".join(f"{name} {digest}"
+                              for name, digest in sorted(row["groups"].items()))
+            print(f"      groups: {parts}")
         if row.get("predating_rows"):
             # Stated beside the counts, not inside them: `stamped` counts every
             # stamp in the file and `unstamped_rows` subtracts it from the dated
