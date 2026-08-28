@@ -66,6 +66,44 @@ balanced 下 `explore` sonnet/low, `mech-executor` sonnet/medium, `executor` son
 nulls 顯示七步迴圈對高檔位 main 是純 token 稅. 所以借鑑面鎖定在 leaf 契約的決策點強制行,
 QC 的 fraud 清單和行為級 trap eval, 而不是引入整個迴圈, 或再疊一個 gate.
 
+### 缺口 (2026-08-28 對應性檢查發現): 這個上游沒有 ATTRIBUTION
+
+其他四個蒸餾上游 —— mattpocock/skills, speak-human-tw, rebelytics, cablate/baton —— 每一個
+都有 `ATTRIBUTION.md` (帶完整 SHA 與授權全文), 有時效性列, 並被 `upstream-pin-report.py`
+自動涵蓋. **fable-method 三樣都沒有**, 而下面那張取捨表顯示我們確實從它拿了東西.
+
+**而且不只是概念.** 強制行的模板逐字比對:
+
+```text
+上游   INTENT: code does <X>; check expects <Y>; spec says <Z>
+我方   INTENT: code does <X>; the check/task expects <Y>; the spec says <Z>
+                              ^^^^^^^^^^^^^^^^^          ^^^^
+```
+
+差的是兩個冠詞與一個 `/task`. 依本 repo 自己的判準, 這是 **substantial portion 而不是概念
+改寫** —— 而「把 substantial portion 說成概念改寫」正是蒸餾計畫明文指名**唯一不能弄錯的
+方向**, 這個 repo 2026-08-17 已經為它付過一次代價.
+
+上游是 MIT, 而 MIT 要求著作權與許可聲明隨 substantial portion 一起散布. 這兩行**出貨在
+`main/claude/agents/executor.md` 與 `main/codex/agents/executor.toml`**, 兩份都部署到 HOME.
+
+**為什麼既有的檢查抓不到.** `test_every_derived_skill_pins_a_commit_and_carries_its_licence`
+只走**有 ATTRIBUTION 的 skill**; `upstream-pin-report.py` 從 ATTRIBUTION 推導. 兩者都是
+「讀已經寫下來的東西」, 而這一筆從來沒被寫下來. 衍生物住在 **role 檔**而不是 skill 目錄,
+落在每一道檢查的涵蓋範圍之外.
+
+**待辦, 三件, 有先後**:
+
+1. **重抓上游再分類**, 不要照這份筆記寫 ATTRIBUTION —— 蒸餾規則明說重讀自己的筆記不算重查,
+   而這一節是 2026-07-22 寫的. 上游現況: 最後一個 commit `88b5cf3` (2026-07-15), MIT, 未封存.
+2. **補 `ATTRIBUTION.md` 並帶完整 SHA 與 MIT 全文**. 位置要先決定: 衍生物在 role 檔不在
+   skill 目錄, 而現行的 ATTRIBUTION 慣例綁在 skill 目錄上.
+3. **把檢查的涵蓋面從 skill 擴到 role**, 否則下一個寫進 role 檔的衍生物一樣隱形. 這一條是
+   三件裡唯一會讓既有機制變強的.
+
+**推翻條件**: 逐字比對後判定那兩行是獨立寫出來的 (例如找得到早於 2026-07-22 的本地版本),
+第 1 與第 2 件就不成立, 但第 3 件照做 —— 涵蓋面的洞和這一筆的歸屬是兩回事.
+
 ### 對本專案的取捨
 
 | 類別 | 判斷 | 本地處理 |
