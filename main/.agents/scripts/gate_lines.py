@@ -85,3 +85,61 @@ def off_template(name: str, text: str) -> bool:
     if find(name, text):
         return False
     return any(match.group(1) == name for match in GATE_ANYWHERE.finditer(text))
+
+
+# A spec segment naming only a value ("2.68") rather than the rule it came
+# from. Observed on s7o4 and s7o5: present, well-formed, and useless, because
+# the slot exists to carry what the spec says.
+_VALUE_ONLY = re.compile(r"^[\s\"'`]*[-+]?[\d.,%]+[\s\"'`]*$")
+_CJK = re.compile(r"[一-鿿぀-ヿ]")
+
+# Ordinal weights, not calibrated quantities. They exist so the observed
+# failure shapes land on distinct readings, and the ordering is the only
+# claim: an absent line is worse than a present wrong one, a line that never
+# reached column one is worse than one that did but missed the template, and a
+# thin spec slot is the mildest of the four.
+_PENALTY = {
+    "not_at_column_one": 0.45,
+    "off_template": 0.30,
+    "non_english_template": 0.35,
+    "value_only_spec": 0.20,
+}
+
+
+def distance(name: str, text: str) -> dict:
+    """How far a report's gate line sits from the template: a score in [0, 1].
+
+    The two functions above answer "does it count", which is what production QC
+    gates on and what they must keep answering alone. This answers "how far
+    off", which a pass/fail verdict cannot: a binary measure can demonstrate a
+    large effect and can never put a floor under what remains. That asymmetry,
+    and the three upstreams it applies to, are in
+    docs/research/cross-upstream-synthesis.md under round three.
+
+    1.0 is on template, 0.0 is nothing present at all, and every deduction
+    names itself so a score stays actionable.
+
+    An instrument, never a gate, and deliberately not wired into qc-gate-lines:
+    no threshold on this scale has been justified by anything, and a gate in
+    this repo needs a condition rather than a number.
+    """
+    defects: list[str] = []
+    if not any(m.group(1) == name for m in GATE_ANYWHERE.finditer(text)):
+        return {"score": 0.0, "defects": ["absent"]}
+
+    own_blocks = [block for found, block in blocks(text) if found == name]
+    match = find(name, text)
+    if match is None:
+        # Present but not counting. Which of the two it is matters: a bolded
+        # line needs to hear "off-template", not "missing".
+        defects.append("off_template" if own_blocks else "not_at_column_one")
+    if own_blocks and _CJK.search(" ".join(own_blocks)):
+        defects.append("non_english_template")
+    if match is not None and name == "INTENT":
+        if _VALUE_ONLY.match((match.group(1) or "").strip()):
+            defects.append("value_only_spec")
+
+    score = 1.0
+    for defect in defects:
+        score -= _PENALTY.get(defect, 0.0)
+    return {"score": round(max(score, 0.0), 4), "defects": defects}
