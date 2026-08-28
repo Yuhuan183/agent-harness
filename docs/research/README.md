@@ -231,7 +231,7 @@ fable-method 的 1/4 是 [0.006, 0.806], 4/4 是 [0.398, 1.000], 重疊了一大
 是連續的而現行 grader 把它壓成布林 —— 這是唯一具體的下一步, 改 grader 不改 fixture).
 
 三輪的逐條裁決, 處置與推翻條件, 以及**逐份寫明的沒讀清單**在
-[peer-harnesses](peer-harnesses.md#跨上游整合第二輪-2026-08-28-進行中).
+[peer-harnesses](cross-upstream-synthesis.md#跨上游整合第二輪-2026-08-28-進行中).
 
 這些查核的完整紀錄搬到 [landing-log.md](landing-log.md) 了 —— 它是一份**日誌**, 而本文是**總結**, 兩者長在一起時 sprawl guard 就會燒. 每一則的標題自帶日期, 從那份文件的目次直接找: 本文不再抄一份逐則連結, 因為手抄別人的目次每多一則就多一個會過期的地方, 而它原本宣稱的「依日期由新到舊」已經不成立了.
 
@@ -277,7 +277,8 @@ fable-method 的 1/4 是 [0.006, 0.806], 4/4 是 [0.398, 1.000], 重疊了一大
 |---|---|
 | [model-evidence.md](model-evidence.md) | route 與 effort 怎麼選, 成本口徑怎麼算, 外部先驗有多可信 |
 | [fable-5-fallback.md](fable-5-fallback.md) | 用 Fable 5 時怎麼避免被切到 Opus, 以及可行性邊界 |
-| [peer-harnesses.md](peer-harnesses.md) | Deep Agents 與 Pilotfish 的原始碼與版本拆解 |
+| [peer-harnesses.md](peer-harnesses.md) | 同業**各自**是什麼: Deep Agents, Pilotfish, pilotfish-codex, cablate/baton 的原始碼與版本拆解 |
+| [cross-upstream-synthesis.md](cross-upstream-synthesis.md) | 同業**合起來**說明什麼: 三輪跨上游整合的發現, 處置與推翻條件. 2026-08-28 依主題從 peer-harnesses 拆出 (該檔 65% 是整合而不是拆解) |
 
 ### 本機實驗 — 橫跨四層的證據面
 

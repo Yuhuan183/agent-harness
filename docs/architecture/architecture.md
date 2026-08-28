@@ -330,7 +330,7 @@ git review 與部署 —— 也就是說這一層的授權是**經由部署間�
 | Loop | 每一次重試都是一次完整往返 | 五次 pass 上限, ledger 的 `secs` 與 token 欄 |
 | Graph | 派工的 brief, 重建 context, 收集與 QC 全是純開銷 | Cost test (派工前), experience ledger (派工後) |
 
-**三個派工同業都把成本當成要量的主軸之一**, 而這是[跨上游整合](../research/peer-harnesses.md#跨上游整合-2026-08-21)
+**三個派工同業都把成本當成要量的主軸之一**, 而這是[跨上游整合](../research/cross-upstream-synthesis.md#跨上游整合-2026-08-21)
 唯一找到「每一個同業都有而我們沒有」的一件. 有判準不等於有擁有者.
 
 三件已經量到而且會改決策的:
