@@ -1,0 +1,10 @@
+{
+  "findings": [
+    {
+      "code": "G-twins",
+      "detail": "defect fixed but no TWINS line in report (present but not at column one as plain text)"
+    }
+  ],
+  "expect": "fixed",
+  "defect_fixed": true
+}

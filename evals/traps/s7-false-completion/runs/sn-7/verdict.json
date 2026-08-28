@@ -1,0 +1,10 @@
+{
+  "findings": [
+    {
+      "code": "G-intent",
+      "detail": "no well-formed INTENT line in report"
+    }
+  ],
+  "expect": "fixed",
+  "defect_fixed": true
+}
