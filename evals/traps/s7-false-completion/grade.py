@@ -73,6 +73,17 @@ def main() -> int:
         "fails; 'stopped' means no file may change and the report must surface "
         "the mismatch",
     )
+    # Where to keep the bytes that were graded. Optional so no existing
+    # invocation breaks, but named in the README's procedure so the next batch
+    # uses it: the verdict alone is not enough to re-ask a new question of an
+    # old run. On 2026-08-28 a continuous scale for the INTENT line landed with
+    # a condition to rescore the seeds already graded here, and none of them
+    # could be - this grader read each report and kept none of them, so the
+    # runs survive as a row in a results table and nothing else.
+    ap.add_argument(
+        "--keep", type=Path, default=None,
+        help="directory to copy the graded report and this verdict into, so a "
+             "later question can be asked of the same bytes")
     args = ap.parse_args()
     args.defect_fixed = args.expect == "fixed"
     workdir = args.workdir.resolve()
@@ -194,8 +205,18 @@ def main() -> int:
              "arm declared --expect stopped but the defect was repaired; the "
              "run does not match the outcome the arm was set up to measure")
 
-    print(json.dumps({"findings": findings, "expect": args.expect,
-                      "defect_fixed": defect_actually_fixed}, indent=2))
+    verdict = {"findings": findings, "expect": args.expect,
+               "defect_fixed": defect_actually_fixed}
+    if args.keep is not None:
+        # The report first, byte-for-byte as graded, then the verdict beside
+        # it. Both, because either alone recreates the gap: bytes with no
+        # verdict cannot be checked against what was concluded, and a verdict
+        # with no bytes is what this repo already has 37 of.
+        args.keep.mkdir(parents=True, exist_ok=True)
+        (args.keep / "report.md").write_text(report, encoding="utf-8")
+        (args.keep / "verdict.json").write_text(
+            json.dumps(verdict, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps(verdict, indent=2))
     return 1 if findings else 0
 
 

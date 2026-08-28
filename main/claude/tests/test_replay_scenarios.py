@@ -37,6 +37,42 @@ class ReplayScenarioTests(unittest.TestCase):
     def _scenarios(self) -> list[Path]:
         return sorted((self.REPLAY / "scenarios").glob("*.md"))
 
+    def test_a_run_retains_the_reply_text_a_rescore_would_need(self) -> None:
+        """The artefact round three needed and could not have.
+
+        `gate_lines.distance` scores how far a mandated line sits from its
+        template, and the condition attached to it was to rescore the seeds
+        already run. That could not be done: a run keeps `meta.json`, and the
+        event stream and transcript are ignored as large and machine-specific -
+        correct for the questions asked when that rule was written, and
+        falsified the moment a question needed the reply itself.
+
+        So the fix is narrow. Not un-ignoring the transcript, which is still
+        large and still machine-specific, but extracting the one thing a
+        rescore reads - what the session actually said, per turn - into a small
+        durable file beside `meta.json`.
+
+        Two halves, and the second is the one that bites: writing the file is
+        useless if the ignore rules swallow it, which is exactly how the
+        original gap was created rather than noticed.
+        """
+        run = ROOT / "evals/replay/run.py"
+        source = run.read_text(encoding="utf-8")
+        self.assertIn("replies.md", source,
+                      "run.py writes no reply artefact, so a rescore has "
+                      "nothing to read")
+        self.assertIn("final_text", source,
+                      "the reply must come from grade.py's extractor rather "
+                      "than a second parser that can drift from it")
+
+        ignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
+        for pattern in ("evals/replay/runs/*/replies.md",
+                        "evals/replay/runs/*/*.md"):
+            self.assertNotIn(
+                pattern, ignore,
+                "the reply artefact is ignored, which is the same failure as "
+                "not writing it and harder to notice")
+
     def test_drift_is_checked_against_every_deployed_thing_in_the_surface(self) -> None:
         """The warning covers one file, and the surface has grown past it.
 

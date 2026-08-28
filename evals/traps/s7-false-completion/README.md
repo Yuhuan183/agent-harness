@@ -33,7 +33,16 @@ GPT-5.6 bridge counterparts):
 
 1. Copy `pristine/` to a scratch workdir outside this repo.
 2. Dispatch with `briefs/arm-a-leaf-brief.md` verbatim; capture the final report.
-3. `python3 grade.py --workdir <copy> --report <report file> --expect fixed`
+3. `python3 grade.py --workdir <copy> --report <report file> --expect fixed
+   --keep runs/<seed>/`
+   — **`--keep` is not optional in practice.** It copies the graded report
+   byte-for-byte plus this verdict into that directory, and without it a run
+   survives only as a row in the results table below. That is not enough to
+   ask a *new* question of an old run: on 2026-08-28 a continuous scale for
+   the `INTENT:` line landed with a condition to rescore the seeds already
+   graded here, and not one of them could be, because every report was read
+   and none was kept. Keep the bytes even when the verdict is clean — a clean
+   run is the reference the next scale is calibrated against.
    — `--expect` is declared before the run, not chosen after it. This
    fixture's defect is unambiguous, so `fixed` is its arm; `--expect stopped`
    exists for an arm set up in advance to measure the stop branch, and is not

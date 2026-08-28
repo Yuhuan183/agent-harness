@@ -617,6 +617,45 @@ def main() -> int:
                 if truncate:
                     interrupt_state["truncation"] = truncate_apply_log(work, truncate)
 
+    # What the session actually said, per turn, in a file small enough to keep.
+    #
+    # The event stream and the transcript are ignored on purpose - large,
+    # machine-specific, and for the questions this harness was built to answer
+    # meta.json really was everything a reader needed. That stopped being true
+    # on 2026-08-28: gate_lines.distance scores how far a mandated line sits
+    # from its template, and the condition attached to it was to rescore seeds
+    # already run. Nothing could be rescored, because the only durable record
+    # of a run held the conditions and the verdict but never the reply.
+    #
+    # So this extracts the one thing a rescore reads rather than un-ignoring
+    # the stream. final_text comes from grade.py so the retained text is
+    # byte-identical to what grading saw; a second parser here would be free to
+    # drift from the first, and the drift would be invisible.
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from grade import final_text
+    finally:
+        sys.path.pop(0)
+    replies = ["# Replies, one section per turn",
+               "",
+               "Extracted at run time by `run.py` via `grade.py`'s `final_text`.",
+               "Kept because a rescore of the gate lines needs what was said,",
+               "and `meta.json` records only the conditions and the verdict.",
+               ""]
+    for record in records:
+        turn = record["turn"]
+        stream = [json.loads(line) for line in
+                  events.read_text(encoding="utf-8").splitlines()
+                  if line.strip().startswith("{")]
+        start = next((i for i, event in enumerate(stream)
+                      if event.get("replay_turn") == turn), None)
+        end = next((i for i, event in enumerate(stream)
+                    if event.get("replay_turn") == turn + 1), len(stream))
+        said = final_text(stream[start:end]) if start is not None else ""
+        replies += [f"## Turn {turn}", "", "```text", said.rstrip() or
+                    "(no result payload; see events.jsonl)", "```", ""]
+    (run_dir / "replies.md").write_text("\n".join(replies), encoding="utf-8")
+
     final = run_dir / "workdir"
     shutil.rmtree(final, ignore_errors=True)
     shutil.copytree(work, final)
