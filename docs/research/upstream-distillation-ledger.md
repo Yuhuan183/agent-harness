@@ -1,7 +1,16 @@
 # 蒸餾帳本: 上游每一節的去向
 
-上游是 [mattpocock/skills](https://github.com/mattpocock/skills), pin
-`885e2ca4d842d139e9aef4e48d366c63cb1b8013`.
+這份帳本記**逐節處置**. 到 2026-08-28 為止它只寫過一個上游, 而那是歷史造成的不是分工造成的
+—— 其他上游的處置散在各自的文件裡 (speak-human-tw 有自己一份, cablate/baton 在
+[peer-harnesses](peer-harnesses.md), fable-method 在 [trap-experiments](trap-experiments.md)),
+只有 `rebelytics` 一個**哪裡都沒有**. 2026-08-28 的對應性檢查抓到那個洞, 補在本檔末節.
+
+| 上游 | pin | 逐節處置在哪 |
+|---|---|---|
+| [mattpocock/skills](https://github.com/mattpocock/skills) | `885e2ca4d842d139e9aef4e48d366c63cb1b8013` | 本檔主體 (下方全部各節) |
+| [rebelytics/one-skill-to-rule-them-all](https://github.com/rebelytics/one-skill-to-rule-them-all) | `281f13466cd3a73e9ebc9d210907748e1941a3dd` | 本檔[最後一節](#rebelyticsone-skill-to-rule-them-all-逐條處置-2026-08-28) |
+
+**下面每一節, 除了最後一節, 講的都是 mattpocock/skills.**
 
 **這份帳本可以覆核.** `scripts/upstream-recheck.sh` 重新抓那個 SHA 的四個檔案並比對雜湊:
 
@@ -337,3 +346,85 @@ dev-only 且不進部署清單), 並在同一次 commit 帶上量測與位移.
 這次做了一次 tree 形狀清點 (`recursive=1`), 抓到 `agents/openai.yaml` 那條; 但清點
 只做了「檔名在幾乎每個目錄裡重複出現」這一種形狀, 沒有查 `.changeset/`,
 `plugin.json` 或 README 分桶規則裡有沒有別的規則. 那些仍然沒查.
+
+## `rebelytics/one-skill-to-rule-them-all` 逐條處置 (2026-08-28)
+
+**為什麼這麼晚才寫.** `task-observer` 從這裡蒸餾, 而它是五個上游裡**唯一沒有研究層紀錄**
+的一個: ATTRIBUTION 有一段摘要 (「activation 與寫入改成明示 opt-in, 可變的編號 Markdown log
+換成 append-only 上鎖的 JSONL 事件帳本, Git checkout 為真相源, 禁止自動編輯/部署/commit/
+刪除/排程套用」), 但摘要不是逐條分類. 2026-08-28 的對應性檢查抓到.
+
+**查了什麼.** 重抓 pin `281f13466cd3a73e9ebc9d210907748e1941a3dd` 的四個檔, 讀的是位元組
+不是我方摘要:
+
+| 上游檔案 | sha256 前 16 | bytes |
+|---|---|---|
+| `SKILL.md` | `60bfdcd99c4678a8` | 24492 |
+| `references/weekly-review.md` | `247e7bfcd4aecc71` | 10520 |
+| `references/skill-authoring.md` | `15fc47365fdfc89c` | 12185 |
+| `references/environments.md` | `0e4274047c6628e8` | 4950 |
+
+### 逐條
+
+| 上游規則 | 處置 | 依據 |
+|---|---|---|
+| session 開始時若 log 檔不存在就**自動建立** | **不採用** | 我方 activation 與寫入一律明示 opt-in; 「列出不存在的帳本不得建立它」是明文規定 |
+| 工作區若落在**短命路徑** (worktree, 暫時 clone) 要警告並改錨到穩定專案路徑 | **已落地, 而且更強** | 我方帳本固定在 `~/.agents/telemetry/`, 絕對路徑, 結構上進不了 worktree. 上游用**提醒**解, 我方用**位置**解 —— 同一個危害, 我方那一側不需要模型記得 |
+| session 開始掃描 OPEN 觀察並「放在意識裡」 | **不採用** | 那是背景啟動; 我方只在摩擦發生後觸發 |
+| `last-review-date.txt` 用字面值 `never`; 超過 7 天且有 OPEN 才提議; **絕不擋使用者的工作** | **形狀不採用, 原則已落地** | 我方沒有 session-start 掛鉤, 所以前兩句無處可放; 「絕不擋工作」等同我方「先處理修正, 不要用回饋問題打斷復原」 |
+| 每個 session 提議一次: 把啟動指令加進 `CLAUDE.md` | **不採用** | skill 自我安裝進使用者契約, 正是我方契約禁止的 |
+| 記下 log 的 mtime; 每次 append 前重讀; **絕不相信記住的編號** | **已落地, 而且搬離了模型** | 我方用排他檔案鎖寫入, 共享鎖讀取, append-only JSONL 加 UUID. 上游是要求**模型**小心地維護一份 Markdown; 我方把它交給工具 |
+| 整個 session 全程 active, 連檢討與後設討論都算 | **不採用** | 我方只在明確不滿或要求修正之後觸發 |
+| **每完成第 3 個 TodoWrite 就強制寫一次 log**, 沒觀察也要寫一行 `no observations` 標記 | **不採用, 但它的理由是本輪最重要的佐證** | 見下節 |
+| **deliverable-event flush**: 把寫入掛在本來就會發生的工具呼叫上 | **不採用 (同上), 理由同樣是佐證** | 見下節 |
+| 引用觀察編號時, 編號**只能來自紀錄自己的識別欄位**, 絕不能來自搜尋工具的位置後設資料 (`grep -n` 的行號被當成觀察編號), 另加一層「和計數器範圍比對」的合理性檢查 | **已落地 (機制), 一般化那條不落地 (無本機失效)** | 我方 ID 是腳本回傳的 UUID, 和行號長得完全不一樣, 該失效在我方形狀上發生不了. 一般規則本身好, 但本 repo 沒有一筆對應失效, 而為意圖付常駐預算是這裡說過不做的事 |
+| 分類法: open-source / internal, 兩可時預設 open-source 並剝掉細節; 這條界線同時是保密界線 | **已落地** | `--type open-source\|internal`, 以及「概括原則, 專案細節用 internal」 |
+| **Archival on Write**: 已解決的條目搬進日期檔; 解決狀態**必須**記日期; 寬限期放在檔案裡不放 session 記憶; 且要備份→重讀→合併→驗證條目數 | **不採用, 形狀不同 —— 而這是我方設計最強的一次佐證** | 我方 append-only, 解決是**追加一個事件**, 從不改寫也不搬移. 上游自己寫著 archival 是「這份 log 承受的最高風險變更, 而且在生產環境**已經毀掉過並行的 append**」—— 那整類危害在我方設計裡不存在 |
+| 不要記: 一次性且不通用的修正, skill 已涵蓋的偏好, 與方法無關的工具 bug, 需要專有資訊才有用的觀察 | **已落地** | 逐條對應我方的 Boundaries |
+
+### 那兩條「不採用」的理由, 是第三個獨立血緣撞上同一面牆
+
+上游把「每完成第 3 個 todo 就強制寫」寫成硬檢查點, 而它給的理由是自己踩過:
+
+> 這個 skill 已經證明, 比較軟的「完成項目時檢查一下」或「暫停並自問」在**認知負荷高的分析
+> 工作中會消失**, 而那正是觀察累積最多的時候. **寫入本身就是強制機制**.
+
+以及:
+
+> **硬強制掛在你本來就會做的工具呼叫上, 是唯一可靠的機制**; 依賴記憶的軟提示撐不過長時間
+> 實質工作中的認知負荷.
+
+**這幾乎是本 repo [軸二](../architecture/architecture.md#軸二-憑什麼算數)的逐句重述** ——
+散文是權重不是強制力; 承載物本身沒有強制力, 但它讓違規變成機械可判定的事實.
+
+**血緣要先數再數票.** 這是**第三個彼此獨立的作者**走到同一個結論:
+
+```
+Sahir619 / fable-method     同一條規則: 散文 1/4 → 逐字強制行 4/4
+Eoghan Henn / rebelytics    軟提示在認知負荷下消失 → 改掛在必然發生的工具呼叫上
+Nanako0129 / Pilotfish      規則數釘住, 壓的是字 (賭規則承重, 字不承重)
+本 repo                     改一句話 15% → 48%; 拿掉 83% 鄰居 p = 0.68; n=10 時 6/10
+```
+
+前三個沒有共同祖先 (`pilotfish-codex` 繼承 Pilotfish, 算同一票, 這裡沒算進來).
+依蒸餾規則, **兩個獨立上游指向同一條規則就要提高權重**; 這裡是三個, 加上我方的量測.
+
+**但我方仍然不採用那兩條**, 而理由要說得比「形狀不同」更精確: 上游買的是**觀察不要漏記**,
+代價是把 skill 變成背景遙測; 我方的 `task-observer` 明文把「寫入需要使用者授權」當成設計的
+第一條, 而強制檢查點會直接推翻它. 這是**目標分岔, 不是我們認為它錯** —— 事實上依上面那張
+表, 它多半是對的.
+
+**這對第二輪整合的影響**: [發現二](peer-harnesses.md#跨上游整合第二輪-2026-08-28-進行中)
+的更正已經撤回「只有我們量過」; 這一節再加一個獨立血緣, 把該條的方向從「我方發現」進一步
+確定成「**三個上游各自撞到, 我方提供了數字**」. 我方獨有的仍然只有兩樣: 跨 provider 的
+轉移證據, 以及那條天花板沒被關掉.
+
+**推翻條件**: 找得到 fable-method, rebelytics 與 Pilotfish 之間的衍生關係 (誰讀過誰),
+三票就要合併, 而「獨立收斂」的強度隨之下降.
+
+### 沒有查的
+
+`references/weekly-review.md` (10,520 bytes) 與 `references/skill-authoring.md` (12,185
+bytes) 只掃了標題與被 `SKILL.md` 引用的段落, **沒有逐節讀**. 前者是排程式週檢流程, 我方
+沒有等價面; 後者是 skill 撰寫規範, 與 `skill-creator` 重疊. 兩份都可能還藏著規則,
+所以這一節不宣稱窮舉.
