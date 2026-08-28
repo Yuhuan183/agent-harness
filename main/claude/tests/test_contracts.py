@@ -2183,7 +2183,7 @@ class DocumentationBudgetTests(unittest.TestCase):
                     "states a different pin from the ATTRIBUTION; when it moves, "
                     "every site in READABLE_PIN_SITES moves with it")
 
-    def test_every_derived_skill_pins_a_commit_and_carries_its_licence(self) -> None:
+    def test_every_attribution_pins_a_commit_and_carries_its_licence(self) -> None:
         """A version string is not an identifier, and a licence name is not a licence.
 
         Both halves come from things that went wrong rather than from a policy.
@@ -2206,30 +2206,46 @@ class DocumentationBudgetTests(unittest.TestCase):
         recheck section. Reading this test as covering it would be the same
         mistake the redaction section made: a check keyed on the shape of the
         artifact standing in for its substance.
+
+        The enumeration was `main/.agents/skills/*/ATTRIBUTION.md` until
+        2026-08-28, and that was the hole rather than a detail. `fable-method`'s
+        three gate lines had shipped near-verbatim in six deployed *role* files
+        since 2026-07-22 with no notice attached, and nothing here could see
+        them: a derivative that does not live in a skill directory was outside
+        the walk. `scripts/upstream-pin-report.py` inherited the same blind spot
+        by deriving its list from the files this test checks, so the repo's own
+        answer to "which upstreams do we distil from" was four when it was five.
+        Now both walk every `ATTRIBUTION.md` under `main/`, which is the set that
+        actually carries the obligation.
         """
-        derived = [
-            skill
-            for skill in sorted((ROOT / "main/.agents/skills").iterdir())
-            if skill.is_dir() and (skill / "ATTRIBUTION.md").exists()]
-        self.assertTrue(derived, "no derived skills found")
-        for skill in derived:
-            with self.subTest(skill=skill.name):
-                text = (skill / "ATTRIBUTION.md").read_text(encoding="utf-8")
+        attributions = sorted((ROOT / "main").rglob("ATTRIBUTION.md"))
+        self.assertTrue(attributions, "no attributions found")
+        # Not a fixed number: a new one should land without editing this test.
+        # What must not happen is the set silently shrinking, which is what
+        # deleting a notice while keeping the borrowing looks like from here.
+        self.assertGreaterEqual(
+            len(attributions), 6,
+            "fewer attributions than known derivations; a notice was removed "
+            "while its borrowing presumably stayed")
+        for path in attributions:
+            label = path.relative_to(ROOT / "main").as_posix()
+            with self.subTest(attribution=label):
+                text = path.read_text(encoding="utf-8")
                 self.assertRegex(
                     text, r"https?://\S*github\.com/\S+",
-                    f"{skill.name}: attribution names no upstream source")
+                    f"{label}: attribution names no upstream source")
                 # One clause from the operative text of each licence this repo
                 # actually derives from. Present means the notice shipped.
                 self.assertTrue(
                     "WITHOUT WARRANTY OF ANY KIND" in text
                     or "creativecommons.org/licenses" in text,
-                    f"{skill.name}: attribution names a licence but does not "
+                    f"{label}: attribution names a licence but does not "
                     "carry its text, which is what the licence requires")
-                if skill.name in self.ATTRIBUTION_WITHOUT_A_COMMIT:
+                if path.parent.name in self.ATTRIBUTION_WITHOUT_A_COMMIT:
                     continue
                 self.assertRegex(
                     text, r"\b[0-9a-f]{40}\b",
-                    f"{skill.name}: attribution pins no commit, so a later "
+                    f"{label}: attribution pins no commit, so a later "
                     "reader cannot tell which upstream text was distilled")
 
 

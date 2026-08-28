@@ -87,22 +87,41 @@ QC 的 fraud 清單和行為級 trap eval, 而不是引入整個迴圈, 或再�
 上游是 MIT, 而 MIT 要求著作權與許可聲明隨 substantial portion 一起散布. 這兩行**出貨在
 `main/claude/agents/executor.md` 與 `main/codex/agents/executor.toml`**, 兩份都部署到 HOME.
 
-**為什麼既有的檢查抓不到.** `test_every_derived_skill_pins_a_commit_and_carries_its_licence`
+**為什麼既有的檢查抓不到.** `test_every_attribution_pins_a_commit_and_carries_its_licence` (2026-08-28 改名並擴大涵蓋面前叫 `test_every_derived_skill_pins_a_commit_and_carries_its_licence`, 只走 skill)
 只走**有 ATTRIBUTION 的 skill**; `upstream-pin-report.py` 從 ATTRIBUTION 推導. 兩者都是
 「讀已經寫下來的東西」, 而這一筆從來沒被寫下來. 衍生物住在 **role 檔**而不是 skill 目錄,
 落在每一道檢查的涵蓋範圍之外.
 
-**待辦, 三件, 有先後**:
+**三件都在 2026-08-28 當天做完了**, 而重抓上游改掉了這一節原本的說法.
 
-1. **重抓上游再分類**, 不要照這份筆記寫 ATTRIBUTION —— 蒸餾規則明說重讀自己的筆記不算重查,
-   而這一節是 2026-07-22 寫的. 上游現況: 最後一個 commit `88b5cf3` (2026-07-15), MIT, 未封存.
-2. **補 `ATTRIBUTION.md` 並帶完整 SHA 與 MIT 全文**. 位置要先決定: 衍生物在 role 檔不在
-   skill 目錄, 而現行的 ATTRIBUTION 慣例綁在 skill 目錄上.
-3. **把檢查的涵蓋面從 skill 擴到 role**, 否則下一個寫進 role 檔的衍生物一樣隱形. 這一條是
-   三件裡唯一會讓既有機制變強的.
+1. **重抓上游再分類 —— 做了, 而且推翻了本節記的模板.** 這一節 2026-07-22 記的上游句子少
+   了冠詞, 讓我方版本看起來像是**加長**了上游的; 對 `88b5cf36` 的實際位元組比對顯示相反 ——
+   我方是上游的**縮短版**:
 
-**推翻條件**: 逐字比對後判定那兩行是獨立寫出來的 (例如找得到早於 2026-07-22 的本地版本),
-第 1 與第 2 件就不成立, 但第 3 件照做 —— 涵蓋面的洞和這一筆的歸屬是兩回事.
+   ```text
+   上游  INTENT: code does <X>; the failing check/task expects <Y>; the spec (README/docs/docstring) says <Z>
+   我方  INTENT: code does <X>; the check/task expects <Y>; the spec says <Z>
+   ```
+
+   `TWINS:` 與 `AUTH:` 同樣是縮短而非改寫. 也就是說 substantial-portion 的判斷不但成立,
+   還比用這份筆記判時**更強**. 這正是蒸餾規則說「重讀自己的筆記不算重查」的理由, 而這次
+   是它第一次在本 repo 上直接兌現.
+
+2. **`ATTRIBUTION.md` 已補**, 帶完整 SHA (`88b5cf36b10ee3679e08ee0f0181b9774d481508`),
+   兩個來源檔的雜湊與 MIT 全文, 落在 `main/.agents/scripts/`. **位置的理由要記下來**:
+   不能放 `main/claude/agents/`, 因為那是 agent 註冊目錄 —— `test_roles.py` 對它 glob
+   `*.md` 並比對角色名單, client 也照同樣方式讀, 一份聲明丟進去會被當成壞掉的角色.
+   `main/.agents/scripts` 已有 manifest 列會部署, 而且它就是 `gate_lines.py` 的家 ——
+   那些行的正則的唯一真相源. 聲明因此和它涵蓋的東西一起走.
+
+3. **涵蓋面已從 skill 擴到「`main/` 底下每一份 `ATTRIBUTION.md`」**, 測試同時改名為
+   `test_every_attribution_pins_a_commit_and_carries_its_licence`. 雙向 mutation 驗過:
+   拿掉新位置的授權全文 → 紅並指名該檔; 拿掉完整 SHA → 紅並指名該檔; 還原 → 綠. 另加一條
+   下限斷言, 讓「刪掉聲明但留著借用」也會紅. `upstream-pin-report.py` 因為從這些檔案推導,
+   當天就自動從四個上游變成**五個**, 不必改它一行.
+
+**推翻條件**: 找得到早於 2026-07-22 的本地版本顯示那三行是獨立寫出來的, 歸屬要重判 ——
+但第 3 件照樣成立, 涵蓋面的洞和這一筆的歸屬是兩回事.
 
 ### 對本專案的取捨
 
