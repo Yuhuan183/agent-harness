@@ -58,6 +58,30 @@ exactly like a search that is broken, and the broken one is the more likely of
 the two when the pattern is written in a hurry. Run it first against something
 you already know is there; only then is its silence evidence.
 
+**Reconcile counts; never build a work queue from a filter on an optional
+field.** Calibration catches a probe that finds nothing. It does not catch the
+worse one: a probe that returns a plausible subset and reads as complete.
+Enumerate by the authoritative identifier first — the row, the heading, the
+file — then classify each item, then assert the two counts match. A delta is
+the untriaged remainder, and it is surfaced rather than assumed clean. Twice in
+one session on 2026-08-28 a probe here dropped rows and looked healthy doing it:
+a currency-table scan filtered its header by matching text that three data rows
+also contained, silently reporting 10 of 13, and a grep for broken anchors
+truncated its output and missed one that the link checker later caught. `rebelytics`
+states the general form and this repo has now paid for it: an optional field is
+absent from exactly the entries most likely to need triage.
+
+**Verify a relocation in two tiers.** When a document is split or merged,
+"nothing was lost" is mechanically checkable and neither tier suffices alone —
+exact-matching alone cries wolf on re-wrapped lines, substance-matching alone
+misses real losses. Enumerate every non-empty line of the old base, exact-match
+each against the union of the new files, and substance-check the misses against
+a distinctive mid-line substring before concluding loss; then sanity-check word
+counts per file. Inventory the original's enforcement machinery separately —
+assertions, invariants, mandatory writes, defaults — because compression
+destroys those first, reading as redundancy. The 2026-08-28 journal split passes
+this: 447 non-empty lines, 0 unmatched.
+
 ## Give every rule a disposition
 
 One of: **已落地** (already true here), **採用**, **改造後採用**, **不採用**

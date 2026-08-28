@@ -2220,11 +2220,15 @@ class DocumentationBudgetTests(unittest.TestCase):
         """
         attributions = sorted((ROOT / "main").rglob("ATTRIBUTION.md"))
         self.assertTrue(attributions, "no attributions found")
-        # Not a fixed number: a new one should land without editing this test.
-        # What must not happen is the set silently shrinking, which is what
-        # deleting a notice while keeping the borrowing looks like from here.
+        # A floor, not a fixed number: a new derivation lands without editing
+        # this test, while the set shrinking - a notice deleted with its
+        # borrowing left in place - has to go red. The floor is therefore the
+        # current count, and the first draft got this wrong: it said 6 against
+        # an actual 7, which permitted exactly the single silent loss the
+        # assertion claims to catch. Retiring a distillation is a decision, so
+        # lowering this number is meant to cost an edit.
         self.assertGreaterEqual(
-            len(attributions), 6,
+            len(attributions), 7,
             "fewer attributions than known derivations; a notice was removed "
             "while its borrowing presumably stayed")
         for path in attributions:
