@@ -8,14 +8,24 @@
 # changes, "does the contract clause add anything" is a different question.
 #
 # Recompute: evals/scripts/trap-surface.py --trap s11-pointer-redundancy
+#
+# Groups are a reading of the same list, not a change to what is hashed: the
+# comment above already distinguishes the clause under test from the
+# descriptions it is compared against, and a stale stamp should say which of
+# those moved. `contract` invalidates a row; `skills` changes the question;
+# `machinery` and `scenarios` change how it was asked.
+[contract]
 main/claude/CLAUDE.contract.md
+[skills]
 main/claude/skills/baton-dispatch/SKILL.md
 main/claude/skills/provider-routing/SKILL.md
 main/.agents/skills/headroom-protocol/SKILL.md
+[machinery]
 evals/traps/s11-pointer-redundancy/arms.py
 evals/traps/s11-pointer-redundancy/grade.py
 evals/traps/s11-pointer-redundancy/run.py
 evals/traps/s11-pointer-redundancy/fixtures/build.py
+[scenarios]
 evals/traps/s11-pointer-redundancy/scenarios/h1-large-blob.md
 evals/traps/s11-pointer-redundancy/scenarios/h2-small-output.md
 evals/traps/s11-pointer-redundancy/scenarios/p1-cross-provider.md

@@ -571,11 +571,39 @@ beta 的請求必然來自 subagent. subagent 的請求體積在 8-10 KB 之間,
    frontmatter 接受並生效. 所以要把 `explore` / `mech-executor` 搬上 1M 是做得到
    的, 代價是 frontmatter 從 tier alias 改成具體 id, 與 `model-routing.py` 的
    「repo 永不送具體 id」契約衝突.
-3. **目前不需要搬**. usage-report 30 天資料裡 subagent/claude-sonnet-5 的每輪
-   prompt 是 p50 5.4% / p95 16.3% (1M 分母), 換算成真正的 200k 分母是
-   **27% / 81.5%**; 但 ledger 顯示本 repo 的 `explore` 中位 cache_read 只有
-   4.3 KB, 而 Claude Code 內建的 `Explore` 是 168 KB. 那條 p95 是內建 agent 撐出來
-   的, 不是 harness 的 pin. 真的要動再說.
+3. **目前不需要搬** —— 但支撐它的第二個理由在 2026-08-31 撤回了, 見下. usage-report
+   30 天資料裡 subagent/claude-sonnet-5 的每輪 prompt 是 p50 5.4% / p95 16.3%
+   (1M 分母), 換算成真正的 200k 分母是 **27% / 81.5%**.
+
+   ~~但 ledger 顯示本 repo 的 `explore` 中位 cache_read 只有 4.3 KB, 而 Claude Code
+   內建的 `Explore` 是 168 KB. 那條 p95 是內建 agent 撐出來的, 不是 harness 的 pin.~~
+
+   **撤回 (2026-08-31), 三個獨立的理由, 每一個單獨都足夠:**
+
+   - **168 KB 重現不出來.** 帳本裡 `Explore` 那 18 筆的中位是 **492,385**, 平均
+     1,616,281, 範圍 80,599 到 16,949,168 —— 沒有任何一個統計量接近 168,000. 使用者
+     確認該數字是模型生成或上游算的, 他自己也無法重現.
+   - **「Claude Code 內建的」是認錯對象.** 那 18 筆是**我方自己的派工**: 其中一筆
+     provider 是 codex / `gpt-5.6-terra`, task 標的是「repo review: docs/skills audit」
+     這類我方標籤, schema 還停在 v2. `Explore` 是 `explore` 的舊拼法 —— 寫入器裡
+     `LEGACY_ROLE_ALIASES = {"Explore": "explore"}` 明文寫著. 18 筆已回填成小寫.
+   - **切分軸根本是 task_class, 不是誰家的 agent.** 回填後照 task class 分:
+
+     ```text
+     explore / recon   n=17   中位 cache_read   492,385
+     explore / smoke   n=24   中位 cache_read     4,348
+     ```
+
+     所以那個比較是拿**我方的冒煙測試**對**我方的勘查**, 而 4.3 KB 這一側從來不代表
+     `explore` 的實際工作量.
+
+   **而最根本的一條**: `cache_read_tokens` 是一次派工跨回合的**累計**, 不是單次請求的
+   視窗佔用. 「要不要搬 1M」問的是後者 —— usage-report 的 p50/p95 量的正是那個. 所以
+   這兩個帳本數字**一開始就不是量這件事的儀器**, 換成正確的數字也一樣不能拿來回答.
+
+   **剩下什麼**: 第一句的 p50/p95 換算仍然成立, 而它本身就支持「不需要搬」. 失去的是
+   「p95 是內建 agent 撐出來的」那個解釋 —— 現在沒有證據說那條 p95 來自哪裡, 要知道得
+   另外量. 結論不變, 理由少一條.
 
 配套的量測陷阱, 記下來免得重踩. usage-report 是用 model id 去查視窗, 所以它把每
 一個 sonnet-5 subagent 都算成 1M 分母 — 對 sonnet leaf 而言那個百分比偏低 3 到 5

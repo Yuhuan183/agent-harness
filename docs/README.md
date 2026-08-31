@@ -58,6 +58,8 @@
 | 跨層 · 計畫 | [Engineering workflow 蒸餾實作計畫](plans/engineering-workflow-distillation.md) | 已核准方向, 分階段 scope, gates, rollback 與 completion criteria | 上游研究全文, 已部署狀態 |
 | 跨層 · 清單 | [Orchestration 不變量](plans/orchestration-state.md) | 八條必須成立的性質, 各自指向擁有者; 改動前後逐條檢查用 | 每條的論證與實作 (在四份層文件) |
 | 跨層 · 紀錄 | [Orchestration 決策歷程](plans/orchestration-history.md) | append-only, 依時間序; 保留原始措辭 | 當前狀態 (在不變量表) |
+| 跨層 · 證據 | [全語料盤點](research/landing-readiness.md) | 18 份研究文的落地就緒度: 覆蓋率, 六項發現 (其一已由自己的掃描撤回), 四項建議與明確不做 | 各文件的原始論證 (在原地) |
+| 跨層 · 清單 | [等證據的項目](plans/pending-evidence.md) | 每一項「等未來證據」的等待登記: 觸發事件與判定規則 | 條件原文與依據 (在各研究文原地) |
 
 ## Runtime 真相源
 

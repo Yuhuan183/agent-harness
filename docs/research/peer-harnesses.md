@@ -268,3 +268,67 @@ scope fix」. 那個 scope fix 是 release 之後的 commit
 - [Baton-dispatch effect Gate](https://github.com/Nanako0129/pilotfish/blob/v1.3.8/benchmarks/baton-dispatch-effect/README.md)
 - [Prompt-compression Gate](https://github.com/Nanako0129/pilotfish/blob/v1.3.8/benchmarks/prompt-compression/README.md), [budget.json](https://github.com/Nanako0129/pilotfish/blob/v1.3.8/benchmarks/prompt-compression/budget.json)
 - [Deep Agents documentation](https://docs.langchain.com/oss/python/deepagents/overview)
+
+
+## Pilotfish v1.4.0-v1.4.1: 政策從 CLAUDE.md 搬到 SessionStart 注入 (2026-08-31 拆解)
+
+讀的是 tag `v1.4.1` 的樹 (`4357cc3`), 不是發版說明. 質變在於**注入位置**: v1.3.x 靠使用者
+把 marker-fenced 區塊寫進 `~/.claude/CLAUDE.md`, v1.4 改成 Claude Code plugin, 由
+`SessionStart` hook 在 `startup|resume|clear|compact` 四個時機把整份政策 `cat` 到 stdout.
+
+### 量到的形狀
+
+```text
+plugin/policy/sessionstart.txt   685 字 / 8,951 字元 / 46 行   每次 session 起頭注入
+plugin/policy/ambient.md         653 字                        plugin 內的常駐副本
+本 repo CLAUDE.contract.md       495 字 / 3,293 字元           對照組
+```
+
+政策本文寫成極度壓縮的電報體 (`Main owns framing/architecture/ambiguity/Plan/approval/
+integration/judgment;roles provide bounded discovery/execution/fresh review.`), 分號與斜線
+取代連接詞. 這是**用可讀性換字數**的一種做法, 與本 repo「壓縮是降低 resident tax, 不是追求
+最短」的裁決正面相反 —— 我方 2026-08-08 那次量到「255 條短語斷言全數通過, 仍放進十二個
+語意缺陷」, 而那正是這種寫法最容易出的錯. 不採用.
+
+### hook 本身值得學的三件
+
+1. **fail-closed 是真的**: 六條前置檢查每一條都 `printf` 一則訊息然後 `exit 0`, 政策的
+   `cat` 只在全部通過之後才發生. 沒有任何一條路徑會在檢查失敗時仍然注入.
+2. **`PATH=/usr/bin:/bin` 釘死**, 且對 `grep` 的三種結束狀態逐一分派 —— `0` 命中即擋,
+   `1` 未命中即放行, **其餘一律當成檢查失敗而不是放行**. 這正是我方當天檢討的那個形狀
+   (探針壞掉的沉默不得讀成主體沒有), 而他們在 shell 層做對了.
+3. **輸出約定與 rebelytics 不同**: pilotfish 直接把純文字寫到 stdout, rebelytics 的建議是
+   輸出 `{"hookSpecificOutput":{"additionalContext":…}}` 的 JSON. 兩種都被 Claude Code 接受,
+   但形狀不同 —— 要自己做時得先確認哪一種在當前 client 版本生效, 不能照抄其中一份.
+
+### 對本 repo 待辦的影響
+
+[landing-readiness](landing-readiness.md) 的建議三 (SessionStart 注入當量測位置) 拿到了一個
+**可讀的實作**, 但三道關一道都沒被打開: pilotfish 沒有量過注入位置的效果, 它只是換了位置.
+所以這一輪買到的是實作參考, 不是證據.
+
+### 一條直接落地的發現
+
+hook 的第一條檢查是: `CLAUDE_CODE_SUBAGENT_MODEL` 非空就拒絕啟用, 理由寫在訊息裡 ——
+**它覆蓋每一個 agent 的 model frontmatter**. 本 repo 也把 model 釘在 role frontmatter,
+而當場查證: `SUBAGENT_MODEL` 在整個 repo **0 命中** (探針先用 `ANTHROPIC_BASE_URL` 做過
+陽性對照, 命中 3 檔). 本機該變數未設定, 所以沒有本機失效, 依「無 failing trap 無規則」
+不加規則.
+
+但我方**已有的偵測路徑會被它觸發**: `experience-log` 對「宣稱的 route 與 provider 紀錄
+不符」是硬拒絕的, 而該變數一旦設定, 每一次派工都會撞上那條拒絕 —— 而訊息指向的是
+dispatcher 的宣稱, 也就是唯一沒錯的那個東西, 讀的人會去翻 pins, 而 pins 是對的.
+
+所以落地的是**診斷而不是規則**: 該變數設定時, 拒絕訊息多一句點名它; 未設定時一個字都不加
+(每次都提示的線索不帶資訊). 測試
+`test_a_route_mismatch_names_the_env_var_that_causes_it` 兩個方向都斷言.
+
+**這是同業觀察, 不是我方量測**: 該變數會覆蓋 frontmatter 這件事是 pilotfish 的說法, 我方
+沒有獨立驗過 —— 依 README 上游表的類別欄, 同業的量測是它的契約在它的 client 上的觀察.
+診斷訊息的措辭因此寫成「這會產生正是這種不符」, 不寫成「這一定是原因」.
+
+### 沒有讀的
+
+`benchmarks/` 整個目錄 (baton-compatibility, baton-dispatch-effect, dispatch-brake 三組),
+`docs/research.md`, 七個 `plugin/agents/*.md` 的正文, 以及 `tests/` 三個檔. 角色定義只確認
+了檔名與 v1.3.x 相同 (七個角色未增減), 沒有逐字比對內容.

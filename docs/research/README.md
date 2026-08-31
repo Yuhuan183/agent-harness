@@ -95,22 +95,35 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 外部版本會變動, 引用前一律 live recheck. 蒸餾來源的 pin 有沒有被上游甩開, 跑
 `scripts/upstream-pin-report.py` —— 它從 ATTRIBUTION 推導, 不是另一張要維護的清單.
 
-| 來源 | 查核時的狀態 | 查核日 | 注意 |
-|---|---|---|---|
-| Pilotfish | latest release tag `v1.3.10`, tag commit `7a7f71b...`; 最後 push 2026-08-07 | 2026-08-21 | 上游發版頻率高於本文件重查頻率 - 四天內出了 v1.3.9 與 v1.3.10 兩版, 引用前先確認 tag. 逐版拆解與逐條裁決在 [peer-harnesses](peer-harnesses.md#pilotfish-v130-v1310) |
-| cablate/baton | release `v0.1.1` (2026-07-10); pin `0ab4d2ec5c69820001eeac2a12fab2c87fd3e943` 就是最後一個 commit (2026-07-16), 之後未動 | 2026-08-28 | `baton-dispatch` 的上游. 逐條核對後兩條沒有本地對應, 都已採用; 完整 pin 與核對表在 [peer-harnesses](peer-harnesses.md#cablatebaton-baton-dispatch-的上游) |
-| pilotfish-codex | release `1.7.1` (2026-08-11, 最後 push 同日); 自走版號, 與上游 v1.3.10 不可比 | 2026-08-21 | Codex CLI 分支, 不是翻譯. 七個角色與本專案只差 `scout`/`explore` 命名; 帶了一個本專案沒有的 review-service circuit breaker, 見 [peer-harnesses](peer-harnesses.md#pilotfish-codex-15-17-codex-cli-分支) |
-| Deep Agents | PyPI stable `0.7.7`; CLI `deepagents-code 0.1.58` (2026-08-19); `deepagents-acp 0.0.10` | 2026-08-20 | 三個 package 各自發版, 版本序不同步, 分開報. 兩週內主線是 session 身分穿過壓縮, 與本專案 `dispatch_id` 的載體同一件事, 見 [peer-harnesses](peer-harnesses.md#2026-08-20-重查-主線移到-session-身分) |
-| Headroom | PyPI `headroom-ai 0.36.1`; GitHub latest release tag `v0.36.1` (皆 2026-08-21); PR #1044 仍 open. **0.36.1 是安全性釋出** (外部評估 WEB-01–07, upstream #2207), 另修 proxy 重試耗盡時回 502 而非 200 (#3083) | 2026-08-21 | **只記上游, 不記本機.** 這是共用 repo, 各部署版本不同, 而本機版本寫進共用文件會在別台被讀成事實 —— 2026-08-21 查出 08-20 那批本機紀錄混了兩個部署, 詳見 [landing-log](landing-log.md) 的 0.36 與 08-21 兩則 (0.34 與 0.35 在 2026-08-28 拆檔後移到 [landing-log-earlier](landing-log-earlier.md)). 要知道自己那台跑什麼, 照 `main/.agents/docs/headroom-runtime.md` 開頭那四個來源當場問 |
-| mattpocock/skills | marketplace pin `885e2ca4d842d139e9aef4e48d366c63cb1b8013` (2026-08-17 解析); 預設分支 2026-08-28 在 `6654f6b60cd9d5be8b54c6fafe44346dabeb3b76`, 對 pin 前進 8 個 commit; release tag `v1.2.3` (2026-08-06); `plugin.json` version `1.2.3`; `skills/*/*/SKILL.md` 數 37, 其中 8 個在 `in-progress`; 每支 skill 各帶一份 `agents/openai.yaml` | 2026-08-28 | **版本號不會告訴你內容變了** - 08-14 到 08-17 之間 marketplace pin 前進 12 個 commit, 而 tag 與 version 沒動. 下次看什麼: 我們的兩個來源檔 blob id 有沒有變 (至今三輪重查都沒變), **再加一次 tree 形狀清點** - `agents/openai.yaml` 這條雙生規則從 2026-07-13 就在樹上, 三次只讀 diff 的重查全部沒看見, 見 [ledger 的 08-28 重查](upstream-distillation-ledger.md#2026-08-28-重查-上游再前進三個-commit-兩個來源檔仍然一個位元組沒動) |
-| Raymondhou0917/speak-human-tw | pin `ee860be6fb190cbc53dc1d45a2a47c9c9c680243` (2026-08-27 的 master); 對前一個 pin 前進 3 個 commit | 2026-08-28 | `readable-zh-tw` 的上游. 連續三輪都是機器人重畫星數圖: `2c27cca` -> head 共 38 個 commit 只動四個檔案, 六個來源檔逐位元組沒動. 下次看 `upstream-pin-report.py` 的 `touched` 那行有沒有 `assets/` 以外的路徑, 逐次處置在 [readable-zh-tw-upstream](readable-zh-tw-upstream.md) |
-| rebelytics/one-skill-to-rule-them-all | pin `281f13466cd3a73e9ebc9d210907748e1941a3dd` (`v2.0.0`); 最後 push 2026-07-17, 之後未動 | 2026-08-28 | `task-observer` 的上游. **「沒動」是結果, 不是「沒查」** - 這一列存在就是為了把兩者分開. 逐條處置在 [ledger](upstream-distillation-ledger.md#rebelyticsone-skill-to-rule-them-all-逐條處置-2026-08-28), 2026-08-28 補寫 —— 它曾是五個上游裡唯一沒有研究層紀錄的 |
-| `anthropics/claude-plugins-community` 的 `eli5` | path 最後 commit `863e70dc7cff21a2facc749e40a7ecd1a5d19833` (2026-08-21); marketplace 共 2,282 個 plugin 條目 | 2026-08-28 | 七條裡六條沒採; **同日 R1 的推翻條件 (a) 由使用者觸發**, 兩份 app prompt 的專家宣告一起改成「expert at my own work, not at every topic」. 落地的是改造版不是上游原句, 所以仍然沒有 ATTRIBUTION. 逐條裁決與新推翻條件在 [community-skills-survey.md](community-skills-survey.md) |
-| Claude Code client 的注入區塊 | `opus_5_prompt_bundle` 只掛在 `claude-opus-5` (catalog 17 個模型逐一查); `heron_brook` 的兩行預設文字在該機 2.1.247 生效中, `tengu_fennel_godwit=false`, `tengu_heron_brook` 未 cache | 2026-08-28 | **版本是機器本機的, 旗標是伺服器推的**, 兩邊都不該從這張表讀. 這一格只登記「有這個東西」; 當場查用 `~/.claude/scripts/prompt-bundle-report` (`weekly-integrity` 每週跑, 只在狀態移動時出聲), 完整取證在 [context-and-vendors.md](context-and-vendors.md) 的 08-28 節 |
-| Artificial Analysis Intelligence Index | **v4.1.1** (August 2026-current) | 2026-08-14 | 點版本會回溯重算全部分數 - v4.1.1 只換了 𝜏³-Banking 的 dataset 與三項評測的 grader, 前緣分數就整體上移約 2 分. 引用絕對值前先確認版本, 見 [model-evidence.md](model-evidence.md) |
-| `Sahir619/fable-method` | plugin `v1.4.0`; 最後一個 commit `88b5cf3` (2026-07-15); MIT; 未封存 | 2026-08-28 | **這一列是 2026-08-28 的對應性檢查補上的, 而它本來就該在.** 本 repo 2026-07-22 從它蒸餾了 INTENT/TWINS/AUTH 強制行與權威順序, QC fraud 清單, 以及 trap-fixture 做法, 但它**沒有 ATTRIBUTION 也沒有 pin**, 所以四個上游共用的每一道檢查都看不到它. 案例與逐條取捨在 [trap-experiments](trap-experiments.md#fable-method-案例-2026-07-22); 缺口與待辦見該節 |
-| OpenAI prompting guidance | [Latest model guide](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.6#prompting-best-practices) | - | 目前 canonical 文件 |
-| Anthropic context guidance | [Effective context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) | - | - |
+**類別欄決定一列能不能當證據用** (2026-08-31 加, 蒸餾自 `sepia` 的 `sources.md` 證據等級欄,
+改造成本 repo 的詞彙 —— 它的列多數是研究, 我們的多數是軟體):
+
+| 類別 | 意思 | 可以拿它做什麼 |
+|---|---|---|
+| 上游 | 我方從它蒸餾, 有 ATTRIBUTION 與 pin | 逐條處置的來源; **方法可借, 數字不可借** |
+| 同業 | 可比較的 harness, 只勘查未蒸餾 | 同上; 它的量測是它的契約在它的 client 上的觀察 |
+| 相依 | 我方實際在跑的工具 | 操作狀態, **不是證據來源** |
+| 研究 | 第三方量測或 benchmark | 可引用, 受其自述範圍限制 |
+| 供應商指引 | 供應商的規範性文件 | **是規範不是證據**; 它說該怎麼做, 不說做了會怎樣 |
+| 供應商製品 | 觀察到的供應商行為 | 本機且會過期, 引用要附觀察日與版本 |
+
+| 來源 | 類別 | 查核時的狀態 | 查核日 | 注意 |
+|---|---|---|---|---|
+| Pilotfish | 同業 | latest release tag **`v1.4.1`** (2026-08-27) | 2026-08-31 | **v1.4.0 起質變**: 變成原生 Claude Code Plugin, 政策從 `CLAUDE.md` 搬到 `SessionStart` hook 注入 (685 字電報體). 2026-08-31 已讀 tag 的樹逐項拆解, 見 [peer-harnesses](peer-harnesses.md#pilotfish-v140-v141-政策從-claudemd-搬到-sessionstart-注入-2026-08-31-拆解). v1.3.x 的逐版拆解在 [peer-harnesses](peer-harnesses.md#pilotfish-v130-v1310) |
+| cablate/baton | 上游 | release `v0.1.1` (2026-07-10); pin `0ab4d2ec5c69820001eeac2a12fab2c87fd3e943` 就是最後一個 commit (2026-07-16), 之後未動 | 2026-08-28 | `baton-dispatch` 的上游. 逐條核對後兩條沒有本地對應, 都已採用; 完整 pin 與核對表在 [peer-harnesses](peer-harnesses.md#cablatebaton-baton-dispatch-的上游) |
+| pilotfish-codex | 同業 | release 仍是 `1.7.1` (2026-08-11); 自走版號, 與上游 v1.4.1 不可比 | 2026-08-31 | Codex CLI 分支, 不是翻譯. 七個角色與本專案只差 `scout`/`explore` 命名; 帶了一個本專案沒有的 review-service circuit breaker, 見 [peer-harnesses](peer-harnesses.md#pilotfish-codex-15-17-codex-cli-分支) |
+| Deep Agents | 同業 | PyPI stable `0.7.11`; CLI `deepagents-code 0.1.65`; `deepagents-acp 0.0.11` | 2026-08-31 | 三個 package 各自發版, 版本序不同步, 分開報. 0.7.7→0.7.11 的內容差異未讀. 兩週內主線是 session 身分穿過壓縮, 與本專案 `dispatch_id` 的載體同一件事, 見 [peer-harnesses](peer-harnesses.md#2026-08-20-重查-主線移到-session-身分) |
+| Headroom | 相依 | PyPI `headroom-ai` **`0.37.0`** (2026-08-27; 0.36.1 後共五版). 0.36.4 `#3195` 安全修, 0.37.0 `#3305` WS token 強制; telemetry 改預設關閉的 opt-in, `#2085` 平行 subagent cache 污染修 (~4.4x cache-creation 膨脹), proactive expansion 出處標籤 —— 這四項**都在 0.37.0**, 同日對安裝版逐一查證過 (先前依 changelog 段落標題寫成「未釋出」是錯的, 更正記在 ledger). 讀數在 [ledger 08-31 重查](upstream-distillation-ledger.md#2026-08-31-重查-六個遠端全掃-一個上游第一次真的動了來源檔) | 2026-08-31 | **只記上游, 不記本機.** 這是共用 repo, 各部署版本不同, 而本機版本寫進共用文件會在別台被讀成事實 —— 2026-08-21 查出 08-20 那批本機紀錄混了兩個部署, 詳見 [landing-log](landing-log.md) 的 0.36 與 08-21 兩則 (0.34 與 0.35 在 2026-08-28 拆檔後移到 [landing-log-earlier](landing-log-earlier.md)). 要知道自己那台跑什麼, 照 `main/.agents/docs/headroom-runtime.md` 開頭那四個來源當場問 |
+| mattpocock/skills | 上游 | marketplace pin `885e2ca4d842d139e9aef4e48d366c63cb1b8013` (2026-08-17 解析); 預設分支 2026-08-31 仍在 `6654f6b60cd9d5be8b54c6fafe44346dabeb3b76` (與 08-28 同位, 這次真的沒動); release tag `v1.2.3` (2026-08-06); `plugin.json` version `1.2.3`; `skills/*/*/SKILL.md` 數 37, 其中 8 個在 `in-progress`; 每支 skill 各帶一份 `agents/openai.yaml` | 2026-08-31 | **版本號不會告訴你內容變了** - 08-14 到 08-17 之間 marketplace pin 前進 12 個 commit, 而 tag 與 version 沒動. 下次看什麼: 我們的兩個來源檔 blob id 有沒有變 (至今三輪重查都沒變), **再加一次 tree 形狀清點** - `agents/openai.yaml` 這條雙生規則從 2026-07-13 就在樹上, 三次只讀 diff 的重查全部沒看見, 見 [ledger 的 08-28 重查](upstream-distillation-ledger.md#2026-08-28-重查-上游再前進三個-commit-兩個來源檔仍然一個位元組沒動) |
+| Raymondhou0917/speak-human-tw | 上游 | pin `ee860be6fb190cbc53dc1d45a2a47c9c9c680243`; head `f9faca8a` (+3, touched 只有 `assets/`) | 2026-08-31 | `readable-zh-tw` 的上游. **連續四輪**都是機器人重畫星數圖, 來源檔逐位元組沒動. 下次看 `upstream-pin-report.py` 的 `touched` 那行有沒有 `assets/` 以外的路徑, 逐次處置在 [readable-zh-tw-upstream](readable-zh-tw-upstream.md) |
+| rebelytics/one-skill-to-rule-them-all | 上游 | pin `281f13466cd3a73e9ebc9d210907748e1941a3dd` (`v2.0.0`); head **`510caad2` (+35, 四個來源檔全動)** | 2026-08-31 | `task-observer` 的上游, **六個上游裡第一個真的動了來源檔的**. 3.0 改版把單檔 log 換成每觀察一檔 — 朝我方的形狀走; 上游同時改名 `task-observer`, 血緣方向未明, 同形全押佐證位. 新規則逐條在 [ledger 的 3.0 節](upstream-distillation-ledger.md#rebelytics-30-改版逐條-2026-08-31-上游朝我方的形狀走了過來); 08-28 舊版逐條在[原節](upstream-distillation-ledger.md#rebelyticsone-skill-to-rule-them-all-逐條處置-2026-08-28). pin 未動 — 三個新參考檔讀完才考慮推進 |
+| `anthropics/claude-plugins-community` 的 `eli5` | 同業 | path 最後 commit 仍是 `863e70dc7cff21a2facc749e40a7ecd1a5d19833` (2026-08-21, 未動); marketplace 仍 2,282 個條目, 而 repo 樹上只有 4 個 plugin 目錄 —— 其餘條目指向外部 repo. **path 是根目錄的 `eli5`, 不是 `plugins/eli5`**: 2026-08-31 兩次查空是查法錯了, 不是上游消失 | 2026-08-31 | 七條裡六條沒採; **同日 R1 的推翻條件 (a) 由使用者觸發**, 兩份 app prompt 的專家宣告一起改成「expert at my own work, not at every topic」. 落地的是改造版不是上游原句, 所以仍然沒有 ATTRIBUTION. 逐條裁決與新推翻條件在 [community-skills-survey.md](community-skills-survey.md) |
+| Claude Code client 的注入區塊 | 供應商製品 | `opus_5_prompt_bundle` 只掛在 `claude-opus-5` (catalog 17 個模型逐一查); `heron_brook` 的兩行預設文字在該機 2.1.247 生效中, `tengu_fennel_godwit=false`, `tengu_heron_brook` 未 cache | 2026-08-28 | **版本是機器本機的, 旗標是伺服器推的**, 兩邊都不該從這張表讀. 這一格只登記「有這個東西」; 當場查用 `~/.claude/scripts/prompt-bundle-report` (`weekly-integrity` 每週跑, 只在狀態移動時出聲), 完整取證在 [context-and-vendors.md](context-and-vendors.md) 的 08-28 節 |
+| Artificial Analysis Intelligence Index | 研究 | **v4.1.1** (August 2026-current) | 2026-08-14 | 點版本會回溯重算全部分數 - v4.1.1 只換了 𝜏³-Banking 的 dataset 與三項評測的 grader, 前緣分數就整體上移約 2 分. 引用絕對值前先確認版本, 見 [model-evidence.md](model-evidence.md) |
+| `Sahir619/fable-method` | 上游 | plugin `v1.4.0`; 最後一個 commit `88b5cf3` (2026-07-15); MIT; 未封存 | 2026-08-28 | **這一列是 2026-08-28 的對應性檢查補上的, 而它本來就該在.** 本 repo 2026-07-22 從它蒸餾了 INTENT/TWINS/AUTH 強制行與權威順序, QC fraud 清單, 以及 trap-fixture 做法, 但它**沒有 ATTRIBUTION 也沒有 pin**, 所以四個上游共用的每一道檢查都看不到它. 案例與逐條取捨在 [trap-experiments](trap-experiments.md#fable-method-案例-2026-07-22); 缺口與待辦見該節 |
+| `Nanako0129/sepia` 與上游論文 StoryScope | 上游 + 研究 | pin `4c8d782f89a6518c0da6c24d5a466733db5ef7ab` (2026-08-30); 論文 arXiv:2604.03136 v6 (2026-08-10); MIT | 2026-08-31 | **第六個上游, 第一個寫作方法類.** 專業文書側的逐條處置在 [ledger](upstream-distillation-ledger.md#nanako0129sepia-與其上游論文-storyscope-逐條處置-2026-08-31); 小說側與 release-notes 域不採用 (無 venue). 論文只獨立驗過摘要, 本文與血緣未查, 所有重合押在佐證位; 兩條待評估落地在 [pending-evidence](../plans/pending-evidence.md) |
+| OpenAI prompting guidance | 供應商指引 | [Latest model guide](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.6#prompting-best-practices) | - | 目前 canonical 文件 |
+| Anthropic context guidance | 供應商指引 | [Effective context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) | - | - |
 
 ## 方向與落地紀錄
 
@@ -186,7 +199,7 @@ cablate/baton 的「持續失敗就退回直接執行」—— 所以沒有停�
 skill 各一條規則. **還沒有證據的是效果**: ledger 裡目前沒有任何一次「派工後拿不到結果」的
 真實樣本, 所以這條規則是照兩個上游的經驗寫的, 不是照我們自己的.
 
-**2026-08-28 開了第二輪跨上游整合, 目前是準備狀態.** 第一輪只用了同業拆解那一份, 四份
+**2026-08-28 開了第二輪跨上游整合; 二, 三兩輪都已跑完 (2026-08-31 更正, 本句原本停在「目前是準備狀態」, 而下一段就在講第二輪的裁決).** 第一輪只用了同業拆解那一份, 四份
 本機實驗證據 (約 38,000 字) 沒進去; 第二輪問的是「同業的**說**與我們的**量**對不對得起來」.
 領頭假說連數字一起寫在開跑前, **當天就被自己的第三條推翻條件打掉**: 假說說「同業都在賭
 常駐規則的量」, 而 `baton` 根本不常駐 (它是有觸發詞的 skill), Pilotfish 更是反過來賭 ——
@@ -287,6 +300,8 @@ fable-method 的 1/4 是 [0.006, 0.806], 4/4 是 [0.398, 1.000], 重疊了一大
 | [trap-experiments.md](trap-experiments.md) | 可重播的失敗情境與反證 |
 | [lifecycle-replay.md](lifecycle-replay.md) | replay 的四項存活判準, 三個生命週期問題與結論 |
 | [clause-pricing.md](clause-pricing.md) | 從 lifecycle-replay 分出來的一條線: 能不能用產出品質給常駐子句定價 |
+| [landing-readiness.md](landing-readiness.md) | 全語料盤點: 18 份研究文合起來說現在該落地什麼, 含覆蓋率自述與四項建議. 2026-08-31 因為上一版落地評估只碰到 4 份而補做; 其中發現一在執行時被自己的掃描推翻, 撤回過程留在原地 |
+| [wording-effect-scale.md](wording-effect-scale.md) | 措辭效應能不能外推, 與量它的 INTENT 連續尺 (30 run 的最終帳). 2026-08-31 依主題從 cross-upstream-synthesis 第三輪拆出 |
 | [local-experiments.md](local-experiments.md) | 本機任務結果 |
 | [community-skills-survey.md](community-skills-survey.md) | 第三方社群 skill 的逐條裁決與整合方案 |
 | [landing-log.md](landing-log.md) | 每一次查核的原始紀錄與原始措辭, 含被後來證據推翻的段落; 2026-08-20 起 |
@@ -321,5 +336,5 @@ fable-method 的 1/4 是 [0.006, 0.806], 4/4 是 [0.398, 1.000], 重疊了一大
 
   **2026-08-17: 上一段的論證只涵蓋做減法的子句, 這一格因此重開了一半** ([clause-pricing.md](clause-pricing.md) 的 `v1`/`v2`). 驗證子句做的是加法 —— 跑一次程式產生的事實讀不出來 —— 所以它的結果品質可判, 而且**判準真的跑起來了**: grader 自己跑交付的函式, 40 個 run 零 invalid. 結果是天花板 (20/20 對 20/20, arm B 下界 0.832), 而原因是陷阱在閱讀距離之內: 15 個沒跑額外檢查的 run 全部直接讀了資料表. 由此得到**驗證類子句要能被定價, 那個事實必須在閱讀距離之外**. 這個 null 不 licence 這條子句無用, 也不 licence 關掉這條線.]
 - [UNCERTAIN: 方向排序是設計判斷, 不是實驗結果; 每條的「推翻條件」才是可檢驗的部分, 落地紀錄裡的查核結果同樣只在當時的 artifact 上成立.]
-- [UNCERTAIN: provider route cells 多數尚未達決策樣本門檻.]
+- [UNCERTAIN: provider route cells 多數尚未達決策樣本門檻. **2026-08-31 量了: 18 格中 6 格達標** (門檻是 `min_samples = 10`, 逐 role x task-class x provider, 不得跨 profile/model/effort 併樣本; 見 `experience-ledger/references/metrics.md`). 所以「多數未達」仍然成立, 三分之二在探索階段. 順帶查到一個要修的東西: `explore` 與 `Explore` 是**兩種拼法**, 各 27 與 17 筆. **當天更正**: 第一版寫「把樣本切開, 兩邊都因此離門檻更遠」, 那是錯的 —— 兩者的 `task_class` 不同 (`smoke` 對 `recon`), 從來沒有競爭同一格, 門檻讀數在正規化前後都是 6/18. 真正的問題是**往後**: 寫入器早有 `LEGACY_ROLE_ALIASES`, 新的 recon 派工會寫進 `explore/recon`, 而那 17 筆舊資料留在 `Explore/recon` 自成一格. 2026-08-31 已把 18 筆回填成 `explore` (備份留在帳本旁), 價值和量測面分組一樣是前瞻的.]
 - [UNCERTAIN: 外部 package, release, beta 與 PR 狀態會變動, 引用前必須 live recheck.]

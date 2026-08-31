@@ -398,6 +398,123 @@ class SharedSkillTests(unittest.TestCase):
         self.assertEqual(cohort["n"], 0)
         self.assertEqual(report["decision_records"], 0)
 
+    def test_a_route_mismatch_names_the_env_var_that_causes_it(self) -> None:
+        """The refusal is right; on its own it sends you to read the wrong file.
+
+        `CLAUDE_CODE_SUBAGENT_MODEL` overrides every agent's model frontmatter,
+        so with it set the provider runs a model the pins never chose and this
+        check fires on every dispatch. The message as written points at the
+        dispatcher's claim, which is the one thing that is not wrong, and the
+        pins look correct in the file. Surfaced by pilotfish v1.4.1, whose
+        SessionStart hook refuses to arm at all while the variable is set
+        (2026-08-31 teardown) - a peer observation, so the variable's effect is
+        theirs and the diagnosis is ours.
+
+        Only when it is set: an unset variable must add nothing, or the hint
+        becomes noise on every genuine mismatch.
+        """
+        base = ROOT / "main/.agents/skills/experience-ledger/scripts"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            pending = Path(temp_dir) / "pending.jsonl"
+            stage_attested_stop(pending, "s:a1", agent_type="executor",
+                                observed_model="claude-sonnet-5")
+            env = {**os.environ,
+                   "AGENT_EXPERIENCE_LEDGER": os.path.join(temp_dir, "l.jsonl"),
+                   "AGENT_EXPERIENCE_PENDING": str(pending),
+                   "AGENT_CLAUDE_RESOLVER":
+                       str(ROOT / "main/claude/scripts/model-routing")}
+
+            def refuse(extra_env: dict) -> str:
+                done = subprocess.run(
+                    [sys.executable, str(base / "experience-log"),
+                     "--from-pending", "--dispatch-id", "s:a1",
+                     "--outcome", "accepted", "--class", "impl",
+                     "--model", "claude-opus-5", "--profile", "quality",
+                     "--effort", "medium"],
+                    env={**env, **extra_env}, capture_output=True, text=True)
+                self.assertNotEqual(done.returncode, 0,
+                                    "a contradicted route must still be refused")
+                return done.stderr
+
+            with_var = refuse({"CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-5"})
+            self.assertIn(
+                "CLAUDE_CODE_SUBAGENT_MODEL", with_var,
+                "the refusal does not name the variable that is overriding the "
+                "pins, so the reader goes and checks the pins")
+
+            without = refuse({"CLAUDE_CODE_SUBAGENT_MODEL": ""})
+            self.assertNotIn(
+                "CLAUDE_CODE_SUBAGENT_MODEL", without,
+                "an unset variable must not be blamed; a hint on every "
+                "mismatch stops carrying information")
+
+    def test_a_record_says_whether_it_crossed_a_compressing_proxy(self) -> None:
+        """A cost reading taken through a compressor is not comparable to one
+        that was not, and until 2026-08-31 nothing recorded which it was.
+
+        The bill arrived that day. Headroom's #2085 - parallel subagents
+        sharing a fallback session id, so the frozen prefix churns and reads
+        become writes - was live on this machine until 0.37.0, and the trap
+        batches of 2026-08-28 went through it: 361 requests in the proxy log
+        that day. The question that could not be answered afterwards was not
+        how far the numbers moved but *which rows to even ask about*, because
+        no field said whether a row crossed a proxy at all.
+
+        Three states, and the third is the point: `direct` is a positive
+        finding, a named proxy is a positive finding, and a **missing** field
+        means the row predates this and must never be read as `direct`.
+        Recording only the first two would make every old row look clean.
+
+        Detection is from the logging process's environment, which is the
+        dispatching session's environment in the ordinary case. It is not a
+        network probe with teeth: a proxy that does not answer still yields a
+        positive "there was one", because failing open to `direct` would
+        invent the exact reading this field exists to prevent.
+        """
+        base = ROOT / "main/.agents/skills/experience-ledger/scripts"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ledger = os.path.join(temp_dir, "experience.jsonl")
+            env = {**os.environ, "AGENT_EXPERIENCE_LEDGER": ledger,
+                   "AGENT_CLAUDE_RESOLVER":
+                       str(ROOT / "main/claude/scripts/model-routing")}
+            env.pop("ANTHROPIC_BASE_URL", None)
+            env.pop("OPENAI_BASE_URL", None)
+
+            def log(extra_env: dict) -> dict:
+                Path(ledger).unlink(missing_ok=True)
+                subprocess.run(
+                    [sys.executable, str(base / "experience-log"),
+                     "--role", "executor", "--provider", "claude",
+                     "--outcome", "accepted", "--class", "smoke",
+                     "--task", "probe", "--request-source", "claude-code"],
+                    env={**env, **extra_env}, check=True,
+                    capture_output=True, text=True)
+                return json.loads(Path(ledger).read_text(encoding="utf-8")
+                                  .splitlines()[-1])
+
+            direct = log({})
+            self.assertEqual(
+                direct.get("context_proxy"), "direct",
+                "with no proxy in the environment the record must say so "
+                "positively, not by omission")
+
+            # An unreachable port is the honest hard case: something was in
+            # front of the model and its identity is unknown.
+            through = log({"ANTHROPIC_BASE_URL": "http://127.0.0.1:9/"})
+            self.assertTrue(
+                str(through.get("context_proxy", "")).startswith("proxy"),
+                "a base URL override means traffic crossed something; the "
+                "record must not call that direct")
+
+            # The rule the reader depends on, asserted on the source of the
+            # reader rather than left as a convention.
+            metrics = (ROOT / "main/.agents/skills/experience-ledger"
+                       / "references" / "metrics.md").read_text(encoding="utf-8")
+            self.assertIn(
+                "context_proxy", metrics,
+                "the field is undocumented, so nothing tells a reader that a "
+                "missing value is unknown rather than direct")
+
     def test_experience_scripts_log_and_report(self) -> None:
         base = ROOT / "main/.agents/skills/experience-ledger/scripts"
         with tempfile.TemporaryDirectory() as temp_dir:

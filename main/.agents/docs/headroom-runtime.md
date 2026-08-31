@@ -124,6 +124,11 @@ Claude App 使用 OAuth 直連, 不經 proxy, 只能透過 MCP 做手動文字�
   永遠不會被延後載入, agent loop 不受影響. 若採 always-on routing (下面的
   `persistent-service`), 這個變數要跟 base URL 一起常駐, 否則原生 `claude` 會在沒有 deferral
   的情況下走 proxy.
+
+  **一個例外要知道**: `true` 對獨立的 Claude CLI 是對的, 但它會弄壞 Anthropic VSCode
+  擴充套件 webview 的 tool-result 顯示. 常駐安裝要單獨關掉那一個 target 時, 改 manifest 的
+  `tool_envs.claude.ENABLE_TOOL_SEARCH` 為 `"false"` —— `tool_envs` 是逐 target 的環境
+  覆寫, 不影響其他入口, 也不必為此把整個 deferral 關掉.
 - **Codex**: 需要 Headroom 時使用 `hcodex`; Auto Mode 使用 `hcodex-auto`. 底層是 `headroom wrap codex`, 不依賴預先存在的永久 provider.
 - **Antigravity CLI**: 原生 Auto Mode 使用 `agy-auto` (`agy --mode accept-edits`). Headroom 入口保留為 `hagy`/`hagy-auto`, 但會先確認安裝版本真的提供 `headroom wrap agy`; 沒有就 exit 127, 不能降級成未壓縮的 `agy`.
 - **權限**: 一般自動執行分別使用 Claude `--permission-mode auto`, Codex `-a on-request -s workspace-write`, Antigravity `--mode accept-edits`. `--dangerously-skip-permissions` 與 `--dangerously-bypass-approvals-and-sandbox` 不是 Auto Mode, 也不是 Headroom 的必要參數; 只有外層已有隔離環境時才能針對單次任務明確選用. 可重用的 shell functions 見 `docs/setup.md`.
@@ -138,6 +143,28 @@ Claude App 使用 OAuth 直連, 不經 proxy, 只能透過 MCP 做手動文字�
   從 `persistent-task` 轉換時, 先確認原 profile 的預期設定, 再以相同選項重新
   `headroom install apply`, 只把 `--preset` 改為 `persistent-service`. 不要只複製別台
   機器的 profile, port 或 provider 值.
+
+- **`Deployment '<profile>' did not become ready after start.` 不等於部署壞了.**
+  `restart` 與 `apply` 在啟動後等一個固定的就緒視窗 (目前 45 秒, 前面另有一段 15 秒的
+  「本來就在跑」判定), 逾時就丟這個訊息並以非零結束. 但 launchd 的 plist 帶
+  `KeepAlive=true`, 它會照自己的節奏把 runner 拉起來 —— 於是 CLI 已經放棄之後, 常駐行程
+  才真的起來, 兩邊都沒有錯, 只是不同步. **這個訊息報的是 CLI 的等待視窗, 不是部署的死活.**
+
+  所以看到它不要急著重跑 `apply` (那會再一次 bootout, 把剛起來的行程又打掉). 照本文件
+  開頭那四個來源當場問, 判準是**啟動橫幅的版本與時間**:
+
+  ```bash
+  headroom install status                              # Status/Healthy
+  curl -s http://127.0.0.1:8787/health                 # ready + uptime_seconds
+  grep "Proxy started" ~/.headroom/logs/proxy.log | tail -1
+  ```
+
+  橫幅時間比 manifest 的 `updated_at` 晚, 且 `/health` 回 `ready:true`, 就是上面那個
+  時序, 收工. 若橫幅版本仍是舊的, 那才是真的沒載入新版.
+
+  **殘留物不用清.** `runner.start.lock` 裡可能留著一個已經死掉的 PID: 那個檔案是
+  `flock` 的載體, 鎖隨著持有它的行程結束由 kernel 釋放, 檔案裡的 PID 只是給人看的。
+  手動刪它沒有必要, 也不會讓下一次啟動更順.
 - **套件管理**: CLI 由 `uv tool` 與 uv 管理的 Python 提供, `~/.local/bin/headroom` 是 MCP 設定應使用的絕對路徑.
 - **升級**: 先執行 `headroom update --check`, 再用 `headroom update` 或
   `uv tool upgrade headroom-ai`. 升級後重開 wrapped session; `persistent-service` profile

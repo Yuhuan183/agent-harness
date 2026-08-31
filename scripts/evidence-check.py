@@ -25,7 +25,8 @@ that most of this repo's evidence citations had quietly stopped resolving.
    this instrument was measuring.
 
 2. **Trap evidence age.** Each trap declares its measured surface in
-   `surface.tsv`; result rows stamped `[surface <short>]` are compared against
+   `surface.tsv`; result rows stamped `[surface <short>]` (with `group:digest`
+   pairs since 2026-08-31, `archived` once retired) are compared against
    the current fingerprint. A row whose stamp no longer matches is not wrong, it
    is *undated* - it measured rules that have since changed, and saying so is the
    whole point. Rows with no stamp predate the mechanism and count as unverified.
@@ -79,7 +80,45 @@ UPSTREAM_REPO = re.compile(
     r"Nanako0129/pilotfish|marketplace|upstream pin|上游|marketplace pin",
     re.IGNORECASE)
 FINGERPRINT_WORD = re.compile(r"指紋|fingerprint|surface", re.IGNORECASE)
-STAMP = re.compile(r"\[surface ([0-9a-f]{8})\]")
+# Two stamp generations share the prefix. The 2026-08-31 form appends
+# `group:digest` pairs so a stale stamp can name which half moved without
+# resolving itself through git history - resolution dies with a history
+# rewrite, and one is already on the table for this repository. `archived`
+# marks a row whose staleness has been read and retired: still stamped (the
+# row did record its surface), no longer reported stale (a permanent alarm is
+# the same as no instrument).
+STAMP = re.compile(r"\[surface ([0-9a-f]{8})((?: [a-z][a-z0-9-]*:[0-9a-f]{8})*)\]")
+ARCHIVED_STAMP = re.compile(r"\[surface ([0-9a-f]{8})(?: [a-z][a-z0-9-]*:[0-9a-f]{8})* archived\]")
+
+
+def stamp_census(text: str, current: str, groups: dict[str, str]) -> dict[str, object]:
+    """Count and read every stamp in one README against the shipping bytes.
+
+    Pure over its inputs so the reading is testable without a repository.
+    `naming` holds, for each stale stamp that carries group digests, the groups
+    whose digest moved and the groups whose digest held - the comparison is
+    against the *current* per-group digests, no git walk involved. Reported,
+    not judged, for the same reason `groups_of` reports: which groups matter
+    is the reader's question (`e5` is decided by its competitors).
+    """
+    archived = ARCHIVED_STAMP.findall(text)
+    live = [(overall, dict(part.split(":") for part in carried.split()))
+            for overall, carried in STAMP.findall(text)]
+    naming = []
+    for overall, carried in live:
+        if overall == current or not carried:
+            continue
+        naming.append({
+            "stamp": overall,
+            "moved": sorted(g for g, d in carried.items() if groups.get(g) != d),
+            "held": sorted(g for g, d in carried.items() if groups.get(g) == d)})
+    return {
+        "stamps": [overall for overall, _ in live],
+        "archived": len(archived),
+        "current_stamps": sum(1 for overall, _ in live if overall == current),
+        "stale_stamps": sum(1 for overall, _ in live if overall != current),
+        "naming": naming,
+    }
 URL = re.compile(r"https?://")
 
 # A verification verb next to an ISO date. Both halves are required: a bare date
@@ -313,7 +352,6 @@ def audit_traps(drift: bool = False) -> list[dict[str, object]]:
             continue
         readme = listing.parent / "README.md"
         text = readme.read_text(encoding="utf-8") if readme.exists() else ""
-        stamps = STAMP.findall(text)
         # Result rows are counted by their date prefix, which is how s7-s10
         # write them. s11 reports a batch as one stamped block instead, so the
         # count would be zero while a stamp exists - and subtracting one from
@@ -338,15 +376,23 @@ def audit_traps(drift: bool = False) -> list[dict[str, object]]:
             groups = module.group_fingerprints(trap)
         except Exception:
             groups = {}
+        census = stamp_census(text, current, groups)
+        stamps = census["stamps"]
         record = {
             "trap": trap,
             "current": current,
             "groups": groups if len(groups) > 1 else {},
             "result_rows": len(dated_rows),
-            "stamped": len(stamps),
-            "current_stamps": sum(1 for stamp in stamps if stamp == current),
-            "stale_stamps": sum(1 for stamp in stamps if stamp != current),
-            "unstamped_rows": max(0, len(dated_rows) - len(stamps)),
+            # Archived rows stay counted as stamped: the row did record its
+            # surface, and dropping it here would read as a new unstamped row
+            # to the per-trap ceiling.
+            "stamped": len(stamps) + census["archived"],
+            "archived": census["archived"],
+            "current_stamps": census["current_stamps"],
+            "stale_stamps": census["stale_stamps"],
+            "stale_naming": census["naming"],
+            "unstamped_rows": max(
+                0, len(dated_rows) - len(stamps) - census["archived"]),
             "convention_began": began,
             "predating_rows": predating,
         }
@@ -409,10 +455,34 @@ def surface_drift(module, trap: str, stamp: str, short: int) -> dict:
         changed = subprocess.run(
             ["git", "diff", "--name-only", commit, "HEAD", "--", *paths],
             capture_output=True, text=True, cwd=module.ROOT)
+        moved = sorted(changed.stdout.split())
         return {"commit": commit[:12],
-                "changed": sorted(changed.stdout.split()),
+                "changed": moved,
+                "changed_groups": groups_of(module, trap, moved),
                 "surface_size": len(paths)}
-    return {"commit": None, "changed": [], "surface_size": len(paths)}
+    return {"commit": None, "changed": [], "changed_groups": [],
+            "surface_size": len(paths)}
+
+
+def groups_of(module, trap: str, paths: list[str]) -> list[str]:
+    """Which declared groups the changed paths fall in.
+
+    This is the half of grouping that answers a stale stamp. The per-suite
+    group digests say which parts differ *now*; a reader looking at a stale row
+    is asking something else - did the bytes this result was measured against
+    move, or did something it never depended on move - and that is a comparison
+    against the stamp's own revision, which `surface_drift` has already found.
+
+    Deliberately reported rather than judged. A change in `competitors` usually
+    does not invalidate a row and a change in `contract` usually does, but
+    "usually" is not a verdict a script gets to reach: `e5` is decided by the
+    competing descriptions, so for that cell the competitor group is the tested
+    one. The mapping is stated and the reading stays with the person.
+    """
+    owner = {path: group
+             for group, listed in module.surface_groups(trap).items()
+             for path in listed}
+    return sorted({owner[path] for path in paths if path in owner})
 
 
 def local_version(tool: str) -> str | None:
@@ -596,7 +666,14 @@ def main() -> int:
               f"stamps {row['stamped']:>2}  "
               f"current {row['current_stamps']:>2}  "
               f"stale {row['stale_stamps']:>2}  "
+              f"archived {row.get('archived', 0):>2}  "
               f"unstamped {row['unstamped_rows']:>3}")
+        for entry in row.get("stale_naming", []):
+            # A stamp of the 2026-08-31 generation answers the follow-up
+            # itself, against current bytes rather than through git history.
+            print(f"      stale {entry['stamp']}: "
+                  f"moved [{', '.join(entry['moved'])}]  "
+                  f"held [{', '.join(entry['held'])}]")
         if row.get("groups"):
             # The follow-up a stale stamp raises. Printed only where a listing
             # declares groups, so the line appears where it says something.
@@ -618,8 +695,14 @@ def main() -> int:
                       "reproduces it (rebased, or predates a listed file)")
                 continue
             moved, listed = len(entry["changed"]), entry["surface_size"]
+            # Groups before the file list, because it is the shorter answer and
+            # usually the one that decides whether to read further: a row whose
+            # tested group held is a different situation from one whose did not,
+            # and that is invisible in a list of forty filenames.
+            where = (f" [{', '.join(entry['changed_groups'])}]"
+                     if entry.get("changed_groups") else "")
             print(f"      {entry['stamp']} = {entry['commit']}, "
-                  f"{moved} of {listed} surface file(s) moved since:")
+                  f"{moved} of {listed} surface file(s) moved since{where}:")
             for path in entry["changed"][:DRIFT_LIST]:
                 print(f"        {path}")
             if moved > DRIFT_LIST:

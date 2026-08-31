@@ -186,7 +186,7 @@ traps measure the contract alone. Results do not transfer between them.
 
 ## Part 2 — the three lifecycle questions
 
-First batch 2026-08-12, 15 runs, `[surface f7672aba]`.
+First batch 2026-08-12, 15 runs, `[surface f7672aba archived]`.
 
 ```
 r1-interrupted-resume       5/5 correct    exact 95% CI [0.478, 1.000]
@@ -340,7 +340,7 @@ The question s11 built `b1` to ask and could not: does a contract clause naming
 a skill do anything the skill's own `description` does not, on the dispatch
 path? Arms are s11's, built by its `arms.py`; the decision rule is s11's.
 
-21 runs, `[surface f6a99ff0]`.
+21 runs, `[surface f6a99ff0 archived]`.
 
 ```
 cell                   arm A       arm B       arm C     contract mentions
@@ -382,7 +382,7 @@ its refutation condition is a case where a client instruction and the contract
 contradict each other and the contract still wins. That was read as needing to
 wait for one to happen. It does not — it can be built.
 
-25 runs, `[surface 843e9423]`.
+25 runs, `[surface 843e9423 archived]`.
 
 ```
 p1-language         contract wins 5/5    (Chinese prompt)
@@ -495,7 +495,7 @@ never applied: a **PASS** against the policy's explicit discretion, a
 right answers, so noticing the smell and judging it against a rule come apart.
 Answering the same word eleven times tops out at 5.
 
-**Arm A, 5 runs, `[surface 09992ee9]`:**
+**Arm A, 5 runs, `[surface 09992ee9 archived]`:**
 
 ```
 label_score      [11, 11, 11, 11, 11] of 11     mean 11.00
@@ -1325,7 +1325,7 @@ is the rest of the same discipline — a rate with no artifacts anywhere is the
 
 M5 deployed `evidence-debugging` and `test-first-change` on 2026-08-17. Six cells,
 n=5, arm A, pre-registered in the distillation plan before the first run.
-**30 runs, `[surface c2308e2f]`** — one fingerprint across all thirty, because the
+**30 runs, `[surface c2308e2f archived]`** — one fingerprint across all thirty, because the
 tree did not move during the batch.
 
 | Cell | valid | correct | invalid | 95% CI on valid runs |
@@ -1429,8 +1429,8 @@ skills. Whether either body is any good is still unknown.
 
 `e1` is passable now, and the numbers below are the first on this cell that mean
 anything. Surfaces differ by cell because the tree moved between batches, and each
-run carries its own stamp: `e1`/`e1x` on `[surface 33a02fc1]`, `e2` on
-`[surface 5a6a897c]`, the rest on `[surface c2308e2f]`.
+run carries its own stamp: `e1`/`e1x` on `[surface 33a02fc1 archived]`, `e2` on
+`[surface 5a6a897c archived]`, the rest on `[surface c2308e2f archived]`.
 
 | Cell | valid | correct | 95% CI | skills loaded |
 |---|---:|---:|---|---|

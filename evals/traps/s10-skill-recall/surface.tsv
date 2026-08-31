@@ -16,6 +16,10 @@
 # through the symlinks, but only one spelling can be checked for completeness.
 #
 # Recompute: evals/scripts/trap-surface.py --trap s10-skill-recall
+#
+# Groups: `skills` is the option set under test (the descriptions competing);
+# `machinery` is the brief and the judge.
+[skills]
 main/claude/skills/baton-dispatch/SKILL.md
 main/claude/skills/evidence-debugging/SKILL.md
 main/claude/skills/evidence-ladder/SKILL.md
@@ -25,5 +29,6 @@ main/claude/skills/provider-routing/SKILL.md
 main/claude/skills/readable-zh-tw/SKILL.md
 main/claude/skills/task-observer/SKILL.md
 main/claude/skills/test-first-change/SKILL.md
+[machinery]
 evals/traps/s10-skill-recall/briefs/arm-a-leaf-brief.md
 evals/traps/s10-skill-recall/grade.py

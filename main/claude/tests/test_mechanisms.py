@@ -2454,6 +2454,116 @@ class TrapGraderIntegrityTests(unittest.TestCase):
         self.assertNotIn("--report", s11,
                          "s11 now takes a report, so it belongs in the set above")
 
+    def test_drift_names_the_groups_that_moved_not_only_the_files(self) -> None:
+        """The half of grouping that pays, and it needs no format change.
+
+        Grouping alone tells a reader which parts of the surface differ *now*.
+        It does not answer the question a stale stamp actually raises - did the
+        bytes this row was measured against move, or did something it never
+        depended on move - because that is a comparison between the stamp's
+        revision and HEAD.
+
+        `surface_drift` already resolves a stamp to the commit that produced it
+        and diffs the listed paths, so the answer is a mapping away: put each
+        changed path in its group. No stamp has to be rewritten, which matters
+        because the sixteen that exist were the reason grouping had to be free
+        in the first place.
+        """
+        module = load_module(
+            "evidence_check", ROOT / "scripts" / "evidence-check.py")
+        surface = load_module(
+            "trap_surface", ROOT / "evals" / "scripts" / "trap-surface.py")
+
+        declared = set(surface.surface_groups("replay"))
+        self.assertGreater(len(declared), 1, "replay declares no groups to map")
+
+        # The 2026-08-31 archival retired every stale stamp from the READMEs,
+        # so the specimen is synthesized instead: walk the surface's own
+        # history for a revision whose fingerprint differs from HEAD's. That
+        # guarantees a resolvable stale stamp, which the README-dependent first
+        # version of this test could not.
+        current = surface.fingerprint("replay")[0][:surface.SHORT]
+        listing = surface.listing_for("replay").relative_to(
+            surface.ROOT).as_posix()
+        log = subprocess.run(
+            ["git", "log", "--format=%H", "--",
+             listing, *surface.surface_paths("replay")],
+            capture_output=True, text=True, cwd=surface.ROOT)
+        stale = None
+        for commit in log.stdout.split():
+            try:
+                at = surface.fingerprint("replay", at=commit)[0][:surface.SHORT]
+            except surface.SurfaceIncomplete:
+                continue
+            if at != current:
+                stale = at
+                break
+        self.assertIsNotNone(
+            stale, "every historical fingerprint equals HEAD's, so either the "
+            "surface never changed or the walk is broken")
+
+        entry = module.surface_drift(surface, "replay", stale, surface.SHORT)
+        self.assertTrue(entry["commit"], "a fingerprint computed from history "
+                        "must resolve back to the commit that produced it")
+        self.assertTrue(entry["changed"], "the fingerprint differs from HEAD's "
+                        "yet no listed file changed")
+        self.assertIn(
+            "changed_groups", entry,
+            "drift reports changed files without saying which groups they "
+            "belong to, which is the question a stale stamp asks")
+        self.assertTrue(
+            entry["changed_groups"],
+            "files changed but no group named, so the mapping silently "
+            "dropped them")
+        self.assertLessEqual(
+            set(entry["changed_groups"]), declared,
+            "drift names a group the listing does not declare")
+
+    def test_a_stamp_carries_group_digests_the_census_reads_without_git(self) -> None:
+        """The 2026-08-31 stamp generation, and why it exists.
+
+        A stale stamp used to answer "which half moved" by resolving itself
+        back through git history to the commit that produced it. Resolution
+        dies with a history rewrite, and one is already on the table for this
+        repository. So a grouped surface's stamp carries each group's digest,
+        and the census compares those against the shipping bytes directly; an
+        `archived` stamp stays counted as stamped without ringing stale, which
+        is what lets a permanently-stale board be retired instead of ignored.
+        """
+        check = load_module(
+            "evidence_check", ROOT / "scripts" / "evidence-check.py")
+        surface = load_module(
+            "trap_surface", ROOT / "evals" / "scripts" / "trap-surface.py")
+
+        stamp = surface.stamp("replay")
+        matched = check.STAMP.search(stamp)
+        self.assertIsNotNone(
+            matched, "the tool prints a stamp its own reader cannot parse")
+        overall, carried_text = matched.groups()
+        current = surface.fingerprint("replay")[0][:surface.SHORT]
+        groups = surface.group_fingerprints("replay")
+        self.assertEqual(overall, current)
+        self.assertEqual(
+            dict(part.split(":") for part in carried_text.split()), groups,
+            "the stamp's group digests are not the groups' digests")
+
+        # Move one group and the overall: the census must name that group as
+        # moved and the others as held, with no repository in sight.
+        doctored = stamp.replace(current, "f" * 8).replace(
+            groups["contract"], "0" * 8)
+        census = check.stamp_census(doctored, current, groups)
+        self.assertEqual(census["stale_stamps"], 1)
+        self.assertEqual(census["naming"][0]["moved"], ["contract"])
+        self.assertEqual(census["naming"][0]["held"],
+                         sorted(name for name in groups if name != "contract"))
+
+        census = check.stamp_census("[surface deadbeef archived]",
+                                    current, groups)
+        self.assertEqual(
+            (census["stamps"], census["stale_stamps"], census["archived"]),
+            ([], 0, 1),
+            "an archived stamp must be counted and must not ring stale")
+
     def test_declaring_surface_groups_does_not_move_the_fingerprint(self) -> None:
         """Round two's finding one, landed: which half moved, not just "moved".
 
@@ -2517,7 +2627,7 @@ class TrapGraderIntegrityTests(unittest.TestCase):
     def test_the_intent_scale_separates_the_three_observed_failure_shapes(self) -> None:
         """A boolean cannot bound a residual; this is the scale that can.
 
-        Round three (2026-08-28, `cross-upstream-synthesis.md`) found that every
+        Round three (2026-08-28, `wording-effect-scale.md`) found that every
         wording claim in this corpus and in three upstreams rests on binary
         compliance, and a binary measure demonstrates a large effect while being
         structurally unable to put a floor under what remains. The `INTENT:`

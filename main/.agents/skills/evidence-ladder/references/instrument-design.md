@@ -81,3 +81,32 @@ different phenomenon than you think, confidently and precisely**. Two recurring 
   precision than the target runtime — and disappears where users actually are.
 
 Both look like clean signal. Only the control and negative cases separate them from a finding.
+
+
+## The positive control, and why one-liners evade it
+
+An absence claim is only as good as the probe's reach. Before writing "there is
+no X", point the same probe at a case that must hit and confirm it does; then
+report what the probe covered, not only what it returned.
+
+The rule is easy to accept and easy to skip, because an ad-hoc one-liner does
+not feel like an instrument. Six absence readings were acted on in a single day
+(2026-08-31; the retrospective is in `docs/research/landing-log.md` of the
+agent-harness repo), and every one was a one-liner. The shapes repeat:
+
+| Shape | What it looked like | What it actually said |
+|---|---|---|
+| Alphabet or language too narrow | An English-only pattern over a bilingual tree reported zero | Zero *in English*. The rule was there, in the other language |
+| Range stopped short | A line window ended five lines above the answer | Nothing in **those lines**, read as nothing in the document |
+| Parameter supplied from memory | A threshold and a grouping invented, while an authoritative definition sat one read away | A different question, answered precisely |
+| Frames mixed | UTC timestamps compared against a local-time cutoff | An eight-hour window classified backwards |
+| Extrapolated past the measurement | Two cohorts existing, read as two cohorts competing | Existence, not competition -- the field that decides it was never read |
+
+Two things make these expensive out of proportion to their size. A silence is
+**publishable** in a way a positive is not: a positive finding invites a check
+of its own, an absence tends to be written straight into a conclusion. And an
+absence claim is usually the *premise of a plan* -- "nothing covers this, so
+build it" -- so the error is discovered after the work, not before.
+
+The cheap defence is a habit, not a tool: whenever a probe returns nothing,
+spend one more command proving it can return something.

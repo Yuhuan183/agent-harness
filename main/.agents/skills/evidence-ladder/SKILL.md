@@ -68,6 +68,18 @@ A new measuring tool must pass both halves before its output counts:
 Skipping this is how a confident, precise, wrong number gets acted on. If the first readings from a
 new instrument are surprising, suspect the instrument before the system.
 
+### An absence claim is worth what the probe covered
+
+Both checks above guard a false positive. An absence claim -- "no hits", "not
+present", "it never fires" -- fails the other way: a probe that cannot reach
+the answer goes silent for the same reason a clean subject does. Run the
+**positive control** first, against a case that must hit.
+
+**A one-liner is an instrument** -- a `grep`, a `sed` range, a one-line
+aggregation. None of them announces itself as a measuring tool, which is how
+they go uncalibrated. The shapes that keep evading this are in
+`references/instrument-design.md`.
+
 ### A test never seen red is not evidence
 
 Before claiming a test proves a fix:

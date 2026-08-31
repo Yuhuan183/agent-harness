@@ -22,6 +22,10 @@ __pycache__/
 #headroom
 .tokensave
 .claude/.headroom_wrap_marker.json
+# Live wrap state: holder PIDs and port for the env vars wrap owns, plus its
+# settings lock. Machine-local by the same rule as the marker above.
+.claude/.headroom_wrap_owners.json
+.claude/.headroom_wrap_settings.lock
 .serena/
 # s11 run artifacts: event streams are large, machine-specific, and the results
 # table plus per-run .meta.json carry everything a reader needs.

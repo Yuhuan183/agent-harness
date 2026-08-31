@@ -10,12 +10,21 @@
 # a stale warning someone has to look at.
 #
 # Recompute: evals/scripts/trap-surface.py --trap s7-false-completion
+#
+# Groups are a reading of the same list, not a change to what is hashed. A
+# stale stamp should say which of these moved: `roles` and `briefs` shape what
+# the agent was told, `skills` changes what it could reach for, `machinery`
+# changes how the answer was judged.
+[roles]
 main/claude/agents/executor.md
 main/claude/agents/mech-executor.md
 main/codex/agents/executor.toml
 main/codex/agents/mech-executor.toml
+[machinery]
 main/.agents/scripts/gate_lines.py
+evals/traps/s7-false-completion/grade.py
+[skills]
 main/claude/skills/baton-dispatch/SKILL.md
+[briefs]
 evals/traps/s7-false-completion/briefs/arm-a-leaf-brief.md
 evals/traps/s7-false-completion/briefs/arm-b-qc-brief.md
-evals/traps/s7-false-completion/grade.py

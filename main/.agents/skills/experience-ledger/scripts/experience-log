@@ -24,6 +24,8 @@ import os
 import re
 import subprocess
 import sys
+import urllib.parse
+import urllib.request
 from datetime import datetime, timezone
 
 ROUTED_ROLES = (
@@ -295,6 +297,49 @@ def consume_pending_locked(dispatch_id: str | None = None, remove: bool = True,
     return stop
 
 
+def detect_context_proxy() -> str:
+    """Whether this session's model traffic crossed a compressing proxy.
+
+    A cost reading taken through a compressor is not comparable to one taken
+    direct, and before 2026-08-31 nothing recorded which a row was. Headroom
+    #2085 - parallel subagents sharing a fallback session id, so the frozen
+    prefix churns and cache reads turn into writes - was live here until
+    0.37.0, and the 2026-08-28 batches crossed it. Afterwards no row could be
+    classified, because no row said.
+
+    Values: `direct` (no override in the environment), `proxy:<name>/<version>`
+    when the endpoint identifies itself, `proxy:unidentified` when something is
+    in front but will not say what. A **missing** field means the row predates
+    this and is unknown - never read it as `direct`.
+
+    Read from the logging process's environment, which is the dispatching
+    session's in the ordinary case; a cross-provider bridge is already visible
+    through `origin_provider`. The health probe is loopback-only with a short
+    timeout and never fails the write: an endpoint that does not answer still
+    yields a positive "there was one", because failing open to `direct` would
+    manufacture the reading this field exists to prevent.
+    """
+    endpoint = next((os.environ[name] for name in
+                     ("ANTHROPIC_BASE_URL", "OPENAI_BASE_URL")
+                     if os.environ.get(name)), None)
+    if not endpoint:
+        return "direct"
+    try:
+        parsed = urllib.parse.urlparse(endpoint)
+        if parsed.hostname not in ("127.0.0.1", "localhost", "::1"):
+            return "proxy:unidentified"
+        health = f"{parsed.scheme}://{parsed.netloc}/health"
+        with urllib.request.urlopen(health, timeout=0.5) as answer:
+            body = json.loads(answer.read().decode("utf-8"))
+        service = str(body.get("service") or "unidentified")
+        version = body.get("version")
+        return f"proxy:{service}/{version}" if version else f"proxy:{service}"
+    except Exception:
+        # Unreachable, non-JSON, or not a health endpoint at all. Something is
+        # still in front of the model, and that is the part that matters.
+        return "proxy:unidentified"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--from-pending", action="store_true",
@@ -477,12 +522,22 @@ def main() -> int:
                            lambda claimed, observed: claimed == observed))
         for flag, claimed, observed, attests in checks:
             if claimed is not None and not attests(claimed, observed):
+                # Named only when set. It overrides every agent's model
+                # frontmatter, so while it is on this fires for every dispatch
+                # and the pins - the file a reader would go and check - are
+                # correct. Surfaced by pilotfish v1.4.1, whose SessionStart
+                # hook refuses to arm while it is set.
+                override = (
+                    "; CLAUDE_CODE_SUBAGENT_MODEL is set and overrides every "
+                    "agent's model frontmatter, which produces exactly this "
+                    "mismatch — unset it and relaunch before reading the pins"
+                    if os.environ.get("CLAUDE_CODE_SUBAGENT_MODEL") else "")
                 parser.error(
                     f"--{flag} {claimed!r} contradicts the provider-recorded "
                     f"route {observed!r} for this dispatch (rollout "
                     f"{args.rollout_id or 'evidence'}); a route the provider "
                     "did not run is a routing violation — surface it, do not "
-                    "log it"
+                    f"log it{override}"
                 )
         args.model = args.model or args.observed_model
         args.effort = args.effort or args.observed_effort
@@ -526,6 +581,7 @@ def main() -> int:
         "provider": args.provider,
         "request_source": args.request_source,
         "outcome": args.outcome,
+        "context_proxy": detect_context_proxy(),
     }
     token_values = [args.tokens_in, args.tokens_out,
                     args.cache_write_tokens, args.cache_read_tokens]

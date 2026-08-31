@@ -5,13 +5,20 @@
 # grader-facing checker is part of what the result measures.
 #
 # Recompute: evals/scripts/trap-surface.py --trap s9-tz-bucketing
+#
+# Groups follow s7's reading; `qc-gate-lines` sits in `machinery` because this
+# trap's closure was QC-side and the checker is part of what a result measures.
+[roles]
 main/claude/agents/executor.md
 main/claude/agents/mech-executor.md
 main/codex/agents/executor.toml
 main/codex/agents/mech-executor.toml
+[machinery]
 main/.agents/scripts/gate_lines.py
 main/claude/scripts/qc-gate-lines
+evals/traps/s9-tz-bucketing/grade.py
+[skills]
 main/claude/skills/baton-dispatch/SKILL.md
+[briefs]
 evals/traps/s9-tz-bucketing/briefs/arm-a-leaf-brief.md
 evals/traps/s9-tz-bucketing/briefs/arm-b-qc-brief.md
-evals/traps/s9-tz-bucketing/grade.py

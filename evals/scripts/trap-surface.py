@@ -11,13 +11,19 @@ bytes that were measured, so it stays correct across rebases, moves and renames,
 and it answers the question a reader actually has - "do the rules still say what
 they said when this number was produced?" - which a SHA only answers indirectly.
 
-Stamp a new result row with the short form:
+Stamp a new result row with the printed form:
 
     evals/scripts/trap-surface.py --trap s7-false-completion
-    surface d4f1a0b9
+    [surface d4f1a0b9 briefs:be69704d machinery:0dd7b6f3 roles:cd2c98a7 ...]
 
-then write `[surface d4f1a0b9]` into the row. `scripts/evidence-check.py` reads
-those back and reports which rows are still attached to the shipping bytes.
+pasted verbatim into the row. A listing that declares groups puts each group's
+digest in the stamp, so a later reader can see which half moved without
+resolving the stamp back through git history - which stops working the day the
+history is rewritten. An ungrouped listing keeps the short `[surface d4f1a0b9]`
+form. `scripts/evidence-check.py` reads stamps back and reports which rows are
+still attached to the shipping bytes; a retired row's stamp becomes
+`[surface d4f1a0b9 archived]`, which stays counted as stamped but stops being
+reported stale.
 """
 from __future__ import annotations
 
@@ -218,6 +224,23 @@ def group_fingerprints(trap: str, at: str | None = None) -> dict[str, str]:
     return digests
 
 
+def stamp(trap: str, at: str | None = None) -> str:
+    """The paste-ready stamp for a result row.
+
+    Groups ride inside the stamp, sorted by name so the same bytes always
+    produce the same text. The overall short hash stays first and stays what
+    `current` means; the group digests are the part that keeps answering
+    "which half moved" after the resolving commit is gone.
+    """
+    full, _ = fingerprint(trap, at)
+    digests = group_fingerprints(trap, at)
+    if len(digests) > 1:
+        parts = " ".join(f"{name}:{digest}"
+                         for name, digest in sorted(digests.items()))
+        return f"[surface {full[:SHORT]} {parts}]"
+    return f"[surface {full[:SHORT]}]"
+
+
 def traps() -> list[str]:
     return sorted({entry.parent.name
                    for entry in ROOT.glob("evals/*/*/surface.tsv")}
@@ -241,14 +264,14 @@ def main() -> int:
                 f"{trap}: surface lists {gone}, which is gone; fix the surface "
                 "before trusting any fingerprint")
         report[trap] = {"surface": full, "short": full[:SHORT],
-                        "members": members}
+                        "stamp": stamp(trap), "members": members}
 
     if args.json:
         print(json.dumps(report, indent=2))
         return 0
     for trap, record in report.items():
         label = f"{trap}: " if len(report) > 1 else ""
-        print(f"{label}surface {record['short']}")
+        print(f"{label}{record['stamp']}")
     return 0
 
 

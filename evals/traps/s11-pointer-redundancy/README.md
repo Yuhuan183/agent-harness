@@ -107,7 +107,7 @@ breed an agent that loads everything.
 > the failure the surface fingerprints exist to prevent, one level down. The
 > runs below record the contract sha and the remaining name count per run.
 
-**2026-08-08, `provider-routing`, `[surface 32cc98cf]`, Claude Code 2.1.226.** <!-- pinned 2026-08-21 -->
+**2026-08-08, `provider-routing`, `[surface 32cc98cf archived]`, Claude Code 2.1.226.** <!-- pinned 2026-08-21 -->
 30 runs, 3 arms × 2 cells × 5 seeds. Zero invalid, zero run failures.
 
 > The stamp stays at `32cc98cf` because that is what produced these rows. An
@@ -159,7 +159,7 @@ Four limits, none of them footnotes:
 The negative control is what makes the rest readable: p2 stayed away 15/15
 across all three arms, so the 5/5 on p1 is not an agent loading everything.
 
-### baton-dispatch, 2026-08-11 `[surface 0e3e246e]` — 30 runs, one cell valid
+### baton-dispatch, 2026-08-11 `[surface 0e3e246e archived]` — 30 runs, one cell valid
 
 3 arms × 2 cells × 5 seeds. Contract restored and hash-verified after every
 arm; sentinel clear; both manipulation checks landed before any measurement run
@@ -319,7 +319,7 @@ the scenario, and this one says the scenario was broken in three ways at once �
 ambiguous wording, a fixture that cannot support the task, and a marker that let
 both through.
 
-### p3 rebuilt — `p3-capability-choice`, 15 runs, `[surface 7af69201]`
+### p3 rebuilt — `p3-capability-choice`, 15 runs, `[surface 7af69201 archived]`
 
 All three defects fixed and each verified separately. The wording asks whether
 the agent should do the work itself or hand it to a stronger model, which cannot
@@ -416,7 +416,7 @@ write-up merged them. Whether description coverage moves *loading* is still open
 — 2/15 is not evidence either way — but it is now a separate question from where
 the routed model's name is written down and how a run is supposed to reach it.
 
-## `headroom-protocol` — 2026-08-10, `[surface ff1a1328]`
+## `headroom-protocol` — 2026-08-10, `[surface ff1a1328 archived]`
 
 The clean clause: it appears once, so removing the pointer removes the name.
 **Arms B and C are therefore byte-identical here** (verified), which makes this
@@ -457,7 +457,7 @@ the count. A marker that discards the one positive observation is not a marker.
 
 **All 15 h1 rows are excluded**, kept in the table as `h1-large-blob-v1`.
 
-### h1 rebuilt — 15 runs, `[surface 0e3e246e]`
+### h1 rebuilt — 15 runs, `[surface 0e3e246e archived]`
 
 The log now generates 18,001 unique package names with exactly one duplicate,
 verified by counting, and `(from <parent>)` names a real parent instead of a

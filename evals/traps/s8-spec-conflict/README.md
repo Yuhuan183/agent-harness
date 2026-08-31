@@ -70,7 +70,7 @@ as `impl` are observed-only, identifiable by task label.
 
 ## Results log
 
-### Paired batch, 2026-08-11 `[surface cf9680cf]`, n=30 per arm
+### Paired batch, 2026-08-11 `[surface cf9680cf archived]`, n=30 per arm
 
 Extends the n=15 batch below to thirty seeds per arm, same role and route
 (`executor`, claude/opus/medium), briefs unchanged.

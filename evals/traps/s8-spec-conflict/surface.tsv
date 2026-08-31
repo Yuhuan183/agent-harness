@@ -2,11 +2,17 @@
 # for why this is a content fingerprint and not a commit SHA.
 #
 # Recompute: evals/scripts/trap-surface.py --trap s8-spec-conflict
+#
+# Groups follow s7's reading: `roles` and `briefs` shape what the agent was
+# told, `machinery` changes how the answer was judged.
+[roles]
 main/claude/agents/executor.md
 main/claude/agents/mech-executor.md
 main/codex/agents/executor.toml
 main/codex/agents/mech-executor.toml
+[machinery]
 main/.agents/scripts/gate_lines.py
-evals/traps/s8-spec-conflict/briefs/arm-a-leaf-brief.md
 evals/traps/s8-spec-conflict/grade.py
+[briefs]
+evals/traps/s8-spec-conflict/briefs/arm-a-leaf-brief.md
 evals/traps/s8-spec-conflict/briefs/arm-b-negative-control-brief.md
