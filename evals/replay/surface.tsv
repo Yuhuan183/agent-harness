@@ -96,3 +96,6 @@ evals/replay/scenarios/e5b-authority-fix.md
 evals/replay/scenarios/e1x-lever-that-misses-explicit.md
 evals/replay/scenarios/e2x-check-that-cannot-fail-explicit.md
 evals/replay/scenarios/e6-success-that-lies.md
+evals/replay/scenarios/x1b-decision-append-system.md
+evals/replay/scenarios/x1c-decision-session-start.md
+evals/replay/scenarios/x2b-decision-weak-append.md

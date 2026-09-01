@@ -383,13 +383,54 @@ def commands_run(events: Path) -> list[str]:
     return seen
 
 
+def client_version() -> str:
+    """The CLI build this run was measured on.
+
+    Added 2026-09-01 because it was missing when it was needed. The m1 arm-W
+    batch read 44/91 on the `DECISION:` clause; a batch on 2026-09-01 read
+    11/15 on a byte-identical clause, and the gap could not be explained,
+    because neither batch recorded the client or the model — the only two
+    remaining candidates once the clause text was compared and found the same.
+    A reading that cannot name what it ran on cannot be compared to a later
+    one, and the repo's own rule is that a surface fingerprint pins the rules
+    and nothing pins the runtime.
+    """
+    try:
+        done = subprocess.run(["claude", "--version"], capture_output=True,
+                              text=True, timeout=15)
+        return done.stdout.strip() or "unreadable"
+    except Exception:
+        # Diagnostic, never fatal: a run that cannot read its own client
+        # version is still a run, it is just less comparable, and saying so is
+        # better than failing the batch.
+        return "unreadable"
+
+
 def argv_for(prompt: str, session: str, first: bool,
-             inject: str | None = None, execute: bool = False) -> list[str]:
+             inject: str | None = None, execute: bool = False,
+             settings: str | None = None) -> list[str]:
     argv = ["claude", "--print", prompt,
             "--output-format", "stream-json", "--verbose",
             "--permission-mode", "acceptEdits",
             "--allowedTools", *allowed_tools(execute),
             "--strict-mcp-config"]
+    if settings:
+        # Absolute, because the turn runs with cwd set to the scenario's
+        # workdir: a relative path resolves against that and the client exits 1
+        # with "Settings file not found". Measured the hard way on 2026-08-31 —
+        # all fifteen arm C runs failed this way, and the reach marker caught
+        # it as 0/15 reached rather than letting it be read as a result.
+        settings = str(Path(settings).resolve())
+        # A third injection position, added 2026-08-31: a `SessionStart` hook's
+        # output. It is not a replacement for the machine's hooks - `--settings`
+        # adds - so a run carrying this has the test hook *and* the three the
+        # machine already runs, which is stated rather than controlled.
+        #
+        # Measured before it was wired (2.1.251): the hook fires, its output
+        # reaches the main session, and it does NOT reach a dispatched
+        # subagent's context (MAIN=YES / SUB=NO in one run). So this position
+        # can only carry a rule the main session itself owes.
+        argv += ["--settings", settings]
     if inject:
         # The client's own instructions arrive in the system prompt, and the
         # user contract arrives as user context. `--append-system-prompt` is the
@@ -402,9 +443,11 @@ def argv_for(prompt: str, session: str, first: bool,
 
 def run_turn(prompt: str, session: str, first: bool, workdir: Path,
              env: dict[str, str], interrupt_after: float | None,
-             inject: str | None = None, execute: bool = False) -> dict:
+             inject: str | None = None, execute: bool = False,
+             settings: str | None = None) -> dict:
     """One turn. Returns what happened, including whether it was cut short."""
-    proc = subprocess.Popen(argv_for(prompt, session, first, inject, execute),
+    proc = subprocess.Popen(argv_for(prompt, session, first, inject, execute,
+                                     settings),
                             cwd=workdir,
                             env=env, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
@@ -505,6 +548,11 @@ def main() -> int:
                         help="directory for events, snapshots and meta.json")
     parser.add_argument("--dry-run", action="store_true",
                         help="print the plan and the conditions, run nothing")
+    parser.add_argument("--settings", default=None,
+                        help="path to an extra settings file, passed through to "
+                             "`claude --settings`. Adds to the machine's "
+                             "settings, never replaces them; used to carry a "
+                             "SessionStart hook as a third injection position")
     parser.add_argument("--arm", choices=("a", "b", "c", "s", "w"), default="a",
                         help="a: contract as shipped (no swap). b: the load "
                              "instruction removed. c: every mention removed")
@@ -587,7 +635,8 @@ def main() -> int:
             cut = interrupt_after if index == interrupt_turn else None
             result = run_turn(prompt, session, index == 1, work, env, cut,
                           spec.get("inject_system"),
-                          str(spec.get("allow_execution", "")).lower() == "true")
+                          str(spec.get("allow_execution", "")).lower() == "true",
+                          args.settings)
             with events.open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps({"replay_turn": index,
                                          "interrupted": result["interrupted"]}) + "\n")
@@ -720,6 +769,11 @@ def main() -> int:
         "turns": records,
         "interrupt": interrupt_state,
         "surface": surface_fingerprint(),
+        # The runtime half of "what was this measured on". The surface
+        # fingerprint pins the rules; these pin the client and the
+        # model, which nothing pinned until a comparison needed them.
+        "client_version": client_version(),
+        "model_env": os.environ.get("ANTHROPIC_MODEL") or "cli-default",
         "allow_execution": str(spec.get("allow_execution", "")).lower() == "true",
         # The boolean alone cannot say what an execution grant meant on the day,
         # and the grant set has already changed once. The list travels with the
@@ -740,6 +794,9 @@ def main() -> int:
         "target": spec.get("target"),
         "contract_rule": spec.get("contract_rule"),
         "inject_system": spec.get("inject_system"),
+        # Recorded so a reading can be attributed to the position that
+        # carried the instruction, not to the arm label alone.
+        "settings_file": args.settings,
         "expect_skill": spec.get("expect_skill"),
         # Carried since 2026-08-17. `grade_e5` branches on it to decide which of
         # the paired authority arms it is grading, and without it every run read

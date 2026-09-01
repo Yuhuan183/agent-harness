@@ -74,7 +74,11 @@
 
 ## 維護規則
 
-1. 同一規則只保留一個真相源; 其他文件用連結與短摘要指過去.
+1. 同一規則只保留一個真相源; 其他文件用連結與短摘要指過去. **短摘要說連結那頭「決定了什麼」,
+   不說「憑什麼」** —— 理由是會過期的那一半, 而它一旦被抄過來, 連結還對它卻已經錯了.
+   2026-08-31 的實例: `main/claude/model-routing.toml` 同時連向 `model-evidence.md` **並且**
+   重述了它的理由 (「我方 explore 中位讀 4.3 KB, 而 sonnet p95 來自內建 agent」); 當天那個
+   比較被撤回, 研究文改了, 而真相源裡那句活了下來 —— 連結是對的, 抄過去的那句不是.
 2. README 說明全貌與入口, 不承載會頻繁變動的 model 數值或完整操作細節.
 3. benchmark, effort, 日期與成本口徑只放研究摘要或 routing data, 不寫成永久能力宣稱.
 4. 已落地的 runtime 規則從 plan 移出; 歷史判斷留在 Git 或明確標示的決策紀錄. `docs/research/` 底下**只有 [`research/README.md`](research/README.md) 是現行指引**, 其餘是紀錄: 它們刻意保留被後來證據推翻的段落, 所以不進「指引是否還對」的稽核範圍. 分界寫在 [`document-inventory.json`](document-inventory.json), 由 `test_document_inventory.py` 盯住, 由 [`scripts/docs-size-report.py`](../scripts/docs-size-report.py) 分層回報.

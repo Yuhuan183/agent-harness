@@ -97,10 +97,18 @@ class TaskObserverTests(unittest.TestCase):
         attribution = read(".agents/skills/task-observer/ATTRIBUTION.md")
         self.assertIn("Eoghan Henn", attribution)
         self.assertIn("Creative Commons Attribution 4.0", attribution)
-        self.assertIn("v2.0.0", attribution)
+        # The pin is asserted literally so that advancing it cannot happen as
+        # a side effect of editing prose: the reviewed revision is the claim
+        # this file makes, and changing it must be a deliberate edit here too.
+        # Advanced to v3.0.0 on 2026-08-31 (see the ledger's landing
+        # evaluation); the superseded v2.0.0 pin stays named in the file, so
+        # the check below is that both are present and not that one replaced
+        # the other unread.
+        self.assertIn("v3.0.0", attribution)
         self.assertIn(
-            "281f13466cd3a73e9ebc9d210907748e1941a3dd", attribution
+            "9d1491b895c4f8f04f04977f74faad0f342c8b0c", attribution
         )
+        self.assertIn("v2.0.0", attribution)
 
     def test_missing_ledger_review_is_read_only(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -64,8 +64,11 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | `v2-green-test-misses-it` | 驗證子句在「已經有一份綠燈測試」時還有沒有作用 — v1 天花板之後的第二版 fixture | `v2-green-test-misses-it` |
 | `v3-regression-across-turns` | 驗證子句在「要記住的規則在三回合前」時的作用 — v2 天花板之後的第三版 fixture | `v3-regression-across-turns` |
 | `x1-language-floor` | 反向對照 — 拿掉一條契約子句, 這套量測面看不看得見 | `r2-successive-corrections` |
+| `x1b-decision-append-system` | 注入位置實驗 arm B — 矛盾指令走 --append-system-prompt | `r2-successive-corrections` |
+| `x1c-decision-session-start` | 注入位置實驗 arm C — 矛盾指令走 SessionStart hook | `r2-successive-corrections` |
+| `x2b-decision-weak-append` | 注入位置第二輪 arm B — 調弱的矛盾, 走 --append-system-prompt | `r2-successive-corrections` |
 
-共 31 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
+共 34 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
 
 <!-- scenario-index:end -->
 

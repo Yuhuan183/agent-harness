@@ -24,6 +24,9 @@ __pycache__/
 .claude/.headroom_wrap_marker.json
 # Live wrap state: holder PIDs and port for the env vars wrap owns, plus its
 # settings lock. Machine-local by the same rule as the marker above.
+# Generated per machine: it must carry an absolute path to the hook, and
+# an absolute path is machine-local state.
+evals/replay/x1-hook/settings.json
 .claude/.headroom_wrap_owners.json
 .claude/.headroom_wrap_settings.lock
 .serena/

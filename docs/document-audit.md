@@ -49,6 +49,6 @@
 
 ## 尚未證明
 
-- [UNCERTAIN: 尚無相同 brief/權限/acceptance 的前後 lifecycle benchmark, 因此不能量化 token 或 wall-clock 改善.]
+- [UNCERTAIN: 尚無相同 brief/權限/acceptance 的前後 lifecycle benchmark, 因此不能量化 token 或 wall-clock 改善. **2026-08-31 判定: 這一條不會被關掉, 因為那個 benchmark 已經不可重建.** 「之前」那一側是 2026-07-28 的整個執行環境, 而它在四個軸上都動了 —— client 2.1.88 到 2.1.251, AA 指數 v4.1 到 v4.1.1 (回溯重算全部分數), Headroom 0.35 到 0.37, 模型換代. 今天跑一次前後對照量到的是這四件事加起來, 不是 harness 的改動; 而本 repo 沒有任何機制釘得住其中任何一個 (量測面指紋綁的是規則的位元組, 不是 client 與模型). 依 `lifecycle-replay` 的「還不能做的事」, 未到達的 run 不能當任何方向的證據, 包括「沒看到差別」. **留下的是規則不是待辦**: 效率宣稱的量測要在改動落地**之前**設計, 事後補不回來 —— 與本 repo 的事前登記紀律同一條, 這一格是它的代價證明.]
 - [UNCERTAIN: provider route cells 多數未達本機決策樣本門檻.]
 - [UNCERTAIN: 這次只更新 Git source; 沒有 deploy, 所以 HOME 仍可能保留舊 hook/installer snapshot.]
