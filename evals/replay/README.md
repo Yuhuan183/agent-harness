@@ -1581,3 +1581,36 @@ it could not regrade. The retention policy is deliberate; crashing instead of
 reporting the gap is not, and it means the table above was computed directly from
 the thirty runs whose events are still on disk. Not fixed here: it is a
 pre-existing defect in a tool this batch only borrowed.
+
+
+## 注入位置: 一句矛盾指令從哪裡送進來都贏 (2026-09-01, 50 個 run)
+
+事前登記與完整判讀在
+[lifecycle-replay](../../docs/research/lifecycle-replay.md#注入位置第三格--2026-08-31-事前登記-尚未開跑).
+這裡只記結果列與它們的量測面.
+
+| 臂 | 矛盾指令的位置 | 到達 | 發出 `DECISION:` |
+|---|---|---:|---:|
+| `A` 基線 | 無 | 15 of 15 | **11 of 15** |
+| `B` | `--append-system-prompt` | 15 of 15 | **0 of 15** |
+| `C` | `SessionStart` hook (JSON `additionalContext`) | 15 of 15 | **0 of 15** |
+| 第二輪先導 | `--append-system-prompt`, 調弱的措辭 | 5 of 5 | **4 of 5** |
+
+`[surface 045b7f77 competitors:b77f55e0 contract:d668fe82 scenarios:43b78053]` ——
+但**這一批不是在單一量測面上跑的**, 而那要寫在戳章旁邊而不是讓後來的人自己對: `A`/`B` 跑在
+`d21bdb86`, `C` 跑在 `175c3e3a` (差別是修掉 `--settings` 相對路徑的那一行), 先導跑在
+`045b7f77` 之前的一版. 三者對**規則的位元組**相同 —— 差異都在 runner —— 而 `A`/`B` 兩臂
+沒有傳 `--settings`, 所以那個修正碰不到它們.
+
+**主要比較 `C` 對 `B` 無法解析**: `|C-B| = 0/15`, Fisher p = 1.0, 事前門檻是 5/15. 依登記,
+讀作「這個 n 分不出來」, 不是「位置無差」—— 兩臂都打到地板, 而飽和的兩側之間沒有解析度.
+
+**輔助比較是這一批真正買到的東西**: `B` 對 `A` 與 `C` 對 `A` 各 p = 5.0e-05. 一句從系統提示
+尾端或 `SessionStart` hook 送進來的指令, 把一條契約規則從 73% 壓到 0%, 兩個位置都做得到.
+這是本 repo 對「常駐層拿不到強制力, 只拿得到權重」最直接的一次量測.
+
+**保留了什麼**: 50 個 run 的 `meta.json` 與 `replies.md` 在 `runs/` 底下
+(`m1-cap-embedded-x1a-*`, `x1b-*`, `x1c-*`, `x2b-*`). 事件流, transcript 與 workdir 照既有
+`.gitignore` 規則不進 git. 從這一批起 `meta.json` 另帶 `client_version` 與 `model_env` ——
+加它的理由就是這一批: `A` 的 73% 遠高於 `m1` 同一條措辭的 48%, 而兩批都沒記 client 與模型,
+所以那個落差**查不到答案**, 不是還沒查.
