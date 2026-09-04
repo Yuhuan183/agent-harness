@@ -99,6 +99,17 @@ RESIDENT_CONTRACT_BUDGETS = {
     # the bullet already carries the other two thirds of it. Measured 633; the
     # Claude twin took the same sentence with no raise at all (495 of 520),
     # which is a headroom difference rather than a content one.
+    #
+    # 2026-09-03: no raise, and the note is here because the file is now at two
+    # of its three limits. The language clause cited `readable-zh-tw` for a
+    # standard replies never load, so the one rule that has to fire without it -
+    # half-width punctuation, one space after each mark - is stated here instead
+    # of pointed at. On this side it took the last rule slot rather than joining
+    # the language bullet: merged it read 174.88 bytes/rule against a 175 cap,
+    # and the filler rule above records what happens next at that margin. Split it
+    # reads 168.23. Words 642/645, rules 26/26. The Claude twin merged it (503 of
+    # 520, 210.4 of 225) because that side has no rule slot left, which is the
+    # same headroom difference the note above describes, mirrored.
     "codex": ContractBudget(".codex/AGENTS.contract.md", 645, 26, 175, 0.15, 0.25),
 }
 
@@ -1640,8 +1651,21 @@ class DocumentationBudgetTests(unittest.TestCase):
             # Largest dispatch-time body in the repo, and the one that states
             # its triggers twice (zh-TW and English) because either language
             # can invoke it. Trimming it is deliberately a separate task.
-            ".claude/skills/readable-zh-tw/SKILL.md": 2090,
-            ".codex/skills/readable-zh-tw/SKILL.md": 2090,
+            # 2090 -> 2157 on 2026-09-03, and it is new content rather than a
+            # refill. Two reports came back on work the skill had already passed:
+            # a term was defined correctly but at the bottom of the section,
+            # after it had appeared in the intro, a code sample and a call
+            # signature. The rule it satisfied (`先具體，後命名`) is written for
+            # prose being authored, where "first mention" and "where I am typing"
+            # are the same place; editing an existing document separates them,
+            # and nothing said to look. The new bullet says where the definition
+            # goes, which is the half a sentence-level rule cannot carry. The
+            # ceiling moved instead of something being displaced: the only
+            # candidate was the attribution pointer, and cutting a one-source-of-
+            # truth link to pay for a rule is the zero-headroom failure this file
+            # already records twice. Measured 2115 + ~2%.
+            ".claude/skills/readable-zh-tw/SKILL.md": 2157,
+            ".codex/skills/readable-zh-tw/SKILL.md": 2157,
             # Claude's copies are thin pointers; Codex carries the procedure,
             # so the two sides of these two skills are genuinely different
             # files and get their own ceilings rather than a shared one.

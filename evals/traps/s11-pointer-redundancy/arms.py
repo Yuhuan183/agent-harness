@@ -59,12 +59,19 @@ POINTER = {
     # That makes it a pointer as well as the control, which is a change to what
     # arm C means here rather than to what the control does — the language switch
     # is still what arm B removes and still what nobody doubts.
+    #
+    # Re-recorded 2026-09-03: the clause stopped citing the skill for the one
+    # reply-shape rule that has to fire without it, and states half-width
+    # punctuation directly. The control is unaffected - it is still the language
+    # switch nobody doubts - but arm B now removes that punctuation rule too,
+    # which the residual note below records.
     "language": (
         "- Respond in Traditional Chinese (Taiwan usage). Keep code, "
         "identifiers, commands, comments, and commit messages in English. "
         "Thinking and agent-to-agent briefs stay in precise, concise English; "
         "only user-facing replies switch to Traditional Chinese, and those "
-        "answer to `readable-zh-tw`'s standard for prose a person reads.\n"
+        "answer to `readable-zh-tw`'s standard for prose a person reads. "
+        "Punctuate those replies half-width, one space after each.\n"
     ),
     # Also not a pointer. This one is here because it is the only resident
     # clause found so far whose value can be priced on the quality of what gets
@@ -110,7 +117,10 @@ RESIDUAL = {
                        "that keeps the bullet and drops only the sentence naming "
                        "`readable-zh-tw`, which is not what C is. Removing the "
                        "bullet also removes the rules keeping code and "
-                       "agent-to-agent briefs in English, because they share it",
+                       "agent-to-agent briefs in English, because they share it. "
+                       "From 2026-09-03 it removes the half-width punctuation "
+                       "rule as well, which is the one piece of the skill's "
+                       "standard the clause now states rather than cites",
     },
     "verification": {
         "removals": (),
