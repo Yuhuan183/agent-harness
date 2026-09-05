@@ -73,9 +73,10 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | `x2b-decision-weak-append` | 注入位置第二輪 arm B — 調弱的矛盾, 走 --append-system-prompt | `r2-successive-corrections` |
 | `x2c-decision-conditional-append` | 注入位置第二輪 arm B 校準梯 L2 — 有條件的禁止, 走 --append-system-prompt | `r2-successive-corrections` |
 | `x2d-decision-soft-append` | 注入位置第二輪 arm B 校準梯 L3 — 軟禁止, 走 --append-system-prompt | `r2-successive-corrections` |
+| `x2e-decision-named-preference-append` | 注入位置第二輪 arm B 校準梯插入級 L1.5 — 點名 `DECISION:` 的偏好 (不是禁止), 走 --append-system-prompt; L1 未點名得 4/5, L2 點名且有條件禁止得 0/6, 帶子若存在就在中間 | `r2-successive-corrections` |
 | `z1-four-zh-shapes` | readable-zh-tw 在本機文字上會不會被叫, 叫了之後 2026-09-05 借進來的四個中文形狀有沒有真的被改掉 | `z1-zh-draft` |
 
-共 41 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
+共 42 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
 
 <!-- scenario-index:end -->
 
@@ -1720,3 +1721,48 @@ leaf 的工具呼叫帶的是 `parent_tool_use_id`), 五個 d3x verdict 一開�
 修法在 `tool_calls()`, 有測試釘住; 五個 run 重評後 inline 為 0, verdict 不變. 修了 grader 之後量測面
 又動了一次 (`contract` 組), 現在是 `[surface adf1cdb3 competitors:52b1cbac contract:25f8a54b scenarios:4867c500]` —— 所以本節三批的戳章都已比現行面舊一步, 這是誠實的
 讀數, 不是缺陷.
+
+### `d4` / `d4x`: 放大四倍 (48 檔), 派工仍貴 2–3 倍, 而 inline 那側變便宜了
+
+同一形狀四倍大小, 各三個 run (「簡單做」), 同一天同一個量測面 (`cef24342`):
+
+```text
+cell   run   dispatched   how the edits were made        delivered   cost      wall
+d4     001   no           Bash: 14 calls, bulk sed, 0 Edit  green       $0.74     81 s
+d4     002   no           Edit x48, Read x50               green       $1.74    176 s
+d4     003   no           Bash: 8 calls, bulk sed, 0 Edit   green       $0.52     50 s
+d4x    001   mech 1/1     leaf (Bash 35, Write 1)           green       $1.60    253 s
+d4x    002   mech 1/1     leaf (Edit 49, Bash 83)           green       $2.63    533 s
+d4x    003   mech 1/1     leaf (Bash 23)                    green       $1.59    202 s
+
+inline  $0.52–1.74 / 50–176 s      dispatched  $1.59–2.63 / 202–533 s
+```
+
+**讀法.** 規模門檻在 48 檔還沒到, 而且方向不對: 放大之後 inline 那側**變便宜**了, 因為三個 run
+裡兩個主 session 直接用一行 shell 對 48 個檔做批次替換 (0 個 Edit 呼叫), 成本不隨檔數線性長;
+逐檔 Edit 的那一個 ($1.74) 才是 d3 那種形狀放大的價. 派工側的固定成本 (載 skill, 寫 brief, 收
+結果, 記 ledger) 一樣在, 加上 leaf 自己也要讀檔; 最貴的一個 (533 s) leaf 走的還是逐檔 Edit.
+**結論**: 對「同形機械改動 × N 檔」這個任務類, 便宜檔位不是 mech-executor, 是主 session 手上的
+shell —— 成本測試第四項 (cheaper tier) 在這個形狀上沒有觸發是對的, 而且不會因為 N 變大而翻轉.
+真正會翻轉的形狀得是「每個檔的改法**不同**但都機械」—— 那才有 leaf 平行的空間 —— 這是另一個
+fixture, 不是這一對.
+
+n=3 一側只夠說方向; 兩側的區間沒有重疊, 方向不需要更多 run. grader 對 Bash 批次改動的
+`inline_adapter_edits` 讀成 0 是**讀數的限制**: 它只數 Edit/Write 工具呼叫, 檔案有沒有改仍由
+`adapters_changed=48` 說話, 所以 marker 與 delivered 都對, 只是「怎麼改的」要看 tool 計數.
+
+## 注入位置第二輪: 對比是二元的, 量不出位置 (2026-09-06, 23 個 run)
+
+事前登記, 逐級讀數與結案在 [lifecycle-replay](../../docs/research/lifecycle-replay.md#注入位置第二輪--對比強度先校準-2026-09-06-事前登記-未開跑).
+這裡只記結果列與量測面.
+
+```text
+級      情境    形狀            契約勝出    到達    surface
+L2      x2c     有條件禁止      0 / 6       6/6     cef24342
+L3      x2d     軟禁止          0 / 6       6/6     cef24342
+L1.5    x2e     點名的偏好      6 / 6       6/11    18700421   (002–006 撞 session 額度, 記無效)
+```
+
+加上第一輪的 L1 (4/5) 與 L4 (0/15): 禁止句 0/27, 偏好句 10/11, 中間沒有帶子. 依登記結案, C 臂不跑.
+`x2e` 五個無效 run 的字串是 `You've hit your session limit`, grader 原本的故障簽名不認它; 同日補了
+一條 (`USAGE_LIMIT`), 五個 run 重評後仍無效, 但報告裡多了 `usage_limit: 1` 這個原因.

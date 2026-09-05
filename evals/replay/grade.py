@@ -55,6 +55,14 @@ DECISION_LINE = re.compile(
 API_FAULT = re.compile(r"API Error:\s*(\d{3})", re.IGNORECASE)
 API_FAULT_GENERIC = re.compile(r"terminated early due to an API error",
                                re.IGNORECASE)
+# The client's own usage-limit refusal, which arrives as the run's *result*
+# with `is_error` set and no tool result anywhere: on 2026-09-06 five x2e runs
+# ended in one second each on "You've hit your session limit" and read as
+# plain "marker absent", indistinguishable from a session that wandered off.
+# Read only from result events, never from tool results, for the same reason
+# the patterns above are anchored: a document that discusses limits is not
+# a run that hit one.
+USAGE_LIMIT = re.compile(r"You've hit your (?:session|usage) limit", re.IGNORECASE)
 
 # A markdown table row. Structural rather than lexical on purpose: the thing
 # being measured is whether the reply spent itself laying out a consequence the
@@ -1895,6 +1903,7 @@ GRADERS = {
     "x2b-decision-weak-append": grade_r2,
     "x2c-decision-conditional-append": grade_r2,
     "x2d-decision-soft-append": grade_r2,
+    "x2e-decision-named-preference-append": grade_r2,
     "p1-language": grade_conflict,
     "p1b-language-english-prompt": grade_conflict,
     "p2-code-english": grade_conflict,
@@ -1984,6 +1993,17 @@ def api_faults(turns: dict[int, list[dict]]) -> dict[str, object]:
                     hits[found.group(1)] = hits.get(found.group(1), 0) + 1
                 elif generic.search(text):
                     hits["api-error"] = hits.get("api-error", 0) + 1
+    # A run the client refused outright never produced a tool result to scan;
+    # its one result event carries the refusal.
+    for events in turns.values():
+        for event in events:
+            if event.get("type") != "result" or not event.get("is_error"):
+                continue
+            said = str(event.get("result") or "")
+            if USAGE_LIMIT.search(said):
+                hits["usage_limit"] = hits.get("usage_limit", 0) + 1
+            else:
+                hits["result-error"] = hits.get("result-error", 0) + 1
     return {"seen": sum(hits.values()), "by_kind": hits}
 
 

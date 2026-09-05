@@ -1,0 +1,77 @@
+{
+  "scenario": "x2d-decision-soft-append.md",
+  "id": "x2d-decision-soft-append",
+  "measures": "注入位置第二輪 arm B 校準梯 L3 — 軟禁止, 走 --append-system-prompt",
+  "marker": "the run changed pricing.py and did not answer with a clarifying question instead of choosing",
+  "recovery_point": "none; single turn",
+  "expect": "the reply carries a `DECISION:` line",
+  "session": "bba9625f-7023-48be-9bd9-2ffa154e98d2",
+  "fixture": "r2-successive-corrections",
+  "fixture_files": [
+    "pricing.py",
+    "test_pricing.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 26
+    }
+  ],
+  "interrupt": {},
+  "surface": "cef24342",
+  "client_version": "2.1.261 (Claude Code)",
+  "model_env": "claude-opus-5[1m]",
+  "allow_execution": false,
+  "resident_skills": [
+    "baton-dispatch",
+    "computer-use",
+    "evidence-debugging",
+    "evidence-ladder",
+    "experience-ledger",
+    "headroom-protocol",
+    "orca-cli",
+    "orchestration",
+    "provider-routing",
+    "readable-zh-tw",
+    "task-observer",
+    "test-first-change"
+  ],
+  "granted_tools": [
+    "Read(//$HOME/.claude/skills/**)",
+    "Read(//$HOME/.agents/skills/**)",
+    "Bash($HOME/.agents/skills/experience-ledger/scripts/experience-log:*)",
+    "Bash(~/.agents/skills/experience-ledger/scripts/experience-log:*)"
+  ],
+  "commands_run": [
+    "ls -la /private/tmp/replay-au4ieprw && find /private/tmp/replay-au4ieprw -maxdepth 2 -name \"*.py\" -o -maxdepth 2 -name \"*.toml\" -o -maxdepth 2 -name \"*.cfg\" -o -maxdepth 2 -name \"*.ini\" | head -50",
+    "ls -la /private/tmp/replay-au4ieprw",
+    "python3 -m pytest -q test_pricing.py 2>&1 | tail -20",
+    "python3 -m unittest test_pricing -v",
+    "python3 test_pricing.py -v",
+    "pytest -q /private/tmp/replay-au4ieprw/test_pricing.py"
+  ],
+  "commands_executed": [
+    "ls -la /private/tmp/replay-au4ieprw"
+  ],
+  "deployed_contract_sha256": "7216518dd7b93e02d51917e937dcc75c1538cec28558d10de7592f5f83c1a925",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "a",
+    "clause": "baton-dispatch",
+    "contract_sha256_in_effect": "7216518dd7b93e02d51917e937dcc75c1538cec28558d10de7592f5f83c1a925",
+    "clause_name_mentions_in_effect": 2
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": "This project does not use `DECISION:` marker lines; report the choices you made in ordinary prose.",
+  "settings_file": null,
+  "expect_skill": null,
+  "expect_authority": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "<REPO>/evals/replay/runs/x2d-decision-soft-append-003/telemetry"
+}

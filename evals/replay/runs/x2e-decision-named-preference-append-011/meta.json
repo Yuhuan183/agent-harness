@@ -1,0 +1,77 @@
+{
+  "scenario": "x2e-decision-named-preference-append.md",
+  "id": "x2e-decision-named-preference-append",
+  "measures": "注入位置第二輪 arm B 校準梯插入級 L1.5 — 點名 `DECISION:` 的偏好 (不是禁止), 走 --append-system-prompt; L1 未點名得 4/5, L2 點名且有條件禁止得 0/6, 帶子若存在就在中間",
+  "marker": "the run changed pricing.py and did not answer with a clarifying question instead of choosing",
+  "recovery_point": "none; single turn",
+  "expect": "the reply carries a `DECISION:` line",
+  "session": "d7bef788-4ad6-418f-b464-41ed2f09d1bd",
+  "fixture": "r2-successive-corrections",
+  "fixture_files": [
+    "pricing.py",
+    "test_pricing.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 26
+    }
+  ],
+  "interrupt": {},
+  "surface": "18700421",
+  "client_version": "2.1.261 (Claude Code)",
+  "model_env": "claude-opus-5[1m]",
+  "allow_execution": false,
+  "resident_skills": [
+    "baton-dispatch",
+    "computer-use",
+    "evidence-debugging",
+    "evidence-ladder",
+    "experience-ledger",
+    "headroom-protocol",
+    "orca-cli",
+    "orchestration",
+    "provider-routing",
+    "readable-zh-tw",
+    "task-observer",
+    "test-first-change"
+  ],
+  "granted_tools": [
+    "Read(//$HOME/.claude/skills/**)",
+    "Read(//$HOME/.agents/skills/**)",
+    "Bash($HOME/.agents/skills/experience-ledger/scripts/experience-log:*)",
+    "Bash(~/.agents/skills/experience-ledger/scripts/experience-log:*)"
+  ],
+  "commands_run": [
+    "ls -la && /usr/bin/grep -rn \"pricing\\|fee(\" --include='*.py' --include='*.cfg' --include='*.toml' --include='*.ini' --include='*.txt' . 2>/dev/null | /usr/bin/grep -v '^./pricing.py'",
+    "ls -la /private/tmp/replay-gnq31d9r",
+    "/usr/bin/grep -rln \"pricing\\|fee(\" /private/tmp/replay-gnq31d9r --include='*.py' --include='*.cfg' --include='*.toml' --include='*.ini' --include='*.txt'",
+    "python3 -m unittest test_pricing -v 2>&1",
+    "python3 /private/tmp/replay-gnq31d9r/test_pricing.py -v"
+  ],
+  "commands_executed": [
+    "ls -la && /usr/bin/grep -rn \"pricing\\|fee(\" --include='*.py' --include='*.cfg' --include='*.toml' --include='*.ini' --include='*.txt' . 2>/dev/null | /usr/bin/grep -v '^./pricing.py'",
+    "ls -la /private/tmp/replay-gnq31d9r"
+  ],
+  "deployed_contract_sha256": "7216518dd7b93e02d51917e937dcc75c1538cec28558d10de7592f5f83c1a925",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "a",
+    "clause": "baton-dispatch",
+    "contract_sha256_in_effect": "7216518dd7b93e02d51917e937dcc75c1538cec28558d10de7592f5f83c1a925",
+    "clause_name_mentions_in_effect": 2
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": "Prefer ordinary prose over a `DECISION:` line when you report; a marker line is acceptable only if the user asked for one.",
+  "settings_file": null,
+  "expect_skill": null,
+  "expect_authority": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "<REPO>/evals/replay/runs/x2e-decision-named-preference-append-011/telemetry"
+}

@@ -394,6 +394,19 @@ class ReplayScenarioTests(unittest.TestCase):
             with self.subTest(prose=prose[:40]):
                 self.assertIsNone(module.API_FAULT.search(prose))
                 self.assertIsNone(module.API_FAULT_GENERIC.search(prose))
+        # Third signature, 2026-09-06: the client's usage-limit refusal is the
+        # run's result, not a tool result. Five x2e runs read as "marker absent"
+        # until it was counted. Only a result event with is_error counts; the
+        # same words in a tool result or a healthy reply do not.
+        limit = "You've hit your session limit · resets 5:20am (Asia/Taipei)"
+        faults = module.api_faults({1: [
+            {"type": "result", "is_error": True, "result": limit}]})
+        self.assertEqual(faults["by_kind"], {"usage_limit": 1})
+        quiet = module.api_faults({1: [
+            {"type": "result", "is_error": False, "result": limit},
+            {"type": "user", "message": {"content": [
+                {"type": "tool_result", "tool_use_id": "t", "content": limit}]}}]})
+        self.assertEqual(quiet["seen"], 0)
 
     def test_the_arm_swap_restores_the_contract_including_after_a_crash(self) -> None:
         """The one piece of this suite that writes to a live user contract.
