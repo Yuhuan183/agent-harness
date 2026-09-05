@@ -342,3 +342,35 @@ tool record 做正負控制, 指標要耐久. 這條線我方走在前面 (rtk �
 **推翻條件**: 同 08-31 —— 血緣查明參照過本 repo, 上表所有「佐證+1」從獨立票中剔除. 另一條:
 若 P2 或 P3 量出的三個數顯示命中全是正當引用而語料本來就沒有這類缺陷, 那兩條守衛就以
 「性質」的形式加 (rebelytics 的措辭) 或不加, 不以「清單」的形式加.
+
+## 血緣探針 (2026-09-06): 公開引用查無, 而 3.1 的儀器守則各有自己的 issue
+
+08-31 以來每一節都掛著同一條旗標: 上游 3.0 起與我方同名, 本 repo 公開, 誰讀了誰查不到. 09-06 用
+GitHub 搜尋 API 查了能查的:
+
+```text
+search/issues  "agent-harness" repo:rebelytics/…   13 筆   全部是泛稱 (「in a harness without TodoWrite」那類), 沒有一筆指本 repo 或作者
+search/issues  "Yuhuan183"                           0 筆
+search/commits "agent-harness"                       1 筆   commit a8f999bf (08-21), 泛稱
+contributors                                          5 人   不含本 repo 作者
+README, CONTRIBUTING                                       無 agent-harness / Yuhuan / siegfried
+```
+
+更有用的是那 13 筆 issue 的**內容**: 它們就是 3.1 儀器守則的出處, 每條對得到一個第三方回報, 帶日期:
+
+| 3.1 規則 | 出處 issue | 回報者 | 日期 |
+|---|---|---|---|
+| 綁單一工具的計數器在不用該工具的 session 靜默失效 | #60 「第三次 TodoWrite 完成的檢查點在沒有 TodoWrite 的 harness 裡永遠不發」 | ilyafishman24 | 2026-08-25 |
+| 空或零的結果先是儀器的宣稱 (ID COMMAND BROKEN) | #67 「寫後驗證只處理 >1, 數到 0 靜默通過」 | certen59 | 2026-08-27 |
+| 安裝的 session 證明不了啟用; 報 activation unverified | #68, #70 (08-27), 更早的 #22 (07-27) | certen59, kmoussly, scorpiomic | 2026-07-27 起 |
+| 守衛用 `if` 不用 `&&` 鏈 (健康掃描以 exit 1 收尾) | #87 「掃描區塊在成功路徑 exit 1」 | theocannac | 2026-08-30 |
+| 片段要 POSIX, 不用 GNU-only | #16 (macOS 上失敗) | monroyd | 2026-07-26 |
+| (未採) slugify 丟掉非 ASCII | #80 (open) | dispather | 2026-08-28 |
+
+**這改變計票, 但只改一半.** 3.1 的儀器守則有自己文件化的出處 (他們使用者的 bug 回報), 與本 repo
+無公開引用關係 —— 所以那些條目的「佐證+1」從 09-06 起**當獨立票計**. 3.0 的儲存模型同形與改名同形
+維持原判: 沒有引用證據不等於沒有閱讀, 而那兩件沒有像 3.1 這樣可對回的第三方 issue. 第四輪整合的
+結論 6 (儀器守則) 因此從三票升為四票; 「指標要活過 session」升為兩票.
+
+**推翻條件**: 任一 issue 回報者被查明與本 repo 有關, 或上游任何公開文字引用本 repo, 上表的票全部
+退回佐證.
