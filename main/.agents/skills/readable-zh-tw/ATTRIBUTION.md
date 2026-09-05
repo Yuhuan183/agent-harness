@@ -22,6 +22,8 @@
 
 我方版本重用了上游的 38 種 AI 痕跡分類法、六步改寫流程與台灣在地化層，屬衍生作品；依 MIT 條款保留上游著作權與許可聲明如下。
 
+2026-09-05 另自 [sepia](https://github.com/Nanako0129/sepia)（Nanako0129，MIT）的 `skills/sepia/references/languages/zh.md`（head `0162048ac8123e675fb40028298d72245eff2acb`）借了四個中文痕跡的**形狀**，各自併進 patterns.md 既有的第 10、15、19 條與「不是痕跡」一行：動詞贅語、說明文第二人稱、名詞化、「事實上」開段。數字（簡中 2023 年語料）一個不借，上游自己的證據邊界一節也這麼說。沒有逐字取用；pin 與逐條處置記在 `docs/research/upstream-distillation-ledger.md` 的 sepia 節。
+
 ---
 
 MIT License

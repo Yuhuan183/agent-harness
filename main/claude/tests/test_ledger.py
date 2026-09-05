@@ -140,6 +140,18 @@ class SharedSkillTests(unittest.TestCase):
         # because the previous version defaulted the other way and this test
         # pinned that default by name.
         self.assertIn("## 兩個模式", skill)
+        # Four Chinese-specific shapes borrowed from sepia v0.7.0's
+        # `languages/zh.md` on 2026-09-05 - verb padding, second person in
+        # expository prose, nominalisation, 事實上 as an opener - each folded
+        # into the existing pattern it belongs to rather than renumbering the
+        # 38. Shapes only; the corpus behind them is Simplified Chinese from
+        # 2023 and its own evidence-boundary note says not to carry numbers.
+        patterns = read(f"{base}/references/patterns.md")
+        for shape in ("進行討論", "您可以", "○○化", "事實上"):
+            self.assertIn(shape, patterns, f"zh shape {shape} missing from patterns.md")
+        self.assertIn("不是痕跡", patterns,
+                      "the non-signals line keeps punctuation density and paragraph "
+                      "count out of the checklist")
         self.assertIn("**直出**（預設）", skill)
         self.assertIn("## 直出：一次寫對", skill)
         # Punctuation is mode-dependent from the same rewrite: half-width for
