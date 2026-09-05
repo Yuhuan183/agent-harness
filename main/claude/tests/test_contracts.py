@@ -1704,8 +1704,13 @@ class DocumentationBudgetTests(unittest.TestCase):
             # task-observer above: captured output is data, not instruction. This
             # skill's whole job is to quote logs and tool results back, so the
             # ingestion path is the skill rather than an edge of it.
-            ".claude/skills/evidence-debugging/SKILL.md": 1038,
-            ".codex/skills/evidence-debugging/SKILL.md": 1038,  # one source, both surfaces
+            # 1038 -> 1079 on 2026-09-05 for the bounded stop point (rebelytics 3.1):
+            # the skill had two authorities and one gate and nothing about time,
+            # so a defect that is not the deliverable could eat a session one
+            # justified probe at a time. Five words displaced from the structure
+            # pointer, which said the same thing twice; measured 1058 + ~2%.
+            ".claude/skills/evidence-debugging/SKILL.md": 1079,
+            ".codex/skills/evidence-debugging/SKILL.md": 1079,  # one source, both surfaces
             # Same single source, same reasoning. Measured 913 + ~2%. Its worked
             # examples are not in here: upstream `tdd` is 38 lines of index whose
             # substance lives in two TypeScript references, and the replacements

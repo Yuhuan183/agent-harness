@@ -119,6 +119,24 @@ class SharedSkillTests(unittest.TestCase):
     def test_speak_human_tw_is_shared_via_symlink(self) -> None:
         self._assert_symlinked_body("readable-zh-tw")
 
+    def test_evidence_debugging_bounds_a_defect_that_is_not_the_deliverable(self) -> None:
+        """The skill had two authorities (diagnose, repair) and one gate (no loop,
+        no theory), and nothing about time: a defect that is not the session's
+        deliverable could eat the session one more probe at a time, with every
+        probe individually justified. rebelytics 3.1 names the stop point -
+        before the second probe, not after the fifth - and what counts as
+        finished there: a report of the symptom, what was ruled out and the
+        cheapest next probe. Asserted by phrase because the clause is a
+        behaviour, and a census can only say the file changed.
+        """
+        for surface in (".claude/skills/evidence-debugging/SKILL.md",
+                        ".codex/skills/evidence-debugging/SKILL.md"):
+            with self.subTest(surface=surface):
+                skill = read(surface)
+                self.assertIn("not the deliverable", skill)
+                self.assertIn("before the second probe", skill)
+                self.assertIn("cheapest next probe", skill)
+
     def test_readable_zh_tw_layout_and_attribution(self) -> None:
         base = "main/.agents/skills/readable-zh-tw"
         for ref in ("patterns", "taiwan-localization", "protected-list", "humanize",

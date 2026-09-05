@@ -11,8 +11,8 @@ one move: naming a cause you have not watched happen.
 Derived from Matt Pocock's [`diagnosing-bugs`](https://github.com/mattpocock/skills);
 see `ATTRIBUTION.md` for the reviewed commit, licence, and what was changed.
 Local defaults, authority rules and reporting shape are in
-`references/tuning.md`. For repo structure read `AGENTS.md` and
-`docs/architecture.md` — this skill never creates a new context document.
+`references/tuning.md`. This skill never creates a context document; repo
+structure lives in `AGENTS.md`.
 
 ## Authority, first
 
@@ -86,6 +86,11 @@ versions or configs.
    the second to the first.
 
 **Diagnosis-only stops here.** Report and wait.
+
+**When the defect is not the deliverable**, set the stop point
+before the second probe, not after the fifth: a report naming the symptom,
+what was ruled out and the cheapest next probe is a finished deliverable, and
+the one the next session needs.
 
 ## Repair, when it was asked for
 
