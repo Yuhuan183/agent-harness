@@ -112,7 +112,7 @@ main/codex/scripts/model-routing resolve --surface claude-bridge --priority qual
 | Capability-aware verifier | Claude 的 no-write role 不提供 Bash; 需要執行命令的獨立驗證改派 Codex read-only sandbox | [provider-routing](main/claude/skills/provider-routing/SKILL.md) |
 | Verifier 額度 | 規則是每個 top-level task 一個 outcome verifier, 機制擋的是同一個 prompt 內的第二個 Claude `verifier` (跨 prompt 少擋, 不誤擋; 走 `codex:codex-rescue` 的 Codex verifier 不計額度, bridge 名稱不分角色); artifact 所有權仍屬判斷, 刻意不做成假 gate | [verifier-quota.py](main/claude/hooks/verifier-quota.py), [dispatch-lifecycle](docs/dispatch-lifecycle.md) |
 | Delegation audit | 記錄 start/stop 並偵測 leaf 再派 leaf | [delegation-audit.py](main/claude/hooks/delegation-audit.py) |
-| Denial log | 五個 gate 會留下拒絕紀錄, 攔截時各留一行 (gate, 短代碼 reason, session), 讓「多常擋人」數得出來; git 側的 pre-commit 不走這條路徑, 它在 git 自己的邊界上. 只記錄, 不做決策, 且記錄失敗不影響攔截 | [denial_log.py](main/claude/hooks/denial_log.py), [hook 系統](docs/hook-system.md) |
+| Denial log | 六個 gate 會留下拒絕紀錄, 攔截時各留一行 (gate, 短代碼 reason, session), 讓「多常擋人」數得出來; git 側的 pre-commit 不走這條路徑, 它在 git 自己的邊界上. 只記錄, 不做決策, 且記錄失敗不影響攔截 | [denial_log.py](main/claude/hooks/denial_log.py), [hook 系統](docs/hook-system.md) |
 | Experience pending/ledger | 將 dispatch, route, source, token, 時間與 QC outcome 綁在一起 | [experience-ledger](main/.agents/skills/experience-ledger/SKILL.md) |
 | Bridge 存活對帳 | bridge job 比 launcher 長命; 重啟前擋下同一 prompt 的雙寫 | [dispatch-lifecycle](docs/dispatch-lifecycle.md), [bridge-jobs](main/codex/scripts/bridge-jobs) |
 | Weekly integrity | 檢查 source/HOME 漂移, pins, delegation alarm 與 ledger 狀態; 覆蓋不完整 (如 resolver 缺失) 即列 finding 並扣住週章 | [weekly-integrity.py](main/claude/hooks/weekly-integrity.py) |
@@ -120,7 +120,7 @@ main/codex/scripts/model-routing resolve --surface claude-bridge --priority qual
 | Gate-line QC/trap evals | 機械稽核 leaf 報告的 INTENT/TWINS/AUTH owed lines; 行為 trap fixtures 作回歸資產 | [gate_lines.py](main/.agents/scripts/gate_lines.py), [evals/traps/](evals/traps/) |
 | RTK/Headroom | 控制工具輸出與大型唯讀 context; 不可冒充模型配額 | [RTK](main/claude/RTK.md), [Headroom runtime](main/.agents/docs/headroom-runtime.md) |
 
-診斷型 hook (delegation audit, experience pending, weekly integrity) 一律 fail-open, 避免本機工具故障阻塞正常工作. 刻意 fail-closed 的是六個有界 gate: commit test gate 的 Bash 與 git pre-commit 兩側 (紅套件或逾時擋 commit), leaf-redispatch (leaf 嘗試再派工), runtime guard 的 PreToolUse gate (版本過舊或未知時擋受限 reviewer 派工), verifier 額度 (同一個 prompt 內的第二個 outcome verifier), 與 managed-target-guard (寫入 manifest 整份託管的 HOME 檔案). 它們各自只在狹窄條件下攔截; 真正的 correctness gate 仍由 focused tests, contract tests, 主 session QC 與必要時的獨立 verifier 負責. hook 系統的完整語意見 [hook 系統](docs/hook-system.md).
+診斷型 hook (delegation audit, experience pending, weekly integrity) 一律 fail-open, 避免本機工具故障阻塞正常工作. 刻意 fail-closed 的是七個有界 gate: commit test gate 的 Bash 與 git pre-commit 兩側 (紅套件或逾時擋 commit), leaf-redispatch (leaf 嘗試再派工), runtime guard 的 PreToolUse gate (版本過舊或未知時擋受限 reviewer 派工), verifier 額度 (同一個 prompt 內的第二個 outcome verifier), managed-target-guard (寫入 manifest 整份託管的 HOME 檔案), 與 push-consent-gate (使用者沒有為這一次 `git push` 放行 —— 一次放行只算一次). 它們各自只在狹窄條件下攔截; 真正的 correctness gate 仍由 focused tests, contract tests, 主 session QC 與必要時的獨立 verifier 負責. hook 系統的完整語意見 [hook 系統](docs/hook-system.md).
 
 ## 管理邊界
 

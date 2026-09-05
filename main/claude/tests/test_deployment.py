@@ -75,6 +75,7 @@ class MachineStateHygieneTests(unittest.TestCase):
         self.assertEqual(sum("runtime-guard.py\" --gate" in c for c in pre), 1)
         self.assertEqual(sum("runtime-guard.py" in c for c in start), 1)
         self.assertEqual(sum("commit-test-gate.py" in c for c in pre), 1)
+        self.assertEqual(sum("push-consent-gate.py" in c for c in pre), 1)
 
     def test_weekly_integrity_outer_timeout_exceeds_its_inner_work(self) -> None:
         # F-06: the SessionStart hook budget must outlast its slowest internal
@@ -1211,13 +1212,13 @@ class MachineStateHygieneTests(unittest.TestCase):
             gates,
             {"commit-test-gate.py", "leaf-redispatch.py",
              "managed-target-guard.py", "runtime-guard.py",
-             "verifier-quota.py"},
+             "verifier-quota.py", "push-consent-gate.py"},
             "the fail-closed hook set changed; every doc naming the count and "
             "the gate list has to move with it")
         # The commit gate is two enforcement points, not one: the Bash hook and
         # the tracked git hook the installer points core.hooksPath at.
         self.assertTrue((ROOT / "main/claude/githooks/pre-commit").exists())
-        expected = {4: "四", 5: "五", 6: "六"}[len(gates) + 1]
+        expected = {4: "四", 5: "五", 6: "六", 7: "七"}[len(gates) + 1]
 
         numerals = "一兩二三四五六七八"
 
@@ -1234,10 +1235,10 @@ class MachineStateHygieneTests(unittest.TestCase):
             writers,
             {"commit-test-gate.py", "leaf-redispatch.py",
              "managed-target-guard.py", "runtime-guard.py",
-             "verifier-quota.py"},
+             "verifier-quota.py", "push-consent-gate.py"},
             "the set of gates that leave a denial line changed; the doc naming "
             "that count has to move with it")
-        denial_expected = {3: "三", 4: "四", 5: "五", 6: "六"}[len(writers)]
+        denial_expected = {3: "三", 4: "四", 5: "五", 6: "六", 7: "七"}[len(writers)]
 
         # Scanned over the guidance tier only. The journals under
         # `docs/research/` keep the numbers that were true when each entry was

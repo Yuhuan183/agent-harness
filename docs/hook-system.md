@@ -16,7 +16,7 @@ Hook 的「失敗模式」指的是它自己出錯時會怎樣, 這是設計時�
 - **Fail-closed (gate 型)**: 在狹窄且明確的條件下**主動攔截** (回傳 exit 2, 訊息送回模型).
   只有真正「寧可擋住也不要放過」的情況才配得上 fail-closed.
 
-預設是 fail-open. fail-closed 是刻意的例外, 目前六個有界 gate, 每個都只在很窄的條件下攔截.
+預設是 fail-open. fail-closed 是刻意的例外, 目前七個有界 gate, 每個都只在很窄的條件下攔截.
 
 兩類講的是**不同的故障**: fail-open 是「hook 自己壞掉時放行」, fail-closed 是「條件成立時
 主動攔」. 多數 gate 兩邊都成立: 套件跑不起來, 版本讀不到, 目標指不出來都擋.
@@ -30,6 +30,7 @@ Hook 的「失敗模式」指的是它自己出錯時會怎樣, 這是設計時�
 | Hook | 事件 | 只在什麼條件攔截 | 逃生口 |
 |---|---|---|---|
 | [commit-test-gate](../main/claude/hooks/commit-test-gate.py) | PreToolUse[Bash] | 指令含 `git commit` 且目標 repo 的測試套件為紅 (或逾時). 「含」與「目標」怎麼判定見[下一節](#怎麼認出一個-commit-以及它-commit-到哪裡) | `AGENT_SKIP_TEST_GATE=1` 前綴 (用於刻意提交紅狀態) |
+| [push-consent-gate](../main/claude/hooks/push-consent-gate.py) | PreToolUse[Bash] | 指令任一段是 `git push` (含 `-C`, 絕對路徑, force, dry-run) 而使用者沒有在 30 分鐘內放行; 或指令本身碰到放行用的 sentinel (助理不得自己放行). 2026-09-06 加: 一次 push 的同意被讀成持續授權, 連續五次未經同意 push, 提醒沒有擋住, 所以改成閘 | 使用者在 prompt 打 `! touch ~/.claude/telemetry/push-consent-armed` 放行**一次**, 下一個 push 用掉它 |
 | [leaf-redispatch](../main/claude/hooks/leaf-redispatch.py) | PreToolUse[Agent] | caller `agent_type` 非空, 亦即 leaf 嘗試再派工 | 回到 main session 派工 |
 | [runtime-guard](../main/claude/hooks/runtime-guard.py) `--gate` | PreToolUse[Agent] | 派工受限 reviewer (verifier/plan-verifier/security-reviewer) 但 CLI 版本過舊或未知, 無法保證唯讀邊界 | 升級 CLI 重開 session, 或改在 main session 做 |
 | [verifier-quota](../main/claude/hooks/verifier-quota.py) | PreToolUse[Agent] | 同一 top-level task (以 prompt 為界) 派第二個 outcome verifier. **只認 Claude 的 `verifier`**: 走 `codex:codex-rescue` 的 Codex verifier 不計額度 (bridge 名稱不分角色, 列進去會誤擋同 prompt 的 Codex 實作派工), 這段仍屬判斷. **只有它自己狀態健康時會攔**: state 不可寫時兩個 verifier 都放行 (實測). 它是預算護欄不是安全邊界 | `AGENT_ALLOW_SECOND_VERIFIER=1` (確實是新任務時) |
@@ -105,7 +106,7 @@ Hook 建置規範 (真實目錄先證明可跑 → 合成 pipe-test → `jq` 驗
 
 ## 攔截了就要留痕 (2026-08-08 起)
 
-五個 gate 會留下拒絕紀錄, 攔截時各寫一行到 `~/.claude/telemetry/denials.jsonl`, 由共用的
+六個 gate 會留下拒絕紀錄, 攔截時各寫一行到 `~/.claude/telemetry/denials.jsonl`, 由共用的
 [denial_log](../main/claude/hooks/denial_log.py) 負責. 欄位是 `gate`, 短代碼 `reason` 與
 時間; 有 payload 的再帶 session 與 agent_type —— commit gate 是 git hook, 拿不到 payload,
 所以它的列只有前三欄. 用代碼而不是散文, 是為了讓「連續擋幾次」數得出來而不必去 parse

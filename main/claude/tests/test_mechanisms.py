@@ -4125,6 +4125,128 @@ class ContextInflowReportTests(unittest.TestCase):
             self.assertIn("no session", result.stdout)
 
 
+class PushConsentGateTests(unittest.TestCase):
+    """`git push` needs the user's consent for that push, and a reminder did not
+    hold: on 2026-09-06 one approved push was followed by five unapproved ones
+    over a long session. The gate reads the same PreToolUse payload the commit
+    gate reads and refuses a push unless a one-shot sentinel the user created
+    is fresh; the assistant cannot create it, because a command that names it
+    is refused too.
+
+    Controls are the real command strings from that day's tool record, not
+    invented spellings: the pushes that should have been blocked, and the
+    status/commit/log commands that must keep passing.
+    """
+
+    HOOK = ROOT / "main/claude/hooks/push-consent-gate.py"
+
+    def _run(self, command: str, home: Path, tool: str = "Bash",
+             raw: str | None = None) -> subprocess.CompletedProcess[str]:
+        payload = raw if raw is not None else json.dumps(
+            {"tool_name": tool, "tool_input": {"command": command}})
+        env = {**os.environ, "HOME": str(home)}
+        return subprocess.run([sys.executable, str(self.HOOK)], input=payload,
+                              capture_output=True, text=True, env=env, timeout=30)
+
+    def _arm(self, home: Path, age_s: int = 0) -> Path:
+        sentinel = home / ".claude" / "telemetry" / "push-consent-armed"
+        sentinel.parent.mkdir(parents=True, exist_ok=True)
+        sentinel.write_text("", encoding="utf-8")
+        if age_s:
+            stamp = time.time() - age_s
+            os.utime(sentinel, (stamp, stamp))
+        return sentinel
+
+    def test_the_real_pushes_of_2026_09_06_are_blocked_without_consent(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            for command in (
+                "/usr/bin/git push origin main 2>&1 | tail -1",
+                "/usr/bin/git -C \"$R\" add docs/x.md && /usr/bin/git -C \"$R\" commit -q -F msg.txt && /usr/bin/git -C \"$R\" push origin main 2>&1 | tail -1",
+                "/usr/bin/git push --force-with-lease=main:7d0028e origin df76b0b:main 2>&1 | tail -2",
+                "cd /repo; git push",
+                "GIT_DIR=/r/.git GIT_WORK_TREE=/r git push --dry-run",
+            ):
+                with self.subTest(command=command):
+                    done = self._run(command, home)
+                    self.assertEqual(done.returncode, 2, done.stderr)
+                    self.assertIn("push-consent-armed", done.stderr)
+
+    def test_the_real_non_pushes_pass(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            for command in (
+                "/usr/bin/git status --short | wc -l",
+                "/usr/bin/git log -3 --format='%h %s' | cut -c1-110",
+                "/usr/bin/git -C \"$R\" commit -q -F \"$S/commit-msg.txt\"",
+                "/usr/bin/git diff --check b4ae46b..HEAD",
+                "git stash push -m wip",
+                "echo 'about to push later'",
+                "python3 scripts/upstream-pin-report.py",
+            ):
+                with self.subTest(command=command):
+                    done = self._run(command, home)
+                    self.assertEqual(done.returncode, 0, done.stderr)
+
+    def test_a_fresh_sentinel_allows_exactly_one_push(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            sentinel = self._arm(home)
+            first = self._run("/usr/bin/git push origin main", home)
+            self.assertEqual(first.returncode, 0, first.stderr)
+            self.assertFalse(sentinel.exists(), "consent is spent by the push it allowed")
+            second = self._run("/usr/bin/git push origin main", home)
+            self.assertEqual(second.returncode, 2, "a second push needs a second arming")
+
+    def test_a_stale_sentinel_is_removed_and_does_not_count(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            sentinel = self._arm(home, age_s=31 * 60)
+            done = self._run("git push", home)
+            self.assertEqual(done.returncode, 2, done.stderr)
+            self.assertIn("stale", done.stderr.lower() + " stale" if "minutes old" in done.stderr else done.stderr)
+            self.assertFalse(sentinel.exists())
+
+    def test_the_assistant_cannot_arm_it_from_bash(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            for command in ("touch ~/.claude/telemetry/push-consent-armed",
+                            "mkdir -p ~/.claude/telemetry && : > ~/.claude/telemetry/push-consent-armed && git push"):
+                with self.subTest(command=command):
+                    done = self._run(command, home)
+                    self.assertEqual(done.returncode, 2, done.stderr)
+                    self.assertIn("only the user arms", done.stderr)
+
+    def test_non_bash_and_unparseable_input_pass_through(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            self.assertEqual(self._run("git push", home, tool="Edit").returncode, 0)
+            self.assertEqual(self._run("", home, raw="not json").returncode, 0)
+            self.assertEqual(self._run("", home, raw="[]").returncode, 0)
+
+    def test_a_denial_is_recorded_with_the_command_it_refused(self) -> None:
+        # The suite points denials at its own file (support.py), so the row is
+        # read from there and found by a token no other test could have typed.
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            log = home / "denials.jsonl"
+            token = f"branch-{uuid.uuid4().hex[:10]}"
+            payload = json.dumps({"tool_name": "Bash",
+                                  "tool_input": {"command": f"git push origin {token}"}})
+            done = subprocess.run(
+                [sys.executable, str(self.HOOK)], input=payload, capture_output=True,
+                text=True, timeout=30,
+                env={**os.environ, "HOME": str(home), "AGENT_DENIAL_LOG": str(log)})
+            self.assertEqual(done.returncode, 2, done.stderr)
+            self.assertTrue(log.exists(), "the denial log is how a quiet gate proves it fired")
+            rows = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()
+                    if token in line]
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["gate"], "push-consent-gate")
+            self.assertEqual(rows[0]["reason"], "push-without-consent")
+            self.assertIn(token, rows[0]["command"])
+
+
 class UpstreamPinReportTests(unittest.TestCase):
     """`upstream-recheck.sh` verifies the bytes a SHA pins, so it stays green
     when upstream moves - that is the design. Nothing asked the other question
