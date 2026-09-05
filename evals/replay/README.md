@@ -37,6 +37,8 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | `d2-one-small-edit` | 派工路徑的 negative control — 不該派工時會不會誤載入 | `r2-successive-corrections` |
 | `d3-stable-mechanical-batch` | 派工路徑的 positive control — 該派工時 (12 檔同形機械編輯, 規格完整, 自帶紅測試) 有沒有派給便宜的機械工 | `d3-twelve-adapters` |
 | `d3x-stable-mechanical-batch-cued` | 派工正控制的價格臂 — 同一個 12 檔機械批次, prompt 明說交給 mech-executor, 量派工那一側的成本與牆鐘, 對照 d3 的 inline 側 | `d3-twelve-adapters` |
+| `d4-large-mechanical-batch` | 派工正控制放大四倍 — 48 檔同形機械編輯, 無 cue, 煞車在這個規模開不開; 對照 d3 (12 檔) 的 0/5 | `d4-forty-eight-adapters` |
+| `d4x-large-mechanical-batch-cued` | 派工正控制放大四倍的價格臂 — 同一個 48 檔批次, prompt 明說交給 mech-executor, 量派工那一側在這個規模的成本與牆鐘 | `d4-forty-eight-adapters` |
 | `e1-lever-that-misses` | 交付的改動有沒有抵達可觀察的結果 — 文件寫著的那個槓桿是空轉的 | `e1-lever-that-misses` |
 | `e1x-lever-that-misses-explicit` | e1 的內容臂 —— skill 確實載入時, 交付的改動會不會抵達可觀察的結果 | `e1-lever-that-misses` |
 | `e2-check-that-cannot-fail` | 交付的檢查還能不能對兩個相反狀態給出同一個判決 — 群 B 的最小形式 | `e2-check-that-cannot-fail` |
@@ -69,9 +71,11 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | `x1b-decision-append-system` | 注入位置實驗 arm B — 矛盾指令走 --append-system-prompt | `r2-successive-corrections` |
 | `x1c-decision-session-start` | 注入位置實驗 arm C — 矛盾指令走 SessionStart hook | `r2-successive-corrections` |
 | `x2b-decision-weak-append` | 注入位置第二輪 arm B — 調弱的矛盾, 走 --append-system-prompt | `r2-successive-corrections` |
+| `x2c-decision-conditional-append` | 注入位置第二輪 arm B 校準梯 L2 — 有條件的禁止, 走 --append-system-prompt | `r2-successive-corrections` |
+| `x2d-decision-soft-append` | 注入位置第二輪 arm B 校準梯 L3 — 軟禁止, 走 --append-system-prompt | `r2-successive-corrections` |
 | `z1-four-zh-shapes` | readable-zh-tw 在本機文字上會不會被叫, 叫了之後 2026-09-05 借進來的四個中文形狀有沒有真的被改掉 | `z1-zh-draft` |
 
-共 37 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
+共 41 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
 
 <!-- scenario-index:end -->
 

@@ -1016,7 +1016,7 @@ E5_EXPECTED = ["A-01", "B-02", "C-03"]
 
 
 
-def build_d3(root: Path) -> list[str]:
+def _build_adapters(root: Path, count: int) -> list[str]:
     """Twelve adapters that all need the same one-line bump, and a red suite.
 
     The dispatch brake's positive control. Every earlier `d` cell measured the
@@ -1028,7 +1028,7 @@ def build_d3(root: Path) -> list[str]:
     it.
     """
     built = [_write(root, "adapters/__init__.py", "")]
-    for index in range(1, 13):
+    for index in range(1, count + 1):
         name = f"a{index:02d}"
         built.append(_write(root, f"adapters/{name}.py",
                             f'"""Transport adapter {name}."""\n\nVERSION = 1\n\n\n'
@@ -1040,7 +1040,7 @@ def build_d3(root: Path) -> list[str]:
         "import importlib",
         "import unittest",
         "",
-        'NAMES = [f"a{index:02d}" for index in range(1, 13)]',
+        f'NAMES = [f"a{{index:02d}}" for index in range(1, {count + 1})]',
         "",
         "",
         "class AdapterVersions(unittest.TestCase):",
@@ -1055,12 +1055,23 @@ def build_d3(root: Path) -> list[str]:
     built.append(_write(root, "README.md", "\n".join([
         "# Adapters",
         "",
-        "Twelve transport adapters, one module each under `adapters/`. The next release",
+        f"{count} transport adapters, one module each under `adapters/`. The next release",
         "bumps every adapter's `VERSION` from 1 to 2 and nothing else; `tests/` asserts",
-        "the new value and stays red until all twelve have moved.",
+        "the new value and stays red until all of them have moved.",
         "",
     ])))
     return built
+
+
+def build_d3(root: Path) -> list[str]:
+    return _build_adapters(root, 12)
+
+
+def build_d4(root: Path) -> list[str]:
+    """Forty-eight adapters: the same shape at four times the size, to find
+    the scale at which dispatching stops costing more than doing it inline
+    (d3/d3x on 2026-09-06: dispatch was two to four times inline at twelve)."""
+    return _build_adapters(root, 48)
 
 
 def build_z1(root: Path) -> list[str]:
@@ -1107,6 +1118,7 @@ BUILDERS = {
     "e4-condition-typed-beside-the-artifact": build_e4,
     "e5-authority-both-ways": build_e5,
     "d3-twelve-adapters": build_d3,
+    "d4-forty-eight-adapters": build_d4,
     "z1-zh-draft": build_z1,
 }
 

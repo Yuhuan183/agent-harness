@@ -1769,7 +1769,8 @@ def _pristine(fixture: str, relative: str) -> str:
         return (root / relative).read_text(encoding="utf-8")
 
 
-def grade_d3(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
+def _grade_batch(run: Path, meta: dict, turns: dict[int, list[dict]],
+                 fixture: str, count: int) -> dict:
     """The brake's positive control: was the mechanical batch dispatched?
 
     `d1` and `d2` grade whether `baton-dispatch` was loaded; this cell grades
@@ -1787,13 +1788,13 @@ def grade_d3(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
     events = [event for index in sorted(turns) if index >= 1
               for event in turns[index]]
     work = run / "workdir"
-    names = [f"a{index:02d}" for index in range(1, 13)]
+    names = [f"a{index:02d}" for index in range(1, count + 1)]
     versions = {}
     changed = 0
     for name in names:
         path = work / "adapters" / f"{name}.py"
         text = path.read_text(encoding="utf-8") if path.exists() else ""
-        if text != _pristine("d3-twelve-adapters", f"adapters/{name}.py"):
+        if text != _pristine(fixture, f"adapters/{name}.py"):
             changed += 1
         found = re.search(r"^VERSION\s*=\s*(\d+)\s*$", text, re.M)
         versions[name] = int(found.group(1)) if found else None
@@ -1828,6 +1829,19 @@ def grade_d3(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
         "skills_invoked": skills_invoked(events),
         "correct": bool(mech_returned) and delivered,
     }
+
+
+def make_batch_grader(fixture: str, count: int):
+    """One grader per batch size; the reading is identical, only the fixture and
+    the number of adapters that must move differ."""
+    def grade(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
+        return _grade_batch(run, meta, turns, fixture, count)
+    grade.__name__ = f"grade_batch_{count}"
+    return grade
+
+
+grade_d3 = make_batch_grader("d3-twelve-adapters", 12)
+grade_d4 = make_batch_grader("d4-forty-eight-adapters", 48)
 
 
 def grade_z1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
@@ -1872,6 +1886,15 @@ GRADERS = {
     "m2-cap-surfaced": grade_r2,
     "m3-cap-surfaced-in-context": grade_r2,
     "m4-nothing-to-mark": grade_m4,
+    # Injection-position cells: same fixture and same reading as m1 (one turn,
+    # did the changed turn carry a DECISION line), so the same grader. The
+    # 09-01 batch was scored from replies.md by hand with the same regex;
+    # registering them lets batch.sh grade the second round as it lands.
+    "x1b-decision-append-system": grade_r2,
+    "x1c-decision-session-start": grade_r2,
+    "x2b-decision-weak-append": grade_r2,
+    "x2c-decision-conditional-append": grade_r2,
+    "x2d-decision-soft-append": grade_r2,
     "p1-language": grade_conflict,
     "p1b-language-english-prompt": grade_conflict,
     "p2-code-english": grade_conflict,
@@ -1901,6 +1924,10 @@ GRADERS = {
     "d3-stable-mechanical-batch": grade_d3,
     # Price arm: same grader, same fixture; the prompt carries the cue.
     "d3x-stable-mechanical-batch-cued": grade_d3,
+    # Same two cells at four times the batch size (2026-09-06): where does
+    # the dispatched side stop costing more than inline?
+    "d4-large-mechanical-batch": grade_d4,
+    "d4x-large-mechanical-batch-cued": grade_d4,
     "z1-four-zh-shapes": grade_z1,
 }
 

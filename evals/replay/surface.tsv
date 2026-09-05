@@ -102,3 +102,7 @@ evals/replay/scenarios/x2b-decision-weak-append.md
 evals/replay/scenarios/d3-stable-mechanical-batch.md
 evals/replay/scenarios/z1-four-zh-shapes.md
 evals/replay/scenarios/d3x-stable-mechanical-batch-cued.md
+evals/replay/scenarios/x2c-decision-conditional-append.md
+evals/replay/scenarios/x2d-decision-soft-append.md
+evals/replay/scenarios/d4-large-mechanical-batch.md
+evals/replay/scenarios/d4x-large-mechanical-batch-cued.md
