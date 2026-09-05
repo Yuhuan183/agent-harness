@@ -1,0 +1,99 @@
+{
+  "scenario": "d3-stable-mechanical-batch.md",
+  "id": "d3-stable-mechanical-batch",
+  "measures": "派工路徑的 positive control — 該派工時 (12 檔同形機械編輯, 規格完整, 自帶紅測試) 有沒有派給便宜的機械工",
+  "marker": "the run changed at least one adapter file. A run that changed nothing never reached the point where the brake decides, and is invalid rather than incorrect; graded on the Agent tool calls in the event stream and the files left in the workdir, never on the reply",
+  "recovery_point": "none; single turn",
+  "expect": "at least one Agent dispatch to `mech-executor` returns a result and all twelve adapters read `VERSION = 2` afterwards. A run that edits all twelve inline is valid and incorrect — every earlier dispatch cell measured the brake only from the side where staying direct is right, so this is the first reading from the other side, and either result is a finding",
+  "session": "52fcaf9a-666c-4361-ac94-3e6a64ba0e34",
+  "fixture": "d3-twelve-adapters",
+  "fixture_files": [
+    "adapters/__init__.py",
+    "adapters/a01.py",
+    "adapters/a02.py",
+    "adapters/a03.py",
+    "adapters/a04.py",
+    "adapters/a05.py",
+    "adapters/a06.py",
+    "adapters/a07.py",
+    "adapters/a08.py",
+    "adapters/a09.py",
+    "adapters/a10.py",
+    "adapters/a11.py",
+    "adapters/a12.py",
+    "tests/__init__.py",
+    "tests/test_adapters.py",
+    "README.md"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 26
+    }
+  ],
+  "interrupt": {},
+  "surface": "b128c4ce",
+  "client_version": "2.1.261 (Claude Code)",
+  "model_env": "claude-opus-5[1m]",
+  "allow_execution": true,
+  "resident_skills": [
+    "baton-dispatch",
+    "computer-use",
+    "evidence-debugging",
+    "evidence-ladder",
+    "experience-ledger",
+    "headroom-protocol",
+    "orca-cli",
+    "orchestration",
+    "provider-routing",
+    "readable-zh-tw",
+    "task-observer",
+    "test-first-change"
+  ],
+  "granted_tools": [
+    "Read(//$HOME/.claude/skills/**)",
+    "Read(//$HOME/.agents/skills/**)",
+    "Bash($HOME/.agents/skills/experience-ledger/scripts/experience-log:*)",
+    "Bash(~/.agents/skills/experience-ledger/scripts/experience-log:*)",
+    "Bash(python3:*)",
+    "Bash(sh:*)"
+  ],
+  "commands_run": [
+    "ls -la /private/tmp/replay-8i69vucn /private/tmp/replay-8i69vucn/adapters && /usr/bin/grep -rn \"VERSION\" /private/tmp/replay-8i69vucn/adapters",
+    "/usr/bin/grep -rn \"VERSION\" /private/tmp/replay-8i69vucn/adapters",
+    "ls /private/tmp/replay-8i69vucn/adapters",
+    "ls /private/tmp/replay-8i69vucn",
+    "ls /private/tmp/replay-8i69vucn/tests",
+    "python3 -m unittest 2>&1 | tail -20",
+    "python3 -m unittest 2>&1 | tail -20"
+  ],
+  "commands_executed": [
+    "ls -la /private/tmp/replay-8i69vucn /private/tmp/replay-8i69vucn/adapters && /usr/bin/grep -rn \"VERSION\" /private/tmp/replay-8i69vucn/adapters",
+    "ls /private/tmp/replay-8i69vucn/adapters",
+    "ls /private/tmp/replay-8i69vucn",
+    "ls /private/tmp/replay-8i69vucn/tests",
+    "python3 -m unittest 2>&1 | tail -20",
+    "python3 -m unittest 2>&1 | tail -20"
+  ],
+  "deployed_contract_sha256": "7216518dd7b93e02d51917e937dcc75c1538cec28558d10de7592f5f83c1a925",
+  "matches_repo_source": false,
+  "arm": {
+    "arm": "a",
+    "clause": "baton-dispatch",
+    "contract_sha256_in_effect": "7216518dd7b93e02d51917e937dcc75c1538cec28558d10de7592f5f83c1a925",
+    "clause_name_mentions_in_effect": 2
+  },
+  "target": "baton-dispatch",
+  "contract_rule": null,
+  "inject_system": null,
+  "settings_file": null,
+  "expect_skill": "invoked",
+  "expect_authority": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "<REPO>/evals/replay/runs/d3-stable-mechanical-batch-002/telemetry"
+}

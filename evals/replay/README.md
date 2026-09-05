@@ -1616,3 +1616,67 @@ pre-existing defect in a tool this batch only borrowed.
 `.gitignore` 規則不進 git. 從這一批起 `meta.json` 另帶 `client_version` 與 `model_env` ——
 加它的理由就是這一批: `A` 的 73% 遠高於 `m1` 同一條措辭的 48%, 而兩批都沒記 client 與模型,
 所以那個落差**查不到答案**, 不是還沒查.
+
+## Part 15 — 派工正控制 `d3` 與中文四形狀 `z1` (2026-09-06, 10 個 run)
+
+兩格都是 2026-09-05 那輪上游重查排出來的 (升級計畫 P13 與 P11b), 各五個 run, arm A, Claude Code
+2.1.261, CLI 預設模型 (`claude-opus-5[1m]`), 全部從 artifact 評分. `[surface b128c4ce competitors:52b1cbac contract:d9f4a654 scenarios:66c642fe]`.
+
+### `d3-stable-mechanical-batch`: 煞車第一次從「該派」那一側被量, 讀數 0/5
+
+這個 suite 之前每一個 `d` 格都問「該直接做時有沒有誤派」; 沒有一格問「該派時有沒有派」. Pilotfish
+的正控制表 (09-05 讀) 給了另一側的形狀: 12 個檔同一行機械改動, 規格完整, 自帶紅測試, 便宜的機械工
+是對的選擇. 事前登記: 至少一次 `mech-executor` 派工回來且 12 個 adapter 全部 `VERSION = 2` 算對;
+12 個都 inline 改完算**有效但不對**; 沒動算沒到.
+
+```text
+run   reached   Agent calls   baton-dispatch loaded   inline Edit   delivered   cost      wall
+001   yes       0             no                      12            green       $0.636    56 s
+002   yes       0             no                      12            green       $0.709    70 s
+003   yes       0             no                      12            green       $0.619    51 s
+004   yes       0             no                      12            green       $0.629    56 s
+005   yes       0             no                      12            green       $0.648    74 s
+
+正控制  0/5 派工   5/5 有效   5/5 交付綠   Read 13-14, Edit 12, Bash 5-7 每 run
+```
+
+**讀法.** 煞車在這一側不開: 成本測試的「便宜檔位」分支在最小的完整規格機械批次上一次都沒發火,
+而且 `baton-dispatch` 一次都沒載入 —— 契約說「一旦要派工才載入」, 所以沒載入是一致的, 不是漏載.
+這是**結論不是缺陷**, 至少現在還不是: 五個 run 都在 51–74 秒內以 $0.62–0.71 交付了綠的結果,
+而「派給 mech-executor 會更便宜」在本機**沒有量過** —— Pilotfish 的 −36% 成本 / +8% 牆鐘是
+他們的 harness 在他們的 client 上的觀察, 依通貨表的規則不能借. 這批只量到了 inline 那一側的價.
+
+**下一步 (未做)**: 一個強制派工的臂 (Pilotfish 用的是 README 明寫的 opt-in cue), 在同一個 fixture
+上量 `mech-executor` 那一側的成本與牆鐘. 兩側都有價之後, 「煞車該不該在這裡開」才是一個可以裁決的
+問題; 現在它是一個已量測的缺席.
+
+**推翻條件**: 強制派工臂在同一 fixture 上的成本低於 inline 的 $0.62 且交付同樣綠 —— 那時 0/5 從
+「正確的成本判斷」變成「煞車卡死」, 成本測試第四項 (cheaper tier) 的措辭要改.
+
+### `z1-four-zh-shapes`: skill 5/5 被叫, 五個種下的形狀 5/5 被清掉
+
+sepia 的行為 eval 三個 grader (skill-fired / reads-human / no-slop-markers) 折成一格: 一段給客戶的
+說明, 種了 09-05 從 sepia `languages/zh.md` 借進 `readable-zh-tw` 的四個形狀 (動詞贅語 ×2, 說明文
+第二人稱, 名詞化, 「事實上」開段), 請 session 改好讀並直接改檔. 評的是改後的檔對照 fixture 原文,
+與事件流裡有沒有 `Skill(readable-zh-tw)`; 不讀回覆.
+
+```text
+run   reached   Skill(readable-zh-tw)   shapes left   cost      wall
+001   yes       1                       0/5           $0.815    90 s
+002   yes       1                       0/5           $0.848    78 s
+003   yes       1                       0/5           $1.001   101 s
+004   yes       1                       0/5           $0.753    65 s
+005   yes       1                       0/5           $0.801    97 s
+
+5/5 正確   兩個半邊各 5/5   Read 4-6, Skill 1, Edit/Write 1 每 run
+```
+
+**讀法.** 這關掉 P4 掛著的推翻條件 (「四個形狀在本機語料一次都不中就拿掉」): 五次全中. 也回答了
+P11b: `readable-zh-tw` 現在有 eval, 而且第一批就有讀數. 改後的稿子讀起來像人寫的 (「這次的延遲
+我們已經討論過, 下週開會時會向您說明」), 「向您說明」這種對客戶的第二人稱留著 —— 種的針是「您可以」
+那種對不在句子裡的讀者說話, 不是所有的您.
+
+**沒有做的**: 沒有 Codex 端的 run (replay harness 只跑 Claude CLI); 沒有跑 arm B/C (這兩格沒有要比
+的契約子句); n=5 只夠說「五次都這樣」, 不夠說比率. 加了兩個情境檔進 `[scenarios]` 組: 先前九個 replay 戳章裡
+八個已 archived, 唯一活著的那個 (`045b7f77`, 09-04 就因 readable-zh-tw 改動過期) 現在多了 `scenarios` 這一組 ——
+加任何情境都要付這個, 也是戳章帶組別 digest 的理由 (`evidence-check.py` 讀數: stamps 9, stale 1, archived 8).

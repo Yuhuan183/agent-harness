@@ -1,0 +1,68 @@
+{
+  "scenario": "z1-four-zh-shapes.md",
+  "id": "z1-four-zh-shapes",
+  "measures": "readable-zh-tw 在本機文字上會不會被叫, 叫了之後 2026-09-05 借進來的四個中文形狀有沒有真的被改掉",
+  "marker": "notes/draft.md was rewritten — a run that left the file untouched never reached the pass; graded on the file against the fixture as built, never on the reply",
+  "recovery_point": "none; single turn",
+  "expect": "`Skill(readable-zh-tw)` is invoked and none of the planted shapes survives in the rewritten file (進行討論/加以說明, 您可以, 標準化與規範性, 事實上 as the opener). The two halves are recorded separately, so a clean rewrite without the skill and a skill load that left a shape are two different findings; a shape that survives every run comes back out of patterns.md, as the ledger's sepia section already says",
+  "session": "a249564b-3ba9-4285-bfa7-94cacf12e1f6",
+  "fixture": "z1-zh-draft",
+  "fixture_files": [
+    "notes/draft.md",
+    "README.md"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 26
+    }
+  ],
+  "interrupt": {},
+  "surface": "b128c4ce",
+  "client_version": "2.1.261 (Claude Code)",
+  "model_env": "claude-opus-5[1m]",
+  "allow_execution": false,
+  "resident_skills": [
+    "baton-dispatch",
+    "computer-use",
+    "evidence-debugging",
+    "evidence-ladder",
+    "experience-ledger",
+    "headroom-protocol",
+    "orca-cli",
+    "orchestration",
+    "provider-routing",
+    "readable-zh-tw",
+    "task-observer",
+    "test-first-change"
+  ],
+  "granted_tools": [
+    "Read(//$HOME/.claude/skills/**)",
+    "Read(//$HOME/.agents/skills/**)",
+    "Bash($HOME/.agents/skills/experience-ledger/scripts/experience-log:*)",
+    "Bash(~/.agents/skills/experience-ledger/scripts/experience-log:*)"
+  ],
+  "commands_run": [],
+  "commands_executed": [],
+  "deployed_contract_sha256": "7216518dd7b93e02d51917e937dcc75c1538cec28558d10de7592f5f83c1a925",
+  "matches_repo_source": false,
+  "arm": {
+    "arm": "a",
+    "clause": "baton-dispatch",
+    "contract_sha256_in_effect": "7216518dd7b93e02d51917e937dcc75c1538cec28558d10de7592f5f83c1a925",
+    "clause_name_mentions_in_effect": 2
+  },
+  "target": "readable-zh-tw",
+  "contract_rule": null,
+  "inject_system": null,
+  "settings_file": null,
+  "expect_skill": "invoked",
+  "expect_authority": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "<REPO>/evals/replay/runs/z1-four-zh-shapes-002/telemetry"
+}
