@@ -8,14 +8,18 @@ https://github.com/rebelytics/one-skill-to-rule-them-all
 
 Reviewed upstream revision:
 
-- Version: `v3.0.0`
-- Commit: [`9d1491b895c4f8f04f04977f74faad0f342c8b0c`](https://github.com/rebelytics/one-skill-to-rule-them-all/commit/9d1491b895c4f8f04f04977f74faad0f342c8b0c)
+- Version: `v3.1.0`
+- Commit: [`f4a95a180404bd4de35365da66849a243e3d07be`](https://github.com/rebelytics/one-skill-to-rule-them-all/commit/f4a95a180404bd4de35365da66849a243e3d07be)
 
-Advanced from `v2.0.0` (`281f1346`) on 2026-08-31, after every rule in the 3.0
-rewrite was classified and each disposition checked against this tree. The tag
-is pinned rather than the default branch: the branch was three commits ahead at
-the time and all seven source files were byte-identical, so the tag is the same
-bytes with a name that does not move.
+Advanced from `v3.0.0` (`9d1491b895c4f8f04f04977f74faad0f342c8b0c`) on 2026-09-05,
+after every rule in the 3.1 changes was classified and each disposition checked
+against this tree: six of the seven source files moved, `SKILL.md` alone by
++229/-44, and a new `references/starter-principles.md` (25 seed principles)
+was classified entry by entry. Advanced from `v2.0.0` (`281f1346`) on
+2026-08-31 the same way. The tag is pinned rather than the default branch: on
+2026-09-05 the branch was one commit ahead (`2967fa5f`, `CONTRIBUTING.md`
+only) and all eight source files were byte-identical at both, so the tag is the
+same bytes with a name that does not move.
 
 The upstream work is licensed under the
 [Creative Commons Attribution 4.0 International licence](https://creativecommons.org/licenses/by/4.0/).

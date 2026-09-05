@@ -15,7 +15,7 @@
 | 專案 | [Raymondhou0917/speak-human-tw](https://github.com/Raymondhou0917/speak-human-tw) |
 | 作者 | Raymond Hou (雷蒙三十) |
 | 授權 | MIT |
-| 我方 pin | `ee860be6fb190cbc53dc1d45a2a47c9c9c680243` (2026-08-27 的 master, 2026-08-28 查) |
+| 我方 pin | `fa09500c77e1ec7747677377e30599d9426433db` (2026-09-05 的 master, 2026-09-05 查; 前一個 ee860be6 是 2026-08-27 的 master) |
 | 重查 | `scripts/readable-zh-tw-recheck.sh [sha]` |
 
 **2026-08-19 補上 SHA 之前, ATTRIBUTION 只寫版本號.** 那讓它成為
@@ -180,3 +180,25 @@ SVG. 六個來源檔自 2026-07-18 起一個位元組都沒動過. 內容分岔�
 
 **推翻條件**: `upstream-pin-report.py` 對這個上游報出 `assets/` 以外的路徑, 就重跑
 逐條分類, 而不是只推進 pin.
+
+## 2026-09-05 重查: 九個 commit 全是星數圖, 第五輪
+
+`ee860be6fb190cbc53dc1d45a2a47c9c9c680243` -> `fa09500c77e1ec7747677377e30599d9426433db`,
+九個 commit, 2026-08-28 到 09-05 每日一則, 訊息全是「chore: 自動更新 Star History 星數成長圖
+(GitHub Actions)」, 動到的檔案只有一個: `assets/readme/star-history-real.svg` (+9/-9).
+
+**查了什麼.** `upstream-pin-report.py` 的 `touched` 那行先報了 `assets/ (1)`; compare 的檔案
+清單確認就那一個檔; `readable-zh-tw-recheck.sh fa09500c` 六個來源檔全部 matches. 累計
+`2c27cca` -> `fa09500c` 47 個 commit, 六個來源檔自 2026-07-18 起沒動過一個位元組.
+
+**這一輪沒有改儀器, 也沒有觸發推翻條件** (08-28 寫的: `touched` 出現 `assets/` 以外的路徑
+才重跑逐條). 所以只推進 pin, 四處一起動: ATTRIBUTION, `readable-zh-tw-recheck.sh` 的預設 SHA,
+research README 那一列, 本節 —— `test_ledger` 的 pin-site 斷言會抓漏掉的那一處.
+
+同日重查的 sepia 出了 `references/languages/zh.md` (中文 AI 痕跡校準: 動詞贅語, 說明文第二人稱,
+名詞化, 「事實上」開段, 以及一節「哪些在中文裡不是訊號」). 那是 `readable-zh-tw` 的第二個上游
+候選, 逐條處置在 [ledger 的 sepia 節](upstream-distillation-ledger.md#sepia-v070-重查-2026-09-05-中文校準檔直接對上-readable-zh-tw),
+落地排在 [升級計畫 P4](../plans/upgrade-plan-2026-09.md). 它不改本檔的目標分岔: 借的是痕跡的形狀, 不是版面方針;
+數字 (簡中, 2023 年 ChatGPT 語料) 一個都不借, 上游自己的證據邊界一節也這麼說.
+
+**推翻條件**: 同 08-28.

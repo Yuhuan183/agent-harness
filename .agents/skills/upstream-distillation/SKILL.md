@@ -144,7 +144,10 @@ same bar as any other change here, and write the plan before the edit:
   mechanism, watch the guard go red with the message you expected, restore.
   A guard can pass for a reason unrelated to what it claims to check, and from
   the outside that is indistinguishable from working. Mutation is the only cheap
-  way to tell the difference.
+  way to tell the difference. Before landing, run the candidate over the corpus
+  it will police and record three numbers beside it: hits today, true defects
+  among them, and the normalisation needed to remove the rest. A guard with an
+  unmeasured false-positive rate is a proposal to make people ignore a test.
 - **A rule landing on one provider lands on its twin**, in that side's idiom,
   and names anything the other side already had so the two do not read as
   alternatives.

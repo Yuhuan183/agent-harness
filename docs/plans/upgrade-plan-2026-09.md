@@ -1,0 +1,65 @@
+# 2026-09 升級計畫: 五個上游同日重查後的落地排程
+
+2026-09-05 起. 這一頁擁有的是**排程與完成條件**; 每一項為什麼採用, 上游原句是什麼, 查了什麼
+才這樣判, 全在 [ledger 的 09-05 三節](../research/upstream-distillation-ledger.md#2026-09-05-重查-五個-pin-三個動-marketplace-pin-第一次真的前進);
+等待中的判定在 [pending-evidence 三之八](pending-evidence.md#三之八-2026-09-05-上游重查留下的-有明確下一步).
+這裡不重述依據, link, don't repeat.
+
+背景一句: 那一輪五個 pin 三個動 (mattpocock 的 marketplace pin 第一次前進, speak-human-tw 第五輪
+機器人, rebelytics 3.0→3.1), 沒有 ATTRIBUTION 的 sepia 出了 v0.7.0, client 注入區塊在 2.1.261 消失.
+逐條處置約 85 條, 已落地或佐證的佔多數; **真正沒有的是下面十二項**, 其中兩句指引已當場收
+(pending-evidence 導言的「觸發要發生得了」, upstream-distillation 的「守衛帶三個量測數」), 不在表裡.
+
+## 排程怎麼排
+
+每項照本 repo 自己的規矩走: 改行為的規則先寫會紅的檢查; 新守衛先量三個數 (今日命中, 真缺陷,
+正規化) 再兩向突變; 落在一個 provider 的規則落到雙生; 動到 prompt surface 就重跑 census 並位移
+預算. 順序按「最便宜且擋住信任的先」:
+
+```text
+       runtime 信任      test-first 小修      守衛 (先量再加)     prompt surface     閱讀
+       ------------      ----------------     ----------------    --------------     -------
+  P6 ─ 載體重驗    ─→  P1 冒號名        ─→  P3 編輯殘渣     ─→  P4 中文四形狀  ─→ P8 Pilotfish
+       (一次真派工)     (30 分鐘)            P2 耐久指標         P5 有界停止點      P9 Deep Agents
+                                             P7 pin-report 讀表                     P11 sepia 後續
+  P10 戳章重跑 ───────────────────────────────────────────────────────────────→ P12 「查過但不能用」
+```
+
+P6 與 P10 先, 因為兩個量測面 (hook 載體, client 注入段) 都在 2.1.261 上過期了, 後面每一項的
+驗證都站在它們上面; 第四輪跨上游整合的計票也等它們.
+
+## 十二項
+
+| # | 項目 | 來源與血緣 | 先紅的檢查 | 落地面 | 完成條件 |
+|---|---|---|---|---|---|
+| P1 | `observation-log target` 接受 `plugin:skill` 冒號名 (`codex:rescue` 這種本機真有的 plugin skill 目前直接 `LedgerError`) | rebelytics 3.1 `migrate-log.py` 同一修法; 本機 codex plugin 是案例 | `test_task_observer` 新測試: `target --skill codex:rescue` 現在拋「lowercase hyphen-case」→ 放寬 `SKILL_NAME` 後回 `local-or-third-party` | 腳本共用 (twin 是 symlink), 不在 prompt surface, 無預算 | 新測試綠; 把正規式改回去看它紅; `add` 走 `require_text` 不動 |
+| P2 | 耐久指標掃描: `docs/`, `main/.agents/docs/`, memory 目錄裡指向 `/private/tmp/…`, `/tmp/`, `scratchpad` 的路徑視為「寫時不敗讀時敗」的指標 | rebelytics 3.1 `reference:` 規則 + 本 repo `c995eb6` (兩個獨立血緣) | 先量: 今日 2 命中 (`clause-pricing.md`, `context-and-vendors.md`), 真偽未分; fixture 含 scratchpad 路徑的文件要紅 | `scripts/evidence-check.py` 加一類; docs 不是 token surface, 無預算 | 三個數寫在本列; 命中裡有真缺陷才加規則, 全是正當引用 (例如記錄 run 曾在哪) 就只在這裡記數字 |
+| P3 | 編輯殘渣掃描 deployed surfaces: 字面 `\1` 孤行或散文裡的 backreference, conflict marker, `{{slot}}`, `TODO: fill`; 順帶「恰好一個 frontmatter 區塊」(`test_contracts` 有解析, 沒有這條斷言) | rebelytics 3.1 交付前閘第 6, 7 條; 實作細節可借 (圍欄先遮, 行號保留) | 今日 `main/` md/toml/json/yaml 0 命中; fixture 含 `<<<<<<<` 與 `\1` 孤行的 skill 要紅 | `test_deployment` 或 `evidence-check.py`; 兩邊 provider 的檔都在掃描母體裡 | 三個數在本列; 兩向突變 (拿掉一條 regex 看對應 fixture 綠掉) |
+| P4 | `readable-zh-tw` 的 `references/patterns.md` 補四個中文形狀: 雙音節動詞贅語 (進行討論 / 加以說明 / 予以處理 / 做出決定 → 動詞本身), 說明文裡的第二人稱, 名詞化 (○○性 / ○○感 / ○○化), 「事實上 / 其實」開段; 加一句「不是訊號」(標點密度, 段落數, 大陸用語是語域) | sepia v0.7.0 `languages/zh.md`; 只借形狀, 數字 (簡中 2023 語料) 一個不借 | `test_ledger` 對 reference 的既有斷言形狀: 斷言 `patterns.md` 含「進行」條目 (弱); 行為檢查等 P11b | `patterns.md` 不在 census (查過), `SKILL.md` 不動就不重跑 census; `.agents` 共用無雙生; 落地那天補 sepia 的 ATTRIBUTION (第一次有內容進 `main/`) | 四個形狀各在本機語料上命中至少一次; 一次都不中就拿掉 (ledger sepia 節的推翻條件) |
+| P5 | `evidence-debugging` 加「有界停止點」: 缺陷不是交付物又吃掉 session 時, 停止點設在第二個假說之前; 「症狀 + 排除了什麼 + 最便宜的下一步」的問題報告本身是交付物 | rebelytics 3.1 SKILL.md; 我方現有的只有 diagnose / repair 權限切分與「無迴路即停」 | `test_contracts` / `test_ledger` 對該 SKILL.md 的片語斷言 (先查有無, 再加一條) | **prompt surface**: `scripts/prompt-surface-census.py --write`; `docs-size-report.py` 與 `budget-drift-report.py` 先量, 位移或帶理由的上調; `.agents` 共用 | census 過; 預算數字與理由寫在 landing-log |
+| P6 | leaf-redispatch 載體在 2.1.261 重驗: 一次真派工, leaf 嘗試巢狀派工 | weekly-integrity 09-05 開場訊息; rebelytics 3.1 「安裝的 session 證明不了啟用」佐證 | 這本身就是正控制: 用真實 tool record, 不造例子 | `main/claude/hooks/leaf-redispatch.py` 的 `CARRIER_VALIDATED_ON` | exit 2 觀察到, 常數推進到 (2, 1, 261); 沒觀察到就是 gate 已瞎, 停下來修 |
+| P7 | `upstream-pin-report.py` 也讀 research README 上游表的 pin (sepia, 以及任何沒有 ATTRIBUTION 的列): 解析 `pin \`<40 hex>\`` 與 repo URL | 09-05 sepia 移動只靠那列日期發現; ledger 「已知限制」節 | 先寫測試: fixture README 列 → 現在報 5 個 pin, 改後 7 個 | `scripts/`, 無預算 | 測試綠; 拿掉那列看回 5 |
+| P8 | 讀 Pilotfish tag 後十五個 commit 的 `benchmarks/**/attempts.json`: 抽「dispatch positive controls 怎麼設計」與「verifier paid summaries 的邊界」兩件, 對我方 trap / replay | 同業 (Nanako0129); 只讀不採 | — (閱讀) | `peer-harnesses.md` 新節 | 通貨表 Pilotfish 列去掉「未讀」; 若正控制設計與我方 trap fixture 同形, 記進第四輪整合第二節 |
+| P9 | Deep Agents 0.7.7→0.7.13 內容差異 (三輪未讀) | 同業 | — | `peer-harnesses.md` | 同上 |
+| P10 | client 注入段在 2.1.261 消失 → 戳章重跑: 依 evals 的量測面分組, 對 2.1.247 量的批次標出「client 半邊已動」; 不重跑矩陣 | context-and-vendors 09-05 補記; 第二輪整合的裁決 (採正規化那一半) 不變 | `evals/scripts/trap-surface.py` 的戳章比對要能對這一次說出「哪一半動了」 | `evals/`; 每個受影響批次的 README 一行 | 每個對 2.1.247 量的批次帶新戳章; 第四輪計票在這之後才開 |
+| P11 | sepia 後續: (a) 讀 `model-fingerprints.md` 的 Fable 5.1 prose layer (executor 端, 類別 vendor guidance unmeasured, 只當佐證); (b) `readable-zh-tw` 目前沒有 eval —— 借 sepia `evals/deaify-release-note` 的三 grader 形狀 (skill-fired / reads-human / no-slop-markers) 開一條 | sepia v0.7.0 | (b) 先決定要不要有 eval, 決定了才寫 | `evals/`; 等 P4 落地 | (a) 一段記進 ledger sepia 節; (b) 決定寫進本列 |
+| P12 | 「查過但不能用的來源」登記法: `model-evidence.md` 加一小節, 記查過但沒有可用數字的來源與原因, 免得下次再抓流傳的數字 | sepia `sources.md` 的 Consulted 表; 是我方「沒有查的」的另一半 | — | `docs/research/`, 無預算 | 下一次量測輪至少一筆進去 |
+
+## 明確不做的 (依據在 ledger 各節)
+
+- rebelytics 的啟動種子, session-start 掃描, per-skill 載入時 grep, deliverable flush, carrier pattern,
+  staging 三向對帳, `{skill}-extras`: 形狀不同 —— 我方寫入 opt-in, 單一鎖住的 JSONL, 沒有 staging.
+- rebelytics 種子 25 條裡的互動小工具 (8, 9), 瀏覽器成本 (18), API 沙盒 (19): 不適用或沒量過.
+- sepia 的小說側, voice, 模型歸因; 上游 review 報告格式.
+- Windows 排程器, CRLF, 八進位 id, cp1252 主控台: 平台不適用.
+- 安裝 upstream skill 而非蒸餾 (rebelytics 「專案有帶就裝官方的」的後半): 與本 repo 的蒸餾方針相反.
+
+## 推翻條件
+
+- **rebelytics 血緣查明參照過本 repo**: P2, P3 的「兩個獨立血緣」各降一, 但採用理由不變 (本地
+  事故本身就是依據); 第四輪計票把 rebelytics 從獨立票剔除.
+- **P2 或 P3 的三個數顯示命中全是正當引用**: 不加規則, 只留數字; 這一頁的那兩列改成「量過, 不加」.
+- **P6 沒觀察到 exit 2**: 不是「重驗失敗」, 是 gate 在 2.1.261 上已瞎 —— 那時 P6 變成修 gate, 而
+  P10 之後的每個量測結果都要重新標「hook 半邊也動了」.
+- **P4 四個形狀在本機語料一次都不中**: 拿掉, 並在 ledger sepia 節記「簡中 2023 的形狀沒跨到繁中
+  2026」, 那本身是一筆對上游證據邊界的佐證.

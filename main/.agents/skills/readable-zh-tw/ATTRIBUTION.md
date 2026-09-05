@@ -9,7 +9,7 @@
 > 保留舊名，因為那是當時的事實。
 
 - 專案：[speak-human-tw](https://github.com/Raymondhou0917/speak-human-tw)
-- 蒸餾自：`ee860be6fb190cbc53dc1d45a2a47c9c9c680243`（2026-08-27 的 master，2026-08-28 查）—— 這一輪又前進三個 commit，和前兩輪一樣全部是 GitHub Actions 更新星數圖，只動 `assets/readme/star-history-real.svg`；六個來源檔對新舊兩個 SHA 都 matches，所以推進 pin 只是記帳。歷任 pin：`2c27cca`（2026-07-18，上游前進 32 個 commit 而六個來源檔**逐位元組相同**）→ `8f1cdb5ec52e46178f9d04a316bdf610466ee71c`（2026-08-21）→ `aa37c20be932c56079ea73e8e7421770057b0835`（2026-08-24）
+- 蒸餾自：`fa09500c77e1ec7747677377e30599d9426433db`（2026-09-05 的 master，2026-09-05 查）—— 這一輪前進九個 commit（2026-08-28 到 09-05 每日一則），和前四輪一樣全部是 GitHub Actions 更新星數圖，只動 `assets/readme/star-history-real.svg`；六個來源檔對新舊兩個 SHA 都 matches，推進 pin 只是記帳。歷任 pin：`2c27cca`（2026-07-18，上游前進 32 個 commit 而六個來源檔**逐位元組相同**）→ `8f1cdb5ec52e46178f9d04a316bdf610466ee71c`（2026-08-21）→ `aa37c20be932c56079ea73e8e7421770057b0835`（2026-08-24）→ `ee860be6fb190cbc53dc1d45a2a47c9c9c680243`（2026-08-28）
 - 最近的發行版：`v1.4.0` = `5f8e5aab0c814a01e88b088b581cd86d2371b510`（2026-07-10）——
   **本 skill 不是從這個 tag 蒸餾的**。原始 commit 訊息寫「v1.4.0」，但蒸餾發生在
   2026-07-20，而 master 在 07-11 與 07-18 各動過一次；我方副本裡的「罐頭反應鏡頭」

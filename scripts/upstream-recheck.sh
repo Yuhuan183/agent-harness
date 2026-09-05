@@ -13,7 +13,7 @@
 #
 #     scripts/upstream-recheck.sh [sha]
 set -u
-SHA="${1:-885e2ca4d842d139e9aef4e48d366c63cb1b8013}"
+SHA="${1:-6654f6b60cd9d5be8b54c6fafe44346dabeb3b76}"
 BASE="https://raw.githubusercontent.com/mattpocock/skills/$SHA"
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 unreachable=0

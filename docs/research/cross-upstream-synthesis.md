@@ -592,7 +592,7 @@ Nanako0129 / Pilotfish      規則數釘住 36, 壓的是字
 之後的殘餘失敗率, 而我方的 6/10 與 48% 說殘餘很大.
 
 逐條表與那兩條「不採用」的完整理由 (目標分岔, 不是判它錯) 在
-[ledger](upstream-distillation-ledger.md#rebelyticsone-skill-to-rule-them-all-逐條處置-2026-08-28).
+[ledger](task-observer-upstream.md#rebelyticsone-skill-to-rule-them-all-逐條處置-2026-08-28).
 
 **推翻條件**: 找得到三家之間的衍生關係, 票數要合併, 獨立收斂的強度隨之下降.
 
@@ -666,3 +666,65 @@ Nanako0129 / Pilotfish      規則數釘住 36, 壓的是字
 `grep -c` 數以星號開頭的那個字串, 現在本檔回報 13 (12 條實體加上一節自述), 在
 `wording-effect-scale.md` 回報 1 (第三輪自己的降級條件), 在 `peer-harnesses.md` 仍是 0.
 量測照舊不把本段算進母體 —— 本段刻意不以該字串開行, 用引號寫它.
+
+## 第四輪素材 (2026-09-05): 三個上游同日動, 一條分歧與兩條多血緣
+
+第四輪還沒開題; 這一節只把 09-05 重查 ([ledger](upstream-distillation-ledger.md#2026-09-05-重查-五個-pin-三個動-marketplace-pin-第一次真的前進))
+裡跨上游的東西按層放好, 架構文件不動. 血緣先數: Pilotfish 與 sepia 同作者 (Nanako0129), 算一個
+觀察者; rebelytics 自 3.0 起與我方同名, 血緣未明, 一律只當佐證; 本 repo 一票.
+
+```text
+層            這輪的同形                          血緣數 (獨立)     處置
+------------  ---------------------------------  ---------------  ----------------------
+Context       session 開頭注入有沒有用           分歧 (見一)       量測裁決, 不選邊
+Harness/儀器  守衛與觸發要用真實正負控制校準     >= 2 (見二)       已有, 這輪加一句; P6 執行
+Evidence      指標要耐久可解析                   2 (見三)          P2
+Evidence      證據類別不夠格就不加票             同一觀察者 (見四) 只記
+Graph         公開 catalog 解析 marketplace pin  只有我方 (見五)   記為 edge, 等下一個案例
+```
+
+### 一, 分歧: 注入在 session 開頭, 到底有沒有用
+
+Pilotfish 1.4 把政策從 `CLAUDE.md` 搬**進** `SessionStart` 注入, fail-closed. rebelytics 3.1 說
+session-start 的 frontmatter 掃描不能替代 skill 載入時的 body 查詢: 「一百個標題的知覺撐不過二十個
+tool call, 檢索要發生在決策的位置」. 兩個上游對同一個位置站相反邊. 我方 wording-effect-scale 的
+結論 (淺層介入撼動不了深層結構) 偏 rebelytics, 但量的是常駐契約的**措辭**, 不是注入的**時點**,
+所以不能拿來裁決. 能裁決的是 pending-evidence 三之七那個已設計未開跑的注入位置實驗: 同一條規則,
+session 開頭注入對 skill 載入時注入, 量第 N 個 tool call 後的遵守率.
+
+**推翻條件 (分歧本身)**: 兩個位置在 20 個 tool call 後的遵守率無差, 分歧是假的 —— 那表示位置
+不是變數, 兩邊各自的效果來自別處 (Pilotfish 的 fail-closed, rebelytics 的 body 讀取).
+
+### 二, 至少兩個獨立血緣: 守衛是對未來 tool record 的宣稱
+
+rebelytics 3.1: 觸發可見是必要不是充分, 上膛前要用專案真的產生的字串做正控制, 真實紀錄裡的
+非事件做負控制, 絕不用造的例子; 每個儀器同一條守則, 當性質不當清單. Pilotfish head 的十五個
+commit 把 benchmark 的 positive controls 綁成 `attempts.json`. 本 repo: rtk 那條 (重寫過的指令報
+0 matches 不得記 no hits), `AGENT_SKIP_TEST_GATE` 洩進 fixture 那條, `CARRIER_VALIDATED_ON` 戳章.
+Nanako0129 一票, 本 repo 一票, rebelytics 待血緣 —— 至少兩個獨立, 權重升. 落地: 原則已在
+evidence-ladder 與 upstream-distillation; 這輪加的是「守衛帶三個量測數」一句 (rebelytics 的
+sharpest clause); 執行是 P6 (載體在 2.1.261 的重驗就是一次真正控制).
+
+### 三, 兩個血緣: 指標要活過寫它的 session
+
+rebelytics 3.1 的 `reference:` 規則 (session 暫存目錄與角色名都不是路徑; 這種指標寫時不敗讀時敗)
+與本 repo 09-04 的 `c995eb6` (五十個 run 在 scratchpad 消失前保留) 是同一件事的兩次付費.
+rebelytics 血緣未明, 但本地事故本身就是採用理由, 所以 P2 不靠它加票.
+
+### 四, 佐證但不能加票
+
+sepia `sources.md` 這輪加了 `WAHI-JUDGE-2026` (LLM-as-a-Judge 不是 oracle, 自我改進 agent 需要
+確定性守衛) —— 與執行軸同向, 但類別是 engineering report (production observation, not controlled);
+加了六家的 vendor prompting guide, 類別 vendor guidance (unmeasured). 兩者在我方通貨表的分類裡都是
+「可引用, 不是證據」. sepia 自己的證據邊界一節 (一個語料一個年代, 每個數字是觀察過一次的方向不是
+常數) 與我方「方法可借數字不可借」同形, 但同一觀察者的第二個專案, 不算第二票.
+
+### 五, 我方有而上游沒有的: 從公開 catalog 解析 marketplace pin
+
+沒有上游做這件事, 因為只有我方蒸餾 marketplace-distributed 的上游. 是 edge 還是沒人需要, 這輪
+的證據是: 我方自己也忘了兩輪 (08-28 寫「解析不了」), 代價是 pin 落後兩輪而結論碰巧沒錯. 決定它
+的是下一個 marketplace-distributed 上游: catalog pin 與 default branch 的落差若再造成誤判, 這條就
+從 ledger 的更正段升成 upstream-distillation 的一條規則.
+
+**這一節沒有做的**: 第四輪的正式收斂計票. 等 P6 與 P10 把兩個量測面修好再開, 否則票數會建立在
+過期的 client 半邊上.

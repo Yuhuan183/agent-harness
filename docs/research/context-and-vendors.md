@@ -283,3 +283,33 @@ function RUs(e){
 **誠實邊界**: 以上是機制與位置的取證, 不是效果量測. 本機 `~/.claude/telemetry/delegation.jsonl` 判不了這件事 — 它只記發生過的派工, 不記沒發生的決定, 而 08-10 到 08-16 那段高峰是 replay 批次而非日常工作, 沒有可比的前後基準. issue 串裡有人給了 116 個 session 的前後對照 (Opus 4.8 常態使用 → Opus 5 整週零使用 → 口頭要求後恢復), 但那是別人的機器與別人的契約.
 
 **推翻條件**: (a) 任一路徑出現官方 opt-out (settings key 或 env var), 或 catalog 裡第二個模型帶上 `opus_5_prompt_bundle`; (b) 伺服器改推第一或第二層字串, 屆時上面「文字是那兩行」的部分立刻失效, 只有「有一塊我們控制不了的區塊」還成立. 兩者都靠 `prompt-bundle-report` 當場重查, 不要引用本節的日期; 而 (b) 正是那支腳本被寫出來的理由.
+
+### 2026-09-05 補記: 2.1.261 上那段不在了
+
+weekly-integrity 開場報的, 手動重跑 `~/.claude/scripts/prompt-bundle-report` 同讀數:
+
+```text
+client 2.1.261
+  opus_5_prompt_bundle: claude-opus-5
+  shipped wording present: no
+  tengu_fennel_godwit: False
+  server-pushed tengu_heron_brook: none
+  => section not active on this build
+  text_present: True -> False   (previous state held since 2026-08-28, on 2.1.247)
+```
+
+這是上方那節的推翻條件之一觸發: 硬編碼的兩行預設文字不在這個 build 的 bundle 裡, 「第三層
+直接生效」在 2.1.261 不成立. 三件事分開記:
+
+1. **只登記本機觀察, 不推論供應商意圖.** 文字可能搬到 server-pushed 那條路 (`tengu_heron_brook`
+   目前 none, 所以這台看不出來), 也可能整段退場; 兩者在這台機器上讀數相同.
+2. **對 2.1.247 量的結果, 其量測面含那段.** wording-effect-scale 的批次是在段落存在時跑的;
+   依 evals 的戳章分組, 這些結果要標出「量測面的 client 半邊已動」, 排
+   [升級計畫 P10](../plans/upgrade-plan-2026-09.md). 不重跑整個矩陣 —— 第二輪整合的裁決
+   (採正規化那一半) 不變.
+3. **2604.14228 那條 UNCERTAIN 又多一次觀察**: 2.1.88 (逆向) → 2.1.247 (在且生效) → 2.1.251
+   (契約正文以 `# claudeMd` 進來) → 2.1.261 (不在). 四個版本四種狀態, 「client 改版即可能失效」
+   從假設變成序列.
+
+**推翻條件**: 後續 build 的 `prompt-bundle-report` 回報 text_present True, 且 `fennel_godwit`
+或 `heron_brook` 任一生效, 就把「退場」改回「搬家」, 並把那一版加進上面的序列重量.

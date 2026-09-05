@@ -7,10 +7,11 @@
 
 | 上游 | pin | 逐節處置在哪 |
 |---|---|---|
-| [mattpocock/skills](https://github.com/mattpocock/skills) | `885e2ca4d842d139e9aef4e48d366c63cb1b8013` | 本檔主體 (下方全部各節) |
-| [rebelytics/one-skill-to-rule-them-all](https://github.com/rebelytics/one-skill-to-rule-them-all) | `281f13466cd3a73e9ebc9d210907748e1941a3dd` | 本檔[最後一節](#rebelyticsone-skill-to-rule-them-all-逐條處置-2026-08-28) |
+| [mattpocock/skills](https://github.com/mattpocock/skills) | `6654f6b60cd9d5be8b54c6fafe44346dabeb3b76` (marketplace pin, 2026-09-05 解析; 前一個 `885e2ca4` 用了 08-17 到 09-05) | 本檔主體 (下方各 mattpocock 節) |
+| [rebelytics/one-skill-to-rule-them-all](https://github.com/rebelytics/one-skill-to-rule-them-all) | `f4a95a180404bd4de35365da66849a243e3d07be` (`v3.1.0`, 2026-09-05 推進; 歷任 `281f1346` v2.0.0 → `9d1491b8` v3.0.0) | [08-28 v2.0.0 逐條](task-observer-upstream.md#rebelyticsone-skill-to-rule-them-all-逐條處置-2026-08-28), [08-31 3.0 逐條](task-observer-upstream.md#rebelytics-30-改版逐條-2026-08-31-上游朝我方的形狀走了過來), [09-05 3.1 逐條](task-observer-upstream.md#rebelytics-31-改版逐條-2026-09-05-上游在補儀器的守則-我方多半已有) |
+| [Nanako0129/sepia](https://github.com/Nanako0129/sepia) | `0162048ac8123e675fb40028298d72245eff2acb` (head, 2026-09-05; 前一個 `4c8d782f` 2026-08-30; 沒有 ATTRIBUTION, 因為還沒有內容落進 `main/`) | [08-31 逐條](#nanako0129sepia-與其上游論文-storyscope-逐條處置-2026-08-31), [09-05 v0.7.0 重查](#sepia-v070-重查-2026-09-05-中文校準檔直接對上-readable-zh-tw) |
 
-**下面每一節, 除了最後一節, 講的都是 mattpocock/skills.**
+**沒標上游名的節講的都是 mattpocock/skills; sepia 有自己標了名的節; rebelytics 的逐條自 2026-09-05 起在 [task-observer-upstream](task-observer-upstream.md), 本檔只留每輪全掃的讀數表.**
 
 **這份帳本可以覆核.** `scripts/upstream-recheck.sh` 重新抓那個 SHA 的四個檔案並比對雜湊:
 
@@ -347,107 +348,21 @@ dev-only 且不進部署清單), 並在同一次 commit 帶上量測與位移.
 只做了「檔名在幾乎每個目錄裡重複出現」這一種形狀, 沒有查 `.changeset/`,
 `plugin.json` 或 README 分桶規則裡有沒有別的規則. 那些仍然沒查.
 
-## `rebelytics/one-skill-to-rule-them-all` 逐條處置 (2026-08-28)
+## `rebelytics` 的逐條處置搬到 task-observer-upstream (2026-09-05 拆檔)
 
-**為什麼這麼晚才寫.** `task-observer` 從這裡蒸餾, 而它是五個上游裡**唯一沒有研究層紀錄**
-的一個: ATTRIBUTION 有一段摘要 (「activation 與寫入改成明示 opt-in, 可變的編號 Markdown log
-換成 append-only 上鎖的 JSONL 事件帳本, Git checkout 為真相源, 禁止自動編輯/部署/commit/
-刪除/排程套用」), 但摘要不是逐條分類. 2026-08-28 的對應性檢查抓到.
+四節原樣搬走: 08-28 的 v2.0.0 逐條, 08-31 的 3.0 改版逐條與殘讀補完, 09-05 的 3.1 改版逐條, 現在在
+[task-observer-upstream](task-observer-upstream.md). 理由: 本檔到 28,184 字, 過了 20,000 字的
+單一責任守衛; 縫是主題 —— 那四節是唯一自成一條線的上游. 兩層驗證 (不含本段):
 
-**查了什麼.** 重抓 pin `281f13466cd3a73e9ebc9d210907748e1941a3dd` 的四個檔, 讀的是位元組
-不是我方摘要:
+```text
+舊底本 (本檔, 拆前)                  766 個非空行
+對新的兩份檔案聯集精確比對            未命中 4 (全是改了跨檔連結或指向新檔的行, 逐行看過)
+實質比對 (去連結後前 24 字)            未命中 0
+字數                                  28,184 → 本檔 14,394 + 新檔 14,089
+強制機制: 「推翻條件」字樣            12 → 12
+```
 
-| 上游檔案 | sha256 前 16 | bytes |
-|---|---|---|
-| `SKILL.md` | `60bfdcd99c4678a8` | 24492 |
-| `references/weekly-review.md` | `247e7bfcd4aecc71` | 10520 |
-| `references/skill-authoring.md` | `15fc47365fdfc89c` | 12185 |
-| `references/environments.md` | `0e4274047c6628e8` | 4950 |
-
-### 逐條
-
-| 上游規則 | 處置 | 依據 |
-|---|---|---|
-| session 開始時若 log 檔不存在就**自動建立** | **不採用** | 我方 activation 與寫入一律明示 opt-in; 「列出不存在的帳本不得建立它」是明文規定 |
-| 工作區若落在**短命路徑** (worktree, 暫時 clone) 要警告並改錨到穩定專案路徑 | **已落地, 而且更強** | 我方帳本固定在 `~/.agents/telemetry/`, 絕對路徑, 結構上進不了 worktree. 上游用**提醒**解, 我方用**位置**解 —— 同一個危害, 我方那一側不需要模型記得 |
-| session 開始掃描 OPEN 觀察並「放在意識裡」 | **不採用** | 那是背景啟動; 我方只在摩擦發生後觸發 |
-| `last-review-date.txt` 用字面值 `never`; 超過 7 天且有 OPEN 才提議; **絕不擋使用者的工作** | **形狀不採用, 原則已落地** | 我方沒有 session-start 掛鉤, 所以前兩句無處可放; 「絕不擋工作」等同我方「先處理修正, 不要用回饋問題打斷復原」 |
-| 每個 session 提議一次: 把啟動指令加進 `CLAUDE.md` | **不採用** | skill 自我安裝進使用者契約, 正是我方契約禁止的 |
-| 記下 log 的 mtime; 每次 append 前重讀; **絕不相信記住的編號** | **已落地, 而且搬離了模型** | 我方用排他檔案鎖寫入, 共享鎖讀取, append-only JSONL 加 UUID. 上游是要求**模型**小心地維護一份 Markdown; 我方把它交給工具 |
-| 整個 session 全程 active, 連檢討與後設討論都算 | **不採用** | 我方只在明確不滿或要求修正之後觸發 |
-| **每完成第 3 個 TodoWrite 就強制寫一次 log**, 沒觀察也要寫一行 `no observations` 標記 | **不採用, 但它的理由是本輪最重要的佐證** | 見下節 |
-| **deliverable-event flush**: 把寫入掛在本來就會發生的工具呼叫上 | **不採用 (同上), 理由同樣是佐證** | 見下節 |
-| 引用觀察編號時, 編號**只能來自紀錄自己的識別欄位**, 絕不能來自搜尋工具的位置後設資料 (`grep -n` 的行號被當成觀察編號), 另加一層「和計數器範圍比對」的合理性檢查 | **已落地 (機制), 一般化那條不落地 (無本機失效)** | 我方 ID 是腳本回傳的 UUID, 和行號長得完全不一樣, 該失效在我方形狀上發生不了. 一般規則本身好, 但本 repo 沒有一筆對應失效, 而為意圖付常駐預算是這裡說過不做的事 |
-| 分類法: open-source / internal, 兩可時預設 open-source 並剝掉細節; 這條界線同時是保密界線 | **已落地** | `--type open-source\|internal`, 以及「概括原則, 專案細節用 internal」 |
-| **Archival on Write**: 已解決的條目搬進日期檔; 解決狀態**必須**記日期; 寬限期放在檔案裡不放 session 記憶; 且要備份→重讀→合併→驗證條目數 | **不採用, 形狀不同 —— 而這是我方設計最強的一次佐證** | 我方 append-only, 解決是**追加一個事件**, 從不改寫也不搬移. 上游自己寫著 archival 是「這份 log 承受的最高風險變更, 而且在生產環境**已經毀掉過並行的 append**」—— 那整類危害在我方設計裡不存在 |
-| 不要記: 一次性且不通用的修正, skill 已涵蓋的偏好, 與方法無關的工具 bug, 需要專有資訊才有用的觀察 | **已落地** | 逐條對應我方的 Boundaries |
-
-### 那兩條「不採用」的理由, 是第三個獨立血緣撞上同一面牆
-
-上游把「每完成第 3 個 todo 就強制寫」寫成硬檢查點, 而它給的理由是自己踩過:
-
-> 這個 skill 已經證明, 比較軟的「完成項目時檢查一下」或「暫停並自問」在**認知負荷高的分析
-> 工作中會消失**, 而那正是觀察累積最多的時候. **寫入本身就是強制機制**.
-
-以及:
-
-> **硬強制掛在你本來就會做的工具呼叫上, 是唯一可靠的機制**; 依賴記憶的軟提示撐不過長時間
-> 實質工作中的認知負荷.
-
-**這幾乎是本 repo [軸二](../architecture/architecture.md#軸二-憑什麼算數)的逐句重述** ——
-散文是權重不是強制力; 承載物本身沒有強制力, 但它讓違規變成機械可判定的事實.
-
-**這是第三個彼此獨立的作者走到同一個結論**, 而票怎麼數, 三家有沒有共同祖先, 以及這對
-第二輪的發現二有什麼影響, 全部寫在[跨上游整合第二輪](cross-upstream-synthesis.md#跨上游整合第二輪-2026-08-28-進行中)
-的「第三個獨立血緣」一節 —— 跨上游的收斂是那份文件的職責, 這裡只記本上游的處置.
-
-**我方仍然不採用那兩條**, 而理由要說得比「形狀不同」更精確: 上游買的是**觀察不要漏記**,
-代價是把 skill 變成背景遙測; 我方的 `task-observer` 明文把「寫入需要使用者授權」當成設計的
-第一條, 而強制檢查點會直接推翻它. 這是**目標分岔, 不是我們認為它錯** —— 事實上依上面那張
-表, 它多半是對的.
-
-
-### 兩份 reference 詳讀之後 (2026-08-28 補)
-
-上一版說這兩份只掃了標題. 詳讀之後**它們不是排程流程與撰寫規範而已**, 裡面有兩條是本 repo
-當天就踩到的失效, 都已採用:
-
-| 上游規則 | 處置 | 依據 |
-|---|---|---|
-| **絕不用「對選填欄位做 grep」建工作佇列**: 先列出權威識別碼 (`### Observation N:` 標頭), 再逐項分類, 再**斷言兩個計數相等**; 差額就是沒有狀態的條目, 要浮出來 triage 而不是當成乾淨 | **採用** | 見下 |
-| **relocation 的兩層驗證**: diff 出舊底本每一行 → `grep -F` 逐行精確比對新檔集合 → 未命中的用一段有辨識度的中段字串做實質比對再下結論 → 每檔字數 sanity check. 單用一層要嘛漏掉真損失, 要嘛對重排行誤報 | **採用** | 見下 |
-| **登記成功才寫標記**: 排程註冊失敗時不得寫 `scheduler-registered.txt`, 否則「標記會永久壓掉 fallback 而檢討從來沒跑過」 | **佐證** | 本 repo 2026-08-28 在 `prompt-bundle-report` 上獨立踩到同一個形狀 (基準檔壞掉被當成「還沒有基準」, 重記一份然後安靜回 0 —— 哨兵把自己關掉). 兩邊都是**哨兵自我失效**, 我方已修 |
-| **Pre-Flight Principle**: 有規則就要有一個交付前重讀規則並比對產出的驗證步驟 | **佐證 (同作者, 不算新票)** | 與該上游 `SKILL.md` 的強制寫入是同一個論證, 已計為一票 |
-| **嵌入 skill 的指令必須先對真實資料跑過一次再存檔** —— 散文規則每次執行都會被重新詮釋, 嵌入指令則逐字, 無人看管, 永遠照跑, 而錯得微妙的指令每次重讀都像對的 (它給的例子: `git log -1 --format=%cI --reverse` 回傳的是**最新**的 commit, 因為 `-1` 在 `--reverse` 之前生效) | **已落地 (腳本本身), 當場補查了引用面** | 腳本由測試實跑 (`test_task_observer.py` 與 `test_ledger.py` 都是 subprocess 呼叫真檔). 上游問的是更窄的一問 —— **skill 正文裡那一行**對不對 —— 所以當場把 16 份 skill 正文的 `bash` 區塊逐條抽出, 對各自的 `--help` 比對旗標: **11 個呼叫, 0 個不符**. 沒有把這個做成常設檢查: 一次性驗過, 而下一次改動由既有的 subprocess 測試接手 |
-| staging-only: 絕不直接寫 live skill, 即使目錄可寫; 這是安全性質不是檔案系統限制 | **已落地** | `task-observer` 的「Git checkout 為真相源, 絕不編輯 project-managed 副本」 |
-| 交付前閘: staged `SKILL.md` body 裡每個 `references/` 路徑都要有檔案在 staged 集合裡 | **已落地, 機制不同** | 我方由 deployment manifest 加 parity 檢查涵蓋 |
-| **持久化與執行環境是兩條獨立的軸** —— 知道狀態放哪不等於排程器搆得到它 | **佐證** | 我方 hook 與帳本同機, 屬上游三個 regime 的第三種; 這條目前不咬我方, 但它是我方沒有明說過的區分 |
-| 「一次什麼都沒套用的檢討只是報告產生器」 | **佐證, 而且咬到第二輪的發現一** | 我方的量測面指紋 13 個戳章 12 個過期而且過期是設計常態 —— 那正是「報告產生器」. 見 [peer-harnesses](cross-upstream-synthesis.md#跨上游整合第二輪-2026-08-28-進行中) |
-
-**兩條採用都落在 `.claude/skills/upstream-distillation/SKILL.md`** (repo-root dev-only, 不進
-部署清單, 所以沒有字數預算問題), 接在既有的「Calibrate the probe」後面 —— 那一段講的是
-「什麼都找不到的探針」, 而這兩條講的是它抓不到的那一種: **回傳一個看起來合理的子集**.
-
-**採用它們的本機證據是同一天的三次失效**, 不是上游的權威:
-
-- 時效性表的掃描把標頭用「內容比對」濾掉, 而三個資料列的內文也含那個字串 —— 報出 10 列,
-  實際 13 列, 而且看起來很健康.
-- 找壞掉錨點的 grep 輸出被截斷, 漏掉一個, 由連結檢查器補抓到.
-- (歷史) `fnmatch` 讓涵蓋率斷言不可證偽, 整個 research 目錄悄悄進了稽核信封三週.
-
-**relocation 那條當場對自己用了一次**: 2026-08-28 的日誌拆檔跑第一層, 舊底本 447 個非空行
-在新的兩份檔案裡**全部精確命中, 0 個未匹配**. 拆檔本身因此驗過, 而不是只有「測試綠」.
-
-### 還是沒有查的
-
-`references/environments.md` (4,950 bytes) 沒有讀 —— 它講各平台的啟動設定, 而我方的啟動
-由契約與 description 決定, 形狀不同. 上表最後一列原本是開著的問題, 已於同日查完並改成處置.
-
-**那次查核本身值得記, 因為它當場示範了剛落地的規則.** 第一版探針對 `observation-log`
-報出 **12 個旗標不存在**, 看起來像真的缺陷. 實際是探針錯了: 那支腳本用子指令,
-頂層 `--help` 當然列不出 `add` 底下的旗標. 校準之後 (改成對子指令要 help) 是 0 個不符.
-剛寫進 `upstream-distillation` 的那兩段講的正是這件事 —— 而它在寫下之後不到十分鐘就
-逮到自己一次.
+每輪全掃的讀數表 (08-28, 08-31, 09-05) 留在本檔; 上表 pin 欄的連結已指向新檔.
 
 ## 2026-08-31 重查: 六個遠端全掃, 一個上游第一次真的動了來源檔
 
@@ -494,62 +409,6 @@ install/supervisors.py    _bootstrap_with_retry(), install_supervisor 已在用
 
 另記: PyPI 的 repository URL 指 `chopratejas/headroom`, changelog 內鏈全指
 `headroomlabs-ai/headroom`, 兩邊都解析得到 —— 引 issue 用後者.
-
-## `rebelytics` 3.0 改版逐條 (2026-08-31): 上游朝我方的形狀走了過來
-
-四個來源檔全動 (SKILL.md +403/-325, 其餘三檔共 +1,081), 另新增三個參考檔
-(`observation-log.md`, `signals.md`, `migration.md`). 新版位元組:
-
-| 檔案 | 舊 sha256 前 16 | 新 sha256 前 16 |
-|---|---|---|
-| `SKILL.md` | `60bfdcd99c4678a8` | `a7d1e2074188a7e3` |
-| `references/weekly-review.md` | `247e7bfcd4aecc71` | `a00831f044d7e381` |
-| `references/skill-authoring.md` | `15fc47365fdfc89c` | `67fee4b5319dfa7e` |
-| `references/environments.md` | `0e4274047c6628e8` | `da8a4682abe62b8c` |
-
-**主事件: 儲存模型整個換掉, 換成我方那一類.** 單一 Markdown log 改成**每觀察一檔**
-(YAML frontmatter + `NNNN-slug.md`), 封存改成純 `mv`, id 取 max(active, archive,
-`.id-floor`)+1. 08-28 逐條處置裡我方寫「上游是要求模型小心維護一份 Markdown; 我方把它
-交給工具」「archival 那整類危害在我方設計裡不存在」—— 新版上游自己也到了: 原文寫
-"a new file never touches another entry's bytes", 然後把整套 Log-write safety 儀式
-(backup→re-read→merge→invariant→survival check) **全部刪掉**, 因為設計讓危害不可能.
-危害用位置解不用提醒解 —— 這是該原則第二次被獨立走到.
-
-**血緣旗標, 必須記**: 上游同時把 skill 改名為 `task-observer` —— 與我方改造後的名字
-逐字相同 —— 且本 repo 是公開的. 是他們讀了我們, 還是自然命名收斂, **查不到**. 在釐清前,
-下表所有「同形」都只當佐證, 不算獨立收斂票 (與 sepia 同一條紀律).
-
-### 新規則逐條 (讀了 SKILL.md 全文 diff 與 skill-authoring 兩節)
-
-| 上游新規則 | 處置 | 依據 |
-|---|---|---|
-| **空掃描守則**: 已知非空的 log 掃出空結果 = 壞掉的指令, 不是「無相關觀察」; 檔數用字面路徑獨立數, 與解析數比對, 不符就 halt; 路徑在同一個 tool call 內重推導 | **已落地 (佐證+1)** | 與我方 rtk 那條「rewritten command 報 0 matches 不得記為 no hits, 用絕對路徑重跑比對」同一條原則; 這是第三個獨立血緣 (rtk 經驗, rebelytics 舊版 id 規則, 現在的空掃描守則) |
-| **延遲的第二張皮**: 「先等幾天真實使用再說」讀起來像嚴謹所以沒人挑戰; 寫下任何「later」前必須指名**哪一個具體觀察會改變決定, 它何時可能到** — 指不出來就是現在動手; 延遲是決定, 要跟行動一樣付理由 | **已落地 (同日對上)** | `pending-evidence.md` 每項強制「觸發事件 + 判定規則」正是這個形狀; 上游把「指不出觸發 = 立刻動」這半句說得更利, 收進該檔導言 |
-| **強制觸發必須掛在 tool record 可見的事件上**, 絕不掛在「模型注意到某時刻符合資格」; 綁單一工具的計數器在不用該工具的 session 裡靜默失效, 永遠要第二條獨立路徑; deploy/release/push 這類收尾指令一律當 flush 點 | **佐證 (軸二)** | 我方執行軸 (prose→gate→instrument) 的同一個結論: 自我評估在負載下先壞. 「綁單一工具的計數器會靜默失效」是我方還沒說過的精確化, 值得引用 |
-| **`parked` 狀態**: 決定了但被外部前置條件擋住的觀察離開佇列, 強制 `parked_until:` 一行寫明解鎖條件, 不封存也不再被 review 重新抬升 | **佐證** | 與 pending-evidence 的「等一次觀察」欄同構: 等待要有名字與條件, 不然每次 review 都重付分類成本 |
-| **siblings_checked 強制欄**: 目標 skill 屬於家族時, 寫觀察前逐 sibling 判斷適不適用並記下裁決 (含「查了, 不傳播」); 快篩: 這句話拿掉工具名還成立嗎 | **佐證 (雙生)** | 我方 TWINS 是同一題的雙生版; 「一筆單目標紀錄在位元組上看不出 sibling 是評估過還是沒想過, 只有記錄欄位讓缺席可見」與我方「沒查和沒動要分開」同一條 |
-| **讀全文才准處置**: 解決/駁回/引用前必須讀 body 不是標題; 平行發現疑似重複時 diff 兩個 body — 第二筆常是精煉不是回聲; 表面同意比反對更能壓抑查證 | **已落地 (佐證+1)** | 「狀態要當場觀察」與 QC fraud 清單的同族; 「同意壓抑查證」是好措辭 |
-| **staging-only 無互動例外**: 「使用者記得的例外就是遲早被留開的閘門」 | **佐證** | 與我方 push 逐次授權同形 (一次 ok 只算一次) |
-| **拒寫≠唯讀**: 寫入被拒先重試一次+換介面, 報「失敗 N 次」絕不報「做不到」— 機率性守門員的連續拒絕是雜訊不是牆 | **不採用 (機制), 佐證 (措辭)** | 我方 harness 的拒絕語意不同 (拒絕=使用者決定, 不重試原句); 但「報失敗次數不報不可能」值得記 |
-| **Trial design**: 量「行為會不會自己觸發」時, 觸發條件必須寫在受測 agent 讀不到的通道; 任何 priming 文本點名觸發條件的 session 一律作廢; 負例要主動記錄 ("in scope, no organic load") | **已落地 (佐證+1), 一半是新的** | 前半正是 s7 兄弟 fixture 污染與「計數探針把自己算進母體」的同族 — 我方付過兩次學費; 「null 結果要主動記錄」直接命中 No-ops 待辦, 佐證+1 |
-| **Timelessness**: 共用 skill 不得寫無日期的現在式狀態句; sweep "currently/now/as of"; 但**發布物該把作者查核日期換成 verification-based 措辭** | **前半已落地, 後半不採用** | 前半是「只記上游不記本機」+ evidence-check 的 dated-claims 掃描 (30 天陳化表); 後半與本 repo 相反 — 這裡是研究 repo, 逐日期是制度不是洩漏 |
-| 首跑 backfill: log 空而專案有歷史時, 掃 CLAUDE.md/commit 史一次性補記 | **不採用** | 背景啟動類, 我方只在摩擦後觸發 — 與 08-28 對 session-start 掃描的裁決同一條線 |
-| 三新檔 `observation-log.md` / `signals.md` / `migration.md` 與 weekly-review/environments 其餘節 | **未讀, 排隊** | 見「沒有查的」 |
-
-### 沒有查的 (本輪)
-
-- rebelytics 三個新參考檔與 weekly-review (+354) / environments (+286) 的全文,
-  skill-authoring 除兩節外的其餘新節 (三容器規則, versioning, retiring-harvest,
-  external tool surface). SKILL.md 是核心已全讀; 其餘排入 pending-evidence.
-- Headroom `Unreleased` 段只讀了 changelog 敘述, 沒有讀 PR diff.
-- Deep Agents 三個 package 的版本內容差異.
-- Pilotfish v1.4 的 plugin 化只讀了兩篇 release note, 沒拆內容 — 排 peer-harness 輪.
-- eli5 的 path commit (API 查無, 可能 path 改了) — 下輪先修查法.
-- AA Index 版本沒查.
-
-**推翻條件**: 若血緣查明 rebelytics 3.0 參照過本 repo (改名 + 儲存模型兩個同形同時
-出現是最強的一筆線索), 上表與 08-28 節的所有「獨立走到」全部改記同血緣, 且第四輪整合
-的收斂計票要把 rebelytics 從獨立票中剔除.
 
 ## `Nanako0129/sepia` 與其上游論文 StoryScope: 逐條處置 (2026-08-31)
 
@@ -658,63 +517,6 @@ StoryScope 量到: 把表面風格洗掉, 結構層的偵測幾乎不動 (LAMP �
 把措辭當成規則. mutation 驗過: 拿掉 `task-observer` 那句就變紅.
 
 
-## `rebelytics` 3.0 殘讀補完 (2026-08-31): 三個新參考檔與其餘新節
-
-08-31 那輪只讀完 `SKILL.md` 全文 diff, 其餘排隊. 本節補完. 新檔位元組:
-
-| 檔案 | sha256 前 16 | bytes |
-|---|---|---|
-| `references/observation-log.md` | `c29dc5c13cecfdc3` | 20190 |
-| `references/signals.md` | `6f77ff5af42bcd0a` | 3916 |
-| `references/migration.md` | `ba788539a5ff3a24` | 6668 |
-
-### 逐條
-
-| 上游規則 | 處置 | 依據 |
-|---|---|---|
-| **skill 家族與 sibling 漂移**: 一套方法配不同工具/主題時, 共用的那半預設會漂, 因為每個成員只在用到它的 session 裡被維護, 沒有人看整組. 實測「純認識論, 五個成員都適用的規則, 只存在於五分之一」 | **佐證, 而且我方當天實測到同一個比例** | 2026-08-31 落地 untrusted-input 邊界時的讀數正是**五支裡一支有** —— 兩邊獨立量到同一個形狀. 這是本輪最強的一筆佐證 |
-| 兩個便宜的傳播測試: (a) 這句話拿掉工具/主題名還成立嗎; (b) **規則自己宣告了普遍性**(「applies to any…」「not specific to X」)—— 那種措辭是最便宜的傳播訊號, 要有機制注意到它 | **採用 (b), (a) 已落地** | (a) 等同我方 TWINS 的判準; (b) 是新的, 而且**可機械化**: 對自己的 skill grep 宣告普遍性的措辭, 再查那條規則在不在 sibling 裡. 進落地評估 |
-| `siblings_checked` 強制欄的理由: 「查過而正確排除」與「從未想過」在位元組上一模一樣; 記錄裁決不會讓裁決變好, 它讓裁決的**缺席**變得可見 —— 那是唯一能被強制的性質 | **已落地 (同日)** | `harness-review` 那格「查了, 不補」正是照這條寫的 |
-| 「寫規則的人自己在同一個 session 裡違反了那條規則」(四筆 under-scoped) | **佐證** | 與我方「一天之內兩次都是自己的儀器」同類 —— 指令本身不是強制力 |
-| **註冊表會過期, grep 不會**: 前三部分只管往後, 機械稽核才抓得到規則之前就存在的漂移 | **採用** | 與我方「量測面指紋 vs 人工清單」同一條; 本 repo 的 twin-guard 待辦正缺這一半 |
-| 每觀察一檔讓整套並行儀式消失 (單檔時代曾有一次 greedy 取代覆蓋掉 16 筆, 一次 write-back 抹掉剛追加的兩筆) | **已落地 (形狀不同, 同一結論)** | 08-31 前一節已記 |
-| **git 危害**: `git clean -fd` / `checkout --` / `stash` 會清掉觀察檔, 而**剛寫的觀察是未追蹤檔**, `git clean` 存在的目的正是刪那些; 而持續寫入的 log 通常正是讓樹變髒的原因 | **不採用 (位置已解), 但值得記** | 我方帳本在 `~/.agents/telemetry/` 絕對路徑, 在任何 repo 之外, `git clean` 碰不到. 又一次「危害用位置解不用提醒解」 |
-| checkpoint 為什麼是寫入不是自問 | **佐證** | 同 08-31 已記的軸二 |
-| `signals.md` 的**普遍性測試**四問, 與「知道什麼**不該**學和偵測訊號一樣重要; 從孤例過度學習正是 skill 漂成過度specific的路徑」 | **佐證** | 等同我方「無 failing trap, 無規則」與 L1–L6 那組; 上游把反面說得更清楚 |
-| **三容器規則**: 需要個人/團隊特定值的 skill 要三個容器 (skill 存流程並讀設定, 私有 config 存特定值, 呼叫 prompt 只存觸發). 附帶一條: **prompt 或 config 為了保險而複製 skill 規則時, 用停止條件取代那份複本, 不要用比較短的複本** —— 以保險為名的重複是最少被稽核的那種, 因為支持複製的理由同時也是反對質疑複製的理由 | **原則已落地, 後半那句採用** | 我方「同一規則只保留一個真相源」是同一條; 「以保險為名的重複最少被稽核」這個措辭比我方任何一句都利 |
-| **retiring skills: harvest before you retire** —— 方法論與包在外面的客戶設定壽命不同, 一起退休等於在成本已沉沒的那一刻丟掉耐久的那一半, 而且**沒有任何東西會報錯** | **不採用 (無對應形狀)** | 本 repo 沒有客戶委託模型; trap suite 退場時形狀類似但尚無實例 |
-| **versioning**: 版號是對歷史與相容性的宣稱, 不是 tag 計數器; 破壞既有安裝路徑就是 MAJOR; 次要版本面 (registry/manifest) 要在打 tag 前同一次 push 對齊 | **不採用** | 本 repo 不發版 |
-| session-start hook 計算狀態並注入, 因為「review 觸發是軟步驟, 會和 activation 一樣被跳過, 而且失效是自我隱蔽的」 | **佐證, 且對我方待辦有用** | 見下 |
-| **commit identity**: 寫入憑證與 author email 是兩條獨立通道; 第一次 commit 前先驗 `git config user.email` 解析到預期帳號; 已發布的 main 不為了修 author metadata 而改寫 | **已落地 (當場驗過)** | 本 repo 是 repo-local config, `Yuhuan <lfm85768@gmail.com>`, 對得上. 「fix forward only」與我方 08-31 那次 history rewrite 的教訓同向 |
-| `migration.md` 全文 (pre-3.0 單檔 log 的一次性轉換腳本) | **不採用** | 我方沒有那個舊格式 |
-
-### 那個 session-start hook 對我方待辦說了什麼
-
-[landing-readiness](landing-readiness.md) 的建議三 (SessionStart 注入當量測位置) 被三道關
-擋著, 其中最硬的是「沉默會被讀成通過」. 上游給的不是機制, 是**測法**:
-
-> 對 `never`, 30 天前, 2 天前三個 fixture 各跑一次, 確認第三個保持安靜.
-> **一個從來不會響的提醒, 和一個正確地安靜的提醒, 在通過的那一次跑裡長得一模一樣.**
-
-那句話是我方「會說謊的 gate 比沒有 gate 糟」最利的一種說法, 而它附帶的處置是**用 fixture
-把每一個分支都證一次, 包含必須安靜的那個分支**. 我方 mutation 測試已經是這個形狀, 所以
-這是佐證不是新機制 —— 但它把建議三的第三道關從「無解」變成「有已知做法」: 要量注入位置,
-得先有一個能證明警報會響的 fixture. 這不解決前兩關 (reach marker 與構造不轉移).
-
-### 沒有查的
-
-- `weekly-review.md` 的其餘新節只讀了 Family coherence 與 Parked 兩個標題層的模板行,
-  沒有讀完整步驟.
-- `skill-authoring.md` 的「Documenting an external tool surface」整節沒讀.
-- `environments.md` 的 Environment mappings, Storage regimes, Git as staging medium,
-  First-run backfill 四節沒讀.
-- **血緣仍未查** —— 改名與儲存模型兩個同形的成因不明, 上表所有「佐證」仍受 08-31 那條
-  推翻條件約束.
-
-**pin 仍不推進**: 逐條已補齊, 但 `task-observer` 是從舊版蒸餾的, 而新版是重寫等級的改動;
-推進 pin 等於宣稱我方已對齊 3.0, 那要一次完整的落地評估, 不是一次閱讀.
-
-
 ## StoryScope 原文對數 (2026-08-31): 一處誤植, `storyscope.md` 降為中介筆記
 
 事前寫好的通過條件是「全符則 `storyscope.md` 可當引用源; 任一不符則降級為中介筆記」.
@@ -756,3 +558,91 @@ Gemini .60, DeepSeek .57, Kimi .55.
 全文附錄, 所以那些數字 (Thematic Explicitness 3.28 對 3.94 之類) **仍然只有中介筆記一個
 來源**. 引用它們要標明這件事, 或者先取得附錄. 另外 Krippendorff's α=0.90 與
 human–model κ=0.84 也未驗.
+
+## 2026-09-05 重查: 五個 pin 三個動, marketplace pin 第一次真的前進
+
+使用者要求整輪更新上游來源. `upstream-pin-report.py` 跑五個 ATTRIBUTION pin; 沒有
+ATTRIBUTION 的 (sepia, fable-method 已 current) 與同業/相依列用 GitHub 與 PyPI API 當場問;
+client 注入區塊用本機 `prompt-bundle-report`. 讀數:
+
+| 來源 | 讀數 | 處置 |
+|---|---|---|
+| mattpocock/skills | 預設分支 `3cca18b3` (對舊 pin +10); **marketplace catalog 現在釘 `6654f6b6`** (`anthropics/claude-plugins-official` 的 `.claude-plugin/marketplace.json`, catalog commit `46260264`, 2026-09-04) —— 08-17 以來第一次前進. 四個來源檔對舊 pin, 新 pin, head 三個 SHA 各跑一次 `upstream-recheck.sh`, 全 matches | pin 推進到 `6654f6b6`, 純記帳. 十個 commit 裡八個是 08-24 與 08-28 已逐條的 (`implement-spec`, `retro`, `grilling` 版面); 新的兩個只動 `scripts/link-skills.sh` 與 `CLAUDE.md` 一行, 無規則 |
+| speak-human-tw | +9, `touched` 只有 `assets/` (1); 六檔在 `fa09500c` 全 matches | 第五輪機器人星數圖; pin 推進 (記帳), 逐次在 [readable-zh-tw-upstream](readable-zh-tw-upstream.md#2026-09-05-重查-九個-commit-全是星數圖-第五輪) |
+| rebelytics | **`v3.1.0`** (tag `f4a95a18`, 2026-09-04); 對 `v3.0.0` +43 commit, 七個來源檔動六個, 另新增 `references/starter-principles.md` (296 行); head `2967fa5f` 只多 `CONTRIBUTING.md` | 逐條在[task-observer-upstream 的 3.1 節](task-observer-upstream.md#rebelytics-31-改版逐條-2026-09-05-上游在補儀器的守則-我方多半已有); pin 推進到 tag |
+| sepia | **`v0.7.0`** (2026-09-04); 對 `4c8d782f` +86 commit, 31 檔; 九個來源檔動三個 (`SKILL.md`, `professional-pass.md`, `research/sources.md`), 五個 domain 檔與 `storyscope.md` 一個位元組沒動; 新 `references/languages/zh.md` | 逐條在[下節](#sepia-v070-重查-2026-09-05-中文校準檔直接對上-readable-zh-tw); 記錄的 pin 推進到 head (tag 之後 `sources.md` 又多一筆, 讀的是 head) |
+| fable-method, cablate/baton | pin current | 無事 |
+| Pilotfish | release 仍 `v1.4.1`; head `ea0d20bb` (+15, 08-27 到 08-28), **全是 `benchmarks/**/attempts.json` 的綁定** (dispatch positive controls, verifier paid summaries, compact policy full matrix, cue-free TUI) 加 `tests/test_policy.py` +3,855 行 | 未讀內容; 這是同業把自己的嘗試 (含負結果) 綁成資料檔, 排 peer-harness 輪 (計畫 P8) |
+| pilotfish-codex | head `74ad9a79` (2026-08-11) 未動; tag `v1.7.2` (`b2019f4a`) 存在但無 release | 無事 |
+| Deep Agents | `deepagents` 0.7.11→0.7.13 (09-02), `deepagents-code` 0.1.65→0.1.66 (09-03), `deepagents-acp` 0.0.11 未動 | 版本表更新; 內容差異第三輪未讀 |
+| Headroom | 0.37.0 未動 | 無事 |
+| eli5 | 根目錄 `eli5` 最後 commit 仍 `863e70dc` | 無事 (先用 `plugins/eli5` 查了一次空, 又踩 08-31 修過的坑, 改查根目錄才對) |
+| Claude Code client | **2.1.261**: `opus_5_prompt_bundle` 的兩行文字**不在**, `tengu_heron_brook` 無, `tengu_fennel_godwit=false`, 「section not active on this build」. weekly-integrity 開場報的, 前一狀態自 08-28 (2.1.247) 持續到今天 | 通貨表列更新, 08-28 節補一段; 對 2.1.247 量的結果其量測面已過期 → 計畫 P10 |
+
+**方法上的更正, 要記.** 08-28 兩份 mattpocock ATTRIBUTION 寫「pin 記的是 marketplace 送出什麼,
+這裡沒裝 plugin 解析不了」—— 錯. catalog 是公開檔, 08-14 研究日就是從它讀的 (見
+[mattpocock-skills-integration](mattpocock-skills-integration.md) 的來源清單), 後來兩輪忘了.
+三輪「pin 沒動」的結論不受影響 (來源檔 blob 全程相同), 但這句話讓 pin 比事實落後了兩輪,
+而且把一件可查的事登記成不可查. 這一輪的 pin 是從 raw 檔裡 `mattpocock-skills` 條目的
+`source.sha` 讀出來的; 下次照做.
+
+**查了什麼.** 五個 pin 的 compare (commit 與檔案清單); mattpocock 四檔對三個 SHA 的雜湊;
+speak-human-tw 六檔對新 SHA 的雜湊; rebelytics 八個來源檔對 tag 與 head 的雜湊 (全同);
+sepia 十個來源檔對 tag 與 head 的雜湊 (`sources.md` 不同, 其餘同); 三個上游的逐檔 diff 全文
+(rebelytics: SKILL.md 410 行 diff, 五個 reference 共 948 行 diff, starter-principles 296 行全文,
+三個 script diff; sepia: SKILL.md, professional-pass, sources.md 三個 diff 與 zh.md 全文);
+marketplace catalog 的 raw 檔; Pilotfish 與 pilotfish-codex 的 tag/release/head; 四個 PyPI 版本;
+本機 `prompt-bundle-report`.
+
+**沒有查的.** AA Index (第四輪未查); Deep Agents 三個 package 的內容差異; Pilotfish 十五個
+commit 的 attempts 內容; sepia 的 `model-fingerprints.md` (+97), `style-pass.md` §5 本文,
+`research/rhythm-syntax.md`, `voices/`, `evals/` 的 grader 本文 (只讀了檔名與行數);
+rebelytics 的 `signals.md` (未動, 不必讀); rebelytics 血緣 (仍未查, 08-31 的推翻條件維持).
+
+## `sepia` v0.7.0 重查 (2026-09-05): 中文校準檔直接對上 readable-zh-tw
+
+`4c8d782f` (2026-08-30) → head `0162048ac8123e675fb40028298d72245eff2acb` (2026-09-05); tag `v0.7.0` = `a0a374014141d929edec356fb86a5191d9eae6f7`
+(2026-09-04), 與 head 只差 `research/sources.md` 一筆 (09-05 加的 `WAHI-JUDGE-2026`), 其餘九個來源檔
+tag 與 head 全同. +86 commit, 31 檔; 四個版本 (0.4.0, 0.4.1, 0.5.0, 0.6.0, 0.7.0) 五天內出完. 08-31
+登記的九個來源檔動了三個, 五個 domain 檔與 `storyscope.md` 一個位元組沒動; 新增一個與我方直接相關的
+來源檔. 新位元組 (head):
+
+| 上游檔案 | sha256 前 16 | bytes |
+|---|---|---|
+| `skills/sepia/SKILL.md` | `a9d177898782f6bb` | 9529 |
+| `references/professional-pass.md` | `395f795e3af35bc1` | 6627 |
+| `research/sources.md` | `112de5d4c887bda4` (tag `4a3443d499e851d1`) | 32,573 (tag) |
+| `references/languages/zh.md (新)` | `5e145cc8f20d6b78` | 5976 |
+
+其餘六檔雜湊同 08-31 表. pin 記在 [research README 的上游表](README.md#時效性基準); sepia 仍沒有
+ATTRIBUTION, 因為沒有內容落進 `main/` —— P4 落地那天要補一份, 因為 `zh.md` 的形狀會進 `patterns.md`.
+
+**主事件: 上游替中文做了一份「哪些 AI 痕跡在中文裡長什麼樣」的校準檔, 而且自己畫了證據邊界.**
+數字來自一個語料 (HC3-Chinese, 簡中, 2023 年的 ChatGPT), 上游明寫「每個數字都是觀察過一次的方向,
+不是校準常數」. 我方的規矩是方法可借數字不可借, 這裡連上游都這麼說, 所以只借形狀.
+
+| 上游新規則 | 處置 | 依據 |
+|---|---|---|
+| 每條非小說路線都走句子節奏檢查 (`style-pass.md` §5), professional-pass #9 改成「量」 | **佐證** | `patterns.md` 與 `humanize.md` 已有句長變化; §5 本文未讀, 數字不借 |
+| **中文校準檔 `zh.md`**: 連詞堆疊 (和/以及/並且/同時/此外/因此/然而 跨子句), 說明文裡的第二人稱 (你會發現/您可以), **雙音節動詞贅語** (進行討論/加以說明/予以處理/做出決定 → 動詞本身), 句長平坦; 該回補的: 語氣詞少量, 單音節動詞形容詞, 主語省略; 編輯啟發 (不是…而是, 名詞化 ○○性/○○感/○○化, 三段律, 其實/事實上 開段, 引號裡的抽象詞); **不是訊號**: 標點密度, 段落數 (ChatGPT 反而分更多段), 詞頻, 大陸用語 (是 venue 的語域錯配, 不是 AI 痕跡) | **改造後採用 → 計畫 P4 (只借形狀)** | 查了 `readable-zh-tw` 六個檔: 已有 不是…而是 (patterns, protected-list), 其實 (四處), 語氣詞 (taiwan-localization), 句長 (patterns, humanize), 連接詞 (patterns), 三段律 (三處); **沒有** 進行/加以/予以 動詞贅語, 說明文第二人稱, 名詞化, 「事實上」開段 —— 四個形狀. 「大陸用語是語域不是 AI 痕跡」與我方把它歸在台灣在地化 (可讀性) 而非去 AI 味, 同一裁決 |
+| **模型身分**: author 與 executor 分開解析, 各自 family + version 或 unknown; prose layer 依 release 是 operative 還是 prior; 「絕不從文章推模型」(六向歸因是 304 特徵上 68.4% macro-F1 的分類器, 閱讀不是那個分類器) | **不採用 (機制), 佐證 (最後一句)** | `readable-zh-tw` 不做模型歸因. executor 端的 Fable 5.1 prose layer 對我方自己的輸出是相關的, 但證據類別是 vendor guidance (unmeasured) → 計畫 P11 只讀不採 |
+| Voice fit, voice skill 疊合, Hemingway profile | **不採用** | 小說側, 無 venue |
+| **密度雙向**: 「砍到一半長度說得完」之外, 砍掉必要的 caveat 或下一步的精簡回答也算失敗 | **已落地, 佐證+1** | 契約「對話按比例, 要求的產物要完整」正是雙向; 上游多了「caveat 與下一步」兩個具體物 |
+| 版面痕跡: **沒有這些不是人寫的證據**, 模型多用少用哪種版面隨 release 變 | **佐證** | wording-effect-scale「結果要註明量測面」; 也證明我方版面規則是可讀性規則, 不是偵測規則 |
+| 語域漂移守則: 改寫不得比原文更促銷 | **佐證** | 08-31 已收「校準三原則」; `readable-zh-tw` 的「不加個人風格」 |
+| review 報告加 Model / Prose layer / Style scan 三行 | **不適用** | |
+| `sources.md` 新增: 節奏與句法一節 (十餘篇量測研究, 含兩篇中文 CCL 論文); **「Consulted」表** —— 查過但沒有可用數字的來源, 記下來免得下次再抓流傳的數字 (例: ResearchGate 上掛在某論文名下的離散度數字, 論文裡沒有); vendor prompting guides (Fable 5.1, GPT-5.6, Opus 5…) 標 vendor guidance (unmeasured); `WAHI-JUDGE-2026` 「LLM-as-a-Judge 不是 oracle, 自我改進 agent 需要確定性守衛」標 engineering report (production observation, not controlled) | **佐證 (三件); 「Consulted」表改造後採用 → 計畫 P12** | 「查過但不能用」是我方「沒有查的」的另一半 —— 我方記沒查的, 上游記查了但沒用的, 兩個都在防同一種重工; WAHI 那篇與執行軸同向但類別不夠格加票 |
+| `evals/deaify-release-note`: CI 裡的行為 eval, 三個 grader (skill-fired, reads-human, no-slop-markers) | **佐證 → 計畫 P11b** | `skill-fired` 就是我方 lifecycle-replay 量「skill 有沒有被叫」那一半; `readable-zh-tw` 目前沒有 eval (`evals/` 只有 replay, traps, scripts), 形狀可借 |
+| `scripts/check_versions.py`: 宣告版本的 manifest 要一致; 拼法變體是無效不是隱形; 重複鍵是無效不是先者勝; 「一個正典鍵文法關掉整類拼法」 | **佐證** | 與 test_deployment 對 manifest 的態度同向; 沒有版本 manifest, 不採 |
+| Star History 轉址修, zh-CN README, issue-first policy, security reporting | **不適用** | |
+
+### 沒有查的 (本節)
+
+- `model-fingerprints.md` (+97) 的 prose layers 本文; `style-pass.md` §5 本文; `rhythm-syntax.md`;
+  `voices/`; `evals/` 三個 grader 的本文 (只讀了檔名與行數); 兩篇 CCL 論文本身 (上游的摘錄有引用,
+  我方沒開原文).
+- 論文 StoryScope 本文與血緣, 同 08-31.
+
+**推翻條件**: 若 P4 落地後 `readable-zh-tw` 的那四個形狀在本機語料上 (`evals/**/runs/` 的舊名產物,
+或 P11b 的 eval) 一次都不命中, 就回到 `patterns.md` 拿掉, 因為那是簡中 2023 的形狀不一定跨到繁中 2026;
+上游自己的邊界一節就是這麼寫的.

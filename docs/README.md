@@ -60,6 +60,7 @@
 | 跨層 · 紀錄 | [Orchestration 決策歷程](plans/orchestration-history.md) | append-only, 依時間序; 保留原始措辭 | 當前狀態 (在不變量表) |
 | 跨層 · 證據 | [全語料盤點](research/landing-readiness.md) | 18 份研究文的落地就緒度: 覆蓋率, 六項發現 (其一已由自己的掃描撤回), 四項建議與明確不做 | 各文件的原始論證 (在原地) |
 | 跨層 · 清單 | [等證據的項目](plans/pending-evidence.md) | 每一項「等未來證據」的等待登記: 觸發事件與判定規則 | 條件原文與依據 (在各研究文原地) |
+| 跨層 · 計畫 | [2026-09 升級計畫](plans/upgrade-plan-2026-09.md) | 2026-09-05 五個上游同日重查後的落地排程: 十二項, 每項先紅的檢查, 落地面 (雙生, 預算, census), 完成與推翻條件 | 逐條處置與依據 (在 ledger), 等待登記 (在 pending-evidence) |
 
 ## Runtime 真相源
 

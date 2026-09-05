@@ -109,6 +109,13 @@ class TaskObserverTests(unittest.TestCase):
             "9d1491b895c4f8f04f04977f74faad0f342c8b0c", attribution
         )
         self.assertIn("v2.0.0", attribution)
+        # Advanced to v3.1.0 on 2026-09-05 after the 3.1 rules were classified
+        # (ledger, "rebelytics 3.1"); the two superseded pins stay named above,
+        # so this asserts the new one arrived, not that an old one was replaced.
+        self.assertIn("v3.1.0", attribution)
+        self.assertIn(
+            "f4a95a180404bd4de35365da66849a243e3d07be", attribution
+        )
 
     def test_missing_ledger_review_is_read_only(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

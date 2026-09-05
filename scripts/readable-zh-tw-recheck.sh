@@ -28,7 +28,7 @@
 #       https://api.github.com/repos/Raymondhou0917/speak-human-tw/commits/master \
 #       | sed -n 's/.*"sha": "\([0-9a-f]\{40\}\)".*/\1/p' | head -1)"
 set -u
-SHA="${1:-ee860be6fb190cbc53dc1d45a2a47c9c9c680243}"
+SHA="${1:-fa09500c77e1ec7747677377e30599d9426433db}"
 BASE="https://raw.githubusercontent.com/Raymondhou0917/speak-human-tw/$SHA"
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 unreachable=0
