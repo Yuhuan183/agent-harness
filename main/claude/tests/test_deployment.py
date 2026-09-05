@@ -1702,6 +1702,12 @@ class EditResidueTests(unittest.TestCase):
     normalisation - blank fenced code and inline spans, since backreferences
     and `=======` are legitimate there. Zero hits is the argument for adding it
     now rather than after the first silent one: a free lock.
+
+    Known false positive, found on review the same day: a setext heading
+    underline (`Title` over a line of `=`) matches the conflict-marker
+    pattern. No deployed surface writes headings that way - all are ATX `#`
+    - so the sweep is quiet; if one ever does, narrow the pattern to markers
+    adjacent to `<<<<<<<`/`>>>>>>>` rather than exempting the file.
     """
 
     def test_the_residue_scan_can_actually_fail(self) -> None:
