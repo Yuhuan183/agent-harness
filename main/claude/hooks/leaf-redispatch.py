@@ -42,7 +42,14 @@ import sys
 # still closes. That row is also the first time this gate has fired outside a
 # test, so before it the log could not have distinguished a live gate from a
 # dead one either.
-CARRIER_VALIDATED_ON = (2, 1, 241)
+#
+# 2.1.261 (2026-09-05): weekly-integrity asked for re-validation once the
+# runtime had moved past 2.1.241. A `general-purpose` leaf on haiku was briefed
+# to make exactly one Agent call; the gate refused it with the message above
+# and denials.jsonl recorded `caller=general-purpose` (07:22:21Z, session
+# 72160e37). The field still travels, twenty releases on. Same procedure as
+# 2.1.241; it stays the only way to tell a quiet fleet from a dead gate.
+CARRIER_VALIDATED_ON = (2, 1, 261)
 
 try:  # Observability must never be able to break the boundary it observes.
     import denial_log

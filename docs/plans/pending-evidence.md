@@ -221,7 +221,7 @@ token_scope full 90/164
 | sepia 的四個中文形狀 | [計畫 P4](upgrade-plan-2026-09.md) 落地後, 在本機語料上各命中至少一次 | 一次都不中就從 `patterns.md` 拿掉 (ledger sepia 節的推翻條件) |
 | 兩條守衛: 耐久指標 (P2), 編輯殘渣 (P3) | 先量三個數 (今日命中 / 真缺陷 / 正規化), 寫進計畫 | 命中裡有真缺陷才加規則; 全是正當引用就只記錄 |
 | client 注入區塊在 2.1.261 消失 | [計畫 P10](upgrade-plan-2026-09.md) 重跑戳章 | 每個對 2.1.247 量的批次標出「量測面含該段」 |
-| leaf-redispatch 載體在 2.1.261 未驗 | [計畫 P6](upgrade-plan-2026-09.md): 一次真派工, leaf 嘗試巢狀派工 | exit 2, 然後推進 `CARRIER_VALIDATED_ON` |
+| ~~leaf-redispatch 載體在 2.1.261 未驗~~ **已驗 (2026-09-05)** | [計畫 P6](upgrade-plan-2026-09.md): 一次真派工, leaf 嘗試巢狀派工 | exit 2 觀察到, `caller=general-purpose` 進了 denial log, `CARRIER_VALIDATED_ON` 推進到 (2, 1, 261) |
 | Pilotfish attempts 內容, Deep Agents 三版內容 | P8, P9, 下次 peer-harness 輪 | 讀完記進 peer-harnesses, 通貨表那兩列去掉「未讀」 |
 
 ## 四, 蒸餾重查節奏
