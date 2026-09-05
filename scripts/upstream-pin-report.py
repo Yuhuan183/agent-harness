@@ -22,6 +22,13 @@ source in three different shapes (`**Source**:` plus `**Reviewed commit**:`,
 `- 專案：` plus `- 蒸餾自：`, and a bare URL plus `- Commit:`), and normalising
 them is a separate decision from being able to read them.
 
+Since 2026-09-05 the research README's currency table is read too, for rows
+whose 類別 says 上游 and whose state cell pins a full commit. An upstream sits
+there before anything distilled from it reaches `main/` - sepia did for a
+week, moved 86 commits, and the date on its row was the only thing that
+noticed. A row restating an attributed pin joins that entry; a 同業 row is
+left alone even when it carries a SHA.
+
 What it cannot tell you: whether a move matters. Twelve commits of punctuation
 and one commit that deletes a rule look identical here. Reading the diff is the
 next step and belongs to a person - see the `upstream-distillation` skill.
@@ -51,6 +58,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 REPO = re.compile(r"github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+?)(?:\.git)?(?=[)\s>/]|$)")
 SHA = re.compile(r"\b([0-9a-f]{40})\b")
+# The research README's currency table: `| 來源 | 類別 | 現況 | 查核日 | ...`.
+# An upstream enters that table before anything distilled from it reaches
+# `main/`, so for a while its pin lives there and nowhere else.
+INDEX_ROW = re.compile(r"^\|\s*(?P<source>[^|]*)\|\s*(?P<kind>[^|]*)\|(?P<state>[^|]*)\|",
+                       re.MULTILINE)
+SLASH = re.compile(r"\b([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)\b")
+PIN_CELL = re.compile(r"pin `([0-9a-f]{40})`")
 API = "https://api.github.com/repos/{repo}/compare/{base}...{head}"
 # Enough to tell "our source tree moved" from "a chart was regenerated" without
 # turning the line into a file list.
@@ -72,9 +86,52 @@ def parse_attributions(root: Path) -> list[dict]:
         if not repo or not sha:
             continue
         key = (f"{repo.group(1)}/{repo.group(2)}", sha.group(1))
-        entry = found.setdefault(key, {"repo": key[0], "pin": key[1], "skills": []})
+        entry = found.setdefault(key, {"repo": key[0], "pin": key[1], "skills": [],
+                                       "sites": ["attribution"]})
         if path.parent.name not in entry["skills"]:
             entry["skills"].append(path.parent.name)
+    return list(found.values())
+
+
+def parse_research_index(path: Path) -> list[dict]:
+    """Pins the research README's currency table states for rows it calls 上游.
+
+    `Nanako0129/sepia` moved 86 commits and released four versions in five
+    days, and on 2026-09-05 nothing noticed until someone read the date on its
+    row: it has no ATTRIBUTION because nothing distilled from it has reached
+    `main/` yet, and this report read ATTRIBUTION files alone. Only 上游 rows
+    count - a 同業 row also carries a full SHA (eli5's path commit), and
+    comparing that against a whole repository would report every unrelated
+    plugin's move as ours to read.
+    """
+    if not path.is_file():
+        return []
+    entries = []
+    for row in INDEX_ROW.finditer(path.read_text(encoding="utf-8")):
+        if "上游" not in row.group("kind"):
+            continue
+        repo = SLASH.search(row.group("source"))
+        pin = PIN_CELL.search(row.group("state"))
+        if not repo or not pin:
+            continue
+        entries.append({"repo": f"{repo.group(1)}/{repo.group(2)}", "pin": pin.group(1),
+                        "skills": [], "sites": ["research-index"]})
+    return entries
+
+
+def collect(root: Path, index: Path) -> list[dict]:
+    """Attributions first, then the index; a row restating an attributed pin
+    joins that entry rather than becoming a second upstream."""
+    found: dict[tuple[str, str], dict] = {}
+    for entry in parse_attributions(root):
+        found[(entry["repo"], entry["pin"])] = entry
+    for entry in parse_research_index(index):
+        key = (entry["repo"], entry["pin"])
+        if key in found:
+            if "research-index" not in found[key]["sites"]:
+                found[key]["sites"].append("research-index")
+        else:
+            found[key] = entry
     return list(found.values())
 
 
@@ -126,10 +183,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--attributions", default=str(ROOT / "main"),
                         help="tree to scan for ATTRIBUTION.md (the suite uses it)")
+    parser.add_argument("--index", default=str(ROOT / "docs/research/README.md"),
+                        help="research README whose 上游 rows may pin what no "
+                             "attribution does yet")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
-    entries = parse_attributions(Path(args.attributions))
+    entries = collect(Path(args.attributions), Path(args.index))
     for entry in entries:
         entry.update(moved(entry["repo"], entry["pin"]))
 
@@ -143,7 +203,7 @@ def main() -> int:
         return 0
     print(f"{len(entries)} pinned upstream(s)\n")
     for entry in entries:
-        skills = ", ".join(sorted(entry["skills"]))
+        skills = ", ".join(sorted(entry["skills"])) or "research README only"
         if entry["state"] == "moved":
             mark = f"MOVED +{entry['ahead']}"
             tail = f"  head {entry['head']}, first new commit {entry['since']}"

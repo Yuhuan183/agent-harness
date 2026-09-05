@@ -4173,6 +4173,52 @@ class UpstreamPinReportTests(unittest.TestCase):
             self.assertEqual(sorted(by_repo["two/beta"]["skills"]), ["b", "twin"],
                              "one upstream shipped twice must be one entry")
 
+    def test_it_also_reads_pins_the_research_index_states_without_an_attribution(self) -> None:
+        """`Nanako0129/sepia` moved 86 commits and released four versions in
+        five days, and on 2026-09-05 nothing here noticed until someone read
+        the date on its row in the research README. It has no ATTRIBUTION -
+        nothing distilled from it has reached `main/` yet - and this report was
+        derived from ATTRIBUTION files alone. A pin that lives only in the
+        currency table is still a pin.
+
+        Only 上游 rows count. A 同業 row also carries a full SHA (eli5's path
+        commit), and comparing that against a whole repository would report
+        every unrelated plugin's move as ours to read. A row that restates an
+        attributed pin joins that entry rather than becoming a second upstream.
+        """
+        module = self._module()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "a").mkdir()
+            (root / "a" / "ATTRIBUTION.md").write_text(
+                "- **Source**: <https://github.com/one/alpha>\n"
+                "- **Reviewed commit**: `" + "1" * 40 + "`\n", encoding="utf-8")
+            index = root / "README.md"
+            rows = (
+                "| 來源 | 類別 | 現況 | 查核日 | 備註 |\n|---|---|---|---|---|\n"
+                "| one/alpha | 上游 | marketplace pin `" + "1" * 40 + "` | 2026-09-05 | attributed |\n"
+                "| `four/delta` 與上游論文 | 上游 + 研究 | pin `" + "4" * 40 + "` (head) | 2026-09-05 | no attribution yet |\n"
+                "| `five/epsilon` 的 `thing` | 同業 | path 最後 commit 仍是 `" + "5" * 40 + "` | 2026-09-05 | surveyed |\n"
+            )
+            index.write_text(rows, encoding="utf-8")
+
+            by_repo = {e["repo"]: e for e in module.collect(root, index)}
+            self.assertEqual(sorted(by_repo), ["four/delta", "one/alpha"],
+                             "an 上游 row without an ATTRIBUTION is a pin; a 同業 row is not")
+            self.assertEqual(by_repo["four/delta"]["pin"], "4" * 40)
+            self.assertEqual(by_repo["four/delta"]["skills"], [])
+            self.assertEqual(by_repo["four/delta"]["sites"], ["research-index"])
+            self.assertEqual(by_repo["one/alpha"]["skills"], ["a"])
+            self.assertEqual(sorted(by_repo["one/alpha"]["sites"]),
+                             ["attribution", "research-index"],
+                             "a row restating an attributed pin joins that entry")
+
+            # Take the row away and the index-only upstream goes with it: the
+            # report is derived, so the table is the only place to list it.
+            index.write_text(rows.replace("four/delta", "four-delta"), encoding="utf-8")
+            self.assertEqual(sorted(e["repo"] for e in module.collect(root, index)),
+                             ["one/alpha"])
+
     def test_a_move_says_where_it_moved(self) -> None:
         """A commit count cannot separate a rule change from a regenerated chart.
 

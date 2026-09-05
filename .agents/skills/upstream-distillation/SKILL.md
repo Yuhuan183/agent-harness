@@ -228,9 +228,13 @@ Half of the recheck is mechanical now, and half is not.
 
 `scripts/upstream-pin-report.py` answers "did any upstream move", derived
 from the `ATTRIBUTION.md` files so a newly distilled skill joins it the day its
-attribution lands. Without it, a pin only looks stale to whoever happens to
-check, and a hash-verifying recheck stays green while upstream walks away —
-because a SHA pins content and content does not change under it.
+attribution lands, and since 2026-09-05 from the research README's 上游 rows
+too, so an upstream that has been surveyed but not yet distilled is watched
+from the day its row is written (sepia moved 86 commits under the old rule
+and only its row's date said so). Without it, a pin only looks stale to
+whoever happens to check, and a hash-verifying recheck stays green while
+upstream walks away — because a SHA pins content and content does not
+change under it.
 
 What stays manual is everything after. `scripts/upstream-recheck.sh` and
 `docs/research/upstream-distillation-ledger.md` verify bytes for one upstream

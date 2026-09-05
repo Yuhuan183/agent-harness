@@ -227,7 +227,7 @@ token_scope full 90/164
 ## 四, 蒸餾重查節奏
 
 上游重查照舊由 [research README 的上游表](../research/README.md)與 `upstream-pin-report.py`
-驅動; `sepia` 沒有 ATTRIBUTION (尚無內容落進 `main/`), 所以 pin-report 看不到它 (2026-09-05 靠上游表那列的日期查了一次, 讓 pin-report 也讀上游表 pin 的改法是[計畫 P7](upgrade-plan-2026-09.md)), 重查靠
+驅動; `sepia` 沒有 ATTRIBUTION (尚無內容落進 `main/`), 所以 pin-report 本來看不到它 (2026-09-05 靠上游表那列的日期查了一次; 同日 [計畫 P7](upgrade-plan-2026-09.md) 落地, pin-report 現在也讀上游表裡類別為上游的列, sepia 從此在報告裡), 重查靠
 上游表那一列的日期 —— 下次重查時間到, 順帶讀論文本文 (第三節的最後一項), 一趟做完.
 第四輪跨上游整合開題時, 第一份素材已備妥: 淺層介入撼動不了深層結構, 偵測端與強制端各證
 一半, 記在 [ledger 的 sepia 節](../research/upstream-distillation-ledger.md#研究層的交叉-上游論文與第三輪撞在同一面牆的兩側).
