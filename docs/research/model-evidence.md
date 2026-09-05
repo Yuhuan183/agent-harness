@@ -688,3 +688,16 @@ documents 可用 Terra;custom agent 可以省略 model/effort 繼承, 或在派�
 
 Claude Fable 5 的絕對能力較高, 但 max Index 全套評測成本約為 Sol max 的兩倍; 沒有本機證據前,
 不把它當大量 leaf task 的 CP 預設.
+
+## 查過但不能用的來源 (2026-09-05 起)
+
+sepia `research/sources.md` 有一張「Consulted」表: 查過, 沒有可用數字, 記下來免得下次再把
+流傳的數字抓進來. 那是本 repo「沒有查的」清單的另一半 —— 我方記沒查的, 他們記查了但沒用的,
+兩個都在防同一種重工. 從這一輪起照做, 每筆三欄: 來源, 查核日, 為什麼不能用. 進了這張表的
+數字不進本檔其他任何表.
+
+| 來源 | 查核日 | 為什麼不能用 |
+|---|---|---|
+| sepia `languages/zh.md` 引的 HC3-Chinese 讀數 (朱君輝等, CCL 2023: 句長 SD 9.248 vs 6.729, 語氣詞密度 0.016 vs 0.003 等) | 2026-09-05 | 一個語料, 簡中, 2023 年的 ChatGPT; 上游自己寫「每個數字是觀察過一次的方向, 不是校準常數」. 形狀已借進 `readable-zh-tw`, 數字不進任何表 |
+| Pilotfish positive-controls 的成本與牆鐘 (機械控制派給 mech-executor: 成本 −36.01%, 牆鐘 +7.92%) | 2026-09-05 | 每條件一次 run; client 回報的成本欄位不是發票 —— 兩條都是上游揭露表自己列的. 只能當方向, 不進 clause-pricing |
+| Pilotfish verifier-boundary 的 $3.84 (通過的控制) 與 $29.84 (整個 campaign) | 2026-09-05 | 同上, 且標題明寫「可達性觀察, 不建立頻率, 品質, 延遲或成本效率」, 兩個通過的控制都有 opt-in cue |

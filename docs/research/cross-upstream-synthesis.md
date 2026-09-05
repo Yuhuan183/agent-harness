@@ -705,6 +705,15 @@ Nanako0129 一票, 本 repo 一票, rebelytics 待血緣 —— 至少兩個獨�
 evidence-ladder 與 upstream-distillation; 這輪加的是「守衛帶三個量測數」一句 (rebelytics 的
 sharpest clause); 執行是 P6 (載體在 2.1.261 的重驗就是一次真正控制).
 
+**同日稍晚, 讀完 P8/P9 後補記.** 血緣要拆開算. Pilotfish 的 dispatch 正控制與我方
+baton-dispatch 同蒸餾自 cablate/baton (Pilotfish 自述探針自動載入 baton-dispatch v0.1.1), 所以在
+**派不派**這題上 Nanako0129 與本 repo 是同一血緣, 不加票; 但在**儀器要用真實正負控制校準**這題上,
+Pilotfish 的控制表 (每條政策同時過負控制與正控制, 否決的迭代連理由發表) 與 baton 無關, 仍是一票.
+再加 Deep Agents 0.7.10 的 #5566「沙盒 glob 失敗要浮出, 不得報成沒有符合」—— LangChain 與前面任何
+一方都沒有已知引用關係, 第三個獨立血緣. 現在的計數: 本 repo, Nanako0129, LangChain 三票獨立,
+rebelytics 待血緣. 我方 trap fixture 只有負控制那一半 (s7, s9 都在量「不該做的有沒有做」), 沒有
+一個 fixture 是「該派卻沒派算失敗」—— 第四輪開題時要補的第一個 fixture 候選.
+
 ### 三, 兩個血緣: 指標要活過寫它的 session
 
 rebelytics 3.1 的 `reference:` 規則 (session 暫存目錄與角色名都不是路徑; 這種指標寫時不敗讀時敗)

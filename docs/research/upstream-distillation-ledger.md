@@ -636,9 +636,18 @@ ATTRIBUTION, 因為沒有內容落進 `main/` —— P4 落地那天要補一份
 | `scripts/check_versions.py`: 宣告版本的 manifest 要一致; 拼法變體是無效不是隱形; 重複鍵是無效不是先者勝; 「一個正典鍵文法關掉整類拼法」 | **佐證** | 與 test_deployment 對 manifest 的態度同向; 沒有版本 manifest, 不採 |
 | Star History 轉址修, zh-CN README, issue-first policy, security reporting | **不適用** | |
 
+**P11a 讀了 (2026-09-05 同日): Fable 5.1 的 prose layer.** `model-fingerprints.md` 給 executor 端
+三條供應商自述的預設: 造作的散文 (有直述可用時仍用比喻與花腔, 「a dial worth turning」代替
+「a parameter worth varying」); 比 Fable 5 更密 (句長, 段落少); 比早期 Claude 少粗體, 少標題,
+少列表 —— 並註明「稀疏版面不是人寫的證據, 不要加反向的版面規則來補償」. 類別 vendor guidance
+(unmeasured), 上游自己標的. 對我方的意義: 本 repo 的回覆就是這個模型寫的; `readable-zh-tw` 第 17,
+18 條 (說教式深度腔, 金句公式) 抓的正是比喻代直述的中文形狀, 已涵蓋, 不加規則. **P11b 的決定**:
+`readable-zh-tw` 要有 eval, 形狀借 sepia 三 grader (skill-fired / reads-human / no-slop-markers),
+與下一個 replay 批次一起開 —— 觸發是那個批次的事前登記, 不在本輪.
+
 ### 沒有查的 (本節)
 
-- `model-fingerprints.md` (+97) 的 prose layers 本文; `style-pass.md` §5 本文; `rhythm-syntax.md`;
+- `model-fingerprints.md` 除 Fable 5.1 prose layer 以外的部分 (那一段 09-05 同日讀了, 見上); `style-pass.md` §5 本文; `rhythm-syntax.md`;
   `voices/`; `evals/` 三個 grader 的本文 (只讀了檔名與行數); 兩篇 CCL 論文本身 (上游的摘錄有引用,
   我方沒開原文).
 - 論文 StoryScope 本文與血緣, 同 08-31.

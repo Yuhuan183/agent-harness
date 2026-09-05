@@ -222,7 +222,7 @@ token_scope full 90/164
 | 兩條守衛: ~~耐久指標 (P2)~~ **量過不加 (2026-09-05: 2 命中 0 缺陷)**, ~~編輯殘渣 (P3)~~ **已加 (2026-09-05: 0 命中, 免費的鎖, 在 test_deployment)** | 先量三個數 (今日命中 / 真缺陷 / 正規化), 寫進計畫 | 命中裡有真缺陷才加規則; 全是正當引用就只記錄 —— P2 走了後一條 |
 | ~~client 注入區塊在 2.1.261 消失~~ **已記 (2026-09-05, 縮小)** | [計畫 P10](upgrade-plan-2026-09.md): 戳章從沒含 client 半邊, 改為在 wording-effect-scale 補記 | 兩個 opus 批次帶「量測時在, 現在不在」; client group 進戳章的條件是第三次移動 |
 | ~~leaf-redispatch 載體在 2.1.261 未驗~~ **已驗 (2026-09-05)** | [計畫 P6](upgrade-plan-2026-09.md): 一次真派工, leaf 嘗試巢狀派工 | exit 2 觀察到, `caller=general-purpose` 進了 denial log, `CARRIER_VALIDATED_ON` 推進到 (2, 1, 261) |
-| Pilotfish attempts 內容, Deep Agents 三版內容 | P8, P9, 下次 peer-harness 輪 | 讀完記進 peer-harnesses, 通貨表那兩列去掉「未讀」 |
+| ~~Pilotfish attempts 內容, Deep Agents 三版內容~~ **已讀 (2026-09-05, README 與發版說明; attempts.json 本體與原始碼未讀)** | P8, P9 | 記進 peer-harnesses 兩節, 通貨表兩列改寫; 下次先讀 spontaneous-dispatch 的 cue-free 資料 |
 
 ## 四, 蒸餾重查節奏
 

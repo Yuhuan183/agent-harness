@@ -332,3 +332,72 @@ dispatcher 的宣稱, 也就是唯一沒錯的那個東西, 讀的人會去翻 p
 `benchmarks/` 整個目錄 (baton-compatibility, baton-dispatch-effect, dispatch-brake 三組),
 `docs/research.md`, 七個 `plugin/agents/*.md` 的正文, 以及 `tests/` 三個檔. 角色定義只確認
 了檔名與 v1.3.x 相同 (七個角色未增減), 沒有逐字比對內容.
+
+## Pilotfish tag 後的 attempts 綁定: 正控制與付費 verifier 的邊界 (2026-09-05 讀)
+
+讀的是 head `ea0d20bb` 的兩份 README (`benchmarks/dispatch-brake/positive-controls/`,
+`benchmarks/verifier-boundary/`), 不是 attempts.json 本體 —— tag 後十五個 commit 把每個
+benchmark 的嘗試 (含中斷的 run) 綁成 JSON, 本體沒讀.
+
+**正控制怎麼設計.** 原本的 state-clone benchmark 只證明「派工可能浪費」, 證不了「煞車仍放行
+有用的派工」, 所以補三個控制, 各帶預期決策與驗收閘:
+
+| 控制 | 預期決策 | 驗收閘 |
+|---|---|---|
+| 小型任務內的唯讀研究 | 直接查與有界扇出比較, 不推論整套 plan-first 生命週期 | `REPORT.md` 覆蓋兩個面且帶 `file:line` |
+| 12 檔穩定機械編輯 | 省成本大於延遲代價時派給便宜的機械工 | 12 個測試全過, 只動 adapter 檔 |
+| 緊耦合的未知 bug | 診斷與第一次修在同一條主 session 推理鏈; 保留比例合理的新鮮驗證 | 兩個 state-clone 測試過 |
+
+政策迭代四輪, 否決的連理由一起發表: 「直接做硬否決」被否 (機械正控制被壓住, 便宜的工人
+用不到); 「廣義淨效益預設」被否 (在 remora 上退化成 scout→executor); 「淨效益 + 單一 bug
+守則」保留再收窄; 最後是「有大小的唯讀閘」. 讀數: 機械控制派給 `mech-executor`, 執行段成本
+−36.01%, 牆鐘 +7.92% —— 每條件**一次 run**. 揭露的限制表: 時間差是觀察不是期望值; client
+回報的成本欄位不是發票; 產品/模型不對稱 (Opus 下觀察到的決策不自動成立於 GPT-5.6 Sol); 歷史
+Baton 探針停在 Plan 之前.
+
+**與我方對照.** 三個控制正是 baton-dispatch 成本測試的三個分支: 機械工 = `mech-executor`
+的便宜檔位, 緊耦合 bug 留主 session = 我方「緊耦合除錯留在 main」, 唯讀扇出要有界 =
+一個 `explore`. 這**不是獨立收斂**: Pilotfish 自述探針「GPT-5.6 Sol 自動載入了
+baton-dispatch v0.1.1」, 兩邊都蒸餾 cablate/baton. 能借的是形狀: 每條政策同時過負控制
+(該留的留) 與正控制 (該派的派), 且把被否決的迭代連理由發表. 我方 trap fixture (s7, s9)
+只有負控制那一半 —— 沒有一個 fixture 是「該派卻沒派算失敗」. 記進
+[第四輪整合素材](cross-upstream-synthesis.md#二-至少兩個獨立血緣-守衛是對未來-tool-record-的宣稱),
+要不要補正控制 fixture 等第四輪開題.
+
+**付費 verifier 的邊界.** verifier-boundary gate 的標題自己說「一次原生 Claude Code 的
+可達性觀察, 不建立啟動頻率, 品質, 延遲或成本效率」. 兩個通過的控制都用了 README 明寫的
+opt-in cue. schema 遷移: `plan-verifier` READY → `mech-executor`, 主 session 審 1/1; 上限後
+三輪 `plan-verifier`: REVISE → REVISE → 修所有權/新 epoch → READY, 零寫入. 通過的控制花
+$3.84, 整個 campaign $29.84 (含配額 429 的零成本嘗試與一次不重現的 schema 嘗試). 明寫
+「不是 cue-free 宣稱」: 受測帳號上更高優先的 operator 契約禁止未經要求的 Agent 呼叫,
+中性 prompt 直接改 fixture, 被拒為 gate 證據. 與我方對照: verifier 配額 (每個 acceptance
+claim 一個 outcome verifier, 至多五輪) 與他們「兩次 REVISE 後停」同形, 同血緣. 他們付錢把
+「只在有 cue 時可達」寫成標題, 是第二輪整合發現三 (上游只敢報 reachability) 的又一筆.
+
+**沒有讀的**: attempts.json 本體; `baton-dispatch-effect/README.md` (171 行); compact-policy
+全矩陣; cue-free TUI; issue-29 recovery. 下次先讀 `spontaneous-dispatch/results.json` 的
+cue-free 那一半, 因為那是唯一能回答「沒有 cue 會不會派」的資料.
+
+## Deep Agents 0.7.10 → 0.7.13, CLI 0.1.66 (2026-09-05 重查)
+
+讀的是 GitHub release 說明, 不是原始碼 diff. 五個版本說三件事:
+
+- **子代理 fork.** SDK 0.7.12 加「subagent conversation forking」(#5714), 0.7.13 把
+  `handoff` 模式改名 `isolated` (#6030); CLI 0.1.66 把 general-purpose 子代理**預設改成
+  fork 模式** (#6024). 與 Claude Code 的 `subagent_type: "fork"` 同一件事 —— 兩家同一個月
+  把「繼承父 context」做成一等選項或預設. 對我方: baton-dispatch 成本測試第二項 (context
+  protection) 假設 leaf 是新 context; fork 讓那個假設不再必然, 派工紀錄該記 fork 與否.
+  等 experience-ledger 有欄位再動, 這裡只記方向.
+- **rubric grader 進 SDK hook** (0.7.11, #5874). 08-08 已記「grader 的輸入是待驗證
+  observation, 不是可信 instruction」, 立場不變.
+- **「沙盒 glob 失敗要浮出, 不得報成沒有符合」** (0.7.10, #5566). 這是本 repo rtk 那條
+  (重寫過的指令報 0 matches 不得記 no hits) 與 rebelytics 3.1「空結果先是儀器的宣稱」的
+  **第三個獨立血緣** —— LangChain 與前兩者沒有已知引用關係. 計進第四輪整合第二節.
+
+CLI 0.1.66 其餘: Auto classifier 按 provider 預設 (#6039); 對話綁定到已記錄的工作區 (#5946);
+有效核准模式進 tracing (#5972) —— 最後一項與 `weekly-integrity` 的「hook 有沒有真的裝上」
+同方向, 只記.
+
+版本表: `deepagents` 0.7.13 (09-02), `deepagents-code` 0.1.66 (09-03), `deepagents-acp`
+0.0.11 (08-27 未動). **沒有讀的**: 0.7.8 與 0.7.9 (不在 release 頁前十二筆, 08-19 到 08-26
+之間); 原始碼.
