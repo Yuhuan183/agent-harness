@@ -36,6 +36,7 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | `d1-two-reviews` | 派工路徑上, 契約子句比 skill description 多做了什麼 | `r3-conflicting-leaves` |
 | `d2-one-small-edit` | 派工路徑的 negative control — 不該派工時會不會誤載入 | `r2-successive-corrections` |
 | `d3-stable-mechanical-batch` | 派工路徑的 positive control — 該派工時 (12 檔同形機械編輯, 規格完整, 自帶紅測試) 有沒有派給便宜的機械工 | `d3-twelve-adapters` |
+| `d3x-stable-mechanical-batch-cued` | 派工正控制的價格臂 — 同一個 12 檔機械批次, prompt 明說交給 mech-executor, 量派工那一側的成本與牆鐘, 對照 d3 的 inline 側 | `d3-twelve-adapters` |
 | `e1-lever-that-misses` | 交付的改動有沒有抵達可觀察的結果 — 文件寫著的那個槓桿是空轉的 | `e1-lever-that-misses` |
 | `e1x-lever-that-misses-explicit` | e1 的內容臂 —— skill 確實載入時, 交付的改動會不會抵達可觀察的結果 | `e1-lever-that-misses` |
 | `e2-check-that-cannot-fail` | 交付的檢查還能不能對兩個相反狀態給出同一個判決 — 群 B 的最小形式 | `e2-check-that-cannot-fail` |
@@ -70,7 +71,7 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | `x2b-decision-weak-append` | 注入位置第二輪 arm B — 調弱的矛盾, 走 --append-system-prompt | `r2-successive-corrections` |
 | `z1-four-zh-shapes` | readable-zh-tw 在本機文字上會不會被叫, 叫了之後 2026-09-05 借進來的四個中文形狀有沒有真的被改掉 | `z1-zh-draft` |
 
-共 36 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
+共 37 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
 
 <!-- scenario-index:end -->
 
@@ -1680,3 +1681,38 @@ P11b: `readable-zh-tw` 現在有 eval, 而且第一批就有讀數. 改後的稿
 的契約子句); n=5 只夠說「五次都這樣」, 不夠說比率. 加了兩個情境檔進 `[scenarios]` 組: 先前九個 replay 戳章裡
 八個已 archived, 唯一活著的那個 (`045b7f77`, 09-04 就因 readable-zh-tw 改動過期) 現在多了 `scenarios` 這一組 ——
 加任何情境都要付這個, 也是戳章帶組別 digest 的理由 (`evidence-check.py` 讀數: stamps 9, stale 1, archived 8).
+
+### `d3x`: 同一批交給 mech-executor 的價 —— 貴 2 到 4 倍, 慢 1.5 到 5 倍
+
+d3 只量到 inline 那一側, 所以同日加一個帶 opt-in cue 的臂 (`d3x-stable-mechanical-batch-cued`, 同一個
+fixture, prompt 明說「交給 mech-executor 去做, 你負責驗收」; Pilotfish 的正控制也是靠 README 明寫的 cue),
+五個 run, 該批的量測面 `dd2999b6`.
+
+```text
+run   reached   mech-executor returned   inline Edit   delivered   cost      wall     skills loaded
+001   yes       1                       0             green       $1.211    176 s   baton-dispatch, experience-ledger
+002   yes       1                       0             green       $1.218    170 s   baton-dispatch, experience-ledger
+003   yes       1                       0             green       $1.334    196 s   baton-dispatch, experience-ledger
+004   yes       1                       0             green       $1.766     91 s   baton-dispatch, experience-ledger
+005   yes       1                       0             green       $2.603    342 s   baton-dispatch, experience-ledger
+
+5/5 派工且綠   cost $1.21–2.60   wall 91–342 s   對照 d3 inline: $0.62–0.71, 51–74 s
+```
+
+**讀法.** 在這台機器上, 把 12 個一行改動派給 `mech-executor` 的價是 inline 的 2 到 4 倍, 牆鐘 1.5 到
+5 倍 (五個 run 裡最貴的那個 $2.60 / 342 s 還多了一次 `SendMessage` 往返). client 回報的成本欄位含
+leaf 的用量 (`subagent_stats` 在 result 事件裡), 但它不是發票 —— 與 Pilotfish 揭露表同一條. 所以
+d3 的 0/5 **是正確的成本判斷, 不是煞車卡死**: 成本測試第四項 (cheaper tier) 說「當便宜檔位真的能
+覆蓋」, 而這裡便宜檔位並不便宜 —— 派工的固定成本 (載入 baton-dispatch, 寫 brief, 收結果, QC, 記
+ledger) 在一個 60 秒的任務上就是全部. 這與 Pilotfish 的 −36% 相反, 而兩邊的 harness, 模型, 計費欄位
+都不同, 不衝突, 只是各自的數字.
+
+**推翻條件 (原本的) 沒有成立**: 派工側沒有低於 inline 的 $0.62. 反過來的推翻條件寫下來: 若換一個
+更大的批次 (例如 50 檔) 或 `mech-executor` 釘到更便宜的模型後, 派工側成本掉到 inline 之下, 煞車在
+那個尺度上就該開 —— 那時要量的是「哪個規模開始划算」, 不是「開不開」.
+
+**這一節的 grader 修了一次**: 第一版把 leaf 的 12 個 Edit 算成 inline (這條 stream 不設 `isSidechain`,
+leaf 的工具呼叫帶的是 `parent_tool_use_id`), 五個 d3x verdict 一開始都寫 `inline_adapter_edits=12`.
+修法在 `tool_calls()`, 有測試釘住; 五個 run 重評後 inline 為 0, verdict 不變. 修了 grader 之後量測面
+又動了一次 (`contract` 組), 現在是 `[surface adf1cdb3 competitors:52b1cbac contract:25f8a54b scenarios:4867c500]` —— 所以本節三批的戳章都已比現行面舊一步, 這是誠實的
+讀數, 不是缺陷.

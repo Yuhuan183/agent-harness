@@ -301,6 +301,19 @@ def allowed_tools(execute: bool = False) -> list[str]:
     return grants
 
 
+def fold_home(commands: list[str]) -> list[str]:
+    """Recorded commands with the machine's home folded to `<HOME>`.
+
+    `granted_tools` already folds its grants; the commands a session typed
+    did not get the same treatment, and on 2026-09-06 two d3x runs recorded
+    `ls /Users/<name>/...` verbatim, which the tracked-file hygiene test
+    refuses at commit time. The location inside the tree is the informative
+    part; the username is not, and it is what makes a run unshareable.
+    """
+    home = str(Path.home())
+    return [command.replace(home, "<HOME>") for command in commands]
+
+
 def commands_executed(events: Path) -> list[str]:
     """The commands that actually ran, denials removed.
 
@@ -786,8 +799,8 @@ def main() -> int:
         "granted_tools": [grant.replace(str(Path.home()), "$HOME")
                           for grant in allowed_tools(
                               str(spec.get("allow_execution", "")).lower() == "true")],
-        "commands_run": commands_run(events),
-        "commands_executed": commands_executed(events),
+        "commands_run": fold_home(commands_run(events)),
+        "commands_executed": fold_home(commands_executed(events)),
         "deployed_contract_sha256": sha(DEPLOYED) if DEPLOYED.exists() else None,
         "matches_repo_source": not drift,
         "arm": arm_state,

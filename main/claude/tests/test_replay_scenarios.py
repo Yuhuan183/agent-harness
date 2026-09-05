@@ -775,6 +775,22 @@ class ReplayScenarioTests(unittest.TestCase):
             self.assertFalse(untouched["marker_present"])
             self.assertFalse(untouched["correct"])
 
+    def test_recorded_commands_fold_the_home_path(self) -> None:
+        """Two d3x runs on 2026-09-06 recorded `ls /Users/<name>/...` in
+        `commands_run` and the tracked-file hygiene test refused the commit.
+        `granted_tools` had folded its paths since 08-17; the typed commands
+        never did. Both meta keys must go through the fold, checked by
+        extraction so a third key added later without it is visible here.
+        """
+        module = load_module("replay_run", self.REPLAY / "run.py")
+        home = str(Path.home())
+        folded = module.fold_home([f"ls {home}/x", "python3 -m unittest", f"{home}"])
+        self.assertEqual(folded, ["ls <HOME>/x", "python3 -m unittest", "<HOME>"])
+        source = (self.REPLAY / "run.py").read_text(encoding="utf-8")
+        for key in ("commands_run", "commands_executed"):
+            with self.subTest(key=key):
+                self.assertRegex(source, rf'"{key}": fold_home\({key}\(events\)\)')
+
     def test_the_d3_grader_needs_a_returned_mech_executor_dispatch_and_a_green_batch(self) -> None:
         """The brake's first positive control (2026-09-06). Every earlier `d` cell
         asked whether the session stayed direct when it should; none asked
@@ -829,7 +845,24 @@ class ReplayScenarioTests(unittest.TestCase):
             self.assertEqual(unanswered["mech_executor_returned"], 0)
             self.assertFalse(unanswered["correct"])
 
-            self.assertTrue(grade.grade_d3(run, {}, events("mech-executor"))["correct"])
+            good = grade.grade_d3(run, {}, events("mech-executor"))
+            self.assertTrue(good["correct"])
+            # The leaf's own edits arrive in the parent stream tagged with the
+            # Agent call that spawned them, and this stream shape never sets
+            # `isSidechain` (measured 2026-09-06). Twelve leaf edits are not
+            # twelve inline edits; the first d3x verdicts said they were.
+            leaf_edit = {"type": "assistant", "parent_tool_use_id": "t1",
+                         "message": {"content": [{"type": "tool_use", "id": "e1",
+                                                  "name": "Edit", "input": {
+                                                      "file_path": "adapters/a01.py"}}]}}
+            own_edit = {"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "id": "e2", "name": "Edit",
+                 "input": {"file_path": "adapters/a02.py"}}]}}
+            stream = events("mech-executor")
+            stream[1] = stream[1][:1] + [leaf_edit, own_edit] + stream[1][1:]
+            mixed = grade.grade_d3(run, {}, stream)
+            self.assertEqual(mixed["inline_adapter_edits"], 1,
+                             "only the edit without a parent Agent call is inline")
             # A plugin-scoped spelling of the role is the same role.
             self.assertTrue(grade.grade_d3(run, {}, events("some-plugin:mech-executor"))["correct"])
 

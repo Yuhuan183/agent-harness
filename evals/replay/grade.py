@@ -108,10 +108,17 @@ def tool_calls(events: list[dict]) -> list[dict]:
             continue
         for part in content:
             if isinstance(part, dict) and part.get("type") == "tool_use":
+                # A leaf's tool calls arrive in the parent's stream with
+                # `parent_tool_use_id` naming the Agent call that spawned them;
+                # `isSidechain` is not set on this stream shape at all
+                # (measured 2026-09-06: twelve leaf edits, zero sidechain
+                # flags). Either mark means the main session did not do it.
                 calls.append({"name": part.get("name"),
                               "input": part.get("input") or {},
                               "id": part.get("id"),
-                              "sidechain": bool(event.get("isSidechain"))})
+                              "parent": event.get("parent_tool_use_id"),
+                              "sidechain": bool(event.get("isSidechain"))
+                              or bool(event.get("parent_tool_use_id"))})
     return calls
 
 
@@ -1892,6 +1899,8 @@ GRADERS = {
     "e5-authority-diagnose": grade_e5,
     "e5b-authority-fix": grade_e5,
     "d3-stable-mechanical-batch": grade_d3,
+    # Price arm: same grader, same fixture; the prompt carries the cue.
+    "d3x-stable-mechanical-batch-cued": grade_d3,
     "z1-four-zh-shapes": grade_z1,
 }
 
