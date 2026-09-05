@@ -343,3 +343,27 @@ absent   s9-8   INTENT 0.0                         整條不見
 改 grader. 上面的區間是對已發表讀數的重新計算, 不是新資料. `model-evidence` 與
 `trap-experiments` 的其餘部分仍未讀 (第二輪已列).
 
+### 量測面的 client 半邊從未入戳 (2026-09-05 補記)
+
+三個批次都在 client 2.1.247 上跑. 當時 `opus_5_prompt_bundle` 那兩行硬編碼段落在且生效
+(取證在 [context-and-vendors](context-and-vendors.md) 的 08-28 節), 而它只掛在 `claude-opus-5`:
+s7 與 s9 的 opus 批次跑在那段之下, sonnet 低檔位批次本來就沒有它. 2026-09-05 weekly-integrity 報
+2.1.261 上那段不在 (同檔 09-05 補記).
+
+升級計畫 P10 原本寫「重跑戳章, 標出 client 半邊已動」. 動手才發現沒有這件事可做: 戳章
+(`[surface …]`) 只對 repo 內的位元組取指紋 —— 契約, hook, skill, scenario —— client 注入的段落
+不是檔案, 從沒進過任何 `surface.tsv`, 所以沒有一個戳章曾經宣稱過 client 半邊, 也就沒有可以「重跑」
+的東西. 這一節是那個缺席的紀錄, 三件事:
+
+1. 引用這 30 個 run 的讀數時, 帶一句「量測時 client 注入段在 (opus 批次), 2026-09-05 起不在」.
+   戳章對它沉默, 不是說它沒動.
+2. 受影響的只有兩個 opus 批次; sonnet 批次的量測面本來就沒有那段, 這一點是 08-28 取證裡
+   「catalog 17 個模型逐一查」買到的.
+3. 要讓戳章看得見 client 半邊, 得把 `prompt-bundle-report --json` 的 (版本, text_present, 旗標) 當
+   一個 group 進 surface. 那是機器本機的輸入進共用的量測面, 與「只記上游不記本機」相撞 —— 每台機器
+   的 client 版本不同, 共用的 surface 沒有一個正確值. 所以不做, 只記.
+
+**推翻條件**: client 注入段第三次移動 (兩次是 2.1.247 在, 2.1.261 不在), 或任何一個新批次的結論
+被讀成「因為那段在/不在」—— 那時 client 半邊就得進戳章, 以本機 group 的形式, 由跑 run 的那台機器
+在 stamp 時填, 而不是由共用檔宣告.
+
