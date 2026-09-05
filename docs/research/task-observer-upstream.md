@@ -279,7 +279,7 @@ tool record 做正負控制, 指標要耐久. 這條線我方走在前面 (rtk �
 | `{skill}-extras` 伴隨 skill 是 review 裡「不開新 skill」的唯一例外 | **不適用** | 沒有伴隨 skill 路由; 我方對 local-or-third-party 是停下來 |
 | **回饋 pre-flight 在 apply 時跑** (重複搜尋, 維護者偏好的管道, 上游 HEAD 驗證); 空的重複搜尋要先過正控制才放行 | **已落地** | 探針校準那條; 我方不對上游發 PR, pre-flight 本身不適用 |
 | 先選 anchor: 同日第二輪用 `<date>.2` 這種區分過的 anchor; 守衛拒絕在既有 anchor 上重種 | **不適用** | 沒有 staging 目錄, sync 直接替換 |
-| **交付前閘第 6, 7 條**: 恰好一個 frontmatter 區塊; 編輯殘渣 (`\1` 孤行或散文裡的字面 backreference, conflict marker, `{{slot}}`, `TODO: fill`) 當唯一的內容斷言, 掃整個 bundle 的文字檔, 程式碼圍欄先遮掉但行號保留 —— 因為一個字面 `\1` 曾經穿過 apply, gate 與 install | **採用 → 計畫 P3** | 我方 `main/` 的 md/toml/json/yaml 今日 0 命中 (P3 三個數之一); test_contracts 有 frontmatter 解析, 沒有「恰好一個區塊」的斷言 |
+| **交付前閘第 6, 7 條**: 恰好一個 frontmatter 區塊; 編輯殘渣 (`\1` 孤行或散文裡的字面 backreference, conflict marker, `{{slot}}`, `TODO: fill`) 當唯一的內容斷言, 掃整個 bundle 的文字檔, 程式碼圍欄先遮掉但行號保留 —— 因為一個字面 `\1` 曾經穿過 apply, gate 與 install | **採用 → 計畫 P3; 2026-09-05 已落地 (`test_deployment.EditResidueTests`, 0 命中先量過)** | 我方 `main/` 的 md/toml/json/yaml 今日 0 命中 (P3 三個數之一); test_contracts 有 frontmatter 解析, 沒有「恰好一個區塊」的斷言 |
 | **keep-two 數的是輪不是天**; 刪目錄前先列裡面還有什麼 (組裝腳本, 驗證腳本, 工作筆記), 先搬開再刪 | **佐證** | `evals/scripts/retain.py` 數的是 run; 「刪前先列」是好習慣, 我方沒有等價的自動刪除 |
 | **manifest 不帶後續工作**: review 認出的「下次查」在寫摘要前先變成自己的觀察 (開了就 parked); 壽命止於安裝的產物載不了後續 | **已落地** | pending-evidence 是唯一佇列; link, don't repeat |
 | 四級啟用: 新的第二級是 **user-level preferences** (與資料夾無關, 每個 session 都注入), 是「先探針再請求」那一行的正確歸宿, 因為工作區內的設定檔在沒掛載時恰好不在 | **已落地** | 全域 `~/.claude/CLAUDE.md` 就是這一級, 我方契約住在那裡 |

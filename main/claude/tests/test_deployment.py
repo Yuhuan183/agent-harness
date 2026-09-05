@@ -1,4 +1,5 @@
 """Deployment boundary: machine-state hygiene and manifest-driven sync."""
+import re
 import shutil
 
 from support import *  # noqa: F401,F403
@@ -1646,3 +1647,88 @@ class MachineStateHygieneTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+# Edit residue: strings that only ever enter a file through a failed
+# replacement, an unresolved template slot or an unfinished merge. Code is
+# where backreferences and `=======` legitimately live, so fenced blocks and
+# inline spans are blanked before scanning, with line numbers kept.
+EDIT_RESIDUE = (
+    (re.compile(r"(?m)^\\[0-9]\s*$"), "literal regex backreference on its own line"),
+    (re.compile(r"(?<![\w`\\])\\[1-9](?![\w])"), "literal regex backreference in prose"),
+    (re.compile(r"(?m)^(<<<<<<<|=======|>>>>>>>)( |$)"), "merge conflict marker"),
+    (re.compile(r"\{\{\s*[A-Za-z_][A-Za-z0-9_ .-]*?\s*\}\}"), "unresolved template slot"),
+    (re.compile(r"\b(TODO|FIXME|XXX)\b: ?(fill|replace|write)", re.I), "placeholder note"),
+)
+SECOND_FRONTMATTER = re.compile(r"\A---\n.*?\n---\n\s*(---\n|name:|description:)", re.S)
+
+
+def edit_residue(text: str) -> list[tuple[int, str, str]]:
+    """(line, what, excerpt) for every residue pattern outside code."""
+    prose = re.sub(r"(?ms)^```.*?^```[ \t]*$",
+                   lambda hit: re.sub(r"[^\n]", " ", hit.group(0)), text)
+    prose = re.sub(r"`[^`\n]*`", lambda hit: " " * len(hit.group(0)), prose)
+    found = []
+    for pattern, what in EDIT_RESIDUE:
+        for hit in pattern.finditer(prose):
+            found.append((text.count("\n", 0, hit.start()) + 1, what, hit.group(0).strip()))
+    if SECOND_FRONTMATTER.match(text):
+        found.append((1, "second frontmatter block", "---"))
+    return sorted(found)
+
+
+def deployed_text_files() -> list[str]:
+    """Every tracked text file under a deployment-manifest source."""
+    manifest = (ROOT / "scripts/deployment-manifest.tsv").read_text(encoding="utf-8")
+    sources = [line.split("\t")[0] for line in manifest.splitlines()
+               if line.strip() and not line.startswith("#")]
+    found = set()
+    for source in sources:
+        for path in git("ls-files", source).stdout.split():
+            if path.endswith((".md", ".toml", ".json", ".yaml", ".yml", ".txt")):
+                found.add(path)
+    return sorted(found)
+
+
+class EditResidueTests(unittest.TestCase):
+    """A literal `\\1` once passed apply, gate and install at an upstream
+    (rebelytics 3.1, delivery gate item 7), which is the failure this repo's
+    workflow invites: most edits here are scripted string replacements, and a
+    replacement that half-fails leaves its residue in a file that still parses.
+
+    Measured before landing, per the distillation skill's rule for new guards:
+    on 2026-09-05 the sweep below covered every tracked text file under the
+    deployment manifest and found 0 hits, 0 defects, and needed one
+    normalisation - blank fenced code and inline spans, since backreferences
+    and `=======` are legitimate there. Zero hits is the argument for adding it
+    now rather than after the first silent one: a free lock.
+    """
+
+    def test_the_residue_scan_can_actually_fail(self) -> None:
+        dirty = ("---\nname: x\n---\n\nBody with a stray \\1 in prose.\n\n"
+                 "<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> branch\n\n"
+                 "Slot {{ project }} left.\n\nTODO: fill this in\n\n"
+                 "```\n\\1 and ======= are fine inside a fence\n```\n"
+                 "and `\\1` in a span is fine too.\n")
+        found = edit_residue(dirty)
+        self.assertEqual(
+            sorted({what for _, what, _ in found}),
+            ["literal regex backreference in prose", "merge conflict marker",
+             "placeholder note", "unresolved template slot"])
+        fence = dirty.count("\n", 0, dirty.index("```")) + 1
+        self.assertTrue(all(line < fence for line, _, _ in found),
+                        "fenced code or an inline span was scanned as prose")
+        self.assertEqual(
+            [what for _, what, _ in edit_residue("---\nname: a\n---\n---\nname: b\n---\n")],
+            ["second frontmatter block"])
+        self.assertEqual(edit_residue("---\nname: a\n---\n\nClean body.\n"), [])
+
+    def test_no_edit_residue_ships_on_a_deployed_surface(self) -> None:
+        files = deployed_text_files()
+        self.assertGreater(len(files), 50, "the manifest sweep found almost nothing")
+        offenders = [f"{path}:{line}: {what} ({shown!r})"
+                     for path in files
+                     for line, what, shown in edit_residue(read_repo(path))]
+        self.assertEqual(offenders, [],
+                         "edit residue on a deployed surface; a failed replacement, "
+                         "an unresolved slot or a merge marker would ship as prompt text")
