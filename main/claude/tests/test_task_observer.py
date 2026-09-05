@@ -234,6 +234,46 @@ class TaskObserverTests(unittest.TestCase):
             self.assertIsNone(target["source_path"])
             self.assertEqual(Path(target["deployed_path"]), deployed)
 
+    def test_target_names_a_plugin_scoped_skill_as_third_party(self) -> None:
+        """`codex:rescue` is a real skill name on this machine - the Skill tool
+        takes plugin skills as `plugin:skill`, colon included - and `add` logs
+        observations against it without complaint. The review step then asked
+        `target` for its ownership and got "skill must use lowercase
+        hyphen-case", which reads as a typo in the name rather than the true
+        answer: a plugin installs it, nothing under the deployment's skills
+        root does, so here it is third-party with no editable source.
+
+        Upstream met the same shape on 2026-09-04 (rebelytics 3.1,
+        `migrate-log.py`: the colon is part of the name). The `new-skill:`
+        prefix is the one colon form that is not a plugin scope - it names a
+        candidate that does not exist yet - so it still has no target.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            installed_root = Path(temp_dir) / ".agents" / "skills"
+            installed_root.mkdir(parents=True)
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "target",
+                 "--skill", "codex:rescue", "--skill-root", str(installed_root),
+                 "--json"],
+                cwd=temp_dir, capture_output=True, text=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            target = json.loads(result.stdout)
+            self.assertEqual(target["scope"], "plugin")
+            self.assertEqual(target["ownership"], "local-or-third-party")
+            self.assertFalse(target["source_verified"])
+            self.assertIsNone(target["source_path"])
+            self.assertIsNone(target["deployed_path"])
+
+            candidate = subprocess.run(
+                [sys.executable, str(SCRIPT), "target",
+                 "--skill", "new-skill:something", "--skill-root",
+                 str(installed_root), "--json"],
+                cwd=temp_dir, capture_output=True, text=True,
+            )
+            self.assertNotEqual(candidate.returncode, 0)
+            self.assertIn("new-skill", candidate.stderr)
+
     def test_add_list_review_and_resolve_are_event_sourced(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             ledger = Path(temp_dir) / "observations.jsonl"

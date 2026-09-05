@@ -18,6 +18,10 @@ observation-log target --skill "<skill>" --json
   Determine whether the installed path is a personal source, installer output,
   plugin cache, or another project's deployment, then obtain authority for that
   actual source.
+- A plugin-scoped name (`codex:rescue`; the colon is part of the name) answers
+  `scope: plugin` and `local-or-third-party` with no path: the plugin's own
+  source owns it, and nothing in this checkout or deployment is editable for
+  it. `new-skill:<name>` is a candidate, not a target.
 - Resolution failure is a stop condition. Supply `--checkout <path>` or
   `AGENT_HARNESS_CHECKOUT` after locating the checkout; never fall back to the
   deployed copy.
