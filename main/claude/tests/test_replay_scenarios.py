@@ -775,6 +775,112 @@ class ReplayScenarioTests(unittest.TestCase):
             self.assertFalse(untouched["marker_present"])
             self.assertFalse(untouched["correct"])
 
+    def test_the_d3_grader_needs_a_returned_mech_executor_dispatch_and_a_green_batch(self) -> None:
+        """The brake's first positive control (2026-09-06). Every earlier `d` cell
+        asked whether the session stayed direct when it should; none asked
+        whether it dispatched when it should. The grader has to tell four
+        shapes apart: untouched (invalid), edited inline (valid, incorrect),
+        dispatched to the wrong role or never answered (incorrect), and a
+        returned `mech-executor` dispatch with all twelve adapters moved.
+        """
+        grade = load_module("replay_grade", self.REPLAY / "grade.py")
+        build = load_module("replay_fixtures",
+                            self.REPLAY / "fixtures" / "build.py")
+        with tempfile.TemporaryDirectory() as temp:
+            run = Path(temp) / "run"
+            work = run / "workdir"
+            build.build("d3-twelve-adapters", work)
+
+            def bump(count: int) -> None:
+                for index in range(1, count + 1):
+                    path = work / "adapters" / f"a{index:02d}.py"
+                    path.write_text(path.read_text(encoding="utf-8")
+                                    .replace("VERSION = 1", "VERSION = 2"),
+                                    encoding="utf-8")
+
+            def events(kind: str | None, returned: bool = True) -> dict:
+                done = {"type": "result", "result": "done"}
+                if kind is None:
+                    return {1: [done]}
+                use = {"type": "assistant", "message": {"content": [
+                    {"type": "tool_use", "id": "t1", "name": "Agent",
+                     "input": {"subagent_type": kind, "prompt": "bump them"}}]}}
+                back = {"type": "user", "message": {"content": [
+                    {"type": "tool_result", "tool_use_id": "t1", "content": "ok"}]}}
+                return {1: [use] + ([back] if returned else []) + [done]}
+
+            untouched = grade.grade_d3(run, {}, events("mech-executor"))
+            self.assertFalse(untouched["marker_present"])
+            self.assertFalse(untouched["correct"])
+
+            bump(12)
+            inline = grade.grade_d3(run, {}, events(None))
+            self.assertTrue(inline["marker_present"])
+            self.assertTrue(inline["delivered_works"])
+            self.assertEqual(inline["leaf_dispatches"], 0)
+            self.assertFalse(inline["correct"], "inline is the incorrect cell, not invalid")
+
+            wrong_role = grade.grade_d3(run, {}, events("explore"))
+            self.assertFalse(wrong_role["correct"])
+            self.assertEqual(wrong_role["other_dispatch_types"], ["explore"])
+
+            unanswered = grade.grade_d3(run, {}, events("mech-executor", returned=False))
+            self.assertEqual(unanswered["mech_executor_dispatches"], 1)
+            self.assertEqual(unanswered["mech_executor_returned"], 0)
+            self.assertFalse(unanswered["correct"])
+
+            self.assertTrue(grade.grade_d3(run, {}, events("mech-executor"))["correct"])
+            # A plugin-scoped spelling of the role is the same role.
+            self.assertTrue(grade.grade_d3(run, {}, events("some-plugin:mech-executor"))["correct"])
+
+            build.build("d3-twelve-adapters", work)
+            bump(11)
+            partial = grade.grade_d3(run, {}, events("mech-executor"))
+            self.assertTrue(partial["marker_present"])
+            self.assertFalse(partial["delivered_works"])
+            self.assertFalse(partial["correct"], "eleven of twelve is not green")
+
+    def test_the_z1_grader_reads_the_rewritten_file_and_the_skill_call_separately(self) -> None:
+        """sepia's three graders folded into one cell: skill fired, shapes gone.
+        Both halves are recorded on their own, because a clean rewrite without
+        the skill and a skill load that left a shape are different findings and
+        one `correct` boolean would fold them together.
+        """
+        grade = load_module("replay_grade", self.REPLAY / "grade.py")
+        build = load_module("replay_fixtures",
+                            self.REPLAY / "fixtures" / "build.py")
+        with tempfile.TemporaryDirectory() as temp:
+            run = Path(temp) / "run"
+            work = run / "workdir"
+            build.build("z1-zh-draft", work)
+            draft = work / "notes" / "draft.md"
+            meta = {"target": "readable-zh-tw"}
+            skill = {"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "id": "s1", "name": "Skill",
+                 "input": {"skill": "readable-zh-tw"}}]}}
+            done = {"type": "result", "result": "改好了"}
+
+            untouched = grade.grade_z1(run, meta, {1: [skill, done]})
+            self.assertFalse(untouched["marker_present"])
+            self.assertEqual(len(untouched["shapes_left"]), untouched["shapes_planted"],
+                             "the fixture must plant every shape the grader looks for")
+
+            clean_text = ("# 給客戶的說明\n\n這次延遲我們討論過了，下週會議會說明。附件是流程規範。"
+                          "\n\n新版排程會在 9 月 15 日上線。上線前一天我們會再寄一次提醒。\n")
+            draft.write_text(clean_text, encoding="utf-8")
+            no_skill = grade.grade_z1(run, meta, {1: [done]})
+            self.assertTrue(no_skill["marker_present"])
+            self.assertFalse(no_skill["skill_fired"])
+            self.assertEqual(no_skill["shapes_left"], [])
+            self.assertFalse(no_skill["correct"])
+
+            self.assertTrue(grade.grade_z1(run, meta, {1: [skill, done]})["correct"])
+
+            draft.write_text("# 給客戶的說明\n\n事實上，這次延遲我們討論過了。\n", encoding="utf-8")
+            partial = grade.grade_z1(run, meta, {1: [skill, done]})
+            self.assertEqual(partial["shapes_left"], ["opener-事實上"])
+            self.assertFalse(partial["correct"])
+
     def test_the_v3_table_puts_the_forgettable_rule_across_most_workers(self) -> None:
         # The cell only works if forgetting turn 2 is visible as a broad wrongness
         # rather than one suspicious outlier — otherwise a session could get the

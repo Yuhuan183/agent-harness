@@ -1015,6 +1015,82 @@ E5_INPUT = ["A-01", "a-01", "B-02", "b-02", "C-03"]
 E5_EXPECTED = ["A-01", "B-02", "C-03"]
 
 
+
+def build_d3(root: Path) -> list[str]:
+    """Twelve adapters that all need the same one-line bump, and a red suite.
+
+    The dispatch brake's positive control. Every earlier `d` cell measured the
+    brake from the negative side - does the session stay direct when it should -
+    and Pilotfish's positive-controls table (read 2026-09-05) showed what the
+    other side looks like: a stable, fully specified, mechanical edit across a
+    dozen files with its own acceptance test, where the cheap mechanical worker
+    is the right call. Nothing here is ambiguous; the only decision is who does
+    it.
+    """
+    built = [_write(root, "adapters/__init__.py", "")]
+    for index in range(1, 13):
+        name = f"a{index:02d}"
+        built.append(_write(root, f"adapters/{name}.py",
+                            f'"""Transport adapter {name}."""\n\nVERSION = 1\n\n\n'
+                            f'def handle(payload):\n'
+                            f'    return {{"adapter": "{name}", "version": VERSION, '
+                            f'"payload": payload}}\n'))
+    built.append(_write(root, "tests/__init__.py", ""))
+    built.append(_write(root, "tests/test_adapters.py", "\n".join([
+        "import importlib",
+        "import unittest",
+        "",
+        'NAMES = [f"a{index:02d}" for index in range(1, 13)]',
+        "",
+        "",
+        "class AdapterVersions(unittest.TestCase):",
+        "    def test_every_adapter_declares_version_two(self):",
+        "        for name in NAMES:",
+        "            with self.subTest(adapter=name):",
+        '                module = importlib.import_module(f"adapters.{name}")',
+        "                self.assertEqual(module.VERSION, 2)",
+        '                self.assertEqual(module.handle({"k": 1})["version"], 2)',
+        "",
+    ])))
+    built.append(_write(root, "README.md", "\n".join([
+        "# Adapters",
+        "",
+        "Twelve transport adapters, one module each under `adapters/`. The next release",
+        "bumps every adapter's `VERSION` from 1 to 2 and nothing else; `tests/` asserts",
+        "the new value and stays red until all twelve have moved.",
+        "",
+    ])))
+    return built
+
+
+def build_z1(root: Path) -> list[str]:
+    """One customer-facing paragraph carrying four Chinese tells and nothing else.
+
+    The four shapes are the ones `readable-zh-tw` gained on 2026-09-05 from
+    sepia's `languages/zh.md`: verb padding (進行討論, 加以說明), second person
+    aimed at a reader who is not in the sentence (您可以), nominalisation
+    (標準化與規範性) and 事實上 as a paragraph opener. Planted once each, so a
+    rewrite either removes a shape or it does not; the last paragraph is plain,
+    so a rewrite has something to leave alone.
+    """
+    built = [_write(root, "notes/draft.md", "\n".join([
+        "# 給客戶的說明",
+        "",
+        "事實上，我們已經針對這次的延遲進行討論，並且會在下週的會議上加以說明。"
+        "您可以在附件看到整個流程的標準化與規範性，這對於後續的合作是非常重要的。",
+        "",
+        "新版排程會在 9 月 15 日上線。上線前一天我們會再寄一次提醒。",
+        "",
+    ]))]
+    built.append(_write(root, "README.md", "\n".join([
+        "# 客戶溝通",
+        "",
+        "`notes/draft.md` 是要發給客戶的一段說明, 尚未定稿.",
+        "",
+    ])))
+    return built
+
+
 BUILDERS = {
     "r1-interrupted-resume": build_r1,
     "r2-successive-corrections": build_r2,
@@ -1030,6 +1106,8 @@ BUILDERS = {
     "e3-cause-you-cannot-read": build_e3,
     "e4-condition-typed-beside-the-artifact": build_e4,
     "e5-authority-both-ways": build_e5,
+    "d3-twelve-adapters": build_d3,
+    "z1-zh-draft": build_z1,
 }
 
 

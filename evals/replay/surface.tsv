@@ -99,3 +99,5 @@ evals/replay/scenarios/e6-success-that-lies.md
 evals/replay/scenarios/x1b-decision-append-system.md
 evals/replay/scenarios/x1c-decision-session-start.md
 evals/replay/scenarios/x2b-decision-weak-append.md
+evals/replay/scenarios/d3-stable-mechanical-batch.md
+evals/replay/scenarios/z1-four-zh-shapes.md

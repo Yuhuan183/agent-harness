@@ -35,6 +35,7 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 |---|---|---|
 | `d1-two-reviews` | 派工路徑上, 契約子句比 skill description 多做了什麼 | `r3-conflicting-leaves` |
 | `d2-one-small-edit` | 派工路徑的 negative control — 不該派工時會不會誤載入 | `r2-successive-corrections` |
+| `d3-stable-mechanical-batch` | 派工路徑的 positive control — 該派工時 (12 檔同形機械編輯, 規格完整, 自帶紅測試) 有沒有派給便宜的機械工 | `d3-twelve-adapters` |
 | `e1-lever-that-misses` | 交付的改動有沒有抵達可觀察的結果 — 文件寫著的那個槓桿是空轉的 | `e1-lever-that-misses` |
 | `e1x-lever-that-misses-explicit` | e1 的內容臂 —— skill 確實載入時, 交付的改動會不會抵達可觀察的結果 | `e1-lever-that-misses` |
 | `e2-check-that-cannot-fail` | 交付的檢查還能不能對兩個相反狀態給出同一個判決 — 群 B 的最小形式 | `e2-check-that-cannot-fail` |
@@ -67,8 +68,9 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | `x1b-decision-append-system` | 注入位置實驗 arm B — 矛盾指令走 --append-system-prompt | `r2-successive-corrections` |
 | `x1c-decision-session-start` | 注入位置實驗 arm C — 矛盾指令走 SessionStart hook | `r2-successive-corrections` |
 | `x2b-decision-weak-append` | 注入位置第二輪 arm B — 調弱的矛盾, 走 --append-system-prompt | `r2-successive-corrections` |
+| `z1-four-zh-shapes` | readable-zh-tw 在本機文字上會不會被叫, 叫了之後 2026-09-05 借進來的四個中文形狀有沒有真的被改掉 | `z1-zh-draft` |
 
-共 34 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
+共 36 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
 
 <!-- scenario-index:end -->
 

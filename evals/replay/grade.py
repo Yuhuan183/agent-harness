@@ -1742,6 +1742,120 @@ def grade_m4(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
     }
 
 
+
+Z1_SHAPES = {
+    "verb-padding-進行討論": "進行討論",
+    "verb-padding-加以說明": "加以說明",
+    "second-person-您可以": "您可以",
+    "nominalisation-標準化與規範性": "標準化與規範性",
+    "opener-事實上": "事實上，",
+}
+
+
+def _pristine(fixture: str, relative: str) -> str:
+    """One file of a fixture as built, so "was it changed" is measured against bytes."""
+    import tempfile
+    build = fixtures()
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        build.build(fixture, root)
+        return (root / relative).read_text(encoding="utf-8")
+
+
+def grade_d3(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
+    """The brake's positive control: was the mechanical batch dispatched?
+
+    `d1` and `d2` grade whether `baton-dispatch` was loaded; this cell grades
+    the decision the skill exists to shape. Twelve identical one-line edits with
+    a red suite and no ambiguity is the shape the cost test's cheaper-tier
+    branch names, so the correct run is one where at least one Agent dispatch
+    to `mech-executor` came back with a result and every adapter reads
+    `VERSION = 2` afterwards. A run that edited all twelve inline is valid and
+    incorrect - the reading this repo had never taken, because every earlier
+    dispatch cell only asked whether the session stayed direct when it should.
+
+    The marker is that the run acted at all: a run that changed no adapter
+    never reached the point where the brake decides.
+    """
+    events = [event for index in sorted(turns) if index >= 1
+              for event in turns[index]]
+    work = run / "workdir"
+    names = [f"a{index:02d}" for index in range(1, 13)]
+    versions = {}
+    changed = 0
+    for name in names:
+        path = work / "adapters" / f"{name}.py"
+        text = path.read_text(encoding="utf-8") if path.exists() else ""
+        if text != _pristine("d3-twelve-adapters", f"adapters/{name}.py"):
+            changed += 1
+        found = re.search(r"^VERSION\s*=\s*(\d+)\s*$", text, re.M)
+        versions[name] = int(found.group(1)) if found else None
+    dispatches, _ = returned_dispatches(events)
+    ids_returned = set()
+    for event in events:
+        message = event.get("message")
+        if not isinstance(message, dict) or not isinstance(message.get("content"), list):
+            continue
+        for part in message["content"]:
+            if isinstance(part, dict) and part.get("type") == "tool_result":
+                ids_returned.add(part.get("tool_use_id"))
+    mech = [call for call in dispatches
+            if str(call["input"].get("subagent_type") or "").split(":")[-1]
+            == "mech-executor"]
+    mech_returned = [call for call in mech if call["id"] in ids_returned]
+    inline_edits = [call for call in tool_calls(events)
+                    if call["name"] in ("Edit", "Write", "MultiEdit", "NotebookEdit")
+                    and not call["sidechain"]
+                    and "adapters/" in json.dumps(call["input"], ensure_ascii=False)]
+    delivered = all(versions[name] == 2 for name in names)
+    return {
+        "marker_present": changed > 0,
+        "adapters_changed": changed,
+        "delivered_works": delivered,
+        "leaf_dispatches": len(dispatches),
+        "mech_executor_dispatches": len(mech),
+        "mech_executor_returned": len(mech_returned),
+        "other_dispatch_types": sorted({str(call["input"].get("subagent_type"))
+                                        for call in dispatches} - {"mech-executor"}),
+        "inline_adapter_edits": len(inline_edits),
+        "skills_invoked": skills_invoked(events),
+        "correct": bool(mech_returned) and delivered,
+    }
+
+
+def grade_z1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
+    """Did `readable-zh-tw` fire on local text, and did the four shapes go?
+
+    sepia's behavioural eval grades three things - skill fired, reads human,
+    no slop markers - and this is that shape on one file. The reply is not
+    read; the rewritten file is, against the fixture as built. A run that left
+    the file alone never reached the pass. Correct needs both halves: the skill
+    was invoked (a `Skill` call in the stream, not a claim) and none of the
+    planted shapes survives. Either half failing is recorded on its own, so a
+    clean rewrite without the skill and a skill load that left a shape read as
+    two different findings.
+    """
+    events = [event for index in sorted(turns) if index >= 1
+              for event in turns[index]]
+    path = run / "workdir" / "notes" / "draft.md"
+    text = path.read_text(encoding="utf-8") if path.exists() else ""
+    pristine = _pristine("z1-zh-draft", "notes/draft.md")
+    changed = bool(text) and text != pristine
+    left = sorted(label for label, needle in Z1_SHAPES.items() if needle in text)
+    invoked = skills_invoked(events)
+    fired = (meta.get("target") or "readable-zh-tw") in invoked
+    return {
+        "marker_present": changed,
+        "skill_fired": fired,
+        "skills_invoked": invoked,
+        "shapes_planted": len(Z1_SHAPES),
+        "shapes_left": left,
+        "shapes_removed": len(Z1_SHAPES) - len(left),
+        "correct": changed and fired and not left,
+        "draft_tail": text[-200:],
+    }
+
+
 GRADERS = {
     "r1-interrupted-resume": grade_r1,
     "r2-successive-corrections": grade_r2,
@@ -1777,6 +1891,8 @@ GRADERS = {
     "e4-condition-typed-beside-the-artifact": grade_e4,
     "e5-authority-diagnose": grade_e5,
     "e5b-authority-fix": grade_e5,
+    "d3-stable-mechanical-batch": grade_d3,
+    "z1-four-zh-shapes": grade_z1,
 }
 
 
