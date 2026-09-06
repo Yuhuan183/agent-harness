@@ -900,6 +900,10 @@ class ReplayScenarioTests(unittest.TestCase):
         rows = build.d5_rows()
         self.assertEqual(48, len(rows))
         self.assertEqual(rows, build.d5_rows(), "two builds must agree")
+        # Row n depends on n alone, so d6's table extends d5's and one
+        # grader-side cache serves both sizes.
+        self.assertEqual(build.d5_rows(96)[:48], rows)
+        self.assertEqual(96, len(build.d5_rows(96)))
         by_kind: dict[str, int] = {}
         for _, kind, value in rows:
             by_kind[kind] = by_kind.get(kind, 0) + 1
@@ -975,6 +979,16 @@ class ReplayScenarioTests(unittest.TestCase):
             self.assertEqual(partial["adapters_done"], 47)
             self.assertFalse(partial["delivered_works"])
             self.assertFalse(partial["correct"])
+
+            # The same reading at twice the size, the cell d5 points at.
+            build.build("d6-ninety-six-varied-adapters", work)
+            self.assertNotEqual(suite(work), 0)
+            for name, kind, value in build.d5_rows(96):
+                migrate(work, name, kind, value)
+            self.assertEqual(suite(work), 0)
+            whole = grade.grade_d6(run, {}, events("mech-executor"))
+            self.assertEqual(whole["adapters_done"], 96)
+            self.assertTrue(whole["correct"])
 
     def test_the_z1_grader_reads_the_rewritten_file_and_the_skill_call_separately(self) -> None:
         """sepia's three graders folded into one cell: skill fired, shapes gone.

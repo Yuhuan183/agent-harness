@@ -1800,7 +1800,9 @@ def _d5_done(name: str, text: str) -> bool:
     if "TODO(migration)" in text:
         return False
     if not _D5_ROWS:
-        _D5_ROWS.update({row[0]: (row[1], row[2]) for row in fixtures().d5_rows()})
+        # The table is prefix-stable: row n depends on n alone, so the
+        # ninety-six-row table serves d5 (its first forty-eight rows) and d6.
+        _D5_ROWS.update({row[0]: (row[1], row[2]) for row in fixtures().d5_rows(96)})
     kind, value = _D5_ROWS[name]
     if kind == "bump":
         return _version_two(name, text)
@@ -1894,6 +1896,7 @@ def make_batch_grader(fixture: str, count: int, done=None):
 grade_d3 = make_batch_grader("d3-twelve-adapters", 12)
 grade_d4 = make_batch_grader("d4-forty-eight-adapters", 48)
 grade_d5 = make_batch_grader("d5-forty-eight-varied-adapters", 48, _d5_done)
+grade_d6 = make_batch_grader("d6-ninety-six-varied-adapters", 96, _d5_done)
 
 
 def grade_z1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
@@ -1986,6 +1989,10 @@ GRADERS = {
     # could turn the price over, because no one shell loop does it.
     "d5-varied-mechanical-batch": grade_d5,
     "d5x-varied-mechanical-batch-cued": grade_d5,
+    # Twice d5 (2026-09-06): the extrapolated crossing near ninety files,
+    # measured rather than drawn.
+    "d6-ninety-six-varied-batch": grade_d6,
+    "d6x-ninety-six-varied-batch-cued": grade_d6,
     "z1-four-zh-shapes": grade_z1,
 }
 

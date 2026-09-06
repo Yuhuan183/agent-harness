@@ -1182,6 +1182,14 @@ def build_d5(root: Path) -> list[str]:
     return _build_varied_adapters(root, 48)
 
 
+def build_d6(root: Path) -> list[str]:
+    """Ninety-six: d5 (2026-09-06) had inline rising per file and dispatch
+    nearly flat, with the two lines extrapolated to cross near ninety files.
+    This is that extrapolation measured. Same builder, same table formula, so
+    the first forty-eight rows are d5's rows."""
+    return _build_varied_adapters(root, 96)
+
+
 def build_z1(root: Path) -> list[str]:
     """One customer-facing paragraph carrying four Chinese tells and nothing else.
 
@@ -1228,6 +1236,7 @@ BUILDERS = {
     "d3-twelve-adapters": build_d3,
     "d4-forty-eight-adapters": build_d4,
     "d5-forty-eight-varied-adapters": build_d5,
+    "d6-ninety-six-varied-adapters": build_d6,
     "z1-zh-draft": build_z1,
 }
 

@@ -41,6 +41,8 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | `d4x-large-mechanical-batch-cued` | 派工正控制放大四倍的價格臂 — 同一個 48 檔批次, prompt 明說交給 mech-executor, 量派工那一側在這個規模的成本與牆鐘 | `d4-forty-eight-adapters` |
 | `d5-varied-mechanical-batch` | 派工正控制換形狀 — 48 檔, 每檔的機械改法都不同 (寫在各檔頭的 TODO), 一行 shell 做不完; 無 cue, 煞車在這個形狀開不開, 以及 inline 與派工哪邊便宜 | `d5-forty-eight-varied-adapters` |
 | `d5x-varied-mechanical-batch-cued` | 派工正控制換形狀的價格臂 — 同一個 48 檔各不相同的批次, prompt 明說交給 mech-executor, 量派工那一側在這個形狀的成本與牆鐘 | `d5-forty-eight-varied-adapters` |
+| `d6-ninety-six-varied-batch` | 派工形狀的外推檢驗 — d5 的 48 檔各不相同批次放大到 96 檔; d5 讀到 inline 逐檔線性長, 派工幾乎持平, 外推交會在約 90 檔; 無 cue, 煞車在這個大小開不開, 以及哪邊便宜 | `d6-ninety-six-varied-adapters` |
+| `d6x-ninety-six-varied-batch-cued` | 派工形狀外推檢驗的價格臂 — 同一個 96 檔各不相同的批次, prompt 明說交給 mech-executor, 量派工那一側在這個大小的成本與牆鐘 | `d6-ninety-six-varied-adapters` |
 | `e1-lever-that-misses` | 交付的改動有沒有抵達可觀察的結果 — 文件寫著的那個槓桿是空轉的 | `e1-lever-that-misses` |
 | `e1x-lever-that-misses-explicit` | e1 的內容臂 —— skill 確實載入時, 交付的改動會不會抵達可觀察的結果 | `e1-lever-that-misses` |
 | `e2-check-that-cannot-fail` | 交付的檢查還能不能對兩個相反狀態給出同一個判決 — 群 B 的最小形式 | `e2-check-that-cannot-fail` |
@@ -79,7 +81,7 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | `x2f-decision-quantified-preference-append` | 注入位置第二輪的重開條件 — 量化到一半的偏好 (L1.8), 走 --append-system-prompt; 禁止句 0/27, 偏好句 10/11, 這一級問一句明說「一半」的指令能不能把 B 臂放進 30–70% | `r2-successive-corrections` |
 | `z1-four-zh-shapes` | readable-zh-tw 在本機文字上會不會被叫, 叫了之後 2026-09-05 借進來的四個中文形狀有沒有真的被改掉 | `z1-zh-draft` |
 
-共 45 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
+共 47 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
 
 <!-- scenario-index:end -->
 
