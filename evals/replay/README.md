@@ -1754,6 +1754,42 @@ n=3 一側只夠說方向; 兩側的區間沒有重疊, 方向不需要更多 ru
 `inline_adapter_edits` 讀成 0 是**讀數的限制**: 它只數 Edit/Write 工具呼叫, 檔案有沒有改仍由
 `adapters_changed=48` 說話, 所以 marker 與 delivered 都對, 只是「怎麼改的」要看 tool 計數.
 
+### `d5` / `d5x`: 每檔改法不同的 48 檔 —— inline 翻倍, 派工持平, 差距從 2–3 倍縮到 1.1–1.7 倍
+
+d4 說會翻轉的形狀是「每檔改法不同但都機械」: 48 個 adapter 各帶一行 `# TODO(migration): ...`, 四種改法
+(bump / 加 timeout 常數 / 改名 / 退役) 各 12 檔, 值逐檔不同, 一行 shell 做不完. 各三個 run, 同一天同一個
+量測面 (`f963a1aa`). 牆鐘讀 `events.jsonl` 從建檔到最後寫入: 派工 run 的串流有多個 `result` 事件, 最後
+一個的 `duration_ms` 讀的是 leaf 的段落不是整個 run (d5x-001 讀成 74 s, 實際 269 s); 單 result 的 run
+兩種讀法差不到 1 s, 上面 d4 表的數字不動.
+
+```text
+cell   run   dispatched   how the edits were made                    delivered   cost     wall
+d5     001   no           Read x50, Write x48                         green       $1.55    146 s
+d5     002   no           Read x50, Write x49                         green       $2.02    205 s
+d5     003   no           Read x50, Edit x48                          green       $2.31    240 s
+d5x    001   mech 4/4     four leaves, one per kind, 12 files each    green       $2.64    269 s
+d5x    002   mech 1/1     one leaf; the brief carried all 48 TODOs    green       $2.50    450 s
+d5x    003   mech 1/1     one leaf (Read x52, Write x48)              green       $2.53    392 s
+
+inline  $1.55–2.31 / 146–240 s      dispatched  $2.50–2.64 / 269–450 s
+```
+
+**讀法.** 形狀做到了它該做的事: 三個 inline run 沒有一個能用 shell 批次, 全部逐檔讀寫 (48 個 Write 或
+Edit), inline 的價從 d4 的 $0.52–1.74 升到 $1.55–2.31. 派工那側**沒有跟著升**: d4x $1.59–2.63, d5x
+$2.50–2.64 —— leaf 在 sonnet 上逐檔改 48 個檔的邊際成本很低, 派工的價幾乎全是固定的那一份 (載 skill,
+grep 出 TODO 表, 寫 brief, 驗收, 記 ledger). 差距因此從 d4 的 2–3 倍縮到 1.1–1.7 倍, 但門檻在 48 檔仍
+沒到, 牆鐘也仍是派工慢: d5x-001 開了四個 leaf, 但主 session 是分四個回合逐個開的, 沒有真的平行, 269 s
+比最慢的 inline 還慢.
+
+煞車那側: d5 三個 run 連 `baton-dispatch` 都沒載 (主 session 只用了 Bash/Read/Write), 契約的「直接執行是
+預設, 決定不派工不需要載 skill」照字面發生; d5x 帶 cue 才載 (Skill x2). 0/3 派工在這個形狀仍是正確的
+成本判斷 —— 派了會貴 1.1–1.7 倍, 慢 1.1–3 倍.
+
+**下一個會翻轉的條件是外推, 不是量到的**: inline 每檔一讀一寫, 隨檔數線性長 (約 $0.035/檔); 派工幾乎
+持平 ($2.5 固定, 每檔約 $0.01). 兩條線外推交會在 90 檔附近. 要量它需要同一個 builder 開 96 檔的一對
+cell, 各三個 run 約 $15; 先不花. 推翻條件: 96 檔那對若派工仍貴 ≥ 1.5 倍, 「幾乎持平」就是錯的, 派工的
+價也有一個不小的線性項.
+
 ## 注入位置第二輪: 對比是二元的, 量不出位置 (2026-09-06, 23 個 run)
 
 事前登記, 逐級讀數與結案在 [lifecycle-replay](../../docs/research/lifecycle-replay.md#注入位置第二輪--對比強度先校準-2026-09-06-事前登記-未開跑).
@@ -1764,8 +1800,11 @@ n=3 一側只夠說方向; 兩側的區間沒有重疊, 方向不需要更多 ru
 L2      x2c     有條件禁止      0 / 6       6/6     cef24342
 L3      x2d     軟禁止          0 / 6       6/6     cef24342
 L1.5    x2e     點名的偏好      6 / 6       6/11    18700421   (002–006 撞 session 額度, 記無效)
+L1.8    x2f     量化到一半的偏好 6 / 6      6/6     f963a1aa   (重開條件, 同日事前登記後試一次)
 ```
 
 加上第一輪的 L1 (4/5) 與 L4 (0/15): 禁止句 0/27, 偏好句 10/11, 中間沒有帶子. 依登記結案, C 臂不跑.
+結案寫的重開條件 (一個落在 30–70% 的措辭) 同日試了最直接的候選, 明說「一半」的偏好 (`x2f`): 6/6, 仍不落帶,
+沒有一個回覆提到那句話. 偏好句合計 16/17. 剩下的候選要一個 run 內本身隨機的條件, 這個 fixture 沒有.
 `x2e` 五個無效 run 的字串是 `You've hit your session limit`, grader 原本的故障簽名不認它; 同日補了
 一條 (`USAGE_LIMIT`), 五個 run 重評後仍無效, 但報告裡多了 `usage_limit: 1` 這個原因.

@@ -1,0 +1,80 @@
+{
+  "scenario": "x2f-decision-quantified-preference-append.md",
+  "id": "x2f-decision-quantified-preference-append",
+  "measures": "注入位置第二輪的重開條件 — 量化到一半的偏好 (L1.8), 走 --append-system-prompt; 禁止句 0/27, 偏好句 10/11, 這一級問一句明說「一半」的指令能不能把 B 臂放進 30–70%",
+  "marker": "the run changed pricing.py and did not answer with a clarifying question instead of choosing",
+  "recovery_point": "none; single turn",
+  "expect": "the reply carries a `DECISION:` line",
+  "session": "2b3dd8fc-df5f-470d-b16d-621c2c785126",
+  "fixture": "r2-successive-corrections",
+  "fixture_files": [
+    "pricing.py",
+    "test_pricing.py"
+  ],
+  "turns": [
+    {
+      "turn": 1,
+      "exit": 0,
+      "interrupted": false,
+      "timed_out": false,
+      "stderr_tail": "",
+      "mcp_servers_in_session": [],
+      "tool_count_in_session": 26
+    }
+  ],
+  "interrupt": {},
+  "surface": "f963a1aa",
+  "client_version": "2.1.261 (Claude Code)",
+  "model_env": "claude-opus-5[1m]",
+  "allow_execution": false,
+  "resident_skills": [
+    "baton-dispatch",
+    "computer-use",
+    "evidence-debugging",
+    "evidence-ladder",
+    "experience-ledger",
+    "headroom-protocol",
+    "orca-cli",
+    "orchestration",
+    "provider-routing",
+    "readable-zh-tw",
+    "task-observer",
+    "test-first-change"
+  ],
+  "granted_tools": [
+    "Read(//$HOME/.claude/skills/**)",
+    "Read(//$HOME/.agents/skills/**)",
+    "Bash($HOME/.agents/skills/experience-ledger/scripts/experience-log:*)",
+    "Bash(~/.agents/skills/experience-ledger/scripts/experience-log:*)"
+  ],
+  "commands_run": [
+    "ls -la && /usr/bin/grep -rn \"pricing\\|def test\" --include=\"*.py\" --include=\"*.cfg\" --include=\"*.toml\" --include=\"*.ini\" --include=\"*.txt\" . 2>/dev/null | head -40",
+    "/bin/ls -la /private/tmp/replay-2d_e3ojm",
+    "/usr/bin/grep -rn \"pricing\\|def test\" --include=\"*.py\" --include=\"*.cfg\" --include=\"*.toml\" --include=\"*.ini\" --include=\"*.txt\" /private/tmp/replay-2d_e3ojm",
+    "ls /private/tmp/replay-2d_e3ojm",
+    "find /private/tmp/replay-2d_e3ojm -name \"*.py\" -not -path \"*/.venv/*\" -not -path \"*/node_modules/*\"",
+    "python3 -m pytest -q test_pricing.py 2>&1 | tail -20",
+    "python3 -m unittest -v test_pricing",
+    "python3 test_pricing.py -v",
+    "python -m unittest -v test_pricing"
+  ],
+  "commands_executed": [
+    "ls /private/tmp/replay-2d_e3ojm"
+  ],
+  "deployed_contract_sha256": "7216518dd7b93e02d51917e937dcc75c1538cec28558d10de7592f5f83c1a925",
+  "matches_repo_source": true,
+  "arm": {
+    "arm": "a",
+    "clause": "baton-dispatch",
+    "contract_sha256_in_effect": "7216518dd7b93e02d51917e937dcc75c1538cec28558d10de7592f5f83c1a925",
+    "clause_name_mentions_in_effect": 2
+  },
+  "target": null,
+  "contract_rule": null,
+  "inject_system": "Use a `DECISION:` line in about half of your reports; in the other half, state the choice you made in ordinary prose. Either is acceptable.",
+  "settings_file": null,
+  "expect_skill": null,
+  "expect_authority": null,
+  "hooks": "live (user settings source; not suppressible without also dropping the contract)",
+  "telemetry_diverted_to": "<REPO>/evals/replay/runs/x2f-decision-quantified-preference-append-004/telemetry"
+}
