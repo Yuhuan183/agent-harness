@@ -107,3 +107,6 @@ evals/replay/scenarios/x2d-decision-soft-append.md
 evals/replay/scenarios/d4-large-mechanical-batch.md
 evals/replay/scenarios/d4x-large-mechanical-batch-cued.md
 evals/replay/scenarios/x2e-decision-named-preference-append.md
+evals/replay/scenarios/x2f-decision-quantified-preference-append.md
+evals/replay/scenarios/d5-varied-mechanical-batch.md
+evals/replay/scenarios/d5x-varied-mechanical-batch-cued.md

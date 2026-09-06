@@ -1074,6 +1074,114 @@ def build_d4(root: Path) -> list[str]:
     return _build_adapters(root, 48)
 
 
+D5_KINDS = ("bump", "timeout", "rename", "retire")
+
+D5_TODO = {
+    "bump": "bump VERSION from 1 to 2",
+    "timeout": ("add a module constant TIMEOUT_MS = {value} and return it "
+                "under the key \"timeout_ms\""),
+    "rename": "rename handle to dispatch; the body stays as it is",
+    "retire": ("this adapter is retired: add DEPRECATED = True and make "
+               "handle raise NotImplementedError"),
+}
+
+
+def d5_rows(count: int = 48) -> list[tuple[str, str, int | None]]:
+    """What each adapter's TODO asks for: (name, kind, value).
+
+    Blocks of four, each holding every kind once and shifted by one from the
+    block before, so the kinds come out equal at any multiple of four and no
+    two neighbours share one. The grader and the fixture's own suite both
+    read this table; the builder is the only place it lives.
+    """
+    rows = []
+    for index in range(1, count + 1):
+        block, slot = divmod(index - 1, 4)
+        kind = D5_KINDS[(slot + block) % 4]
+        value = 500 + index * 37 if kind == "timeout" else None
+        rows.append((f"a{index:02d}", kind, value))
+    return rows
+
+
+def _build_varied_adapters(root: Path, count: int) -> list[str]:
+    """Forty-eight adapters that each need a different mechanical edit.
+
+    d4 (2026-09-06) found same-shaped edits across forty-eight files cheapest
+    in the main session's own shell - two of three inline runs did the lot
+    with one loop and no Edit call - so batch size never turned the cost
+    over. The shape that could is one a loop cannot do: every file says at
+    its head what it needs, four kinds of change with per-file values, all
+    mechanical, none the same as its neighbour. The instruction lives in the
+    file rather than in a table so the work is read-then-edit per file,
+    which is where a cheaper tier's per-file price would show if it exists.
+    """
+    built = [_write(root, "adapters/__init__.py", "")]
+    for name, kind, value in d5_rows(count):
+        todo = D5_TODO[kind].format(value=value)
+        built.append(_write(root, f"adapters/{name}.py",
+                            f'"""Transport adapter {name}."""\n'
+                            f'# TODO(migration): {todo}\n\n'
+                            f'VERSION = 1\n\n\n'
+                            f'def handle(payload):\n'
+                            f'    return {{"adapter": "{name}", "version": VERSION, '
+                            f'"payload": payload}}\n'))
+    expected = ",\n".join(f'    "{name}": ("{kind}", {value!r})'
+                          for name, kind, value in d5_rows(count))
+    built.append(_write(root, "tests/__init__.py", ""))
+    built.append(_write(root, "tests/test_migration.py", "\n".join([
+        "import importlib",
+        "import pathlib",
+        "import unittest",
+        "",
+        'ADAPTERS = pathlib.Path(__file__).resolve().parent.parent / "adapters"',
+        "EXPECTED = {",
+        expected + ",",
+        "}",
+        "",
+        "",
+        "class Migration(unittest.TestCase):",
+        "    def test_no_todo_is_left(self):",
+        "        for name in EXPECTED:",
+        "            with self.subTest(adapter=name):",
+        '                text = (ADAPTERS / f"{name}.py").read_text(encoding="utf-8")',
+        '                self.assertNotIn("TODO(migration)", text)',
+        "",
+        "    def test_every_adapter_did_what_its_todo_said(self):",
+        "        for name, (kind, value) in EXPECTED.items():",
+        "            with self.subTest(adapter=name, kind=kind):",
+        '                module = importlib.import_module(f"adapters.{name}")',
+        '                if kind == "bump":',
+        "                    self.assertEqual(module.VERSION, 2)",
+        '                    self.assertEqual(module.handle({"k": 1})["version"], 2)',
+        '                elif kind == "timeout":',
+        "                    self.assertEqual(module.TIMEOUT_MS, value)",
+        '                    self.assertEqual(module.handle({"k": 1})["timeout_ms"], value)',
+        '                elif kind == "rename":',
+        '                    self.assertFalse(hasattr(module, "handle"))',
+        '                    self.assertEqual(module.dispatch({"k": 1})["adapter"], name)',
+        '                elif kind == "retire":',
+        "                    self.assertTrue(module.DEPRECATED)",
+        "                    with self.assertRaises(NotImplementedError):",
+        '                        module.handle({"k": 1})',
+        "",
+    ])))
+    built.append(_write(root, "README.md", "\n".join([
+        "# Transport adapters",
+        "",
+        f"{count} transport adapters, one module each under `adapters/`. Each file",
+        "carries a `# TODO(migration): ...` line at its head saying what that one",
+        "file needs for the next release. The change differs from file to file;",
+        "all of them are mechanical. Do what each TODO says, remove the TODO line,",
+        f"and change nothing else. `tests/` is red until all {count} are done.",
+        "",
+    ])))
+    return built
+
+
+def build_d5(root: Path) -> list[str]:
+    return _build_varied_adapters(root, 48)
+
+
 def build_z1(root: Path) -> list[str]:
     """One customer-facing paragraph carrying four Chinese tells and nothing else.
 
@@ -1119,6 +1227,7 @@ BUILDERS = {
     "e5-authority-both-ways": build_e5,
     "d3-twelve-adapters": build_d3,
     "d4-forty-eight-adapters": build_d4,
+    "d5-forty-eight-varied-adapters": build_d5,
     "z1-zh-draft": build_z1,
 }
 

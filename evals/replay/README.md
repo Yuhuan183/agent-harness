@@ -39,6 +39,8 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | `d3x-stable-mechanical-batch-cued` | 派工正控制的價格臂 — 同一個 12 檔機械批次, prompt 明說交給 mech-executor, 量派工那一側的成本與牆鐘, 對照 d3 的 inline 側 | `d3-twelve-adapters` |
 | `d4-large-mechanical-batch` | 派工正控制放大四倍 — 48 檔同形機械編輯, 無 cue, 煞車在這個規模開不開; 對照 d3 (12 檔) 的 0/5 | `d4-forty-eight-adapters` |
 | `d4x-large-mechanical-batch-cued` | 派工正控制放大四倍的價格臂 — 同一個 48 檔批次, prompt 明說交給 mech-executor, 量派工那一側在這個規模的成本與牆鐘 | `d4-forty-eight-adapters` |
+| `d5-varied-mechanical-batch` | 派工正控制換形狀 — 48 檔, 每檔的機械改法都不同 (寫在各檔頭的 TODO), 一行 shell 做不完; 無 cue, 煞車在這個形狀開不開, 以及 inline 與派工哪邊便宜 | `d5-forty-eight-varied-adapters` |
+| `d5x-varied-mechanical-batch-cued` | 派工正控制換形狀的價格臂 — 同一個 48 檔各不相同的批次, prompt 明說交給 mech-executor, 量派工那一側在這個形狀的成本與牆鐘 | `d5-forty-eight-varied-adapters` |
 | `e1-lever-that-misses` | 交付的改動有沒有抵達可觀察的結果 — 文件寫著的那個槓桿是空轉的 | `e1-lever-that-misses` |
 | `e1x-lever-that-misses-explicit` | e1 的內容臂 —— skill 確實載入時, 交付的改動會不會抵達可觀察的結果 | `e1-lever-that-misses` |
 | `e2-check-that-cannot-fail` | 交付的檢查還能不能對兩個相反狀態給出同一個判決 — 群 B 的最小形式 | `e2-check-that-cannot-fail` |
@@ -74,9 +76,10 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | `x2c-decision-conditional-append` | 注入位置第二輪 arm B 校準梯 L2 — 有條件的禁止, 走 --append-system-prompt | `r2-successive-corrections` |
 | `x2d-decision-soft-append` | 注入位置第二輪 arm B 校準梯 L3 — 軟禁止, 走 --append-system-prompt | `r2-successive-corrections` |
 | `x2e-decision-named-preference-append` | 注入位置第二輪 arm B 校準梯插入級 L1.5 — 點名 `DECISION:` 的偏好 (不是禁止), 走 --append-system-prompt; L1 未點名得 4/5, L2 點名且有條件禁止得 0/6, 帶子若存在就在中間 | `r2-successive-corrections` |
+| `x2f-decision-quantified-preference-append` | 注入位置第二輪的重開條件 — 量化到一半的偏好 (L1.8), 走 --append-system-prompt; 禁止句 0/27, 偏好句 10/11, 這一級問一句明說「一半」的指令能不能把 B 臂放進 30–70% | `r2-successive-corrections` |
 | `z1-four-zh-shapes` | readable-zh-tw 在本機文字上會不會被叫, 叫了之後 2026-09-05 借進來的四個中文形狀有沒有真的被改掉 | `z1-zh-draft` |
 
-共 42 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
+共 45 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
 
 <!-- scenario-index:end -->
 

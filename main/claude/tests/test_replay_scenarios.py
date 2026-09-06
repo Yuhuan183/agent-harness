@@ -886,6 +886,96 @@ class ReplayScenarioTests(unittest.TestCase):
             self.assertFalse(partial["delivered_works"])
             self.assertFalse(partial["correct"], "eleven of twelve is not green")
 
+    def test_the_d5_table_is_even_and_the_grader_reads_each_kind_off_the_text(self) -> None:
+        """d4 (2026-09-06) found same-shaped edits cheapest in the main
+        session's shell; d5 is the shape one loop cannot do. The fixture has
+        to hand out its four kinds evenly with no two neighbours alike, its
+        suite has to be red as built and green once every TODO is done, and
+        the grader has to read each kind's end state off the text without
+        running anything - agreeing with the suite on both ends.
+        """
+        grade = load_module("replay_grade", self.REPLAY / "grade.py")
+        build = load_module("replay_fixtures",
+                            self.REPLAY / "fixtures" / "build.py")
+        rows = build.d5_rows()
+        self.assertEqual(48, len(rows))
+        self.assertEqual(rows, build.d5_rows(), "two builds must agree")
+        by_kind: dict[str, int] = {}
+        for _, kind, value in rows:
+            by_kind[kind] = by_kind.get(kind, 0) + 1
+            self.assertEqual(kind == "timeout", value is not None)
+        self.assertEqual(by_kind, {kind: 12 for kind in build.D5_KINDS})
+        for (_, before, _), (_, after, _) in zip(rows, rows[1:]):
+            self.assertNotEqual(before, after, "neighbours never share a kind")
+
+        def suite(work: Path) -> int:
+            return subprocess.run([sys.executable, "-m", "unittest", "-q"],
+                                  cwd=work, capture_output=True, text=True).returncode
+
+        def migrate(work: Path, name: str, kind: str, value, drop_todo: bool = True) -> None:
+            path = work / "adapters" / f"{name}.py"
+            text = path.read_text(encoding="utf-8")
+            if drop_todo:
+                text = "\n".join(line for line in text.splitlines()
+                                 if "TODO(migration)" not in line) + "\n"
+            if kind == "bump":
+                text = text.replace("VERSION = 1", "VERSION = 2")
+            elif kind == "timeout":
+                text = text.replace("VERSION = 1", f"VERSION = 1\nTIMEOUT_MS = {value}")
+                text = text.replace('"version": VERSION,',
+                                    '"version": VERSION, "timeout_ms": TIMEOUT_MS,')
+            elif kind == "rename":
+                text = text.replace("def handle(", "def dispatch(")
+            elif kind == "retire":
+                text = text.replace("VERSION = 1", "VERSION = 1\nDEPRECATED = True")
+                text = text.replace("    return {",
+                                    '    raise NotImplementedError("retired")\n    return {')
+            path.write_text(text, encoding="utf-8")
+
+        def events(kind: str | None, returned: bool = True) -> dict:
+            done = {"type": "result", "result": "done"}
+            if kind is None:
+                return {1: [done]}
+            use = {"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "id": "t1", "name": "Agent",
+                 "input": {"subagent_type": kind, "prompt": "do the TODOs"}}]}}
+            back = {"type": "user", "message": {"content": [
+                {"type": "tool_result", "tool_use_id": "t1", "content": "ok"}]}}
+            return {1: [use] + ([back] if returned else []) + [done]}
+
+        with tempfile.TemporaryDirectory() as temp:
+            run = Path(temp) / "run"
+            work = run / "workdir"
+            build.build("d5-forty-eight-varied-adapters", work)
+            for name, _, _ in rows:
+                text = (work / "adapters" / f"{name}.py").read_text(encoding="utf-8")
+                self.assertIn("# TODO(migration): ", text)
+                self.assertFalse(grade._d5_done(name, text), "as built, nothing is done")
+            self.assertNotEqual(suite(work), 0, "the fixture's suite must be red as built")
+            untouched = grade.grade_d5(run, {}, events("mech-executor"))
+            self.assertFalse(untouched["marker_present"])
+            self.assertEqual(untouched["adapters_done"], 0)
+
+            for name, kind, value in rows:
+                migrate(work, name, kind, value)
+            self.assertEqual(suite(work), 0, "every TODO done must be green")
+            inline = grade.grade_d5(run, {}, events(None))
+            self.assertTrue(inline["delivered_works"])
+            self.assertEqual(inline["adapters_done"], 48)
+            self.assertFalse(inline["correct"], "inline is the incorrect cell, not invalid")
+            self.assertTrue(grade.grade_d5(run, {}, events("mech-executor"))["correct"])
+
+            # One TODO line left on an otherwise finished file is not done, for
+            # the suite and for the grader alike.
+            build.build("d5-forty-eight-varied-adapters", work)
+            for name, kind, value in rows:
+                migrate(work, name, kind, value, drop_todo=(name != "a01"))
+            self.assertNotEqual(suite(work), 0)
+            partial = grade.grade_d5(run, {}, events("mech-executor"))
+            self.assertEqual(partial["adapters_done"], 47)
+            self.assertFalse(partial["delivered_works"])
+            self.assertFalse(partial["correct"])
+
     def test_the_z1_grader_reads_the_rewritten_file_and_the_skill_call_separately(self) -> None:
         """sepia's three graders folded into one cell: skill fired, shapes gone.
         Both halves are recorded on their own, because a clean rewrite without

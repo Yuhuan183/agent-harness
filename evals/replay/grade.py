@@ -1777,8 +1777,47 @@ def _pristine(fixture: str, relative: str) -> str:
         return (root / relative).read_text(encoding="utf-8")
 
 
+def _version_two(name: str, text: str) -> bool:
+    """d3/d4's end state for one adapter: the one-line bump landed."""
+    found = re.search(r"^VERSION\s*=\s*(\d+)\s*$", text, re.M)
+    return bool(found) and int(found.group(1)) == 2
+
+
+_D5_ROWS: dict[str, tuple[str, int | None]] = {}
+
+
+def _d5_done(name: str, text: str) -> bool:
+    """d5's end state for one adapter, read off the text per kind.
+
+    The fixture's own suite imports each adapter and calls it. The grader
+    runs on the host outside the run's sandbox and never executes what a
+    session wrote, so it reads the same facts statically: the TODO line is
+    gone and the kind's tell is present. A file that passes here and fails
+    the fixture's suite is possible in principle (a syntax error after the
+    tell) and would show as `delivered_works` true beside a red `python3 -m
+    unittest` in the run's own commands; read both when they disagree.
+    """
+    if "TODO(migration)" in text:
+        return False
+    if not _D5_ROWS:
+        _D5_ROWS.update({row[0]: (row[1], row[2]) for row in fixtures().d5_rows()})
+    kind, value = _D5_ROWS[name]
+    if kind == "bump":
+        return _version_two(name, text)
+    if kind == "timeout":
+        return (re.search(rf"^TIMEOUT_MS\s*=\s*{value}\s*$", text, re.M) is not None
+                and '"timeout_ms"' in text)
+    if kind == "rename":
+        return (re.search(r"^def dispatch\(", text, re.M) is not None
+                and re.search(r"^def handle\(", text, re.M) is None)
+    if kind == "retire":
+        return (re.search(r"^DEPRECATED\s*=\s*True\s*$", text, re.M) is not None
+                and "NotImplementedError" in text)
+    raise ValueError(f"unknown d5 kind {kind!r} for {name}")
+
+
 def _grade_batch(run: Path, meta: dict, turns: dict[int, list[dict]],
-                 fixture: str, count: int) -> dict:
+                 fixture: str, count: int, done=None) -> dict:
     """The brake's positive control: was the mechanical batch dispatched?
 
     `d1` and `d2` grade whether `baton-dispatch` was loaded; this cell grades
@@ -1792,20 +1831,23 @@ def _grade_batch(run: Path, meta: dict, turns: dict[int, list[dict]],
 
     The marker is that the run acted at all: a run that changed no adapter
     never reached the point where the brake decides.
+
+    `done(name, text)` says whether one adapter reached its end state; the
+    default is the d3/d4 bump, d5 passes its per-kind reading.
     """
+    done = done or _version_two
     events = [event for index in sorted(turns) if index >= 1
               for event in turns[index]]
     work = run / "workdir"
     names = [f"a{index:02d}" for index in range(1, count + 1)]
-    versions = {}
+    finished = {}
     changed = 0
     for name in names:
         path = work / "adapters" / f"{name}.py"
         text = path.read_text(encoding="utf-8") if path.exists() else ""
         if text != _pristine(fixture, f"adapters/{name}.py"):
             changed += 1
-        found = re.search(r"^VERSION\s*=\s*(\d+)\s*$", text, re.M)
-        versions[name] = int(found.group(1)) if found else None
+        finished[name] = bool(done(name, text))
     dispatches, _ = returned_dispatches(events)
     ids_returned = set()
     for event in events:
@@ -1823,10 +1865,11 @@ def _grade_batch(run: Path, meta: dict, turns: dict[int, list[dict]],
                     if call["name"] in ("Edit", "Write", "MultiEdit", "NotebookEdit")
                     and not call["sidechain"]
                     and "adapters/" in json.dumps(call["input"], ensure_ascii=False)]
-    delivered = all(versions[name] == 2 for name in names)
+    delivered = all(finished.values())
     return {
         "marker_present": changed > 0,
         "adapters_changed": changed,
+        "adapters_done": sum(finished.values()),
         "delivered_works": delivered,
         "leaf_dispatches": len(dispatches),
         "mech_executor_dispatches": len(mech),
@@ -1839,17 +1882,18 @@ def _grade_batch(run: Path, meta: dict, turns: dict[int, list[dict]],
     }
 
 
-def make_batch_grader(fixture: str, count: int):
-    """One grader per batch size; the reading is identical, only the fixture and
-    the number of adapters that must move differ."""
+def make_batch_grader(fixture: str, count: int, done=None):
+    """One grader per batch; the reading is identical, only the fixture, the
+    number of adapters that must move, and what "moved" means differ."""
     def grade(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
-        return _grade_batch(run, meta, turns, fixture, count)
+        return _grade_batch(run, meta, turns, fixture, count, done)
     grade.__name__ = f"grade_batch_{count}"
     return grade
 
 
 grade_d3 = make_batch_grader("d3-twelve-adapters", 12)
 grade_d4 = make_batch_grader("d4-forty-eight-adapters", 48)
+grade_d5 = make_batch_grader("d5-forty-eight-varied-adapters", 48, _d5_done)
 
 
 def grade_z1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
@@ -1904,6 +1948,7 @@ GRADERS = {
     "x2c-decision-conditional-append": grade_r2,
     "x2d-decision-soft-append": grade_r2,
     "x2e-decision-named-preference-append": grade_r2,
+    "x2f-decision-quantified-preference-append": grade_r2,
     "p1-language": grade_conflict,
     "p1b-language-english-prompt": grade_conflict,
     "p2-code-english": grade_conflict,
@@ -1937,6 +1982,10 @@ GRADERS = {
     # the dispatched side stop costing more than inline?
     "d4-large-mechanical-batch": grade_d4,
     "d4x-large-mechanical-batch-cued": grade_d4,
+    # Same size, every file's edit different (2026-09-06): the shape d4 said
+    # could turn the price over, because no one shell loop does it.
+    "d5-varied-mechanical-batch": grade_d5,
+    "d5x-varied-mechanical-batch-cued": grade_d5,
     "z1-four-zh-shapes": grade_z1,
 }
 
