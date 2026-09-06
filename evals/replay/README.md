@@ -1787,10 +1787,59 @@ grep 出 TODO 表, 寫 brief, 驗收, 記 ledger). 差距因此從 d4 的 2–3 
 預設, 決定不派工不需要載 skill」照字面發生; d5x 帶 cue 才載 (Skill x2). 0/3 派工在這個形狀仍是正確的
 成本判斷 —— 派了會貴 1.1–1.7 倍, 慢 1.1–3 倍.
 
-**下一個會翻轉的條件是外推, 不是量到的**: inline 每檔一讀一寫, 隨檔數線性長 (約 $0.035/檔); 派工幾乎
-持平 ($2.5 固定, 每檔約 $0.01). 兩條線外推交會在 90 檔附近. 要量它需要同一個 builder 開 96 檔的一對
-cell, 各三個 run 約 $15; 先不花. 推翻條件: 96 檔那對若派工仍貴 ≥ 1.5 倍, 「幾乎持平」就是錯的, 派工的
-價也有一個不小的線性項.
+**當時的外推 (同日已量, 見下)**: inline 每檔一讀一寫, 隨檔數線性長 (約 $0.035/檔); 派工幾乎持平
+($2.5 固定, 每檔約 $0.01); 兩條線外推交會在 90 檔附近. 寫下的推翻條件是「96 檔那對若派工仍貴 ≥ 1.5 倍,
+『幾乎持平』就是錯的」.
+
+### `d6` / `d6x`: 96 檔, 交會點不存在 —— inline 不是線性的, 它會改寫策略
+
+同一個 builder 放大到 96 檔 (前 48 列與 d5 完全相同), 各三個 run, 量測面 `6a430c57`:
+
+```text
+cell   run   dispatched   how the edits were made                     delivered   cost     wall
+d6     001   no           wrote a one-shot migration script (Bash)     green       $1.06    102 s
+d6     002   no           same, two python3 -c passes                  green       $1.47    151 s
+d6     003   no           same, one script, only 1 Read                green       $1.15    114 s
+d6x    001   mech 1/1     one leaf (Edit x96)                          green       $2.50    510 s
+d6x    002   mech 4/4     four leaves (Read x101, Edit x96)            green       $3.84    455 s
+d6x    003   mech 4/4     four leaves (Read x96, Edit x96)             green       $3.20    323 s
+
+inline  $1.06–1.47 / 102–151 s      dispatched  $2.50–3.84 / 323–510 s
+```
+
+**交會點不存在, 而且兩邊的外推都錯了一半.** 三個 inline run 沒有一個逐檔改: 全部先讀幾個檔看出 TODO
+的形狀, 然後寫一支一次性 migration script 去解析全部 96 個檔再套用 (`python3 - <<PYEOF`). 成本因此
+**比 48 檔那組還低** ($1.06–1.47 對 $1.55–2.31). inline 的成本曲線不是線性, 是非單調的: 檔數小到逐檔
+改還可忍時它逐檔改, 大到不可忍時它改寫程式, 成本掉回去. 「便宜檔位是主 session 手上的工具」在 d4 是
+shell 迴圈, 在 d6 是臨時程式, 同一件事的兩個面貌.
+
+派工那側分成兩種形狀才讀得對: **單 leaf 真的持平** —— 48 檔 $2.50/$2.53, 96 檔 $2.50, 完全沒漲, leaf
+在 sonnet 上逐檔改的邊際成本確實接近零; **四個 leaf 就漲** —— 48 檔 $2.64, 96 檔 $3.84/$3.20, 因為每
+個 leaf 都要自己載入與自己讀檔 (d6x-002 的 leaf 合計讀了 101 次). 派工的價是「每次派工的固定成本 ×
+leaf 數」, 不是檔數的函數.
+
+**寫在跑之前的推翻條件觸發了, 但理由跟它預測的相反, 這點照實記.** 條件是「派工若仍貴 ≥ 1.5 倍, 就代表
+派工有沒量到的線性項」. 96 檔實測 1.7–3.6 倍, 條件觸發; 但派工 (單 leaf) 是持平的, 漲的原因是 leaf
+數不是檔數, 而比例會拉大主要是**inline 掉下來**. 那句條件把「比例」和「斜率」綁成了一句話, 兩者不等
+價, 所以它的觸發不能讀成「派工有線性項」得證. 從這對 run 能說的是: 派工的線性項在檔數上仍看不到, 在
+leaf 數上很明顯.
+
+**兩個讀數限制, review 時才看出來的**. 一, `inline_adapter_edits` 對這一組沒有意義: 它數的是輸入裡
+提到 `adapters/` 的 Edit/Write 呼叫, 而三個 inline run 各有一個 Write 是寫 `/tmp/migrate_adapters.py`
+那支腳本本身, d6x-002 的那一個甚至是 session 寫自己的 memory 檔. 判準不受影響 (`correct` 只看
+`mech_executor_returned` 與 `delivered_works`, 檔案有沒有改由 `adapters_changed=96` 說話), 但這個欄位
+在「用程式改檔」的形狀下要當成雜訊讀. 這是 d4 那節同一個限制的第二次發作, 那次它把 shell 批次讀成 0,
+這次它把腳本寫入讀成 1.
+
+二, **replay 的 session 會在 workdir 以外留下東西**: d6x-002 往
+`~/.claude/projects/-private-tmp-replay-<id>/memory/` 寫了兩個 memory 檔. 這一格的 telemetry 有被導進
+run 目錄 (`telemetry_diverted_to`), memory 沒有. 因為每個 run 都是新的暫存 workdir, 也就是新的 project
+目錄, 所以**不會污染後續 run**, 讀數不受影響; 但這是 sandbox 只管 workdir 的一個實例, 值得記著.
+
+**煞車**: d6 三個 run 一樣沒載 `baton-dispatch` (skills 空), 0/3 派工, 而且這次是**更明顯正確**的判斷
+—— 派了會貴 1.7–3.6 倍, 慢 2–5 倍. 從 12 檔到 96 檔, 同形與異形四對 cell, 煞車沒有一次判錯. 成本測試
+第四項 (cheaper tier) 對「機械改動 × N 檔」這一類任務, 在本 repo 的量測範圍內找不到觸發點; 要找到它,
+得是主 session 的工具**做不到**的任務, 而不是更大的批次.
 
 ## 注入位置第二輪: 對比是二元的, 量不出位置 (2026-09-06, 23 個 run)
 
