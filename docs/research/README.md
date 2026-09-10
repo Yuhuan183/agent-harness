@@ -100,6 +100,7 @@ v1.3.5 到 v1.3.10 的增量:
 | rebelytics/one-skill-to-rule-them-all | 上游 | pin `f4a95a180404bd4de35365da66849a243e3d07be` (`v3.1.0`, 2026-09-04); head +1 只動 `CONTRIBUTING.md` | 2026-09-05 | `task-observer` 的上游. 3.1 補的是儀器守則, 四條沒有的已全部落地或量過不加; 血緣 09-06 探針查無公開引用. 逐條在 [task-observer-upstream](task-observer-upstream.md#rebelytics-31-改版逐條-2026-09-05-上游在補儀器的守則-我方多半已有) |
 | `anthropics/claude-plugins-community` 的 `eli5` | 同業 | path 最後 commit 仍是 `863e70dc7cff21a2facc749e40a7ecd1a5d19833` (2026-08-21); **path 是根目錄的 `eli5`, 不是 `plugins/eli5`** | 2026-09-05 | 七條裡六條沒採; R1 的推翻條件由使用者觸發, 兩份 app prompt 的專家宣告改成「expert at my own work」. 逐條在 [community-skills-survey](community-skills-survey.md) |
 | `affaan-m/ecc` (Everything Claude Code) | 同業 | pin `5064474d4d762dc9640234a41617cccb79185cec` (head, 2026-09-07; `VERSION` 2.2.1); 68 agent / 286 skill / 94 command / 24 hook entry | 2026-09-08 | 走相反方向的同業 (要覆蓋面, 不要最小規則集). 42 條逐條在 [ecc-survey](ecc-survey.md), 11 條沒有等價的排進 [ECC 計畫](../plans/upgrade-plan-ecc-2026-09.md), 十三項於 09-10 全部結案. 它是**聚合者不是獨立觀察者**, 計票前先算血緣; 效果數字一個都不能借 (n=2 的主觀分). 更新頻率高到 pin 比對很快失去意義, 對它有價值的是逐節重查 |
+| `mindfold-ai/Trellis` | 同業 | pin `88f4834449da9b4f607ec05e322408a0aa66f2ce` (head, 2026-08-27; `0.6.16`, 另有 `v0.7.0-beta.3` 線); **AGPL-3.0** | 2026-09-10 | 走專案層路線的同業: 把 spec/task/memory 持久化進使用者 repo 再靠 hook 注入, 22 個平台各一份鏡像. 逐條在 [trellis-survey](trellis-survey.md); 三項候選 (docs-only 對照臂, ablate 形狀, 防止機制六級表) 都要先量再決定. **兩條引用限制**: 它的效果量測明文不公開 (內部 benchmark 留在 gitignore 的 `tmp/`), 所以沒有數字可引; 授權是 AGPL, 逐字搬 prose 會把義務帶進來 |
 | Claude Code client 的注入區塊 | 供應商製品 | 2.1.261 (2026-09-05): `opus_5_prompt_bundle` 的兩行不在, 「section not active on this build」; 前一狀態 (2.1.247, 在且生效) 自 08-28 持續到 09-05 | 2026-09-05 | **版本是機器本機的, 旗標是伺服器推的**, 兩邊都不該從這張表讀; 當場查用 `~/.claude/scripts/prompt-bundle-report` (`weekly-integrity` 只在移動時出聲). 取證在 [context-and-vendors](context-and-vendors.md) |
 | Artificial Analysis Intelligence Index | 研究 | v4.1.1 (August 2026) | 2026-08-14 | 點版本會回溯重算全部分數; 引用絕對值前先確認版本, 見 [model-evidence](model-evidence.md) |
 | `Sahir619/fable-method` | 上游 | plugin `v1.4.0`; 最後 commit `88b5cf3` (2026-07-15); MIT | 2026-09-05 | INTENT/TWINS/AUTH 強制行, QC fraud 清單與 trap-fixture 做法的來源; ATTRIBUTION 補於 2026-08-28. 案例在 [trap-experiments](trap-experiments.md#fable-method-案例-2026-07-22) |
@@ -189,6 +190,7 @@ v1.3.5 到 v1.3.10 的增量:
 | [upstream-distillation-ledger.md](upstream-distillation-ledger.md) | 上游每一節蒸餾到哪裡, 捨棄了什麼 (`scripts/upstream-recheck.sh` 可覆核); 涵蓋 mattpocock/skills 與 sepia, 加每輪全掃的讀數表 |
 | [task-observer-upstream.md](task-observer-upstream.md) | `task-observer` 的上游 rebelytics 逐版逐條 (v2.0.0, v3.0.0, v3.1.0) |
 | [ecc-survey.md](ecc-survey.md) | 同業 `affaan-m/ecc` 的 42 條逐條處置, 三個反面觀察與兩個分歧 |
+| [trellis-survey.md](trellis-survey.md) | 同業 `mindfold-ai/Trellis` 的逐層處置, 三個分歧與三項待量候選; 含 AGPL 與「效果數字不可引用」兩條限制 |
 | [readable-zh-tw-upstream.md](readable-zh-tw-upstream.md) | `readable-zh-tw` 的上游 pin, 目標分岔與逐次同步紀錄 |
 
 ## 驗證缺口
