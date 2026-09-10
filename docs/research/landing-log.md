@@ -560,3 +560,32 @@ speak-human-tw 第五輪機器人, rebelytics 3.0→3.1; sepia 出 v0.7.0; clien
 
 明確不做的 (依據在 ledger): rebelytics 的啟動種子, session-start 掃描, staging 三向對帳,
 `{skill}-extras`; sepia 的小說側, voice, 模型歸因; Windows 平台項; 安裝 upstream skill 而非蒸餾.
+
+#### 2026-09-10 ECC 計畫最後兩項結案: 六支 skill 溯源 (Q10), 部署驗證表 (Q5)
+
+**Q10, 守衛的三個數**: 14 個 skill 目錄 (12 個本體加 Claude 的兩個薄 wrapper), 今日命中 7 (六支
+沒有任何出處宣告, 加 `headroom-protocol` 的薄 wrapper) / 真缺陷 6 / 正規化「一個檔名兩種形式」——
+自有的寫 `**Origin**: this repository` 且不得帶 40 位 SHA, 否則 `upstream-pin-report.py` 會把它登記
+成上游. 六支的判定: `headroom-protocol`, `experience-ledger`, `evidence-ladder`, `harness-review`
+自有; `upstream-distillation` 兩條子句蒸餾自 rebelytics 3.0 / 3.1 (CC BY 4.0, 與 task-observer
+同 pin); `provider-routing` 三句蒸餾自 Pilotfish. **溯源時重抓原文而不是讀筆記, 抓到的東西比六個
+檔多**: Pilotfish `templates/claude-md.orchestration.md` at `7a7f71b3` 逐句對, `provider-routing`
+三句與 `baton-dispatch` / `leaf-dispatch` 四條是它的措辭, 而 baton 的既有 ATTRIBUTION 把五次 pass
+與兩次修訂上限寫成「本地自寫」. 已更正, Pilotfish 從同業升為上游 (MIT, Nanako0129), pin-report
+從此看得到它. 突變: 拿掉一個自有檔 → 紅且指名; 在自有檔種一個 SHA → 紅 (半個宣稱); 拿掉
+`provider-routing` 的署名 → 既有的下限 8 **沒紅**, 因為蒸餾檔實際是 9 —— 下限改成 9 (那條註解
+自己就寫著「下限是現在的數量」, 第一稿沒照做). **沒查的**: 七個 role 檔對 Pilotfish
+`templates/agents/*.md` 的措辭; 07-22 實際讀的那版 (v1.3.10 之前) 的原文; 一支的成本約
+十二個工具呼叫, 比 09-08 樣本的六個多一倍, 因為多了一次上游抓取.
+
+**Q5, 形狀與數字**: 不加第四欄 —— `sync.sh` 的 `read -r src dst mode extra`, `managed-target-guard`
+的「兩欄 = 整份託管」, `support.deployment_manifest_entries` 三個 parser 都靠欄數判意義. 改成
+`scripts/deployment-verification.tsv`, 以 target 為鍵, 40 列, 測試釘它與 manifest 目標一對一.
+「verified」寫成**被 client 讀到**而不是在場: 31 列是機器觀察 (本 session 的 skill 與 role 清單,
+commit-test-gate 的 exit 2, 兩支 resolver 讀 routing 檔, 兩次 `codex exec` 唯讀探針 —— 一次讀到
+契約首標與隱式 skill 清單, 一次用 `$name` 載入三支 `allow_implicit_invocation: false` 的 skill,
+合計約 49k token), 9 列沒有機器消費者 (README, prompts, docs), 老實記「parity only」;
+`.codex/agents` 只驗到 config_file 解析得開, 真派工沒探. `DECISION`: 到期 90 天, 對齊兩份
+routing 檔的 `prior_review` 節奏而不是每週 —— 重觀察一列要一個 session, 每週 40 次沒有人會做.
+突變: 刪一列 → 紅; 一列改成 2025-01-01 → 紅 (617 days); 加一列 manifest 沒有的 → 紅; fixture 的
+400 天與 `never` 各自紅. 第一次到期是 2026-12-09.

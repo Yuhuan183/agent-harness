@@ -53,7 +53,7 @@ harness 應該縮到「模型無法可靠自行維持, 且能被驗證」的邊�
 
 ## Pilotfish 蒸餾結果
 
-對齊上游 [v1.3.10 release](https://github.com/Nanako0129/pilotfish/releases/tag/v1.3.10) (tag commit `7a7f71b...`, 2026-08-08). v1.4 起上游變成原生 plugin, 政策改由 SessionStart 注入; 拆解在 [peer-harnesses](peer-harnesses.md).
+對齊上游 [v1.3.10 release](https://github.com/Nanako0129/pilotfish/releases/tag/v1.3.10) (tag commit `7a7f71b...`, 2026-08-08). v1.4 起上游變成原生 plugin, 政策改由 SessionStart 注入; 拆解在 [peer-harnesses](peer-harnesses.md). 2026-09-10 的逐句比對把它從同業升為上游: 三支 skill 的 `ATTRIBUTION.md` 各記了哪幾句是它的.
 
 v1.3.0 到 v1.3.4 存續下來且適合本專案的精華, 已經全部落為本專案的機制: shape-based batching 與 direct-execution brake, 最小完整驗收邊界與 outcome verifier quota, Plan anti-churn, fixed dispatch/result record 與 provenance-aware QC, security review/execution 分權, resident prompt 去重與 current-state 文件收斂.
 
@@ -90,7 +90,7 @@ v1.3.5 到 v1.3.10 的增量:
 
 | 來源 | 類別 | 查核時的狀態 | 查核日 | 逐條與下次看什麼 |
 |---|---|---|---|---|
-| Pilotfish | 同業 | latest release tag `v1.4.1` (2026-08-27); head `ea0d20bb` (+15 commit, 全是 benchmark attempts 綁定與測試) | 2026-09-05 | v1.4.0 起變成原生 plugin, 政策從 `CLAUDE.md` 搬到 SessionStart 注入. 拆解在 [peer-harnesses](peer-harnesses.md#pilotfish-v140-v141-政策從-claudemd-搬到-sessionstart-注入-2026-08-31-拆解); 下次先讀 spontaneous-dispatch 的 cue-free 資料 |
+| Pilotfish | 上游 + 同業 | 蒸餾 pin `7a7f71b327f079fecbf29fa91e444b9a6180c31c` (`v1.3.10`, 2026-08-08; MIT); latest release tag `v1.4.1` (2026-08-27); head `ea0d20bb` (+15 commit, 全是 benchmark attempts 綁定與測試) | 2026-09-10 | 09-10 從同業升為上游: 逐句比對後 `provider-routing` 三句, `baton-dispatch` / `leaf-dispatch` 四條是它的措辭, ATTRIBUTION 補齊. v1.4.0 起變成原生 plugin, 政策從 `CLAUDE.md` 搬到 SessionStart 注入, 重查要先找新載體. 拆解在 [peer-harnesses](peer-harnesses.md#pilotfish-v140-v141-政策從-claudemd-搬到-sessionstart-注入-2026-08-31-拆解); 下次先讀 spontaneous-dispatch 的 cue-free 資料 |
 | cablate/baton | 上游 | release `v0.1.1`; pin `0ab4d2ec5c69820001eeac2a12fab2c87fd3e943` 就是最後一個 commit (2026-07-16), 之後未動 | 2026-09-05 | `baton-dispatch` 與 `leaf-dispatch` 的上游; 核對表在 [peer-harnesses](peer-harnesses.md#cablatebaton-baton-dispatch-的上游) |
 | pilotfish-codex | 同業 | release `1.7.1` (2026-08-11); tag `v1.7.2` 存在但沒有 release; 自走版號 | 2026-09-05 | Codex CLI 分支; 帶了本專案沒有的 review-service circuit breaker, 見 [peer-harnesses](peer-harnesses.md#pilotfish-codex-15-17-codex-cli-分支) |
 | Deep Agents | 同業 | PyPI `0.7.13` (2026-09-02); CLI `0.1.66`; `deepagents-acp 0.0.11` | 2026-09-05 | 三個 package 各自發版, 分開報. 主線是 session 身分穿過壓縮, 與 `dispatch_id` 同一件事, 見 [peer-harnesses](peer-harnesses.md#deep-agents-0710--0713-cli-0166-2026-09-05-重查) |
@@ -99,7 +99,7 @@ v1.3.5 到 v1.3.10 的增量:
 | Raymondhou0917/speak-human-tw | 上游 | pin `fa09500c77e1ec7747677377e30599d9426433db` (2026-09-05 推進, touched 只有 `assets/`) | 2026-09-05 | `readable-zh-tw` 的上游. 連續五輪都是機器人重畫星數圖; 下次看 `touched` 有沒有 `assets/` 以外的路徑, 見 [readable-zh-tw-upstream](readable-zh-tw-upstream.md#2026-09-05-重查-九個-commit-全是星數圖-第五輪) |
 | rebelytics/one-skill-to-rule-them-all | 上游 | pin `f4a95a180404bd4de35365da66849a243e3d07be` (`v3.1.0`, 2026-09-04); head +1 只動 `CONTRIBUTING.md` | 2026-09-05 | `task-observer` 的上游. 3.1 補的是儀器守則, 四條沒有的已全部落地或量過不加; 血緣 09-06 探針查無公開引用. 逐條在 [task-observer-upstream](task-observer-upstream.md#rebelytics-31-改版逐條-2026-09-05-上游在補儀器的守則-我方多半已有) |
 | `anthropics/claude-plugins-community` 的 `eli5` | 同業 | path 最後 commit 仍是 `863e70dc7cff21a2facc749e40a7ecd1a5d19833` (2026-08-21); **path 是根目錄的 `eli5`, 不是 `plugins/eli5`** | 2026-09-05 | 七條裡六條沒採; R1 的推翻條件由使用者觸發, 兩份 app prompt 的專家宣告改成「expert at my own work」. 逐條在 [community-skills-survey](community-skills-survey.md) |
-| `affaan-m/ecc` (Everything Claude Code) | 同業 | pin `5064474d4d762dc9640234a41617cccb79185cec` (head, 2026-09-07; `VERSION` 2.2.1); 68 agent / 286 skill / 94 command / 24 hook entry | 2026-09-08 | 走相反方向的同業 (要覆蓋面, 不要最小規則集). 42 條逐條在 [ecc-survey](ecc-survey.md), 11 條沒有等價的排進 [ECC 計畫](../plans/upgrade-plan-ecc-2026-09.md), 09-08 量過或落地十一項. 它是**聚合者不是獨立觀察者**, 計票前先算血緣; 效果數字一個都不能借 (n=2 的主觀分). 更新頻率高到 pin 比對很快失去意義, 對它有價值的是逐節重查 |
+| `affaan-m/ecc` (Everything Claude Code) | 同業 | pin `5064474d4d762dc9640234a41617cccb79185cec` (head, 2026-09-07; `VERSION` 2.2.1); 68 agent / 286 skill / 94 command / 24 hook entry | 2026-09-08 | 走相反方向的同業 (要覆蓋面, 不要最小規則集). 42 條逐條在 [ecc-survey](ecc-survey.md), 11 條沒有等價的排進 [ECC 計畫](../plans/upgrade-plan-ecc-2026-09.md), 十三項於 09-10 全部結案. 它是**聚合者不是獨立觀察者**, 計票前先算血緣; 效果數字一個都不能借 (n=2 的主觀分). 更新頻率高到 pin 比對很快失去意義, 對它有價值的是逐節重查 |
 | Claude Code client 的注入區塊 | 供應商製品 | 2.1.261 (2026-09-05): `opus_5_prompt_bundle` 的兩行不在, 「section not active on this build」; 前一狀態 (2.1.247, 在且生效) 自 08-28 持續到 09-05 | 2026-09-05 | **版本是機器本機的, 旗標是伺服器推的**, 兩邊都不該從這張表讀; 當場查用 `~/.claude/scripts/prompt-bundle-report` (`weekly-integrity` 只在移動時出聲). 取證在 [context-and-vendors](context-and-vendors.md) |
 | Artificial Analysis Intelligence Index | 研究 | v4.1.1 (August 2026) | 2026-08-14 | 點版本會回溯重算全部分數; 引用絕對值前先確認版本, 見 [model-evidence](model-evidence.md) |
 | `Sahir619/fable-method` | 上游 | plugin `v1.4.0`; 最後 commit `88b5cf3` (2026-07-15); MIT | 2026-09-05 | INTENT/TWINS/AUTH 強制行, QC fraud 清單與 trap-fixture 做法的來源; ATTRIBUTION 補於 2026-08-28. 案例在 [trap-experiments](trap-experiments.md#fable-method-案例-2026-07-22) |

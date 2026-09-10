@@ -101,6 +101,36 @@ concept rewrite, so the five above are listed even where the compression is
 heavy. The MIT text was already reproduced in full below, so this pass changes
 the precision of the credit and not the licence position.
 
+## Second upstream: Pilotfish (found on the 2026-09-10 re-trace)
+
+The list above of things "written locally, with no upstream counterpart" was
+wrong on two items, and the wording pass had missed two sentences. The
+re-trace for the plan's Q10 fetched Nanako0129's Pilotfish at its research pin
+and compared sentences rather than coverage:
+
+- **Source**: <https://github.com/Nanako0129/pilotfish>, file
+  `templates/claude-md.orchestration.md`
+- **Reviewed commit**: `7a7f71b327f079fecbf29fa91e444b9a6180c31c` (`v1.3.10`,
+  2026-08-08). The adoption was 2026-07-22 against an earlier v1.3 release
+  (recorded in `docs/plans/orchestration-history.md` as "Pilotfish v1.3
+  batching and Plan anti-churn adopted"); this is the commit the wording was
+  checked against.
+- **Licence**: MIT, Copyright (c) 2026 Nanako0129. The permission notice
+  reproduced below applies to this copyright line as it does to CabLate's.
+
+| Upstream (at the pin) | Ours | Reading |
+|---|---|---|
+| "Before required approval and first readiness review, finish tool-enforced read-only `security-reviewer`; carry findings/dispositions into Plan. After approval, send stable contract to `security-executor`." | "Before the first readiness review of a security-sensitive unit, complete `security-reviewer` and carry every finding plus its disposition into the Plan." | Near-verbatim; the post-approval half lives in `provider-routing` as a concept |
+| "one fresh outcome-verifier pass at smallest coherent integration boundary where full claim can be refuted … avoid micro-verifier calls" | "Place a triggered verifier at the smallest coherent integration boundary where the complete acceptance claim can be refuted; do not re-verify every small fix." | Near-verbatim |
+| "Never reverify identical state" plus the v1.3.5 five-pass budget | "Cap a target at five verification passes … an unchanged candidate is not re-verified at all" | Adopted; the fingerprint became a self-description of what changed |
+| v1.3 anti-churn: two automatic material revisions, then present options | "after two automatic revisions of the same readiness-unit ID, stop and surface options" | Adopted 2026-07-22 |
+
+Corrected accordingly: the five-pass cap and the two-revision Plan rule are
+Pilotfish's, not local. Pilotfish itself loads Baton, so on the dispatch-brake
+rules the two upstreams are one lineage; the four rows above are the ones
+Baton does not have. Same pin, same clause table, in
+`main/claude/skills/provider-routing/ATTRIBUTION.md` for that skill's share.
+
 ## Rechecking
 
 Fetch <https://raw.githubusercontent.com/cablate/baton/main/SKILL.md> and

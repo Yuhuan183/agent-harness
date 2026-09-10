@@ -151,6 +151,10 @@ v1.3.8 那輪期間 Claude Code 自 2.1.220 更新到 2.1.221; v1.3.9 與 v1.3.1
 | cue-free 限制 (v1.3.9) | 尚未寫下; 本專案同樣部署 user 層契約 | **採用**, 本機另有當下可觀察的實例 |
 | 出貨位元組的行為認證與候選綁定 (v1.3.9 -> v1.3.10) | census 已算 per-file `sha256` 與 `payload_sha256`; trap 結果表沒有指紋欄 | **改造後採用**, 接線既有指紋而非新建 |
 
+### 2026-09-10 逐句比對: 同業升為上游
+
+上面那張表答的是覆蓋 (「這條我們有沒有」), 每一列都是已落地. 09-10 為了 Q10 溯源改問授權在乎的那一題 (「句子有多像」), 重抓 `templates/claude-md.orchestration.md` at `7a7f71b3` 逐句對: `provider-routing` 三句 (最小完整驗收邊界, 提早驗證的五個邊界清單, 「omit invocation model」), `baton-dispatch` / `leaf-dispatch` 四條 (security-reviewer 先於 readiness review 那句, 驗證邊界句, 五次 pass 與「沒改不重驗」, 兩次修訂上限) 是它的措辭壓縮而成; 而 baton 的既有署名把五次 pass 與兩次修訂寫成「本地自寫」. 三份 `ATTRIBUTION.md` 已補, MIT (Nanako0129). 血緣算法不變: 派工煞車那題 Pilotfish 與我方同源自 baton, 不加票; 這四條是 baton 沒有的. **沒查的**: `templates/agents/*.md` 對我方七個 role 檔的措辭, 以及 v1.3.10 之前 (07-22 實際讀的那版) 的原文.
+
 ### 關鍵修正
 
 早期本專案為了讓 Claude verifier 執行重現, 設計 `readonly-bash` shell parser. 2026-07-28 security review 證明它可被 Git callbacks, environment indirection, parameter expansion, executable resolution 與非 Git 工具副作用繞過. 最終裁決不是繼續擴大 denylist, 而是移除 Claude no-write roles 的 Bash; 需要命令的獨立 verdict 轉給 Codex `sandbox_mode = "read-only"`.

@@ -22,7 +22,7 @@
 | `skills/task-observer/` | skill 使用受挫時主動詢問, 明確同意後才記錄改善觀察; append-only JSONL 帳本在 `~/.agents/telemetry/`, 不會自動修改 skill |
 | `skills/evidence-debugging/` | 共用 skill 本體: 以已跑過的重現做診斷, 診斷與修復是兩種授權 (蒸餾自上游, 見其 `ATTRIBUTION.md`); 同以 symlink 雙端引用 |
 | `skills/test-first-change/` | 共用 skill 本體: 先寫會紅的檢查再改行為, seam 必須抵達可觀察結果 (蒸餾自上游, 見其 `ATTRIBUTION.md`); 同以 symlink 雙端引用 |
-| `skills/evidence-ladder/` | 共用 skill 本體: 為一個主張挑最便宜而足夠的證據層級, 並擋掉循環論證, 未校準的儀器與換了環境的數字 (本 repo 自撰, 無 `ATTRIBUTION.md`); 同以 symlink 雙端引用 |
+| `skills/evidence-ladder/` | 共用 skill 本體: 為一個主張挑最便宜而足夠的證據層級, 並擋掉循環論證, 未校準的儀器與換了環境的數字 (使用者自撰, `ATTRIBUTION.md` 記為自有); 同以 symlink 雙端引用 |
 | `skills/INSTALLED.txt` | 本專案擁有並部署的共用 skill 清單; 同時界定 merge 時的管理範圍 |
 | `scripts/` | 跨端共用腳本: gate-line 正則的單一來源 (`gate_lines.py`, 供部署版 `qc-gate-lines` 稽核與 repo 內 trap graders 共用) |
 | `docs/headroom-runtime.md` | Headroom runtime 的跨 agent 架構與操作邊界 (Claude 與 Codex 流量共用同一 proxy, 故置於此, 不各留一份) |
@@ -35,3 +35,5 @@
    `ln -s ../../.agents/skills/<name> <name>`.
 4. `scripts/sync.sh` 會精確同步清單內的 skill, 但保留 `~/.agents/skills/` 內不在清單中的
    第三方 skill; `rsync --links` 會原樣複製兩端 symlink.
+5. 目錄裡放一份 `ATTRIBUTION.md`: 蒸餾來的寫來源 URL, 完整 commit 與授權全文; 自有的寫
+   `**Origin**: this repository` 且不帶 40 位 SHA. 少了這個檔測試會紅.

@@ -31,6 +31,21 @@ was missing was discoverability from this side.
 Traced 2026-09-08 as the sample for the plan's Q10, which asked how much work
 one provenance trace costs before scheduling the remaining six.
 
+## Second upstream: Pilotfish (2026-09-10)
+
+The same four rules the twin's file credits to Nanako0129's Pilotfish ship
+here too, in this side's idiom: the security-reviewer-before-readiness
+sentence, verifier placement at the smallest coherent integration boundary,
+the five-pass cap with "an unchanged candidate is not re-verified", and the
+two-revision Plan rule.
+
+- **Source**: <https://github.com/Nanako0129/pilotfish>
+- **Reviewed commit**: `7a7f71b327f079fecbf29fa91e444b9a6180c31c` (`v1.3.10`)
+- **Licence**: MIT, Copyright (c) 2026 Nanako0129; the permission notice
+  below covers this copyright line as well as CabLate's.
+
+The clause table is in the twin's file, on the same terms as the Baton one.
+
 ## What is local, on this side
 
 The twin's attribution lists "the Claude/Codex twin split including the no-Bash

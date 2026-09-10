@@ -2094,3 +2094,116 @@ class EditResidueTests(unittest.TestCase):
         self.assertEqual(offenders, [],
                          "edit residue on a deployed surface; a failed replacement, "
                          "an unresolved slot or a merge marker would ship as prompt text")
+
+
+VERIFICATION = "scripts/deployment-verification.tsv"
+#: Days a consumption observation stays current. Chosen to match the
+#: benchmark-prior cadence both routing files already use (`prior_review`:
+#: 90 days), not weekly-integrity's seven: parity is checked weekly by the
+#: hook, and this file records the other, dearer thing - that a client was
+#: seen consuming the target - which needs a session per row to re-observe.
+VERIFICATION_TTL_DAYS = 90
+
+
+def verification_rows(text: str) -> list[dict[str, str]]:
+    rows = []
+    for raw in text.splitlines():
+        if not raw or raw.startswith("#"):
+            continue
+        fields = raw.split("\t") + ["", "", "", ""]
+        rows.append({"target": fields[0], "date": fields[1],
+                     "client": fields[2], "how": fields[3]})
+    return rows
+
+
+def stale_verifications(text: str, today, ttl_days: int) -> list[tuple[str, str]]:
+    """Rows whose observation is older than `ttl_days`, or has no readable date.
+    An unreadable date is stale rather than skipped: a row that cannot expire
+    is the ECC failure this file exists to avoid."""
+    stale = []
+    for row in verification_rows(text):
+        try:
+            seen = datetime.strptime(row["date"], "%Y-%m-%d").date()
+        except ValueError:
+            stale.append((row["target"], f"unreadable date {row['date']!r}"))
+            continue
+        age = (today - seen).days
+        if age > ttl_days:
+            stale.append((row["target"], f"{age} days since {row['date']}"))
+    return stale
+
+
+class DeploymentVerificationTests(unittest.TestCase):
+    """A `last_verified` column is decoration until a test can expire it.
+
+    Q5 of the ECC plan, and the lesson is ECC's own: its adapter compliance
+    table carried `last_verified_at` on twelve rows, the oldest four months
+    behind HEAD, and no test in the repository read the field. The field is
+    the cheap half; the test is the point.
+
+    Why a sidecar and not a fourth manifest column: three consumers key on
+    the manifest's column count - `sync.sh` reads rows with `read -r src dst
+    mode extra`, `managed-target-guard` treats a two-column row as wholesale
+    and a three-column row as merged, and `support.deployment_manifest_entries`
+    takes the third field as the mode. A fourth column would change what
+    every one of them means. The sidecar keys on the target instead, and the
+    first test below holds it to exactly the manifest's targets, so it cannot
+    become a second mapping list (`docs/setup.md`'s one-manifest rule).
+
+    What "verified" means here is *consumed*, not present. Presence and
+    parity are `weekly-integrity`'s job, weekly and mechanical. This file
+    records that a client was observed reading the target - a skill in the
+    session's skill list, a hook returning exit 2, a resolver reading the
+    routing file - with the client version at the time. That is the thing
+    that goes stale without anyone noticing, because a client can stop reading
+    a path while the bytes stay perfectly in parity.
+    """
+
+    def rows(self) -> list[dict[str, str]]:
+        return verification_rows(read_repo(VERIFICATION))
+
+    def test_every_manifest_target_has_exactly_one_row(self) -> None:
+        targets = [row["target"] for row in self.rows()]
+        self.assertEqual(sorted(targets), sorted(set(targets)),
+                         "a target verified twice is two dates for one fact")
+        expected = [target for _, target in deployment_manifest()]
+        self.assertEqual(
+            sorted(targets), sorted(expected),
+            "the verification file and the manifest name different targets; "
+            "a manifest row added or retired changes this file on the same "
+            "commit")
+
+    def test_every_row_names_the_client_and_what_was_observed(self) -> None:
+        for row in self.rows():
+            with self.subTest(target=row["target"]):
+                self.assertRegex(row["client"], r"\d+\.\d+",
+                                 "the client column carries no version")
+                self.assertGreaterEqual(
+                    len(row["how"]), 20,
+                    "say what was observed, not that it was; `verified` is "
+                    "the claim this row exists to support")
+
+    def test_no_observation_is_older_than_the_ttl(self) -> None:
+        today = datetime.now(timezone.utc).date()
+        stale = stale_verifications(read_repo(VERIFICATION), today,
+                                    VERIFICATION_TTL_DAYS)
+        self.assertEqual(
+            stale, [],
+            f"re-observe these targets being consumed and update the row; the "
+            f"ceiling is {VERIFICATION_TTL_DAYS} days, and raising it is not "
+            "the remedy")
+
+    def test_the_expiry_check_goes_red_on_an_old_or_unreadable_date(self) -> None:
+        """Positive control: the fixture ECC never wrote."""
+        today = datetime(2026, 9, 10, tzinfo=timezone.utc).date()
+        fixture = "\n".join([
+            "# target\tlast_verified\tclient\thow",
+            ".claude/hooks\t2025-08-01\tclaude 2.1.0\tgate returned exit 2 on a real call",
+            ".claude/sh\t2026-09-01\tclaude 2.1.0\tstatusline command set in settings",
+            ".codex/agents\tnever\tcodex 0.1\tconfig_file targets resolve",
+            ""])
+        self.assertEqual(
+            [target for target, _ in stale_verifications(fixture, today, 90)],
+            [".claude/hooks", ".codex/agents"])
+        self.assertEqual(stale_verifications(fixture, today, 500),
+                         [(".codex/agents", "unreadable date 'never'")])

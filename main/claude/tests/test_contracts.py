@@ -2349,18 +2349,29 @@ class DocumentationBudgetTests(unittest.TestCase):
         """
         attributions = sorted((ROOT / "main").rglob("ATTRIBUTION.md"))
         self.assertTrue(attributions, "no attributions found")
+        # Since 2026-09-10 an ATTRIBUTION may also declare original work
+        # (`SkillProvenanceTests`). Those carry no licence obligation and are
+        # not derivations, so they neither pass through the checks below nor
+        # count toward the floor - counting them would let a deleted notice
+        # hide behind an added declaration.
+        derived = [path for path in attributions
+                   if SkillProvenanceTests.ORIGIN
+                   not in path.read_text(encoding="utf-8")]
         # A floor, not a fixed number: a new derivation lands without editing
         # this test, while the set shrinking - a notice deleted with its
         # borrowing left in place - has to go red. The floor is therefore the
         # current count, and the first draft got this wrong: it said 6 against
         # an actual 7, which permitted exactly the single silent loss the
         # assertion claims to catch. Retiring a distillation is a decision, so
-        # lowering this number is meant to cost an edit.
+        # lowering this number is meant to cost an edit. Raised 7 -> 9 on
+        # 2026-09-10 when `provider-routing` was traced to Pilotfish; the
+        # first draft said 8, and a mutation that deleted that very notice
+        # stayed green, which is the count the comment above warns about.
         self.assertGreaterEqual(
-            len(attributions), 7,
+            len(derived), 9,
             "fewer attributions than known derivations; a notice was removed "
             "while its borrowing presumably stayed")
-        for path in attributions:
+        for path in derived:
             label = path.relative_to(ROOT / "main").as_posix()
             with self.subTest(attribution=label):
                 text = path.read_text(encoding="utf-8")
@@ -2380,6 +2391,83 @@ class DocumentationBudgetTests(unittest.TestCase):
                     text, r"\b[0-9a-f]{40}\b",
                     f"{label}: attribution pins no commit, so a later "
                     "reader cannot tell which upstream text was distilled")
+
+
+class SkillProvenanceTests(unittest.TestCase):
+    """Every skill says where it came from, and an original says so too.
+
+    Q10 of the ECC plan. Fourteen skill directories (twelve bodies plus the
+    two Claude thin wrappers), and until 2026-09-10 six of them had no
+    provenance statement at all - the trail lived in research prose, where a
+    reader of the skill would never look. The sample trace (`leaf-dispatch`,
+    2026-09-08) found its upstream on the first try; the re-trace of the six
+    found a second upstream (Pilotfish) that three *attributed* skills had
+    been quoting near-verbatim under another project's notice. A missing file
+    and an unexamined skill are the same bytes, which is why presence is a
+    test and not a convention.
+
+    Two forms, one file name. A derived skill carries source, full commit and
+    licence text, checked by `test_every_attribution_pins_a_commit_and_carries_its_licence`.
+    An original skill carries `**Origin**: this repository` and no full
+    commit - so a provenance file can never be half a claim, and
+    `scripts/upstream-pin-report.py`, which registers any file naming a URL
+    and a SHA, never reads an original as an upstream.
+    """
+
+    SKILL_ROOTS = ("main/claude/skills", "main/codex/skills",
+                   "main/.agents/skills", ".agents/skills")
+    ORIGIN = "**Origin**: this repository"
+
+    def skill_directories(self) -> dict[Path, Path]:
+        """Real directory -> first spelling. The provider trees hold symlinks
+        to `main/.agents/skills`, and one body deployed three times is one
+        skill; the two Claude thin wrappers are real directories with their
+        own `SKILL.md` and count separately."""
+        seen: dict[Path, Path] = {}
+        for root in self.SKILL_ROOTS:
+            for entry in sorted((ROOT / root).iterdir()):
+                if entry.is_dir() and (entry / "SKILL.md").is_file():
+                    seen.setdefault(entry.resolve(), entry)
+        return seen
+
+    def test_every_skill_carries_a_provenance_file(self) -> None:
+        directories = self.skill_directories()
+        self.assertGreaterEqual(len(directories), 14,
+                                "the skill walk found almost nothing")
+        missing = sorted(shown.relative_to(ROOT).as_posix()
+                         for real, shown in directories.items()
+                         if not (real / "ATTRIBUTION.md").is_file())
+        self.assertEqual(
+            missing, [],
+            "skills with no ATTRIBUTION.md: a derived one owes its upstream a "
+            "notice, an original one says `**Origin**: this repository`; "
+            "either way the answer is in the directory, not in docs/research")
+
+    def test_an_original_says_so_and_pins_nothing(self) -> None:
+        originals = derived = 0
+        for real, shown in self.skill_directories().items():
+            path = real / "ATTRIBUTION.md"
+            if not path.is_file():
+                continue
+            label = shown.relative_to(ROOT).as_posix()
+            text = path.read_text(encoding="utf-8")
+            with self.subTest(skill=label):
+                if self.ORIGIN in text:
+                    originals += 1
+                    self.assertNotRegex(
+                        text, r"\b[0-9a-f]{40}\b",
+                        f"{label}: an original that pins a commit is half a "
+                        "claim, and the pin report would register it as an "
+                        "upstream")
+                    self.assertNotIn("Derived from", text, label)
+                else:
+                    derived += 1
+                    self.assertRegex(text, r"https?://\S*github\.com/\S+",
+                                     f"{label}: neither original nor sourced")
+                    self.assertRegex(text, r"\b[0-9a-f]{40}\b",
+                                     f"{label}: sourced but unpinned")
+        self.assertGreater(originals, 0, "no original skill declared itself")
+        self.assertGreater(derived, 0, "no derived skill found")
 
 
 if __name__ == '__main__':

@@ -55,7 +55,7 @@
 | 跨層 · 紀錄 | [Orchestration 決策歷程](plans/orchestration-history.md) | append-only, 依時間序; 保留原始措辭 | 當前狀態 (在不變量表) |
 | 跨層 · 證據 | [全語料盤點](research/landing-readiness.md) | 21 份研究文的落地就緒度: 覆蓋率, 發現, 建議與明確不做 | 各文件的原始論證 (在原地) |
 | 跨層 · 清單 | [等證據的項目](plans/pending-evidence.md) | 每一項還在等的「未來證據」: 等什麼, 觸發事件與判定規則 | 已判定的項目 (在 landing-log 與各研究文), 條件原文與依據 (在原地) |
-| 跨層 · 計畫 | [ECC 升級計畫](plans/upgrade-plan-ecc-2026-09.md) | 2026-09-08 勘查同業 ECC 之後的排程: 十三項的現況, 還開著的兩項與重開條件 | 逐條處置 (在 ecc-survey), 落地當天的量測數 (在 landing-log), 機制側的缺口 (在 mechanism-evidence-map) |
+| 跨層 · 計畫 | [ECC 升級計畫](plans/upgrade-plan-ecc-2026-09.md) | 2026-09-08 勘查同業 ECC 之後的排程: 十三項的現況表 (09-10 全部結案) 與重開條件 | 逐條處置 (在 ecc-survey), 落地當天的量測數 (在 landing-log), 機制側的缺口 (在 mechanism-evidence-map) |
 
 ## Runtime 真相源
 

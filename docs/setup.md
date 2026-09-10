@@ -192,6 +192,10 @@ weekly integrity 都會驗.
   `headroom-protocol` 與 `task-observer` 是平台 wrapper, 其共用內文與資源分別連回
   `~/.agents/skills/<name>`.
 - 跑 2–3 個真實任務比對遵循度與 token (方法見 `contract-slimming.md` 的驗收段).
+- 「client 真的在讀這個目標」的觀察記在 `scripts/deployment-verification.tsv`: manifest 每個目標一列,
+  帶觀察日, client 版本與觀察到什麼 (skill 出現在 session 的清單, hook 回 exit 2, resolver 讀到
+  routing 檔). 這和 weekly integrity 的 parity 不同: 位元組一致不代表 client 還在讀那個路徑.
+  超過 90 天測試會紅, 處置是重新觀察並更新該列, 不是調高天數.
 
 ## 回滾
 
