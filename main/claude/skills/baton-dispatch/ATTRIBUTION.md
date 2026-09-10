@@ -124,6 +124,7 @@ and compared sentences rather than coverage:
 | "one fresh outcome-verifier pass at smallest coherent integration boundary where full claim can be refuted … avoid micro-verifier calls" | "Place a triggered verifier at the smallest coherent integration boundary where the complete acceptance claim can be refuted; do not re-verify every small fix." | Near-verbatim |
 | "Never reverify identical state" plus the v1.3.5 five-pass budget | "Cap a target at five verification passes … an unchanged candidate is not re-verified at all" | Adopted; the fingerprint became a self-description of what changed |
 | v1.3 anti-churn: two automatic material revisions, then present options | "after two automatic revisions of the same readiness-unit ID, stop and surface options" | Adopted 2026-07-22 |
+| `v1.3.4` (2026-07-25) `templates/agents/plan-verifier.md`: the `Blocker:` / `Evidence:` / `Minimum revision:` / `Acceptance check:` block | the four field names this skill asks `plan-verifier` to return, and the block itself in both providers' role files | **Verbatim structure, placeholders included.** Landed 2026-07-28; found on the 2026-09-10 role-file pass |
 
 Corrected accordingly: the five-pass cap and the two-revision Plan rule are
 Pilotfish's, not local. Pilotfish itself loads Baton, so on the dispatch-brake

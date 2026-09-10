@@ -153,7 +153,25 @@ v1.3.8 那輪期間 Claude Code 自 2.1.220 更新到 2.1.221; v1.3.9 與 v1.3.1
 
 ### 2026-09-10 逐句比對: 同業升為上游
 
-上面那張表答的是覆蓋 (「這條我們有沒有」), 每一列都是已落地. 09-10 為了 Q10 溯源改問授權在乎的那一題 (「句子有多像」), 重抓 `templates/claude-md.orchestration.md` at `7a7f71b3` 逐句對: `provider-routing` 三句 (最小完整驗收邊界, 提早驗證的五個邊界清單, 「omit invocation model」), `baton-dispatch` / `leaf-dispatch` 四條 (security-reviewer 先於 readiness review 那句, 驗證邊界句, 五次 pass 與「沒改不重驗」, 兩次修訂上限) 是它的措辭壓縮而成; 而 baton 的既有署名把五次 pass 與兩次修訂寫成「本地自寫」. 三份 `ATTRIBUTION.md` 已補, MIT (Nanako0129). 血緣算法不變: 派工煞車那題 Pilotfish 與我方同源自 baton, 不加票; 這四條是 baton 沒有的. **沒查的**: `templates/agents/*.md` 對我方七個 role 檔的措辭, 以及 v1.3.10 之前 (07-22 實際讀的那版) 的原文.
+上面那張表答的是覆蓋 (「這條我們有沒有」), 每一列都是已落地. 09-10 為了 Q10 溯源改問授權在乎的那一題 (「句子有多像」), 重抓 `templates/claude-md.orchestration.md` at `7a7f71b3` 逐句對: `provider-routing` 三句 (最小完整驗收邊界, 提早驗證的五個邊界清單, 「omit invocation model」), `baton-dispatch` / `leaf-dispatch` 四條 (security-reviewer 先於 readiness review 那句, 驗證邊界句, 五次 pass 與「沒改不重驗」, 兩次修訂上限) 是它的措辭壓縮而成; 而 baton 的既有署名把五次 pass 與兩次修訂寫成「本地自寫」. 三份 `ATTRIBUTION.md` 已補, MIT (Nanako0129). 血緣算法不變: 派工煞車那題 Pilotfish 與我方同源自 baton, 不加票; 這四條是 baton 沒有的. **當時沒查的**: `templates/agents/*.md` 對我方七個 role 檔的措辭, 以及 v1.3.10 之前的原文. 兩件都在下一節補完.
+
+### 2026-09-10 補做 role 檔的措辭比對與它改掉的一個說法
+
+抓了四個版本 (`v1.2.1`, `v1.3.0`, `v1.3.4`, `v1.3.10`) 而不是一個, 因為要問的是「哪一邊的文字先存在」, 單一 pin 答不出來.
+
+**本文大致是重寫的, 而這是量出來的不是宣稱的**: 七對 role 檔逐對比 `v1.2.1`, 共用的六字實詞序列每對 0 到 1 個, 最長共同片段 4 到 6 字且全是通用片語 (`glob/grep first read only relevant excerpts`, `you are read-only leaf`). 句子是我方自己的; 相同的是**句子裡條目的順序**, 那正是概念重寫的樣子.
+
+三處不是重寫, 兩處欠上游:
+
+| 項目 | 判定 |
+|---|---|
+| `plan-verifier` 的 `Blocker:` / `Evidence:` / `Minimum revision:` / `Acceptance check:` 四欄區塊 | **逐字**, 連佔位文字都一樣. 上游 `v1.3.4` (2026-07-25), 我方 2026-07-28 落地, commit 標題就寫著「adopt pilotfish v1.3.4 controls」—— 借用寫在歷史裡, 沒寫進任何註記檔. 已補進兩份 `ATTRIBUTION.md` |
+| `security-executor` 的 description 句「pre-approval analysis belongs to security-reviewer」 | **逐字**, 而且住在常駐面 —— description 每個 session 都載入, 所以這句是這裡被讀最多次的借用文字 |
+| 長工作回報的四項清單 (exact command / absolute working directory / required environment / input paths) | **清單是上游的**, 逐項同序, 包住它的句子是我方的; 出現在四個 role 檔 |
+
+**有一項方向相反**: 三分裁決的第三個值是我方先有的. `INCONCLUSIVE` 2026-07-22 進我方 `verifier`; 上游到 `v1.3.4` (07-25) 仍然只有 `CONFIRMED` / `REFUTED`, 第三個值在 `v1.3.5` (07-29) 才出現, 晚我方一週. 上表「verdict 三分 (v1.3.5) 已落地」那一列因此讀起來像是我方採用, 日期說不是.
+
+**這一輪改掉的說法**: 下面那句「本專案的七個角色在 2026-07-20 初版就存在, 早於 07-22 採用 Pilotfish 兩天, 所以我們這一側不是從那裡來的」要收窄. 上游的七角色切分與上述那些片語在 `v1.2.1` (2026-07-16) 就有, **早於本 repo 第一個 commit 四天**. 那是時間上的先後, 不是抄襲的證據, 而本樹裡也確實沒有任何 2026-07-22 之前讀過 Pilotfish 的紀錄. 所以「兩票」的計法不變, 但它現在靠的是**紀錄的缺席**, 不是時間順序 —— 兩者的證據強度不同, 而先前那句話讀起來像後者.
 
 ### 關鍵修正
 

@@ -61,7 +61,7 @@ v1.3.5 到 v1.3.10 的增量:
 
 | 上游增量 | 處置 | 本專案怎麼做 |
 |---|---|---|
-| verdict 三分 CONFIRMED/REFUTED/INCONCLUSIVE | 已有等價 | 雙 provider 一致 |
+| verdict 三分 CONFIRMED/REFUTED/INCONCLUSIVE | **我方先有** | 我方 2026-07-22 加入 `INCONCLUSIVE`, 上游到 `v1.3.4` (07-25) 仍只有兩值, 第三值在 `v1.3.5` (07-29) 才出現; 雙 provider 一致 |
 | dispatch brake 壓過 explicit opt-in | 已有等價 | - |
 | 常設 prompt 尺寸預算寫進測試 | 已有等價 | per-document 字數上限 + resident 總量 + role body budget; 另加規則條數, 每條位元組, 虛詞比例三項密度指標 |
 | 只有可重現的 P0-P2 blocker 能 refute, P3/P4 僅建議 | **改造後採用** | 一條判準: 反例要可重現**且會改變驗收結論**. 其餘列 `Advisory:` 照報但不動 verdict. 不引進嚴重度分級 |

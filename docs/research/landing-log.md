@@ -578,6 +578,20 @@ speak-human-tw 第五輪機器人, rebelytics 3.0→3.1; sepia 出 v0.7.0; clien
 `templates/agents/*.md` 的措辭; 07-22 實際讀的那版 (v1.3.10 之前) 的原文; 一支的成本約
 十二個工具呼叫, 比 09-08 樣本的六個多一倍, 因為多了一次上游抓取.
 
+#### 2026-09-10 (晚) role 檔的措辭比對: 借的比想的少, 但欠的兩處都在常駐面
+
+`cd11cf1` 明寫「沒查」的那一項. 抓四個上游版本而不是一個, 因為要問的是哪邊的文字先存在.
+
+**先講被推翻的印象**: 讀完兩側我以為七個 role 檔大量蒸餾自上游. 量了就不是 —— 七對逐對比 `v1.2.1`, 共用六字實詞序列每對 0 到 1 個, 最長共同片段 4 到 6 字且全是通用片語. 一次讀起來像抄的印象, 被一支十行的 n-gram 腳本改掉, 這正是「印象不是量測」那條規則的實例.
+
+**欠的兩處**: `plan-verifier` 的四欄 REVISE 區塊 (上游 `v1.3.4`, 逐字含佔位文字; 我方 07-28 落地, commit 標題就寫著 adopt pilotfish v1.3.4 controls —— 借用寫在歷史裡卻沒進註記檔), 與 `security-executor` description 裡那句 `pre-approval analysis belongs to security-reviewer` (逐字, 而且**住在常駐面**, 是這裡被讀最多次的借用文字). 第三處是長工作回報的四項清單, 清單是上游的, 句子是我方的. 三處都補進 `provider-routing` 與 `baton-dispatch` 的 `ATTRIBUTION.md`.
+
+**方向相反的一項**: `INCONCLUSIVE` 是我方 2026-07-22 先有, 上游 `v1.3.5` (07-29) 才加, 晚一週. 研究總結原本把「verdict 三分 (v1.3.5)」列成已落地, 讀起來像我方採用; 已改成「我方先有」並附日期.
+
+**改掉的一個說法**: 上游 `v1.2.1` (2026-07-16) 就有同樣的七角色切分, 早於本 repo 第一個 commit 四天. 推翻條件 (找得到 07-20 之前參考過的紀錄) 沒成立, 兩票不變, 但「我們比較早」這個論證換成「上游比較早, 只是沒有紀錄顯示我們看過」—— 後者弱得多, 而先前那句讀起來像前者.
+
+**守衛, 而第一版是空的**: 兩個 role 目錄自己放不了註記檔 (client 與 `test_roles` 都把 `*.md` 當角色註冊讀), 所以覆蓋只能由別處宣告, 而沒有測試的宣告會安靜消失. 第一版問的是「有沒有任何一份註記檔提到這兩個目錄」, **突變後仍然綠**: 把 Pilotfish 那份裡的目錄名拿掉, fable-method 那份因為自己的理由也提到同一個目錄, 於是測試看不出差別. 那正是本 repo 一再抓到的「子字串代替性質」, 而且是同一週第三次. 改成逐上游: `ROLE_TEXT_UPSTREAMS` 列出文字出貨在 role 目錄裡的上游 (今日兩個), 指名它的那份檔案必須同時指名兩個目錄. 兩向突變: 拿掉 Pilotfish 那份的目錄名 → 紅且指名 pilotfish; 拿掉 fable-method 那份的 → 紅且指名 fable-method.
+
 **Q5, 形狀與數字**: 不加第四欄 —— `sync.sh` 的 `read -r src dst mode extra`, `managed-target-guard`
 的「兩欄 = 整份託管」, `support.deployment_manifest_entries` 三個 parser 都靠欄數判意義. 改成
 `scripts/deployment-verification.tsv`, 以 target 為鍵, 40 列, 測試釘它與 manifest 目標一對一.

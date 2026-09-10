@@ -2469,6 +2469,54 @@ class SkillProvenanceTests(unittest.TestCase):
         self.assertGreater(originals, 0, "no original skill declared itself")
         self.assertGreater(derived, 0, "no derived skill found")
 
+    #: Upstreams whose text ships inside a role directory, and what of theirs
+    #: is in there. Two as of 2026-09-10; a third joins this dict on the commit
+    #: that lands it, which is the same cost as adding its notice.
+    ROLE_TEXT_UPSTREAMS = {
+        "fable-method": "the INTENT/TWINS/AUTH gate lines",
+        "pilotfish": "the four-field REVISE block and the security-executor "
+                     "description sentence",
+    }
+    ROLE_DIRECTORIES = ("main/claude/agents/", "main/codex/agents/")
+
+    def test_each_upstream_shipping_in_a_role_file_names_that_directory(self) -> None:
+        """A role directory cannot hold its own ATTRIBUTION.md.
+
+        Both the client and `test_roles.py` read every `*.md` under
+        `main/claude/agents/` as a role registration, so a notice dropped in
+        there parses as a broken role - the reason the fable-method
+        attribution sits in `main/.agents/scripts/`. The Codex side has the
+        same shape with `*.toml`. So the notice lives elsewhere and has to say
+        where its text ships, and a coverage statement nothing checks is one
+        that disappears quietly on the next rewrite.
+
+        The first version of this test asked whether *any* attribution named
+        the directories, and mutation showed it was vacuous: stripping the
+        naming out of the Pilotfish notice left it green, because the
+        fable-method notice mentions the same directory for its own reasons.
+        That is the substring-standing-in-for-the-property defect this repo
+        keeps re-finding, so the property is per-upstream now: for each one,
+        the file that names it must also name both directories.
+
+        Naming only. Whether the classification inside is right is a reading,
+        not an assertion - the pass that produced it is in the evidence tier.
+        """
+        for upstream, what in self.ROLE_TEXT_UPSTREAMS.items():
+            with self.subTest(upstream=upstream):
+                naming = []
+                for path in sorted((ROOT / "main").rglob("ATTRIBUTION.md")):
+                    text = path.read_text(encoding="utf-8").lower()
+                    if upstream not in text:
+                        continue
+                    if all(d in text for d in self.ROLE_DIRECTORIES):
+                        naming.append(path.relative_to(ROOT).as_posix())
+                self.assertTrue(
+                    naming,
+                    f"{upstream} ships {what} inside the role directories, and "
+                    "no attribution naming it says so; the notice has to name "
+                    "where its text lands, because those directories cannot "
+                    "carry one")
+
 
 if __name__ == '__main__':
     unittest.main()

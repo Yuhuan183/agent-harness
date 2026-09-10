@@ -49,10 +49,43 @@ fallback; the independence rule for which provider verifies; the provider
 extension protocol; route evidence and the ledger tie-in. Upstream is
 single-provider and has no provider fallback or cost ranking at all.
 
-**Not classified.** The seven role files under `main/claude/agents/` were not
-re-traced against `templates/agents/*.md` at this pin. `docs/research/peer-harnesses.md`
-records that the role set converged independently (ours predates the
-adoption), but that is a coverage statement, not a wording pass.
+## The role files, traced 2026-09-10
+
+The line that stood here said the seven role files under `main/claude/agents/`
+had not been re-traced against `templates/agents/*.md`. They have been now,
+against four upstream versions rather than one, because the question is which
+text came first and a single pin cannot answer it.
+
+**Most of it is rewritten, and that is measured rather than asserted.** Pairing
+each role body against its upstream counterpart at `v1.2.1` and counting shared
+six-word sequences of content words gives 0 or 1 per pair; the longest common
+run is four to six words and every one of them is generic (`glob/grep first
+read only relevant excerpts`, `you are read-only leaf`). The sentences are this
+repo's own. What matches is the *order of the items inside them*, which is
+what a concept rewrite looks like.
+
+Three things are not rewritten, and two of them are owed to upstream:
+
+| Upstream | Ours | Reading |
+|---|---|---|
+| `v1.3.4` (2026-07-25) `plan-verifier.md`: the `Blocker:` / `Evidence:` / `Minimum revision:` / `Acceptance check:` block, placeholders included | the same block, verbatim, in `main/claude/agents/plan-verifier.md`, `main/codex/agents/plan-verifier.toml`, and quoted by both dispatch skills | **Substantial portion.** Ours landed 2026-07-28 in a commit titled "adopt pilotfish v1.3.4 controls", so the borrowing was declared in history and never in a notice |
+| `v1.2.1` (2026-07-16) `security-executor.md` description: "pre-approval analysis belongs to security-reviewer" | the same sentence, verbatim, in our `security-executor` description | **Substantial portion, and it sits on the resident surface** - a description is loaded every session, so this one is read more often than any other borrowed text here |
+| `v1.2.1` long-work clause: "the exact command, its absolute working directory (including the isolated worktree path), and every required environment variable or input path" | "its exact command, absolute working directory, required environment, and inputs" in four role bodies | **The list is upstream's**, item for item and in order; the sentence around it is ours |
+
+**One finding runs the other way.** The third verdict is ours. `INCONCLUSIVE`
+entered our `verifier` on 2026-07-22; upstream shipped `CONFIRMED` or
+`REFUTED` only through `v1.3.4` (2026-07-25) and added the third in `v1.3.5`
+on 2026-07-29, a week after us. `docs/research/README.md` lists "verdict 三分
+(v1.3.5)" as 已落地, which reads as though we adopted it; the dates say we did
+not.
+
+**What this does not settle.** Upstream's seven-role split and the phrases
+above existed at `v1.2.1`, four days before this repository's first commit.
+That is priority in time, not evidence of copying, and no record of reading
+Pilotfish before 2026-07-22 exists in this tree. The claim in
+`docs/research/peer-harnesses.md` that the role set converged independently
+therefore now rests on the absence of a record rather than on chronology, and
+it is written down there in those terms.
 
 ## Rechecking
 
