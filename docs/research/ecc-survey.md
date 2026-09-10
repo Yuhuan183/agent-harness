@@ -40,7 +40,7 @@ ECC 是目前公開規模最大的 Claude Code plugin: 68 個 agent, 286 個 ski
 
 母體是**本輪實際讀過的表面**所承載的規則, 共 42 條 (A 契約 8, B 強制 15, C 學習 7, D 自審 3,
 E 安全 5, F 結構 4). 不是 ECC 的全部規則 —— 沒有讀的列在[最後一節](#沒有查的).
-處置分佈: 已落地 10 (B15, B4, B10 於 2026-09-08 落地), 佐證 5, 待採用 7, 不採用 17 (B6 量過後轉入), 不適用 1, 缺口但不排 2 —— 合計 42, 與母體相符.
+處置分佈: 已落地 11 (B15, B4, B10, C7 於 2026-09-08 落地), 佐證 5, 待採用 2, 不採用 21 (B6, B12, B1, B2, E4 量過後轉入), 不適用 1, 缺口但不排 2 —— 合計 42, 與母體相符.
 兩條標「已落地 + 佐證」的 (B5, B13) 計入已落地那一欄.
 
 「待採用」是本輪的例外標記, 意思是**排進計畫但還沒落地**. 本 repo 的常規是採用與實作同一輪完成,
@@ -63,8 +63,8 @@ E 安全 5, F 結構 4). 不是 ECC 的全部規則 —— 沒有讀的列在[�
 
 | # | ECC 的規則 | 處置 | 查了什麼 |
 |---|---|---|---|
-| B1 | 每檔第一次 Edit/Write 攔一次, 要求交出: 誰 import 它, 受影響的公開 API, 資料 schema, 使用者指令逐字引用 | **待採用 (改造)** → 計畫 Q3 | `scripts/hooks/gateguard-fact-force.js:1103-1133`. 本 repo grep 過 `main/claude/prompts`, `main/*/skills`, `engineering-playbook.md`, 無等價規則; memory 有「狀態要當場觀察」但沒有機制 |
-| B2 | 破壞性 shell: 影響清單 + 一行回滾程序 + 逐字指令 | 待採用 (改造) → 計畫 Q3b | 同檔 `destructiveBashMsg()`. 本專案只在 `git commit` / `git push` 兩點設閘 |
+| B1 | 每檔第一次 Edit/Write 攔一次, 要求交出: 誰 import 它, 受影響的公開 API, 資料 schema, 使用者指令逐字引用 | **量過, 不採用** (計畫 Q3; 首次 Edit 已調查 59–93%, 未調查上界 6.9%, 而下限由 client 強制) | `scripts/hooks/gateguard-fact-force.js:1103-1133`. 本 repo grep 過 `main/claude/prompts`, `main/*/skills`, `engineering-playbook.md`, 無等價規則; memory 有「狀態要當場觀察」但沒有機制 |
+| B2 | 破壞性 shell: 影響清單 + 一行回滾程序 + 逐字指令 | **量過, 不採用** (計畫 Q3b; 374 次命中裡 70% 是清理暫存, 0 次碰託管狀態) | 同檔 `destructiveBashMsg()`. 本專案只在 `git commit` / `git push` 兩點設閘 |
 | B3 | 每 session 第一個 shell 指令要先說「請求是什麼」「這條指令驗證什麼」 | 不採用 | 對 main session 是純稅, 且「有沒有引用」無法機械判定 |
 | B4 | 拒絕訊息衰減: 前 3 次發完整區塊, 之後單行且帶本 session 序號, 讓連續拒絕永不逐字相同 | **改造後採用, 已落地 2026-09-08** (計畫 Q2; 只做訊息全靜態的那支) | 同檔 934-975 行的註解寫明機轉 (近乎相同的攔截區塊累積會拉高退化重複的機率). 本機 `denial-report.py` 實測: `commit-test-gate` (Bash 側, git 側對應是 `githooks/pre-commit`) 最長 18 連擊, `managed-target-guard` 5 連擊 |
 | B5 | 每則拒絕帶**窄逃生口** (路徑 glob 豁免, 或單支 hook 停用), 不是只給總開關 | 已落地 + 佐證 | `docs/hook-system.md` 的 gate 表每列都有逃生口欄 |
@@ -74,7 +74,7 @@ E 安全 5, F 結構 4). 不是 ECC 的全部規則 —— 沒有讀的列在[�
 | B9 | 同一事件的多支 hook 併成一個 dispatcher process, 保留逐 hook 控制 | 佐證 | ECC 有 24 個 hook entry 才需要合併; 本專案 12 支, playbook 已要求秒級 |
 | B10 | SessionStart 注入內容硬上限 (預設 8,000 字元) 與截斷標記 | **改造後採用, 已落地 2026-09-08** (計畫 Q4; 全域上限不加, 改綁唯一無界的那段列舉) | `scripts/hooks/session-start.js:39,197-208`. 本專案 `weekly-integrity` 在 SessionStart 注入 finding, 篇幅無上限 |
 | B11 | MCP server 健康斷路器: 不健康就擋掉呼叫並讓模型改用非 MCP 工具, 帶重連與再探測 | 缺口, 不排 | `scripts/hooks/mcp-health-check.js`. 本專案的 circuit breaker 只涵蓋 reviewer 服務; MCP 面沒有事故資料, 沒有資料就不加閘 |
-| B12 | `PostToolUseFailure[Skill]` → skill 健康遙測 | **待採用** → 計畫 Q6 | `hooks/hooks.json`. 本專案 `task-observer` 只在使用者同意時寫, Skill 硬失敗完全無痕 |
+| B12 | `PostToolUseFailure[Skill]` → skill 健康遙測 | **量過, 不採用** (計畫 Q6; 144 次呼叫 1 次失敗, 而那一次是參數寫錯不是 skill 壞掉) | `hooks/hooks.json`. 本專案 `task-observer` 只在使用者同意時寫, Skill 硬失敗完全無痕 |
 | B13 | 迴圈偵測門檻依實測誤報從 3 調到 5, 理由寫在常數旁 | 已落地 + 佐證 | `scripts/hooks/ecc-context-monitor.js:22-26`. 與本 repo「守衛要帶三個量測數」同一條 |
 | B14 | 每支 hook 宣告 `async` 與 `timeout` | 已落地 | playbook 第 5 節已要求秒級 |
 | B15 | hook 讀的每個環境開關都必須被文件涵蓋, 雙向檢查, 且掃描器對它看不懂的存取形式**直接失敗**而不是略過 | **改造後採用, 已落地 2026-09-08** (計畫 Q1) | `tests/ci/gateguard-env-documented.test.js`, 本輪讀到品質最高的一支. 本機量測見計畫 Q1 |
@@ -89,7 +89,7 @@ E 安全 5, F 結構 4). 不是 ECC 的全部規則 —— 沒有讀的列在[�
 | C4 | 背景觀察者用便宜模型, 有最小觀察數門檻, **預設關閉** | 佐證 | `config.json` 的 `observer.enabled: false`; 與本專案 `task-observer` 要明示同意才寫同向 |
 | C5 | `/evolve`: 依觸發形狀把 instinct 叢集成 command / skill / agent | 不採用 | 本專案的 skill 是蒸餾產物, 不是生成物 |
 | C6 | 觀察資料放在 `~/.claude` 之外, 因為 client 的敏感路徑守衛會擋掉背景寫入 | 佐證 (供應商製品) | 這是 ECC 觀察到的 client 行為, 本機 `~/.claude/telemetry` 未遇阻; 記下來, 遇到再說 |
-| C7 | 平台不支援誠實宣告: Windows 上背景觀察者實際是 no-op (附 issue #2489), 連續失敗 N 次後寫警告 | 待採用 (縮小) → 計畫 Q8b | 本專案 `hook-system.md` 有「這套設計的邊界」節, 但沒有「此機制在此平台等於沒有」這種逐機制宣告位 |
+| C7 | 平台不支援誠實宣告: Windows 上背景觀察者實際是 no-op (附 issue #2489), 連續失敗 N 次後寫警告 | **改造後採用, 已落地 2026-09-08** (計畫 Q8b; 維度從平台換成 payload 形狀) | 本專案 `hook-system.md` 有「這套設計的邊界」節, 但沒有「此機制在此平台等於沒有」這種逐機制宣告位 |
 
 ### D 自審層
 
@@ -106,7 +106,7 @@ E 安全 5, F 結構 4). 不是 ECC 的全部規則 —— 沒有讀的列在[�
 | E1 | least agency: 模型不得是 shell / 網路出口 / repo 外寫入 / 密鑰讀取 / workflow dispatch 的最終權威 | 已落地 | `the-security-guide.md:257-283`. 本專案: no-write role 無 Bash 表面, `push-consent-gate`, `managed-target-guard` |
 | E2 | 可觀測性最小欄位集: tool, input 摘要, 動到的檔, 核准決策, 網路嘗試, session/task id | 已落地 (缺一欄) | 本專案 `denials.jsonl` 與 `delegation.jsonl` 覆蓋除「網路嘗試」外的全部; 不記指令內容是刻意的 |
 | E3 | kill switch 殺 process group 而非父程序; 無人看管迴圈加心跳, 逾時自動殺 | 不採用 | 本專案沒有無人看管迴圈, `Workflow` 需使用者明示 opt-in |
-| E4 | 記憶是持久化攻擊面: 不放密鑰, 專案與全域分離, **不可信任務後輪替**, 高風險工作流關閉長期記憶 | **待採用 (縮小)** → 計畫 Q8 | 同檔 339-352 行. 本專案 memory 只增不汰, 沒有輪替規則 |
+| E4 | 記憶是持久化攻擊面: 不放密鑰, 專案與全域分離, **不可信任務後輪替**, 高風險工作流關閉長期記憶 | **量過, 毯子版不採用** (計畫 Q8; 88% 的 memory 寫入都在抓過外部內容的 session 裡); 殘餘是一句寫作紀律, 決定權在使用者 | 同檔 339-352 行. 本專案 memory 只增不汰, 沒有輪替規則 |
 | E5 | 治理事件捕捉 (secrets, policy violation, approval request) 另開一條 hook | 不採用 | 與 `denial_log` 重疊; 本專案刻意不記內容 |
 
 ### F 結構層

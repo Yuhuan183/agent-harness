@@ -1028,5 +1028,66 @@ class ReportCadenceTests(unittest.TestCase):
                 "deletion candidate")
 
 
+class MechanismIndexTests(unittest.TestCase):
+    """The reverse index: which mechanisms does each research document name.
+
+    M3 asked for this and M4 nearly killed it - a reverse index built from
+    `docs/` citations in code would resolve ten of twenty-one scripts and miss
+    exactly the ones whose reasoning is thickest. The shape that survives runs
+    the other way: read the corpus, look for mechanism names, invert.
+
+    Two properties, and the second is what keeps it honest.
+    """
+
+    SCRIPT = ROOT / "scripts/mechanism-index.py"
+
+    def module(self):
+        return load_module("mechanism_index", self.SCRIPT)
+
+    def test_the_inventory_is_derived_not_listed(self) -> None:
+        """A hand-kept list of mechanisms is the thing that goes stale."""
+        names = self.module().mechanisms()
+        for path in (ROOT / "main/claude/hooks").glob("*.py"):
+            self.assertIn(path.stem, names, path.name)
+        for path in (ROOT / "scripts").glob("*.py"):
+            if path.name != "mechanism-index.py":
+                self.assertIn(path.stem, names, path.name)
+        self.assertIn("githooks/pre-commit", names)
+
+    def test_overlapping_names_both_resolve(self) -> None:
+        """`denial_log` and `denial-report` share a prefix; both must resolve.
+
+        Written first as "ordering by length is the only reason this holds",
+        and mutation disagreed: removing the sort changed nothing, because
+        each name is matched against the text independently. The property is
+        real, the explanation was not - and a test that passes for a reason
+        other than the one it states is the failure mutation exists to find.
+        """
+        index = self.module().build()
+        both = {"denial_log", "denial-report"} & set(index["by_mechanism"])
+        self.assertEqual(
+            both, {"denial_log", "denial-report"},
+            "one of the overlapping names lost to the other")
+
+    def test_it_reports_and_never_fails(self) -> None:
+        for args in ([], ["--by-mechanism"], ["--json"]):
+            finished = subprocess.run(
+                [sys.executable, str(self.SCRIPT), *args],
+                capture_output=True, text=True, timeout=120)
+            self.assertEqual(0, finished.returncode, finished.stderr)
+            self.assertTrue(finished.stdout.strip(), f"no output for {args}")
+
+    def test_it_says_naming_is_not_depending(self) -> None:
+        """The caveat is load-bearing: without it the output reads as an answer.
+
+        A document that mentions a mechanism in passing is not evidence that
+        anything was built on it, so the set can only ever be a starting point.
+        Stripping that line would turn a lead into a conclusion.
+        """
+        finished = subprocess.run([sys.executable, str(self.SCRIPT)],
+                                  capture_output=True, text=True, timeout=120)
+        self.assertIn("not an answer", finished.stdout)
+
+
 if __name__ == '__main__':
     unittest.main()

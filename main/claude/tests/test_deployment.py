@@ -1948,6 +1948,45 @@ class GateRefutationTests(unittest.TestCase):
                 any(head == name or head.startswith(name + " ") for head in heads),
                 f"no refutation condition is headed by {name} (heads: {sorted(heads)})")
 
+    def test_every_gate_declares_when_it_is_silently_inert(self) -> None:
+        """A gate that is installed and quiet is not the same as one that works.
+
+        Distilled from ECC's honest declaration that its background observer is
+        a no-op on Windows - it starts, reports success, and is killed, so
+        "enabled" means nothing there (`docs/research/ecc-survey.md` rule C7).
+
+        This repo's version is not platform-shaped. All six gates allow
+        silently when the payload will not parse, which is deliberate - a
+        malformed input must never break unrelated tool calls - but it means a
+        change to the payload shape would quiet all of them at once while the
+        suite stayed green, because the pipe-tests carry payloads we wrote.
+
+        Pinned here so a new gate has to answer the question. The table has one
+        row per fail-closed gate plus the git-side one.
+        """
+        body = read_repo("docs/hook-system.md")
+        heading = "### 什麼條件下這個閘等於沒有"
+        self.assertIn(heading, body)
+        section = body.split(heading)[1].split("\n## ")[0]
+        rows = [line for line in section.splitlines()
+                if line.startswith("| `") or line.startswith("| [")]
+        gates = self.gate_rows()
+        self.assertEqual(
+            len(gates), len(rows),
+            f"{len(gates)} fail-closed gate(s) but {len(rows)} inertness row(s)")
+        # Matched on the row's first cell, not as a substring anywhere in the
+        # section. The same substring bug was found by mutation in the
+        # refutation check above and repeated here: `verifier-quota-GONE`
+        # contains `verifier-quota`, so an assertIn passes while naming a gate
+        # that does not exist.
+        heads = {row.split("|")[1].replace("`", "").split("]")[0].split("[")[-1].strip()
+                 for row in rows}
+        for row in gates:
+            name = row.split("[", 1)[1].split("]", 1)[0].replace("`", "").strip()
+            self.assertTrue(
+                any(head == name or head.startswith(name + " ") for head in heads),
+                f"no inertness row is headed by {name} (heads: {sorted(heads)})")
+
     def test_a_refutation_condition_states_an_observation_not_a_feeling(self) -> None:
         """A stop condition that cannot be observed is a preference.
 

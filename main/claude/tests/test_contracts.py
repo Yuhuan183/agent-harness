@@ -2244,6 +2244,31 @@ class DocumentationBudgetTests(unittest.TestCase):
          r'SHA="\$\{1:-([0-9a-f]{40})\}"'),
     )
 
+    def test_the_twin_attributions_pin_the_same_commit(self) -> None:
+        """`leaf-dispatch` states its own pin, and it has to be the twin's.
+
+        The Codex half got an ATTRIBUTION on 2026-09-08 because the trail ran
+        one way only: the split is described on the Claude side, which is the
+        one directory a Codex-side reader is not in. Giving it a file means the
+        pin now exists twice, and this repo's answer to a number in two places
+        is not to avoid the second copy but to make them move together - the
+        same shape as UPSTREAM_PIN_SITES above.
+
+        The licence text is duplicated on purpose and is not checked for
+        sameness here: that directory deploys as its own copy under
+        `~/.codex/skills/`, and MIT requires the notice to travel with the copy.
+        """
+        pins = {}
+        for path in ("main/claude/skills/baton-dispatch/ATTRIBUTION.md",
+                     "main/codex/skills/leaf-dispatch/ATTRIBUTION.md"):
+            found = re.findall(r"`([0-9a-f]{40})`", read_repo(path))
+            self.assertTrue(found, f"{path}: no full commit to compare")
+            pins[path] = found[0]
+        self.assertEqual(
+            len(set(pins.values())), 1,
+            "the twin halves pin different commits, so one of them describes a "
+            f"body of text the other does not: {pins}")
+
     def test_the_other_upstreams_pin_moves_everywhere_at_once(self) -> None:
         """The mechanism above covered one upstream, so the other one drifted.
 

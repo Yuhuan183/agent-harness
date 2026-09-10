@@ -129,6 +129,40 @@ settings 的前置過濾做不到上面這些判定, 所以改成「字串裡有
 **五支 fail-open hook 不在這裡**, 因為它們不攔截: 沒有「誤擋」可觀察, 它們的停止條件是
 「沒有人讀它產生的東西」, 那是另一種量法.
 
+### 什麼條件下這個閘等於沒有
+
+推翻條件說的是「什麼觀察會讓它該被拿掉」. 這一節說的是另一件事: **它還在, 但已經不做事了**,
+而且不會有人發現. 蒸餾自 ECC 對 Windows observer 的宣告 —— 那支背景觀察者在 Windows 上啟動,
+回報成功, 然後被 Job Object 殺掉, 所以「設定成開啟」在那個平台上等於沒有 (見
+[ecc-survey](research/ecc-survey.md) 的 C7).
+
+本 repo 沒有平台維度的等價物 (六個閘都是 Python, 都跑得起來), 但有一個更貼身的:
+
+**六個閘全部在 payload 解不開時靜默放行.** 那是刻意的 —— 「malformed input: never break
+unrelated tool calls」—— 但後果是: **client 改一次 payload 形狀, 六個閘同時變啞, 而套件不會
+變紅**, 因為 pipe-test 用的是我們自己寫的合成 payload, 它保持舊形狀.
+
+| 閘 | 什麼時候等於沒有 | 會不會有人知道 |
+|---|---|---|
+| `commit-test-gate` | payload 非 JSON; `tool_name` 不是 Bash; 指令字串裡看不出 commit | 不會 |
+| `githooks/pre-commit` | 這個 clone 沒跑過 `sync.sh`, 所以 `core.hooksPath` 沒設 | 不會 —— 其他 clone 預設就沒有這道閘 |
+| `push-consent-gate` | payload 非 JSON; `tool_name` 不是 Bash | 不會 |
+| `leaf-redispatch` | payload 非 JSON; **或載體欄位 `agent_type` 不再送達** | **會** —— `CARRIER_VALIDATED_ON` 記著上次真派工驗證的版本, `weekly-integrity` 逾期會叫 |
+| `runtime-guard --gate` | payload 非 JSON. 版本讀不到時它**擋**而不是放行, 所以那一條不算 | 不會 |
+| `verifier-quota` | payload 非 JSON; 沒有 `prompt_id`; 自己的 state 不可寫 | 不會 |
+| `managed-target-guard` | payload 非 JSON; **manifest 讀不到** | manifest 那條**會** —— 它放行時寫 stderr 說明 |
+
+**七格裡只有兩格有人會知道**, 而其中一格 (`leaf-redispatch`) 是因為那個載體真的消失過一次,
+代價付過了才裝上戳章. 另外五格現在靠的是「payload 形狀不會變」這個沒有檢查的假設.
+
+**不現在補的理由**: 補法只有一種 —— 每個閘各做一次真實觸發並記下當時的 client 版本, 也就是
+`CARRIER_VALIDATED_ON` 那套. 那是七次真實派工/提交/推送, 而其中兩次 (push, commit) 會動到
+這台機器的狀態. 值不值得取決於 payload 形狀多常變, 而那個數字現在是「二十個 release 內動過
+一次」—— 一次, 而且被抓到了.
+
+**推翻條件**: payload 形狀第二次改變, 或任何一個閘被發現靜默放行了它該擋的東西. 那時要裝的
+是七個戳章, 不是七道新閘.
+
 ## Hook 讀的環境開關
 
 上面兩張表的「逃生口」欄只列了**攔截時**用得到的那幾個. 這一節列**全部** —— 因為
