@@ -2181,7 +2181,6 @@ class DocumentationBudgetTests(unittest.TestCase):
         "docs/research/upstream-distillation-ledger.md",
         "docs/research/mattpocock-skills-integration.md",
         "docs/research/README.md",
-        "docs/plans/engineering-workflow-distillation.md",
         "scripts/upstream-recheck.sh",
     )
 

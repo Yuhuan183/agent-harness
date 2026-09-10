@@ -1110,7 +1110,7 @@ that survives contact with the model.
 ## The e-cells — built for skills that did not exist yet
 
 The first scenarios here written **before** the thing they measure. The two
-engineering skills being distilled ([plan](../../docs/plans/engineering-workflow-distillation.md))
+engineering skills being distilled ([plan, closed 2026-08-19](../../docs/research/landing-log.md#2026-09-10-計畫層收斂-三份已結案文件退場-現行內容各回擁有者))
 need fixtures that can fail against a naive workflow before any prompt is
 authored — otherwise the first green is uninterpretable.
 

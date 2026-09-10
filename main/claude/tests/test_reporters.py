@@ -347,6 +347,36 @@ class TaiwanUsageReportTests(unittest.TestCase):
         for hit in report["hits"]:
             self.assertIn("suggested", hit)
 
+    def test_a_sense_guard_narrows_one_reading_and_keeps_the_other(self) -> None:
+        """水平層 is a horizontal layer, not a standard.
+
+        The table's row is 水平 -> 水準, the "level" reading; the geometric
+        reading is ordinary Taiwan usage and the sweep reported it once
+        (2026-09-10, a research record translating "horizontal layer"). The fix
+        is a guard keyed on the following character, not an exemption: the
+        planted control below shows the "level" reading still reports on the
+        same line the guard clears. Capped like EXEMPT_TERMS, for the same
+        reason - a guard table is the second place this report can be quietly
+        switched off.
+        """
+        module = load_module("zh_tw_usage_report", self.SCRIPT)
+        self.assertLessEqual(len(module.SENSE_GUARDS), 3,
+                             "a sense guard per reading, not a second exemption list")
+        target = ROOT / "docs/setup.md"
+        original = target.read_text(encoding="utf-8")
+        try:
+            target.write_text(
+                original + "\n避免一次展開整個水平層 (planted geometric reading)\n"
+                + "團隊水平很高 (planted level reading)\n", encoding="utf-8")
+            hits = [h for h in module.sweep()
+                    if h["path"] == "docs/setup.md" and h["term"] == "水平"]
+        finally:
+            target.write_text(original, encoding="utf-8")
+        contexts = [h["context"] for h in hits]
+        self.assertEqual(
+            len(hits), 1, f"expected only the level reading to report: {contexts}")
+        self.assertIn("團隊水平很高", contexts[0])
+
     def test_it_catches_the_term_it_was_built_for(self) -> None:
         """Positive control. Without it this only proves the tree is clean.
 

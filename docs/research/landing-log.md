@@ -489,3 +489,74 @@ docs/ 底下 >=12 字的刪除線區段            20 個
 **還沒做的**: 沒有回頭掃全樹找其他「連結 + 重述理由」的地方. 上面那個原型是為了找**撤回**
 設計的, 不是為了找**重述**, 而後者要怎麼機械化辨識還沒想清楚 —— 一段短摘要和一段重述在
 位元組上沒有分界.
+
+#### 2026-09-10 計畫層收斂: 三份已結案文件退場, 現行內容各回擁有者
+
+深度 review 量到現行指引層 (`docs/*.md`, `docs/plans/*.md`, `docs/research/README.md`)
+共 75k 字, 其中約 23k 字是已結案的計畫與逐日敘事. 依 `docs/README.md` 規則 4 (已落地的
+規則從 plan 移出, 歷史判斷留在 Git 或明確標示的紀錄), 三份文件退場, Git 保留全文:
+
+| 退場的文件 | 狀態 | 現行內容去了哪 |
+|---|---|---|
+| `docs/document-audit.md` | 2026-07-28 那一次稽核的結果快照 | 範圍定義本來就在 `document-inventory.json`; 唯一還活著的規則 (效率宣稱的量測要在改動落地之前設計) 進 playbook 第 5 節 |
+| `docs/plans/engineering-workflow-distillation.md` | 2026-08-19 已完成 | 兩支 skill 的分工在各自 `description`; task-observer 三條判準進 pending-evidence; 蒸餾流程與落地規則本來就在 `upstream-distillation` skill |
+| `docs/plans/upgrade-plan-2026-09.md` | 2026-09-06 十二項全部結案 | 逐項結果見下一節; 依據在 ledger 09-05 三節與各研究文 |
+
+同時: 研究總結 (`research/README.md`) 的逐日敘事 (08-04 落地表, 08-10 收束表) 搬到
+[landing-log-earlier](landing-log-earlier.md) 末兩節, 08-21 到 08-31 的三段整合敘事本檔已有
+(見 08-21 與 08-28 各節), 總結只留結論與指標. ECC 計畫 (`upgrade-plan-ecc-2026-09.md`) 縮成
+現況表, 已結案項的量測數搬到下一節. `pending-evidence.md` 只留還在等的.
+
+#### 2026-09-08 ECC 計畫逐項結案 (2026-09-10 自升級計畫搬入)
+
+十三項 (含三個子項) 在 09-08 一天內量過或落地十一項. 每項的量測數與突變結果原本寫在計畫的
+完成條件欄, 這裡照搬; 依據與逐條處置在 [ecc-survey](ecc-survey.md) 與
+[機制盤點](mechanism-evidence-map.md).
+
+| # | 結果 | 量到的數與落地 |
+|---|---|---|
+| Q1 | 已落地 | 環境開關雙向文件: 命中 6 / 真缺陷 3 (`AGENT_HARNESS_PYTHON`, `AGENT_HARNESS_REPO`, `AGENT_RUNTIME_VERSION`) / 正規化「全部都寫進文件」. `test_deployment.HookEnvDocumentationTests` 六支, 先紅在正好那六個名字上. 四向突變全過. 落在 `test_deployment` 而不是 `test_mechanisms`, 因為後者被自己的 sprawl guard 擋下 |
+| Q2 | 已落地 (只做一支) | 拒絕訊息衰減: 最長連擊 `commit-test-gate` 18, `managed-target-guard` 5, 其餘 1. 只做 `managed-target-guard`; `push-consent-gate` 最長連擊 1, 衰減沒有對象, 不加永遠不跑的分支. N=3 沿用 ECC 預設. 四向突變全紅, 兩個是安全方向 (序號算不出改成 condense → fail-open 破掉; 跨 session 計數) |
+| Q3 | 量過不做 | fact-forcing: 665 次首次 Edit, 先調查過的落在 59%–93%, 兩者皆無 46 次 = 6.9% (上界); 下限那一半是 client 機械強制的. 儀器錯過一次: 第一版只認工具名, 讀出「三分之一沒讀過就改」, 因為 auto mode 用 `cat`/`sed` 讀檔 |
+| Q3b | 量過不做 | 破壞性 shell 閘: 18,812 次 Bash, ECC 樣式會攔 374 次 `rm -rf`, `>` 一項佔 26.8%. 374 個裡 56.7% 打在暫存區, 13.4% 建置產物, 絕對路徑 5 個 (1.3%) 全在工作區內. 對照 0 次可觀察的傷害. 指名一個真洞: `managed-target-guard` 看不到 Bash |
+| Q4 | 量過, 全域上限不加 | 拿掉節流戳記跑一次 `weekly-integrity`: 1,600 B / 18 行, 是 ECC 8,000 字元預設的五分之一. 但未對帳 dispatch 清單無界 (每筆一行, 印到有人對帳為止), 綁列舉為前 10 筆加「... and N more」, 總數照寫. 實跑 11 筆: 10 加 1, 1,643 B. 三向突變全紅, 第三個抓到測試自己的缺陷 (強迫短清單走截斷分支時 id 全在, 印出 `and -7 more`) |
+| Q6 | 量過不做 | Skill 硬失敗留痕: client 2.1.263 有 `PostToolUseFailure`. 掃 286 份 transcript, 27,549 次呼叫配對出 1,295 個錯誤, 0 個未配對; **Skill 144 次呼叫 1 次失敗 (0.7%)**, Bash 5.7% 是對照. 唯一那次是呼叫端把參數寫成 `command`, skill 沒被載入. 推翻條件: 失敗率 >3%, 或出現「載入了但失敗」 |
+| Q7 | 量過不做 | 守衛設定不得調鬆以求綠: 過去 200 個 commit, 動到 `test_contracts.py` / `support.py` 三位數常數或 `*_CEILING` 的 16 次, **16 次全部**在 commit message 帶理由. 推翻條件: 出現一次說不出理由的 |
+| Q8 | 毯子版不做 | 記憶輪替: 「不可信 run」寫成可判定的 (抓過 repo 沒寫的內容), 286 個 session 40 個抓過; 26 個寫 memory 的 session 23 個也抓過 = 88%. 能分辨的問題是判斷不是機械判定. 現存四則 memory 全關於本 repo. 殘餘一句寫作紀律, 決定權在使用者 |
+| Q8b | 已落地 (形狀換了) | 逐閘「什麼條件下等於沒有」: 本 repo 沒有平台維度, 有的是七個閘在 payload 解不開時靜默放行. 宣告表在 hook-system, `test_every_gate_declares_when_it_is_silently_inert` 釘住; 七格只有兩格有人會知道 |
+| Q9 | 已落地 | pin-report 讀同業列: 判準從 `類別` 欄換成句子 (`pin `<sha>`` 對整個 repo, `path 最後 commit 仍是` 對一個目錄). 兩向突變過. 實跑 7 個 pin (原 6), 順帶看到 sepia `MOVED +22`. 落在 `test_reporters.py` |
+| Q9b | 已落地 | evidence-ladder 一行:「A number in a `description` is read every load; put it at L5 or drop it, never merely cite it.」1,271 → 1,292 字, 上限 1,295, 剩 3 字 —— 下一個動這支 skill 的人得先位移 |
+| Q10 | 樣本做完, 六支未排 | `leaf-dispatch` 溯源: 確是 `baton-dispatch` 的 Codex 雙生, 同源於 `cablate/baton`, 雙生側原本沒有 ATTRIBUTION. 補了 (逐條分析單一來源, 授權全文各帶一份, MIT 要求通知隨副本走), `test_the_twin_attributions_pin_the_same_commit` 突變過. 一支約六個工具呼叫; 其餘六支沒有現成雙生可比, 成本不能外推 |
+| Q5 | 開著 | manifest `last_verified` + 讓它過期的測試; 過期門檻未定 |
+
+**移位紀錄 (同日晚間)**: 初稿排完才走本 repo 自己的語料. Q3/Q3b 先併入機制盤點 M1, 同日更正
+拆回獨立 (M1 量的七個閘沒有一個守 fact-forcing 那個面); Q4 預期結論改成不加 (常駐只佔真實
+prompt 0.049%); Q9b 提前 (`m1` 量到一句話換掉觸發率三倍, 未經校準的效果數字放在
+description 裡就是一條沒量過而被當事實引用的子句).
+
+#### 2026-09-06 2026-09 升級計畫結案 (2026-09-10 自升級計畫搬入)
+
+2026-09-05 五個上游同日重查 (五個 pin 三個動: mattpocock marketplace pin 第一次前進,
+speak-human-tw 第五輪機器人, rebelytics 3.0→3.1; sepia 出 v0.7.0; client 注入區塊在 2.1.261
+消失) 留下的十二項加後續兩項, 09-06 全部結案. 依據在
+[ledger 09-05 三節](upstream-distillation-ledger.md#2026-09-05-重查-五個-pin-三個動-marketplace-pin-第一次真的前進).
+
+| # | 項目 | 結果 |
+|---|---|---|
+| P1 | `observation-log target` 接受 `plugin:skill` 冒號名 | 已完成 09-05: 測試先紅 (「hyphen-case」) 再綠; 回 `scope: plugin` + `local-or-third-party` |
+| P2 | 耐久指標掃描 (`/private/tmp`, `scratchpad`) | 量過不加: 2 命中 0 真缺陷 (一個是逐字引用的指令, 一個是 client prompt 區塊名); `c995eb6` 那次事故是檔案消失不是指標壞掉 |
+| P3 | 編輯殘渣掃描 | 已完成 09-05: 0 命中, 免費的鎖; `test_deployment.EditResidueTests` 掃遍部署面 >50 檔. 突變抓到一次: `{{ project }}` 帶空白, 上游 regex 抓不到 |
+| P4 | `readable-zh-tw` 補四個中文形狀 | 已落地 09-05, 併進既有第 10, 15, 19 條; sepia 記進 ATTRIBUTION. 09-06 `z1-four-zh-shapes` 5/5 |
+| P5 | `evidence-debugging` 有界停止點 | 已落地 09-05: 兩個部署面各斷言三個片語; 上限 1038 → 1079 |
+| P6 | leaf-redispatch 載體在 2.1.261 重驗 | 已完成 09-05: `general-purpose` leaf 的 Agent 呼叫被擋, `CARRIER_VALIDATED_ON` 推進到 (2, 1, 261) |
+| P7 | pin-report 讀 research README 上游表 | 已完成 09-05: 5 → 6 個 pin, sepia 以「research README only」進表 |
+| P8 | Pilotfish tag 後 15 個 commit 的 attempts | 讀了兩份 README 不是本體; 三個正控制與 baton 成本測試同形但同血緣, 不算票 |
+| P9 | Deep Agents 0.7.7→0.7.13 | 讀了發版說明: 子代理 fork 成預設, grader 進 SDK hook; 0.7.10 #5566 是儀器守則第三個獨立血緣 |
+| P10 | client 注入段消失 → 戳章重跑 | 縮小: 戳章從沒含 client 半邊, 落在 wording-effect-scale 補記 |
+| P11 | sepia 後續 (a) Fable 5.1 prose layer (b) `readable-zh-tw` eval | (a) 三條供應商自述記進 ledger; (b) 決定要, 借 sepia 三 grader 形狀, 09-06 `z1` 跑了 |
+| P12 | 「查過但不能用」登記法 | 已完成 09-05: `model-evidence.md` 末節開表, 首輪三筆 |
+| P13 | 派工正控制 fixture | 09-06 做成 replay `d3`–`d6` 四對 cell (12 到 96 檔, 同形與異形): 煞車沒判錯過, 交會點不存在, inline 非單調而派工的線性項在 leaf 數上. 見 [replay README Part 15](../../evals/replay/README.md) |
+| P14 | 注入位置第二輪 | 09-06 跑完 23 run 約 $17 結案: 禁止句 0/27 對偏好句 10/11, 對比二元, 量不出位置; 副產品「契約規則輸給任何禁止句, 贏過任何偏好句」 |
+
+明確不做的 (依據在 ledger): rebelytics 的啟動種子, session-start 掃描, staging 三向對帳,
+`{skill}-extras`; sepia 的小說側, voice, 模型歸因; Windows 平台項; 安裝 upstream skill 而非蒸餾.

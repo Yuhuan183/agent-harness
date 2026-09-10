@@ -48,7 +48,7 @@ pin 散在 **7 個檔案**. 更新其中六個而漏掉第七個, 那一個會�
 | 4 | `main/.agents/skills/*/SKILL.md` 與 `references/tuning.md` | 只有決定採納時才動 | 動了就要重量預算並重新部署 |
 | 5 | `docs/research/mattpocock-skills-integration.md` | 版本對照表 + 精讀紀錄 | 舊 pin 保留為歷史, 不要覆蓋 |
 | 6 | `docs/research/README.md` | 時效性基準那一列 | |
-| 7 | `docs/plans/engineering-workflow-distillation.md` | 相依處置表 | 只有當上游改動影響那四項相依時 |
+| 7 | ~~`docs/plans/engineering-workflow-distillation.md`~~ | ~~相依處置表~~ | 計畫 2026-09-10 已退場 (見 landing-log 該日條目); 四項相依的處置以第 5 列的研究文為準, 這一站不再存在 |
 
 ### 每次都要做的三件
 

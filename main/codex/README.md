@@ -12,7 +12,7 @@
 |---|---|---|
 | `AGENTS.contract.md` | Codex 全域工作契約源檔: outcome-first, 最小 scope, direct-first dispatch, 風險觸發的獨立驗證 (部署為 `~/.codex/AGENTS.md`; 改名避免在 .codex/ 內開 session 時重複載入) | 自動 |
 | `agents/*.toml` | 七個 Codex leaf 角色定義 (鏡像 Claude roles) | 自動 |
-| `model-routing.toml` | Codex main/leaf 的結構化 model-effort 先驗與 AA v4.1 快照 | 自動 |
+| `model-routing.toml` | Codex main/leaf 的結構化 model-effort 先驗與 AA 快照 (版本與抓取日記在檔內 `benchmark` 與 `as_of`) | 自動 |
 | `scripts/model-routing` | 驗證品質門檻並解析 profile; 共用核心在 `../.agents/scripts/routing_core.py` (缺失時報部署錯誤) | 自動 |
 | `scripts/bridge-brief` | 從 Claude 派 Codex twin 時, 產出含 resolved model/effort 與角色契約的 brief 骨架 | 自動 |
 | `skills/leaf-dispatch` | Codex 原生派工細節 (resolver 呼叫, brief 組裝, 記帳); 主契約按需載入 | 自動 |

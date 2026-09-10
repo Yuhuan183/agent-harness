@@ -59,6 +59,17 @@ EXEMPT_TERMS = {
     "落地": "used throughout as 已落地 = shipped; ordinary Taiwan technical usage "
             "here, and the table's row targets marketing prose",
 }
+
+# A term with a second, ordinary sense. The table maps 水平 -> 水準 for the
+# "level, standard" reading; 水平層, 水平切, 水平線 are the geometric reading,
+# which is Taiwan usage as well (2026-09-10: one hit, "整個水平層" = a whole
+# horizontal layer, in a research record). A guard narrows one reading by the
+# character that follows it and nothing else - it never exempts the word, so
+# 團隊水平很高 still reports. Same discipline as EXEMPT_TERMS: each entry says
+# which reading it removes, and the test caps how many there can be.
+SENSE_GUARDS = {
+    "水平": re.compile(r"水平(?=[層切線軸向捲移展面])"),
+}
 ROW = re.compile(r"^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*$", re.MULTILINE)
 
 
@@ -89,8 +100,12 @@ def sweep() -> list[dict[str, object]]:
             for prc, tw in table.items():
                 if prc in EXEMPT_TERMS:
                     continue
-                if prc in line:
-                    hits.append({"path": name, "line": line_number,
+                if prc not in line:
+                    continue
+                guard = SENSE_GUARDS.get(prc)
+                if guard and len(guard.findall(line)) >= line.count(prc):
+                    continue
+                hits.append({"path": name, "line": line_number,
                                  "term": prc, "suggested": tw,
                                  "context": line.strip()[:100]})
     return hits

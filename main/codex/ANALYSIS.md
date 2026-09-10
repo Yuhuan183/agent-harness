@@ -20,7 +20,7 @@ Artificial Analysis v4.1 values are dated priors, not local coding-agent success
 
 Local reviewed outcomes supersede external priors once the executable `revision_policy` reaches comparable evidence: same role and task class, 90-day window, 45-day half-life, at least 10 samples per route cell, and P(win) at least 0.90. Both provider files must carry exactly the same policy or reporting/revision stops.
 
-Experience schema v3 records `request_source` (`codex`, `claude-code`, or `claude-code-plugin-codex`, or `codex-claude-cli`), profile/model/effort, dispatch/rollout identity, outcome, time, and token coverage. Reports never compare total-token data with output-only data and exclude smoke/other cohorts from decisions.
+Experience schema v3 records `request_source` (`codex`, `claude-code`, `claude-code-plugin-codex`, or `codex-claude-cli`), profile/model/effort, dispatch/rollout identity, outcome, time, and token coverage. Reports never compare total-token data with output-only data and exclude smoke/other cohorts from decisions.
 
 ## Verification and deployment boundary
 

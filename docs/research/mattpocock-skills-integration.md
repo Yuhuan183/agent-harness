@@ -6,8 +6,8 @@
 - **目前 pin (marketplace, 2026-09-05 從公開 catalog 解析): `6654f6b60cd9d5be8b54c6fafe44346dabeb3b76`** — `anthropics/claude-plugins-official` 的 `.claude-plugin/marketplace.json` (catalog commit `46260264499ce2e3c3b24f31c623c798989257e1`) 現在釘在這個 SHA, 與 08-28, 08-31 兩次讀到的預設分支同位; 四個來源檔在舊 pin, 新 pin 與 head `3cca18b3` 三處逐位元組相同 (`upstream-recheck.sh` 對三個 SHA 各跑一次). 前一個 pin `885e2ca4d842d139e9aef4e48d366c63cb1b8013` (2026-08-17 解析) 用了三輪; 08-28 寫的「沒有安裝 plugin 解析不了」是錯的 —— catalog 是公開檔, 研究日 (08-14) 就是這樣讀的, 後來忘了. 預設分支 2026-09-05 在 `3cca18b3`, 對新 pin 只多兩個 commit, 都在 `scripts/link-skills.sh`. 逐條見[2026-09-05 重查](upstream-distillation-ledger.md#2026-09-05-重查-五個-pin-三個動-marketplace-pin-第一次真的前進). 見[2026-08-28 重查](upstream-distillation-ledger.md#2026-08-28-重查-上游再前進三個-commit-兩個來源檔仍然一個位元組沒動)與[2026-08-24 重查](upstream-distillation-ledger.md#2026-08-24-重查-上游前進五個-commit-我們的兩個來源檔一個位元組沒動). 再前一個是 `068b6e0` (2026-08-17), 那 12 個 commit 同樣沒動到蒸餾來源, 見[2026-08-21 重新溯源](#2026-08-21-重新溯源-上游動了-12-個-commit-規則一條沒動)
 - 本地基準: branch `new-artificialanalysis`; HEAD `8d5d2e18e0fca9c341429bd6ce8a51040d5e4f10`
 
-> 本文件保存上游事實, 方案比較與採用決策. 實作順序, 檔案範圍, 驗收與停止條件在
-> [蒸餾實作計畫](../plans/engineering-workflow-distillation.md).
+> 本文件保存上游事實, 方案比較與採用決策. 蒸餾實作計畫已於 2026-08-19 完成並退場
+> (見 [landing-log](landing-log.md#2026-09-10-計畫層收斂-三份已結案文件退場-現行內容各回擁有者)); 兩支 skill 的流程與停止條件在各自 `SKILL.md` 與 `references/tuning.md`.
 
 ## 結論
 
@@ -429,7 +429,7 @@ ATTRIBUTION.md
 - 對使用者的輸出使用台灣繁中; code, identifier, command, runtime instruction 使用英文.
 - 報告只保留 outcome, evidence, material decision, risk 與 next action.
 
-這些是初始 baseline, 不是封閉清單. 後續自訂 tuning 先以一個應觸發案例和一個不應觸發案例說明預期行為, 再判定應落在 portable `SKILL.md`, 本專案 `references/tuning.md`, 或只屬於單次任務而不持久化. 只有 repo source, 行為 trap 和 metadata 一起更新後才算完成; HOME copy 不直接編修, deployment 仍是另一個需明確授權的階段. 完整變更流程見 [Tuning 變更協定](../plans/engineering-workflow-distillation.md#5-tuning-變更協定).
+這些是初始 baseline, 不是封閉清單. 後續自訂 tuning 先以一個應觸發案例和一個不應觸發案例說明預期行為, 再判定應落在 portable `SKILL.md`, 本專案 `references/tuning.md`, 或只屬於單次任務而不持久化. 只有 repo source, 行為 trap 和 metadata 一起更新後才算完成; HOME copy 不直接編修, deployment 仍是另一個需明確授權的階段. 完整變更流程見 [upstream-distillation 的落地規則](../../.agents/skills/upstream-distillation/SKILL.md#plan-the-landing-against-this-repos-own-rules).
 
 ## 上游追蹤政策
 

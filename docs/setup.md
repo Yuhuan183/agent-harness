@@ -21,8 +21,7 @@ Codex `config.toml`, Claude Code `~/.claude.json` 的 MCP entry) 永不納入版
 | Antigravity CLI settings/MCP | `~/.gemini/` | 機器狀態, 不由本 repo 同步; 只有原生 `headroom wrap agy` 可用時才由 wrapper 管理 |
 
 跨 agent runtime 知識 (`headroom-runtime.md`) 在 `main/.agents/docs/`, Claude 與 Codex 共用同一份,
-不在單一 agent 目錄下各留一份. 舊機器若殘留 `~/.claude/docs/` (重整前的位置), 可於套用後
-手動清除 — 方法論已移至專案 `docs/`, runtime 知識已移至 `~/.agents/docs/`.
+不在單一 agent 目錄下各留一份.
 
 ### `main/` 是部署源, 不是工作環境
 
@@ -187,7 +186,7 @@ weekly integrity 都會驗.
 
 ## 驗收
 
-- 新 session 中全域 CLAUDE.md 僅約 600 tokens; `provider-routing`, `baton-dispatch`,
+- 新 session 中全域 CLAUDE.md 只有兩節短規則; `provider-routing`, `baton-dispatch`,
   `headroom-protocol` 出現在可用 skill 清單且能按需載入.
 - `~/.codex/skills/headroom-protocol` 是指向共用來源的 symlink; Claude 的
   `headroom-protocol` 與 `task-observer` 是平台 wrapper, 其共用內文與資源分別連回

@@ -198,7 +198,7 @@ research README 那一列, 本節 —— `test_ledger` 的 pin-site 斷言會抓
 同日重查的 sepia 出了 `references/languages/zh.md` (中文 AI 痕跡校準: 動詞贅語, 說明文第二人稱,
 名詞化, 「事實上」開段, 以及一節「哪些在中文裡不是訊號」). 那是 `readable-zh-tw` 的第二個上游
 候選, 逐條處置在 [ledger 的 sepia 節](upstream-distillation-ledger.md#sepia-v070-重查-2026-09-05-中文校準檔直接對上-readable-zh-tw),
-落地排在 [升級計畫 P4](../plans/upgrade-plan-2026-09.md). 它不改本檔的目標分岔: 借的是痕跡的形狀, 不是版面方針;
+落地排在 [升級計畫 P4](landing-log.md#2026-09-06-2026-09-升級計畫結案-2026-09-10-自升級計畫搬入). 它不改本檔的目標分岔: 借的是痕跡的形狀, 不是版面方針;
 數字 (簡中, 2023 年 ChatGPT 語料) 一個都不借, 上游自己的證據邊界一節也這麼說.
 
 **推翻條件**: 同 08-28.

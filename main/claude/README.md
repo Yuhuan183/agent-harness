@@ -11,7 +11,7 @@
 
 | 路徑 | 職責 |
 |---|---|
-| `CLAUDE.contract.md` | Claude Code 執行契約源檔 (部署為 `~/.claude/CLAUDE.md`; 改名避免本 repo 內 session 重複載入); 僅主 agent 使用的精簡協調規則 (~600 tokens) |
+| `CLAUDE.contract.md` | Claude Code 執行契約源檔 (部署為 `~/.claude/CLAUDE.md`; 改名避免本 repo 內 session 重複載入); 僅主 agent 使用的精簡協調規則 |
 | `agents/` | 七個自足的 Claude leaf roles; model 與 effort 由 active deployment preset 的 frontmatter pins 決定; 各有 Codex 對應版於 `../.codex/agents/` |
 | `skills/` | 依需求載入的工作流源檔 (部署為 `~/.claude/skills/<name>`); 哪一支放哪裡見[下一節](#skills-的三種佈局) |
 | `settings.json` | Hooks, 最小唯讀 allowlist, codex plugin (唯一強依賴) 與介面設定; 不指定主模型, effort 或 fallback. 其他 plugin 屬本機自理, enable 寫 `settings.local.json` (不入庫, sync 不覆蓋) |

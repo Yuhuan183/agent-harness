@@ -4,7 +4,7 @@
 (`test_the_human_tree_has_a_sprawl_guard_not_a_budget`), 而 rebelytics 四節是它裡面唯一自成一條線的
 主題. 四節**原樣搬**, 只把指回帳本的連結改成跨檔; 每輪全掃的讀數表 (08-28, 08-31, 09-05) 留在帳本.
 pin 與授權在 `main/.agents/skills/task-observer/ATTRIBUTION.md`; 落地排程在
-[升級計畫](../plans/upgrade-plan-2026-09.md); 等待在 [pending-evidence](../plans/pending-evidence.md).
+[升級計畫 (已結案)](landing-log.md#2026-09-06-2026-09-升級計畫結案-2026-09-10-自升級計畫搬入); 等待在 [pending-evidence](../plans/pending-evidence.md).
 
 | 上游版本 | pin | 逐條在 |
 |---|---|---|
@@ -248,7 +248,7 @@ pin 與授權在 `main/.agents/skills/task-observer/ATTRIBUTION.md`; 落地排�
 「指令為什麼會靜默失效」的守則: 絕對路徑, 探針要當回合跑, 空結果是儀器的問題, 觸發要用真實
 tool record 做正負控制, 指標要耐久. 這條線我方走在前面 (rtk 那條, `AGENT_SKIP_TEST_GATE`
 那條, 戳章分組那條), 所以下表大半是已落地加佐證; 真正沒有的是四條, 全部排進
-[升級計畫](../plans/upgrade-plan-2026-09.md). 血緣旗標維持: 上游 3.0 起與我方同名, 同形一律
+[升級計畫 (已結案)](landing-log.md#2026-09-06-2026-09-升級計畫結案-2026-09-10-自升級計畫搬入). 血緣旗標維持: 上游 3.0 起與我方同名, 同形一律
 只當佐證, 不算獨立收斂票.
 
 ### 新規則逐條 (讀了 SKILL.md 與五個 reference 的全 diff)
