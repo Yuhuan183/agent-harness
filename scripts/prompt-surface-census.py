@@ -1,5 +1,28 @@
 #!/usr/bin/env python3
-"""Emit a deterministic census of resident, dispatch, and role prompt surfaces."""
+# Read: every change to a contract, role or skill description (`--write` is the required step, not this reading)
+"""Emit a deterministic census of resident, dispatch, and role prompt surfaces.
+
+Why this exists. The Context layer prices a clause per turn, and pricing needs
+a number that does not move when nobody changed anything - so this emits the
+same bytes for the same tree, and `docs/research/prompt-surface-census.json` is
+that snapshot. `test_contracts.py` compares against it with `--check`, which is
+what turns "the resident surface grew" from something a person might notice
+into something a commit cannot pass without answering for.
+
+What it measures is deliberately wider than the contracts. The resident bucket
+holds both contract bodies *plus* every skill's and role's `name` and
+`description`, because those are injected every turn as well; counting role
+bodies alone left half the resident cost outside the budget until 2026-08-01,
+and that half was also the ratchet's only bypass - move a sentence from a skill
+description into a role description and the cost is unchanged while the tests
+stay green.
+
+What it does not measure is the other five sixths. Skills installed on the
+machine but not shipped by this repo are in the same injected block and are not
+counted here; `resident-pool-report.py` is the view that includes them, and
+`docs/architecture/context-engineering.md` says why that one reports rather
+than gates.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +33,6 @@ import re
 import sys
 import tomllib
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[1]
 ROLES = (

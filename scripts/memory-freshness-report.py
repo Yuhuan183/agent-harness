@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Read: monthly; a memory pointing at something deleted fails silently, so nothing else will raise it
 """Do the CLI's memories still point at things that exist? Reports; never fails.
 
 Why this exists. `docs/architecture/context-engineering.md` lists three places
@@ -29,6 +30,7 @@ only reads it.
 
 Usage:
     scripts/memory-freshness-report.py [--json]
+
 """
 from __future__ import annotations
 

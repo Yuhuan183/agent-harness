@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Read: when deciding whether to ask the operator to trim machine-installed skills - it is the only view of the five-sixths this repo does not ship
 """What a session on this machine actually carries, and how much of it is budgeted.
 Reports; never fails.
 
@@ -32,6 +33,7 @@ Both are listed in the session block alongside the ones counted here.
 
 Usage:
     scripts/resident-pool-report.py [--json] [--top N]
+
 """
 from __future__ import annotations
 

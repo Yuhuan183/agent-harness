@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Read: beside the census, whenever a budget number is about to be raised - it is the measurement the raise has to carry
 """Have the word ceilings been ratcheting, and where.
 
 The per-document budgets in `test_contracts.py` are a ratchet, and the file says
@@ -21,6 +22,7 @@ The aggregate is printed last and on purpose. Growth here concentrates: a summar
 that says "+6% overall" describes a tree where most ceilings never moved at all
 and two files carry nearly all of it, which is the opposite of what a single
 percentage suggests.
+
 """
 from __future__ import annotations
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Read: when Chinese prose is added to a shipped surface
 """Sweep this repo's own Chinese prose for the terms it ships a table to correct.
 Reports; never fails.
 
@@ -22,6 +23,7 @@ Exclusions, each for a stated reason rather than to keep the output clean:
 
 Usage:
     scripts/zh-tw-usage-report.py [--json]
+
 """
 from __future__ import annotations
 

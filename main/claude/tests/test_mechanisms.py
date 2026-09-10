@@ -3586,282 +3586,6 @@ class UntiedDispatchIdTests(unittest.TestCase):
                 self.assertIsNone(pattern.match(bad))
 
 
-class VersionAttestationTests(unittest.TestCase):
-    """A sentence claiming a dated local check is behavioural evidence, and it
-    was the only kind this repo had no mechanism for. Two of them were wrong on
-    2026-08-10: the runtime guide said the machine ran Headroom 0.34.0 while it
-    ran 0.33.0, and `RTK.md` said rtk 0.45.0 while the only rtk here was 0.42.4
-    (the number came off `brew info`, which prints a formula's version directly
-    above `Not installed`).
-
-    So this class is the instrument's own negative control. Half of it proves
-    the scanner fires on those two exact shapes; the other half proves it stays
-    quiet on the four shapes that made its first draft unusable. Both halves are
-    load-bearing - a version of this check that reported twenty findings, of
-    which eighteen were percentages and IP addresses, would be read once."""
-
-    def _module(self):
-        import importlib.util
-        path = ROOT / "scripts" / "evidence-check.py"
-        spec = importlib.util.spec_from_file_location("evidence_check", path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module
-
-    def test_it_fires_on_the_two_claims_that_were_actually_wrong(self) -> None:
-        module = self._module()
-        guide = "2026-08-10 本機查核: CLI 與 proxy 都是 `headroom-ai 0.34.0`."
-        self.assertIn(("headroom", "0.34.0"), module.attributions_in(guide))
-        self.assertEqual(
-            "differs", module.verdict_for("0.34.0", "0.33.0", is_floor=False))
-
-        rtk = "`rtk find … -not` still fails this way (verified against rtk 0.45.0)."
-        self.assertIn(("rtk", "0.45.0"), module.attributions_in(rtk))
-        self.assertEqual(
-            "differs", module.verdict_for("0.45.0", "0.42.4", is_floor=False))
-
-    def test_it_stays_quiet_on_the_shapes_that_are_not_claims(self) -> None:
-        module = self._module()
-        # Every one of these produced a "difference" in the first draft, which
-        # attributed any number on a line to any tool the line mentioned.
-        for line in (
-            "Headroom saved 56.28% of input tokens, up from 55.69%.",
-            "add Headroom with --proxy-url http://127.0.0.1:8787",
-            "Pilotfish v1.3.10 蒸餾結果; Headroom 另見 runtime guide",
-            "reserving GPT-5.6 for judgment; codex routes stay pinned",
-        ):
-            with self.subTest(line=line):
-                self.assertEqual([], module.attributions_in(line))
-
-    def test_a_floor_is_not_a_stale_attestation(self) -> None:
-        # `需要 Claude Code 2.1.207 以上版本` differs from the local version for
-        # as long as the requirement stands. Reported as a discrepancy it would
-        # appear on every run forever, which is how a report teaches people to
-        # skip it.
-        module = self._module()
-        line = "1. `verifier` 需要 Claude Code 2.1.207 以上版本."
-        self.assertIn(("claude code", "2.1.207"), module.attributions_in(line))
-        self.assertTrue(module.FLOOR.search(line))
-        self.assertEqual(
-            "floor-met", module.verdict_for("2.1.207", "2.1.226", is_floor=True))
-        self.assertEqual(
-            "floor-unmet", module.verdict_for("2.1.207", "2.1.99", is_floor=True))
-
-    def test_a_pinned_condition_is_exempt_but_a_local_check_is_not(self) -> None:
-        # `pinned` covers a version frozen by what the line describes: the build
-        # a finished batch was probed against, the release a cited paper read.
-        # The asymmetry is the point - a doc's own "checked on <date>, CLI was X"
-        # stays unexempt, because that is the shape the 2026-08-20 Headroom drift
-        # hid in.
-        module = self._module()
-        condition = "Every row probed on 2026-08-12 against Claude Code 2.1.226"
-        self.assertIn(("claude code", "2.1.226"), module.attributions_in(condition))
-        self.assertFalse(module.NOT_A_LIVE_CLAIM.search(condition))
-        self.assertTrue(module.NOT_A_LIVE_CLAIM.search(
-            condition + " <!-- pinned 2026-08-21 -->"))
-
-        local = "2026-08-14 本機查核: CLI 是 `headroom-ai 0.35.0`"
-        self.assertFalse(module.NOT_A_LIVE_CLAIM.search(local))
-
-    def test_a_retracted_claim_is_exempt_only_with_a_dated_marker(self) -> None:
-        # The 2026-08-20 Headroom round retracted two version claims and left
-        # the wrong sentences standing, because the evidence tier records what
-        # was checked including what was overturned. Both halves matter: the
-        # marker has to silence the retracted line, and the same line without it
-        # has to still fire - an exemption that fires on prose alone would be a
-        # way to hide a stale version rather than to record a corrected one.
-        module = self._module()
-        claim = "~~2026-08-14 本機查核: CLI 是 `headroom-ai 0.35.0`~~"
-        self.assertIn(("headroom", "0.35.0"), module.attributions_in(claim))
-        self.assertFalse(module.NOT_A_LIVE_CLAIM.search(claim))
-
-        marked = claim + " <!-- retracted 2026-08-20 -->"
-        self.assertTrue(module.NOT_A_LIVE_CLAIM.search(marked))
-
-        # Undated, and a bare mention of the word, stay unexempt: the marker is
-        # a record, not a switch.
-        for near_miss in (
-            claim + " <!-- retracted -->",
-            claim + " (retracted)",
-            claim + " <!-- retracted 2026-08 -->",
-        ):
-            with self.subTest(line=near_miss):
-                self.assertFalse(module.NOT_A_LIVE_CLAIM.search(near_miss))
-
-    def test_a_truncated_claim_still_matches_the_release_it_names(self) -> None:
-        # Prose writes `headroom 0.34`; the binary answers `0.34.0`. Treating
-        # that as a difference would bury the real ones.
-        module = self._module()
-        self.assertEqual("match", module.verdict_for("0.34", "0.34.0", False))
-        self.assertEqual("differs", module.verdict_for("0.33", "0.34.0", False))
-
-    def test_a_zh_tw_floor_and_a_dated_title_are_not_stale_attestations(self) -> None:
-        """Two shapes added 2026-08-17, both from the same review of a real report.
-
-        Half of that run's discrepancies were sentences that are still true.
-        `起` is zh-TW's "from <version> onwards", the exact counterpart of the
-        English floors this class already covers, so `Headroom v0.34 起已移除 …`
-        was filed as a permanent finding about a correct sentence. And a dated
-        section title names the version it was *about*: rewriting
-        `#### 2026-08-10 查核結果 (Headroom 0.34 升級)` to today's number destroys
-        the record it exists to keep.
-
-        The dividing line is what the guard below asserts, and it is the one that
-        matters: exempting *headings* is not exempting dated lines. A dated claim
-        in prose is precisely what this instrument is for - the date is what makes
-        going stale checkable - so the exemption is keyed on the heading marker
-        and the anchor link, never on the presence of a date.
-        """
-        module = self._module()
-        floor = "Headroom v0.34 起已移除 CLI context tools; wrapper 不再傳入舊參數."
-        self.assertIn(("headroom", "0.34"), module.attributions_in(floor))
-        self.assertTrue(module.FLOOR.search(floor))
-        self.assertEqual(
-            "floor-met", module.verdict_for("0.34", "0.35.0", is_floor=True))
-
-        for line in (
-            "#### 2026-08-10 查核結果 (Headroom 0.34 升級): 同一個失效換了一層皮",
-            "- [2026-08-10 查核結果 (Headroom 0.34 升級)](landing-log.md"
-            "#2026-08-10-查核結果-headroom-034-升級)",
-        ):
-            with self.subTest(line=line[:40]):
-                self.assertTrue(module.HISTORY.search(line))
-
-        # The guard. Same date, same tool, same wrong number - still a claim.
-        claim = "2026-08-10 本機查核: CLI 與 proxy 都是 `headroom-ai 0.34.0`."
-        self.assertIsNone(
-            module.HISTORY.search(claim),
-            "a dated prose attestation must stay checkable; exempting it would "
-            "make the date - the thing that makes staleness detectable - into "
-            "the way to avoid being checked")
-
-    def test_only_a_floor_is_measured_against_this_machine(self) -> None:
-        """The narrowing of 2026-08-21, and why it is structural.
-
-        This check existed for one shape - a document attesting a local version
-        while the machine ran another - and machine-local version records left
-        the guidance tier the same day by policy. What remained were upstream
-        versions, which a local binary cannot adjudicate, and on a shared
-        repository an exact version that is right where it was written reads as
-        a discrepancy everywhere else.
-
-        Prose sniffing was tried and abandoned: the research row that records
-        upstream and *not* this machine matched a locality pattern on the very
-        word it uses to disclaim locality. So the rule is the line's shape, not
-        its wording, and both directions are asserted here.
-        """
-        module = load_module("evidence_check", ROOT / "scripts" / "evidence-check.py")
-        self.assertFalse(hasattr(module, "LOCALITY"),
-                         "prose sniffing came back; a regex cannot separate a "
-                         "claim from its negation")
-
-        verdicts = {row["verdict"] for row in module.audit_versions()}
-        self.assertFalse(
-            {"match", "differs"} & verdicts,
-            "an exact version was compared against this machine; only floors are")
-        self.assertIn("not-local", verdicts,
-                      "upstream versions must be named as such, not dropped")
-        self.assertIn("floor-met", verdicts,
-                      "floors are the portable claim and must still be checked")
-
-        # A floor the machine meets exactly is a met floor, not an attestation.
-        self.assertEqual(module.verdict_for("0.45", "0.45.0", True), "floor-met")
-        self.assertEqual(module.verdict_for("9.9", "0.45.0", True), "floor-unmet")
-
-    def test_it_reports_and_never_fails(self) -> None:
-        # Same contract as the rest of this script: a stale attestation is a
-        # fact to weigh. Made fail-closed, the cheapest way to stay green would
-        # be to stop writing the date next to what was checked.
-        finished = subprocess.run(
-            [sys.executable, str(ROOT / "scripts" / "evidence-check.py"), "--json"],
-            capture_output=True, text=True, cwd=ROOT)
-        self.assertEqual(0, finished.returncode, finished.stderr)
-        report = json.loads(finished.stdout)
-        self.assertIn("versions", report)
-        self.assertIn("attestations", report)
-        for row in report["versions"]:
-            self.assertIn(row["verdict"], {
-                # `not-local` joined on 2026-08-21: an exact version in a
-                # tracked document is about upstream or about history, and a
-                # local binary adjudicates neither. Only floors are compared.
-                "match", "differs", "floor-met", "floor-unmet", "unprobeable",
-                "not-local"})
-
-
-class ResidentPoolReportTests(unittest.TestCase):
-    """The coverage figure this report exists to print is the one that can
-    silently invert.
-
-    `resident-pool-report` splits the installed pool into what this repo's
-    budgets reach and what nothing reaches, and the 2026-08-18 measurement put
-    that at about a sixth. The split is derived from the deployment manifest,
-    so a shipped skill crosses the line on the commit that ships it - and a
-    change to how the manifest names its targets would move every skill into
-    "unmanaged" while the script still exits 0 and still prints a table. That
-    failure looks exactly like a healthy report of a much worse number, which
-    is why the derivation is asserted rather than the number.
-    """
-
-    def setUp(self) -> None:
-        self.module = load_module(
-            "resident_pool_report", ROOT / "scripts" / "resident-pool-report.py")
-
-    def test_the_managed_set_is_read_from_the_manifest(self) -> None:
-        expected = {
-            line.split("\t")[1].rsplit("/", 1)[-1]
-            for line in read("scripts/deployment-manifest.tsv").splitlines()
-            if line and not line.startswith("#")
-            and len(line.split("\t")) >= 2
-            and line.split("\t")[1].startswith(".claude/skills/")}
-        self.assertTrue(expected, "the manifest ships no Claude skill; fixture is vacuous")
-        self.assertEqual(expected, self.module.managed_names())
-
-    def test_a_skill_outside_the_manifest_counts_as_unmanaged(self) -> None:
-        """The one classification the headline depends on, over a synthetic pool.
-
-        Reading the real `~/.claude/skills` would make this assert whatever the
-        machine happens to hold, which is the opposite of what a suite should
-        do with machine state.
-        """
-        shipped = sorted(self.module.managed_names())[0]
-        with tempfile.TemporaryDirectory() as tmp:
-            pool = Path(tmp)
-            for name, description in ((shipped, "a shipped one"),
-                                      ("not-ours", "installed from elsewhere")):
-                (pool / name).mkdir()
-                (pool / name / "SKILL.md").write_text(
-                    f"---\nname: {name}\ndescription: {description}\n---\n\nbody\n",
-                    encoding="utf-8")
-            original = self.module.POOL
-            try:
-                self.module.POOL = pool
-                rows = {row["name"]: row for row in self.module.measure()["skills"]}
-            finally:
-                self.module.POOL = original
-        self.assertEqual("repo-managed", rows[shipped]["origin"])
-        self.assertEqual("unmanaged", rows["not-ours"]["origin"])
-        # Only `name` and `description` are resident; the body must not be counted.
-        self.assertEqual(
-            self.module.word_count("not-ours installed from elsewhere"),
-            rows["not-ours"]["words"])
-
-    def test_it_reports_and_never_fails(self) -> None:
-        # Report-only for the reason in its docstring: the skills it cannot
-        # cap are not this repo's files. A gate here would fail a commit
-        # because the user installed something, and the cheapest way back to
-        # green would be uninstalling it.
-        finished = subprocess.run(
-            [sys.executable, str(ROOT / "scripts" / "resident-pool-report.py"),
-             "--json"],
-            capture_output=True, text=True, cwd=ROOT)
-        self.assertEqual(0, finished.returncode, finished.stderr)
-        report = json.loads(finished.stdout)
-        self.assertTrue(report["floor"], "the total must not claim to be the whole")
-        self.assertEqual(
-            set(), {row["origin"] for row in report["skills"]}
-            - {"repo-managed", "project", "unmanaged"})
-
-
 class ManagedTargetGuardTests(unittest.TestCase):
     """The gate is only worth having if it refuses the right file and no other.
 
@@ -3948,181 +3672,6 @@ class ManagedTargetGuardTests(unittest.TestCase):
                 env={**os.environ, "HOME": home})
             self.assertEqual(0, malformed.returncode)
 
-
-
-class ReportOnlyToolTests(unittest.TestCase):
-    def test_the_readme_counts_the_report_only_tools_it_lists(self) -> None:
-        """A stated count beside a list is the cheapest thing in this repo to
-        get wrong, and the fail-closed gate count proved it: one document said
-        五 for three weeks after the sixth gate landed, because nothing tied the
-        numeral to the inventory (2026-08-20).
-
-        The same shape sits in the README - a numeral, then a fenced block of
-        report-only tools. Derived from the block rather than pinned, so adding
-        a fifth tool without touching the numeral fails here.
-
-        Not derived from `scripts/` itself: "always exits 0" would sweep in
-        `contract-operator-delta.py`, which is corroboration inside the
-        contract-slimming flow rather than one of these. The list is curated by
-        purpose, so the block is the inventory and this only holds the count to
-        it.
-        """
-        readme = read_repo("README.md")
-        # Runs past the current count on purpose. The map stopped at 七 and the
-        # inventory reached 九 on 2026-08-21, at which point the guard could not
-        # read the numeral at all and failed with "the README states how many
-        # there are" - a guard that goes blind rather than red is the worse
-        # failure, because the message points at the document instead of itself.
-        # Past 十 the numeral is two characters, so the pattern is an
-        # alternation with the longer form first: a character class would match
-        # the 十 in 十一 and read eleven as ten - a guard that silently reads the
-        # wrong number is worse than one that cannot read at all. Widened when
-        # the inventory reached 十一 on 2026-08-24, which is what the previous
-        # note here said it would take.
-        numerals = {"三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8,
-                    "九": 9, "十": 10, "十一": 11, "十二": 12, "十三": 13,
-                    "十四": 14, "十五": 15}
-        # Longest first, so 十一 never matches as 十.
-        alternation = "|".join(sorted(numerals, key=len, reverse=True))
-        stated = re.search(rf"({alternation})支只報不擋的工具", readme)
-        self.assertIsNotNone(stated, "the README states how many there are")
-
-        block = re.search(r"支只報不擋的工具.*?```bash\n(.*?)```", readme, re.S)
-        self.assertIsNotNone(block, "the tools are listed in a fenced block")
-        listed = re.findall(r"^(scripts/[\w.-]+)", block.group(1), re.MULTILINE)
-        self.assertEqual(
-            numerals[stated.group(1)], len(listed),
-            f"README says {stated.group(1)}支 but lists {len(listed)}: {listed}")
-        for script in listed:
-            self.assertTrue((ROOT / script).exists(), script)
-
-        # And every other guidance document stating the count is held to the
-        # same block. Matching stops before the noun, because the copy that went
-        # stale used a different one: the README said 四支只報不擋的工具 while
-        # docs/architecture/harness-engineering.md said 四支只報不擋的腳本, and
-        # `codename-gloss-report.py` was in neither list - so both numerals
-        # agreed with each other and both were one short (2026-08-20).
-        for path in guidance_markdown():
-            if path == "README.md":
-                continue
-            for numeral in re.findall(rf"({alternation})支只報不擋",
-                                      read_repo(path)):
-                self.assertEqual(
-                    numerals[numeral], len(listed),
-                    f"{path}: says {numeral}支 but the README block lists "
-                    f"{len(listed)}")
-
-
-class DenialReportTests(unittest.TestCase):
-    """The reader is the half that was missing for twelve days, so the property
-    worth pinning is that it reads the file the gates actually write to - a
-    report aimed at a stale path would print `no denials recorded` forever and
-    look exactly like a quiet week."""
-
-    SCRIPT = ROOT / "scripts/denial-report.py"
-
-    def _run(self, log: Path):
-        return subprocess.run(
-            [sys.executable, str(self.SCRIPT)],
-            env={**os.environ, "AGENT_DENIAL_LOG": str(log)},
-            capture_output=True, text=True)
-
-    def test_it_reads_the_log_the_gates_write_to(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            log = Path(temp_dir) / "denials.jsonl"
-            log.write_text("\n".join(json.dumps(row) for row in (
-                {"ts": "2026-08-19T01:00:00+00:00", "gate": "leaf-redispatch",
-                 "reason": "leaf-tried-to-dispatch", "session_id": "s"},
-                {"ts": "2026-08-21T02:00:00+00:00", "gate": "runtime-guard",
-                 "reason": "runtime-too-old-or-unknown"},
-            )) + "\n", encoding="utf-8")
-            result = self._run(log)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("2 row(s)", result.stdout)
-            self.assertIn("leaf-redispatch / leaf-tried-to-dispatch", result.stdout)
-            # One row predates the isolation date and one does not, so the
-            # provenance line has to split them rather than label the file.
-            self.assertIn("1 row(s) predate", result.stdout)
-
-    def test_a_missing_or_broken_log_reports_instead_of_failing(self) -> None:
-        """Report-only means report-only: an unreadable line is a skipped line,
-        not an exit code. A reader that can fail becomes a gate by accident."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            absent = self._run(Path(temp_dir) / "nothing.jsonl")
-            self.assertEqual(absent.returncode, 0, absent.stderr)
-            self.assertIn("no denials recorded", absent.stdout)
-
-            broken = Path(temp_dir) / "broken.jsonl"
-            broken.write_text('{"ts": "2026-08-21T00:00:00+00:00", "gate": "g", '
-                              '"reason": "r"}\nnot json\n[1, 2]\n',
-                              encoding="utf-8")
-            result = self._run(broken)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("2 unparseable line(s)", result.stdout)
-            self.assertIn("1 row(s)", result.stdout)
-
-
-class ContextInflowReportTests(unittest.TestCase):
-    """Two numbers with different confidence share one screen here, and the whole
-    point of the report is that a reader can tell them apart. Floor and peak come
-    straight from `usage`; the attribution is a CJK-aware estimate that
-    under-counts real growth by a factor that is not constant. A version that
-    printed the shares without the factor beside them would read as measurement.
-    """
-
-    SCRIPT = ROOT / "scripts/context-inflow-report.py"
-
-    def _transcript(self, directory: Path, floor: int, peak: int) -> None:
-        """A session whose window grows from `floor` to `peak` over 30 requests."""
-        lines = []
-        for index in range(30):
-            share = index / 29
-            lines.append(json.dumps({
-                "type": "assistant",
-                "message": {
-                    "content": [{"type": "tool_use", "id": f"t{index}",
-                                 "name": "Bash", "input": {"command": "ls" * 40}}],
-                    "usage": {"input_tokens": int(floor + (peak - floor) * share),
-                              "output_tokens": 10},
-                },
-            }))
-            lines.append(json.dumps({
-                "type": "user",
-                "message": {"content": [{"type": "tool_result",
-                                         "tool_use_id": f"t{index}",
-                                         "content": "output " * 200}]},
-            }))
-        (directory / "s.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-    def _run(self, directory: Path, *extra: str):
-        return subprocess.run(
-            [sys.executable, str(self.SCRIPT), "--transcripts", str(directory), *extra],
-            capture_output=True, text=True)
-
-    def test_it_separates_what_it_measured_from_what_it_estimated(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            self._transcript(Path(temp_dir), floor=40_000, peak=200_000)
-            result = self._run(Path(temp_dir), "--json")
-            self.assertEqual(result.returncode, 0, result.stderr)
-            report = json.loads(result.stdout)
-            # exact: read back out of the usage numbers it was given
-            self.assertEqual(report["floor_median"], 40_000)
-            self.assertEqual(report["peak_median"], 200_000)
-            self.assertAlmostEqual(report["floor_share_median"], 0.2, places=6)
-            # estimated: the factor has to be reported, not folded in silently
-            self.assertIsNotNone(report["factor_median"])
-            self.assertIn("Bash", report["results"])
-
-            human = self._run(Path(temp_dir))
-            self.assertIn("沒有估算成分", human.stdout)
-            self.assertIn("當排序讀", human.stdout,
-                          "the shares are printed without saying how to read them")
-
-    def test_a_directory_with_nothing_in_it_reports_instead_of_failing(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            result = self._run(Path(temp_dir))
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("no session", result.stdout)
 
 
 class PushConsentGateTests(unittest.TestCase):
@@ -4247,385 +3796,184 @@ class PushConsentGateTests(unittest.TestCase):
             self.assertIn(token, rows[0]["command"])
 
 
-class UpstreamPinReportTests(unittest.TestCase):
-    """`upstream-recheck.sh` verifies the bytes a SHA pins, so it stays green
-    when upstream moves - that is the design. Nothing asked the other question
-    until 2026-08-21, when `mattpocock/skills` turned out to be twelve commits
-    past its recorded pin and only a manual look found it.
+class DenialDampeningTests(unittest.TestCase):
+    """A gate that denies repeatedly must not say the same words every time.
 
-    The registry is derived from the attributions rather than listed, so the two
-    properties worth holding are that it reads all three shapes those files use,
-    and that a fetch it could not complete never reads as "not moved"."""
+    Distilled from ECC #2142 (surveyed 2026-09-08, `docs/research/ecc-survey.md`
+    rule B4; MIT, no bytes taken). Its mechanism note is the finding: near
+    identical multi-line denial blocks accumulate in the context window and
+    raise the odds of the model dropping into a degenerate repetition loop. Its
+    fix is to emit the full block for the first few denials of a session and a
+    condensed line carrying an ordinal afterwards, so consecutive denials are
+    never textually identical.
 
-    SCRIPT = ROOT / "scripts/upstream-pin-report.py"
+    The condition is met here and was measured before this landed
+    (`scripts/denial-report.py`, 2026-09-08): the longest run of consecutive
+    denials by one gate is 18 for `commit-test-gate` and 5 for
+    `managed-target-guard`. Only the fully static messages are dampened -
+    `commit-test-gate` carries fifteen lines of failing-test output that
+    changes as the suite changes, and its git-side half has no payload to key a
+    session on.
 
-    def _module(self):
-        return load_module("upstream_pin_report", self.SCRIPT)
-
-    def test_it_reads_every_shape_an_attribution_states_its_source_in(self) -> None:
-        shapes = {
-            # `**Source**:` plus `**Reviewed commit**:`
-            "a": "- **Source**: <https://github.com/one/alpha>\n"
-                 "- **Reviewed commit**: `" + "1" * 40 + "`\n",
-            # a bare URL on its own line plus `- Commit:` as a link
-            "b": "https://github.com/two/beta\n\n- Commit: [`" + "2" * 40 + "`]"
-                 "(https://github.com/two/beta/commit/" + "2" * 40 + ")\n",
-            # the zh-TW shape: `- 專案：[name](url)` plus `- 蒸餾自：`
-            "c": "- 專案：[gamma](https://github.com/three/gamma)\n"
-                 "- 蒸餾自：`" + "3" * 40 + "`（2026-07-18 的 master）\n",
-            # names no repository at all - must be skipped, not guessed at
-            "d": "Adapted from a talk. No repository, no commit.\n",
-        }
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            for name, body in shapes.items():
-                (root / name).mkdir()
-                (root / name / "ATTRIBUTION.md").write_text(body, encoding="utf-8")
-            # the same upstream shipped twice, as task-observer really is
-            (root / "twin").mkdir()
-            (root / "twin" / "ATTRIBUTION.md").write_text(shapes["b"], encoding="utf-8")
-
-            found = self._module().parse_attributions(root)
-            by_repo = {e["repo"]: e for e in found}
-            self.assertEqual(sorted(by_repo),
-                             ["one/alpha", "three/gamma", "two/beta"],
-                             "a shape went unread, or the sourceless one was guessed at")
-            self.assertEqual(by_repo["one/alpha"]["pin"], "1" * 40)
-            self.assertEqual(by_repo["three/gamma"]["pin"], "3" * 40)
-            self.assertEqual(sorted(by_repo["two/beta"]["skills"]), ["b", "twin"],
-                             "one upstream shipped twice must be one entry")
-
-    def test_it_also_reads_pins_the_research_index_states_without_an_attribution(self) -> None:
-        """`Nanako0129/sepia` moved 86 commits and released four versions in
-        five days, and on 2026-09-05 nothing here noticed until someone read
-        the date on its row in the research README. It has no ATTRIBUTION -
-        nothing distilled from it has reached `main/` yet - and this report was
-        derived from ATTRIBUTION files alone. A pin that lives only in the
-        currency table is still a pin.
-
-        Only 上游 rows count. A 同業 row also carries a full SHA (eli5's path
-        commit), and comparing that against a whole repository would report
-        every unrelated plugin's move as ours to read. A row that restates an
-        attributed pin joins that entry rather than becoming a second upstream.
-        """
-        module = self._module()
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            (root / "a").mkdir()
-            (root / "a" / "ATTRIBUTION.md").write_text(
-                "- **Source**: <https://github.com/one/alpha>\n"
-                "- **Reviewed commit**: `" + "1" * 40 + "`\n", encoding="utf-8")
-            index = root / "README.md"
-            rows = (
-                "| 來源 | 類別 | 現況 | 查核日 | 備註 |\n|---|---|---|---|---|\n"
-                "| one/alpha | 上游 | marketplace pin `" + "1" * 40 + "` | 2026-09-05 | attributed |\n"
-                "| `four/delta` 與上游論文 | 上游 + 研究 | pin `" + "4" * 40 + "` (head) | 2026-09-05 | no attribution yet |\n"
-                "| `five/epsilon` 的 `thing` | 同業 | path 最後 commit 仍是 `" + "5" * 40 + "` | 2026-09-05 | surveyed |\n"
-            )
-            index.write_text(rows, encoding="utf-8")
-
-            by_repo = {e["repo"]: e for e in module.collect(root, index)}
-            self.assertEqual(sorted(by_repo), ["four/delta", "one/alpha"],
-                             "an 上游 row without an ATTRIBUTION is a pin; a 同業 row is not")
-            self.assertEqual(by_repo["four/delta"]["pin"], "4" * 40)
-            self.assertEqual(by_repo["four/delta"]["skills"], [])
-            self.assertEqual(by_repo["four/delta"]["sites"], ["research-index"])
-            self.assertEqual(by_repo["one/alpha"]["skills"], ["a"])
-            self.assertEqual(sorted(by_repo["one/alpha"]["sites"]),
-                             ["attribution", "research-index"],
-                             "a row restating an attributed pin joins that entry")
-
-            # Take the row away and the index-only upstream goes with it: the
-            # report is derived, so the table is the only place to list it.
-            index.write_text(rows.replace("four/delta", "four-delta"), encoding="utf-8")
-            self.assertEqual(sorted(e["repo"] for e in module.collect(root, index)),
-                             ["one/alpha"])
-
-    def test_a_move_says_where_it_moved(self) -> None:
-        """A commit count cannot separate a rule change from a regenerated chart.
-
-        On 2026-08-24 one upstream read `MOVED +3` and all three commits were a
-        bot refreshing an SVG under `assets/`; the other read `MOVED +5` and the
-        commits were under `skills/`. Only one of those was worth a diff, and
-        the report said the same thing about both. The compare response already
-        carries the file list, so the answer costs no extra request.
-        """
-        module = self._module()
-        body = {
-            "ahead_by": 3,
-            "commits": [{"sha": "a" * 40,
-                         "commit": {"committer": {"date": "2026-08-22T00:00:00Z"}}}],
-            "files": [{"filename": "skills/engineering/tdd/SKILL.md"},
-                      {"filename": "skills/productivity/grilling/SKILL.md"},
-                      {"filename": "assets/readme/chart.svg"},
-                      {"filename": ".gitignore"}],
-        }
-        summary = module.summarise(body)
-        self.assertEqual(summary["state"], "moved")
-        self.assertEqual(summary["areas"],
-                         {"skills/": 2, "assets/": 1, ".gitignore": 1},
-                         "top-level areas are what separate a rule change from "
-                         "a regenerated asset")
-
-        # No file list is "cannot say where", not "moved nowhere": an upstream
-        # whose compare response omits files must not read as untouched.
-        quiet = module.summarise({"ahead_by": 1, "commits": []})
-        self.assertEqual(quiet["areas"], {})
-        self.assertEqual(quiet["state"], "moved")
-
-    def test_a_fetch_it_cannot_complete_is_never_reported_as_current(self) -> None:
-        """The distinction the whole report rests on. Offline this takes the
-        network-error branch and online the 404 branch; both must land on
-        `unreachable`, because `current` would say an upstream had not moved
-        when nobody asked it."""
-        result = self._module().moved(
-            "agent-harness-no-such-org-9f3a/no-such-repo", "0" * 40)
-        self.assertEqual(result["state"], "unreachable")
-        self.assertNotEqual(result["state"], "current")
-
-
-class MemoryFreshnessReportTests(unittest.TestCase):
-    """A memory entry arrives as background context, not as something anyone
-    opens, so a path inside one can rot for months while still sounding
-    authoritative. All four ways it can rot are checked, because a report that
-    catches three of them reads exactly like one that catches all four."""
-
-    SCRIPT = ROOT / "scripts/memory-freshness-report.py"
-
-    def _run(self, directory: Path):
-        return subprocess.run(
-            [sys.executable, str(self.SCRIPT), "--memory-dir", str(directory),
-             "--json"], capture_output=True, text=True)
-
-    def test_it_finds_every_way_a_memory_goes_stale(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            memory = Path(temp_dir)
-            (memory / "a.md").write_text(
-                "看 `main/claude/GONE.md`, 也見 [[nowhere]].\n", encoding="utf-8")
-            (memory / "MEMORY.md").write_text(
-                "- [x](vanished.md) — y\n", encoding="utf-8")
-            report = json.loads(self._run(memory).stdout)
-            self.assertEqual([r["path"] for r in report["missing_paths"]],
-                             ["main/claude/GONE.md"])
-            self.assertEqual([r["link"] for r in report["dangling_links"]],
-                             ["nowhere"])
-            self.assertEqual(report["not_in_index"], ["a.md"])
-            self.assertEqual(report["index_rows_without_a_file"], ["vanished.md"])
-
-    def test_a_live_reference_and_a_listed_entry_are_not_flagged(self) -> None:
-        """The other half. An index regex without MULTILINE matches only the
-        first row, and the first run of this report called two correctly-indexed
-        memories missing (2026-08-21) - a false positive is how a report becomes
-        one nobody reads."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            memory = Path(temp_dir)
-            for name in ("a", "b", "c"):
-                (memory / f"{name}.md").write_text(
-                    "見 `scripts/sync.sh` 與 [[a]].\n", encoding="utf-8")
-            (memory / "MEMORY.md").write_text(
-                "- [A](a.md) — x\n- [B](b.md) — y\n- [C](c.md) — z\n",
-                encoding="utf-8")
-            report = json.loads(self._run(memory).stdout)
-            self.assertEqual(report["missing_paths"], [])
-            self.assertEqual(report["dangling_links"], [])
-            self.assertEqual(report["not_in_index"], [])
-            self.assertEqual(report["index_rows_without_a_file"], [])
-
-
-class MachineStateCheckTests(unittest.TestCase):
-    """It exists because the denial-log bleed was found by hand and nothing would
-    have found the next one. So the property that matters is that it notices a
-    write - a version that always printed "no change" would have looked correct
-    every day of the twelve this ran undetected."""
-
-    SCRIPT = ROOT / "scripts/machine-state-check.py"
-
-    def _run(self, tree: Path, command: str):
-        return subprocess.run(
-            [sys.executable, str(self.SCRIPT), "--trees", str(tree),
-             "--command", command, "--json"], capture_output=True, text=True)
-
-    def test_it_names_the_file_a_command_wrote(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            tree = Path(temp_dir)
-            (tree / "kept.txt").write_text("x", encoding="utf-8")
-            report = json.loads(self._run(tree, f"echo hi > {tree}/leaked.txt").stdout)
-            self.assertEqual([Path(p).name for p in report["added"]], ["leaked.txt"])
-            self.assertEqual(report["changed"], [])
-            self.assertEqual(report["removed"], [])
-
-    def test_a_rewrite_that_keeps_the_size_is_still_a_change(self) -> None:
-        """The version that shipped first compared size and whole-second mtime,
-        so a state file rewritten to the same length inside one second was
-        invisible - a counter or a fixed-width timestamp has exactly that shape.
-        Small files are compared by content now, which also means a touch that
-        changes nothing does not read as a change."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            tree = Path(temp_dir)
-            target = tree / "state.json"
-            target.write_text('{"n": 9}', encoding="utf-8")
-            report = json.loads(
-                self._run(tree, f"printf '{{\"n\": 8}}' > {target}").stdout)
-            self.assertEqual([Path(p).name for p in report["changed"]],
-                             ["state.json"], "a same-size rewrite went unseen")
-
-            target.write_text('{"n": 8}', encoding="utf-8")
-            touched = json.loads(self._run(tree, f"touch {target}").stdout)
-            self.assertEqual(touched["changed"], [],
-                             "a touch with no content change reported as one")
-
-    def test_a_command_that_writes_nothing_reports_nothing(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            tree = Path(temp_dir)
-            (tree / "kept.txt").write_text("x", encoding="utf-8")
-            report = json.loads(self._run(tree, "true").stdout)
-            self.assertEqual(report["added"], [])
-            self.assertEqual(report["changed"], [])
-            self.assertEqual(report["removed"], [])
-            self.assertEqual(report["watched"], 1)
-
-
-class CodenameGlossReportTests(unittest.TestCase):
-    """`docs/README.md` rule 8 promises one tier of documents does not require
-    the repo's own vocabulary, and nothing enforced it.
-
-    The overview broke it in its newest section on 2026-08-20: `s11`, `p1b` and
-    `d1`/`d2` all appeared with nothing saying what they are, which sends a
-    reader into `evals/` to find out that a name is a scenario id.
-
-    Two things about this report are the load-bearing ones and both are pinned
-    below. The codename inventory is derived from `evals/`, so a new scenario is
-    covered the day it exists; and the scanned set is read out of rule 8's own
-    table, so adding a document to that tier extends the scan rather than
-    needing a second list to remember.
+    Nothing about this may weaken a boundary. The ordinal is derived from the
+    denial log, which is fail-open by design, so an unreadable log yields no
+    ordinal and the gate falls back to the full message. Loud and repetitive is
+    the safe direction; silent and short is not.
     """
 
-    SCRIPT = ROOT / "scripts/codename-gloss-report.py"
+    GATE = ROOT / "main/claude/hooks/managed-target-guard.py"
+
+    def deny(self, log_path, session, target):
+        """One real subprocess run of the gate, returning (exit code, stderr)."""
+        payload = json.dumps({
+            "session_id": session,
+            "tool_name": "Write",
+            "tool_input": {"file_path": target},
+        })
+        env = dict(os.environ)
+        env["AGENT_DENIAL_LOG"] = str(log_path)
+        env["AGENT_HARNESS_REPO"] = str(ROOT)
+        finished = subprocess.run(
+            [sys.executable, str(self.GATE)],
+            input=payload, capture_output=True, text=True, env=env, timeout=30)
+        return finished.returncode, finished.stderr
+
+    def managed_target(self) -> str:
+        """A HOME path this gate owns, read from the manifest rather than named."""
+        for source, target, *rest in deployment_manifest_entries():
+            if not rest or not rest[0]:
+                return os.path.join(os.path.expanduser("~"), target)
+        self.fail("no fully-managed manifest row to test against")
+
+    def test_the_fourth_denial_does_not_repeat_the_third(self) -> None:
+        target = self.managed_target()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log = Path(temp_dir) / "denials.jsonl"
+            messages = []
+            for _ in range(4):
+                code, err = self.deny(log, "session-dampening", target)
+                self.assertEqual(2, code, err)
+                messages.append(err)
+
+            self.assertEqual(messages[0], messages[1],
+                             "the first denials carry the full explanation")
+            self.assertNotEqual(
+                messages[0], messages[3],
+                "the fourth denial repeats the first verbatim - the whole point "
+                "is that consecutive denials differ")
+            self.assertIn("#4", messages[3], "the condensed line carries its ordinal")
+            self.assertLess(len(messages[3]), len(messages[0]),
+                            "the condensed line should be shorter, not merely different")
+            # Still a denial, and still says how to proceed.
+            self.assertIn("sync.sh", messages[3])
+
+    def test_a_different_session_starts_over(self) -> None:
+        """The ordinal is per session: a new session has not seen the block."""
+        target = self.managed_target()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log = Path(temp_dir) / "denials.jsonl"
+            for _ in range(4):
+                self.deny(log, "session-one", target)
+            code, err = self.deny(log, "session-two", target)
+            self.assertEqual(2, code)
+            self.assertNotIn("#", err.split("blocked:")[0] or "",
+                             "a fresh session gets the full block, not an ordinal")
+            self.assertIn("reverted by the next deploy", err)
+
+    def test_an_unreadable_log_falls_back_to_the_full_message(self) -> None:
+        """Fail-open bookkeeping must never shorten a denial.
+
+        The gate is fail-closed about its condition and fail-open about its
+        records; if losing the log could quiet the message, those two would be
+        the wrong way round.
+        """
+        target = self.managed_target()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # A directory where the log file should be: writes and reads both fail.
+            log = Path(temp_dir) / "denials.jsonl"
+            log.mkdir()
+            for _ in range(4):
+                code, err = self.deny(log, "session-broken", target)
+                self.assertEqual(2, code, err)
+                self.assertIn("reverted by the next deploy", err,
+                              "an unreadable log must not condense the message")
+
+    def test_only_the_static_gates_are_dampened(self) -> None:
+        """`commit-test-gate` is excluded on purpose, and the reason is recorded.
+
+        Its message embeds the tail of the failing suite, so consecutive
+        denials already differ while the failure changes; and its git-side half
+        receives no payload, so there is no session to count within.
+        """
+        source = read_repo("main/claude/hooks/commit-test-gate.py")
+        self.assertNotIn("condensed", source,
+                         "commit-test-gate must not take the dampening path")
+        document = read_repo("docs/hook-system.md")
+        self.assertIn("拒絕訊息衰減", document,
+                      "the behaviour has to be documented where the gates are")
+
+class SessionStartInjectionBoundTests(unittest.TestCase):
+    """The one part of the weekly finding that can grow without limit is bounded.
+
+    Q4 asked whether SessionStart injection needs a size cap the way ECC's
+    does (8,000 characters, `docs/research/ecc-survey.md` rule B10). Measured
+    2026-09-08 on a deliberately drift-heavy run: 1,600 bytes over 18 lines,
+    a fifth of ECC's default. A blanket cap is not warranted and is not added
+    - the resident cost this repo actually pays is 0.049% of a real prompt,
+    and truncating a finding to save bytes at that scale trades a real signal
+    for nothing.
+
+    But one component is unbounded by construction: every un-reconciled
+    dispatch prints its own line and keeps printing it until someone
+    reconciles it, so a stretch of unlogged work makes the finding grow one
+    line at a time with no ceiling.
+
+    The bound is a listing bound, not a size cap, and the difference is the
+    point. Silently dropping ids would hide exactly the number the operator
+    needs - how much work is unreconciled - so the count is stated and a
+    sample is shown. A truncation that loses the total is worse than the long
+    list it replaced.
+    """
+
+    HOOK = ROOT / "main/claude/hooks/weekly-integrity.py"
 
     def module(self):
-        return load_module("codename_gloss_report", self.SCRIPT)
+        namespace = {"__name__": "weekly_integrity_probe"}
+        exec_weekly_integrity_prelude(namespace)
+        return namespace
 
-    def test_the_inventory_comes_from_evals_not_from_a_list(self) -> None:
-        names = set(self.module().codenames())
-        for trap in (ROOT / "evals/traps").iterdir():
-            if trap.is_dir():
-                self.assertIn(trap.name.split("-")[0], names, trap.name)
-        self.assertIn("p1b", names, "replay run directories are part of it")
-        # Longest first, or `s1` would shadow `s10` in the alternation.
-        ordered = self.module().codenames()
-        self.assertEqual(ordered, sorted(ordered, key=lambda n: (-len(n), n)))
+    def test_a_long_stale_list_states_its_total_and_shows_a_sample(self) -> None:
+        namespace = self.module()
+        summarise = namespace["summarise_stale_dispatches"]
+        many = {f"session:{index:03d}": 0.0 for index in range(40)}
+        text = summarise(many)
+        self.assertIn("40", text, "the total has to survive the truncation")
+        shown = [line for line in text.splitlines() if line.startswith("session:")]
+        self.assertLess(len(shown), 40, "a 40-line finding is what this bounds")
+        self.assertGreater(len(shown), 0, "a bound that shows nothing is not a sample")
 
-    def test_the_scanned_set_comes_from_rule_eight(self) -> None:
-        scanned = self.module().scanned_documents()
-        self.assertIn("docs/architecture/architecture.md", scanned)
-        self.assertIn("docs/architecture/graph-engineering.md", scanned)
-        self.assertNotIn(
-            "docs/research/landing-log.md", scanned,
-            "research journals are written for whoever ran the batch; holding "
-            "them to this rule is the wrong repair")
-        for relative in scanned:
-            self.assertTrue((ROOT / relative).exists(), relative)
+    def test_a_short_list_is_not_truncated(self) -> None:
+        """Below the bound nothing changes - the ids are the actionable part."""
+        namespace = self.module()
+        summarise = namespace["summarise_stale_dispatches"]
+        few = {f"session:{index}": 0.0 for index in range(3)}
+        text = summarise(few)
+        for index in range(3):
+            self.assertIn(f"session:{index}", text)
+        # Mutation found the first version of this blind: forcing the truncated
+        # branch on a short list still printed every id, so an id check alone
+        # passed while the text said "3 of them, oldest 10 shown ... and -7
+        # more". The tell is the truncation vocabulary, not the ids.
+        self.assertNotIn("more", text)
+        self.assertNotIn("shown", text)
 
-    def test_it_reports_and_never_fails(self) -> None:
-        finished = subprocess.run(
-            [sys.executable, str(self.SCRIPT), "--json"],
-            capture_output=True, text=True, timeout=120, cwd=ROOT)
-        self.assertEqual(0, finished.returncode, finished.stderr)
-        report = json.loads(finished.stdout)
-        self.assertEqual(
-            [], report["unglossed"],
-            "a first use in the explanatory tier has nothing explaining it")
-
-    def test_it_catches_a_bare_first_use(self) -> None:
-        """Positive control. A clean tree on its own proves nothing."""
-        module = self.module()
-        target = ROOT / "docs/qc-explainer.md"
-        original = target.read_text(encoding="utf-8")
-        bare = original.replace(
-            "- s7 (假完成情境: 交付物裡埋了六種詐欺, 看無人稽核時抓不抓得到) 顯示說謊報告可以\n  全身而退;",
-            "- s7 埋了六種詐欺, 說謊報告在無人稽核時可以全身而退;")
-        self.assertNotEqual(original, bare, "the control edit matched nothing")
-        try:
-            target.write_text(bare, encoding="utf-8")
-            found = module.measure()["unglossed"]
-        finally:
-            target.write_text(original, encoding="utf-8")
-        self.assertEqual(
-            [("docs/qc-explainer.md", "s7")],
-            [(row["path"], row["codename"]) for row in found])
-
-
-class TaiwanUsageReportTests(unittest.TestCase):
-    """The sweep is only useful if it reads the shipped table and stays calibrated.
-
-    `readable-zh-tw` carries a 中國用語 replacement table and deploys it to clean
-    other people's copy; nothing pointed it back at this repo, and 智能體 sat in
-    the title of `docs/setup.md` for an unknown stretch. This is the report that
-    would have caught it, in the shape `docs/` got for size rather than a gate -
-    a word list cannot tell 用 from 提及.
-
-    Its first run returned 60 hits of which 57 were 落地, which is how this repo
-    writes 已落地 in nearly every research document. An instrument that reports
-    57 false positives is the permanent alarm this repo keeps warning about, so
-    the term is exempted with its reason recorded in the script. That exemption
-    is the calibration and it is the thing most likely to be abused later, which
-    is why the test below pins what it may contain.
-    """
-
-    SCRIPT = ROOT / "scripts/zh-tw-usage-report.py"
-
-    def run_report(self, extra=()):
-        return subprocess.run(
-            [sys.executable, str(self.SCRIPT), *extra],
-            capture_output=True, text=True, timeout=120, cwd=ROOT)
-
-    def test_it_reads_the_shipped_table_rather_than_a_copy(self) -> None:
-        """A second copy of the list would drift from what the skill teaches."""
-        module = load_module("zh_tw_usage_report", self.SCRIPT)
-        table = module.terms()
-        self.assertGreater(len(table), 20, "the table parsed to almost nothing")
-        # Spot-check both column senses and the ／ split the table uses.
-        self.assertEqual("智慧（人工智慧、智慧型手機）", table["智能"])
-        self.assertIn("視頻", table)
-        self.assertIn("短視頻", table)
-
-    def test_the_exemption_list_stays_small_and_explains_itself(self) -> None:
-        module = load_module("zh_tw_usage_report", self.SCRIPT)
-        self.assertLessEqual(
-            len(module.EXEMPT_TERMS), 3,
-            "exempting a term is how this report gets quietly switched off; "
-            "each one needs a reason a reader can disagree with")
-        for term, why in module.EXEMPT_TERMS.items():
-            self.assertGreater(
-                len(why), 40, f"{term}: an exemption without a stated reason")
-
-    def test_it_reports_and_never_fails(self) -> None:
-        finished = self.run_report(["--json"])
-        self.assertEqual(0, finished.returncode, finished.stderr)
-        report = json.loads(finished.stdout)
-        self.assertIn("hits", report)
-        for hit in report["hits"]:
-            self.assertIn("suggested", hit)
-
-    def test_it_catches_the_term_it_was_built_for(self) -> None:
-        """Positive control. Without it this only proves the tree is clean.
-
-        The term is planted rather than mutated in place: tying the control to
-        a word surviving somewhere in the tree makes the control fail the day
-        the prose gets cleaned, which is the wrong way round.
-        """
-        module = load_module("zh_tw_usage_report", self.SCRIPT)
-        target = ROOT / "docs/setup.md"
-        original = target.read_text(encoding="utf-8")
-        try:
-            target.write_text(original + "\n智能體 (planted positive control)\n",
-                              encoding="utf-8")
-            hits = module.sweep()
-        finally:
-            target.write_text(original, encoding="utf-8")
-        self.assertTrue(
-            any(h["path"] == "docs/setup.md" and h["term"] == "智能" for h in hits),
-            "the sweep misses the exact defect that motivated it")
+    def test_the_command_to_clear_them_survives_truncation(self) -> None:
+        """A finding an operator cannot act on is noise however short."""
+        namespace = self.module()
+        summarise = namespace["summarise_stale_dispatches"]
+        text = summarise({f"session:{index:03d}": 0.0 for index in range(40)})
+        self.assertIn("experience-log", text)
+        self.assertIn("--dispatch-id", text)
 
 
 if __name__ == '__main__':

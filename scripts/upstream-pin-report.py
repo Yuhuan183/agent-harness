@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Read: first step of every upstream recheck round; it answers 'did anything move' before anyone reads a diff
 """Has any upstream this repo distils from moved past its recorded pin? Reports; never fails.
 
 Why this exists. `upstream-recheck.sh` answers a different question and answers
@@ -22,12 +23,17 @@ source in three different shapes (`**Source**:` plus `**Reviewed commit**:`,
 `- 專案：` plus `- 蒸餾自：`, and a bare URL plus `- Commit:`), and normalising
 them is a separate decision from being able to read them.
 
-Since 2026-09-05 the research README's currency table is read too, for rows
-whose 類別 says 上游 and whose state cell pins a full commit. An upstream sits
-there before anything distilled from it reaches `main/` - sepia did for a
-week, moved 86 commits, and the date on its row was the only thing that
-noticed. A row restating an attributed pin joins that entry; a 同業 row is
-left alone even when it carries a SHA.
+Since 2026-09-05 the research README's currency table is read too, for any row
+whose state cell spells `pin `<sha>``. A source sits there before anything
+distilled from it reaches `main/` - sepia did for a week, moved 86 commits, and
+the date on its row was the only thing that noticed. A row restating an
+attributed pin joins that entry.
+
+The 類別 column is deliberately not consulted (2026-09-08). It was, until a
+surveyed peer with its head pinned turned out to be unwatched; what actually
+distinguishes a comparable pin is how the row introduces its SHA. `pin `<sha>``
+is a claim about the repository, `path 最後 commit 仍是 `<sha>`` is a claim
+about one directory, and only the first is meaningful to compare.
 
 What it cannot tell you: whether a move matters. Twelve commits of punctuation
 and one commit that deletes a rule look identical here. Reading the diff is the
@@ -44,6 +50,7 @@ Those two must not look the same, which is the whole lesson above.
 
 Usage:
     scripts/upstream-pin-report.py [--attributions DIR] [--json]
+
 """
 from __future__ import annotations
 
@@ -94,22 +101,31 @@ def parse_attributions(root: Path) -> list[dict]:
 
 
 def parse_research_index(path: Path) -> list[dict]:
-    """Pins the research README's currency table states for rows it calls 上游.
+    """Pins the research README's currency table states, whatever it calls them.
 
     `Nanako0129/sepia` moved 86 commits and released four versions in five
     days, and on 2026-09-05 nothing noticed until someone read the date on its
     row: it has no ATTRIBUTION because nothing distilled from it has reached
-    `main/` yet, and this report read ATTRIBUTION files alone. Only 上游 rows
-    count - a 同業 row also carries a full SHA (eli5's path commit), and
-    comparing that against a whole repository would report every unrelated
-    plugin's move as ours to read.
+    `main/` yet, and this report read ATTRIBUTION files alone.
+
+    Until 2026-09-08 only 上游 rows counted, because a 同業 row also carries a
+    full SHA - eli5's is the last commit touching one path, and comparing that
+    against a whole repository would report every unrelated plugin's move as
+    ours to read. That reason was real but the rule drawn from it was too wide:
+    `affaan-m/ecc` was surveyed with its head pinned and nothing would have
+    noticed it moving.
+
+    So the discriminator is the sentence the row writes, not the column beside
+    it. `pin `<sha>`` means "compare the repository against this commit"; a SHA
+    introduced any other way (`path 最後 commit 仍是`) means something else and
+    is left alone. A row author can meet that deliberately, which the 類別
+    column never allowed - it says what a source is *to us*, not what its SHA
+    means.
     """
     if not path.is_file():
         return []
     entries = []
     for row in INDEX_ROW.finditer(path.read_text(encoding="utf-8")):
-        if "上游" not in row.group("kind"):
-            continue
         repo = SLASH.search(row.group("source"))
         pin = PIN_CELL.search(row.group("state"))
         if not repo or not pin:

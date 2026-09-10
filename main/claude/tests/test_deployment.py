@@ -1646,6 +1646,322 @@ class MachineStateHygieneTests(unittest.TestCase):
                 self.assertFalse(marker.exists(), ordinary)
 
 
+
+class HookEnvDocumentationTests(unittest.TestCase):
+    """Every `AGENT_*` knob a hook reads is named in `docs/hook-system.md`.
+
+    Distilled from ECC's `tests/ci/gateguard-env-documented.test.js` (surveyed
+    2026-09-08, `docs/research/ecc-survey.md` rule B15; MIT, no bytes taken).
+    Two knobs there shipped undocumented, so an operator had no discoverable
+    way to narrow a gate short of turning it off. The same hole was measured
+    here the day it was surveyed: six `AGENT_*` names read by
+    `main/claude/hooks/*.py` were absent from the hook document, three of them
+    operator-visible - `AGENT_HARNESS_PYTHON` (a denial message names it as the
+    fix), `AGENT_HARNESS_REPO` (changes which repo `managed-target-guard`
+    treats as source) and `AGENT_RUNTIME_VERSION` (forces the version
+    `weekly-integrity` reports).
+
+    The two directions are deliberately asymmetric, and that asymmetry is the
+    part worth reading twice:
+
+    - **forward is strict.** A knob the code reads must be documented, and only
+      real reads count - a name in a comment, a docstring or an error message
+      is not a read, or mentioning a knob would excuse documenting it.
+    - **reverse is lenient.** A knob the document names must still appear
+      somewhere in the hook sources, literals included. The question there is
+      whether the knob still exists, not how it is reached, and one real knob
+      is not an environment read at all: `AGENT_SKIP_TEST_GATE` is matched as a
+      literal prefix of the shell command, never read from the environment. A
+      strict reverse check would have demanded its removal from the document
+      that correctly describes it.
+
+    The scanner resolves one level of module constant (`ENV = "AGENT_X"` then
+    `os.environ.get(ENV)`, which is how `denial_log` reads its own knob) and
+    reports any other indirect form as a failure. A parser that silently
+    ignores what it cannot parse reports a clean tree for the wrong reason.
+
+    Codex has no hook directory (`main/codex/hooks` does not exist), so this
+    rule has no twin to land on; the parity obligation is discharged by that
+    absence rather than by a second copy.
+    """
+
+    DOC = "docs/hook-system.md"
+    HOOKS = ROOT / "main/claude/hooks"
+    NAME = re.compile(r"AGENT_[A-Z0-9_]+")
+    CONSTANT = re.compile(r"^([A-Z][A-Z0-9_]*)\s*=\s*[\"'](AGENT_[A-Z0-9_]+)[\"']", re.M)
+    # Direct reads. Located in the blanked copy - which proves the position is
+    # code - then re-matched against the raw source at the same offset, because
+    # blanking erases the literal that holds the name.
+    DIRECT = re.compile(
+        r"os\.(?:environ\.get|getenv)\(\s*[\"'](AGENT_[A-Z0-9_]+)[\"']"
+        r"|os\.environ\[\s*[\"'](AGENT_[A-Z0-9_]+)[\"']\s*\]")
+    # Literal-agnostic: survives blanking, so it locates the access.
+    ACCESS = re.compile(r"os\.(?:environ\.get|getenv)\(|os\.environ\[")
+    # Reads through a bare name; resolved against CONSTANT, or reported.
+    INDIRECT = re.compile(
+        r"os\.(?:environ\.get|getenv)\(\s*([A-Za-z_]\w*)\s*[,)]"
+        r"|os\.environ\[\s*([A-Za-z_]\w*)\s*\]")
+    UNFOLLOWABLE = (
+        ("os.environ bound to a name",
+         re.compile(r"(?<![.\w])\w+\s*=\s*os\.environ\s*$", re.M)),
+        ("os.environ copied then indexed", re.compile(r"os\.environ\.copy\(\)\s*\[")),
+        ("os.environ enumerated", re.compile(r"for\s+\w+\s+in\s+os\.environ\b")),
+    )
+
+    @staticmethod
+    def code_only(source: str) -> str:
+        """Blank comments and string literals, preserving length and lines."""
+        out = []
+        i, n = 0, len(source)
+        while i < n:
+            ch = source[i]
+            if ch == "#":
+                while i < n and source[i] != "\n":
+                    out.append(" ")
+                    i += 1
+                continue
+            triples = (chr(34) * 3, chr(39) * 3)
+            if any(source.startswith(t, i) for t in triples):
+                quote = source[i:i + 3]
+                out.append("   ")
+                i += 3
+                while i < n and not source.startswith(quote, i):
+                    out.append("\n" if source[i] == "\n" else " ")
+                    i += 1
+                out.append("   ")
+                i += 3
+                continue
+            if ch in "\"'":
+                quote = ch
+                out.append(" ")
+                i += 1
+                while i < n and source[i] != quote:
+                    if source[i] == "\\":
+                        out.append("  ")
+                        i += 2
+                        continue
+                    if source[i] == "\n":
+                        break
+                    out.append(" ")
+                    i += 1
+                if i < n:
+                    out.append(" ")
+                    i += 1
+                continue
+            out.append(ch)
+            i += 1
+        return "".join(out)
+
+    def hook_sources(self) -> dict:
+        return {path.name: path.read_text(encoding="utf-8")
+                for path in sorted(self.HOOKS.glob("*.py"))}
+
+    def env_reads(self, source: str):
+        """Returns (names read, unresolved bare keys).
+
+        Positions come from the blanked copy, which is what proves an access is
+        code rather than prose; the key itself is read back out of the raw
+        source at the same offset, because blanking erases the literal that
+        holds it. `ACCESS` therefore has to be literal-agnostic - an earlier
+        version matched the full read against the blanked copy and found
+        nothing, which reads exactly like a clean tree.
+        """
+        code = self.code_only(source)
+        constants = dict(self.CONSTANT.findall(source))
+        names, unresolved = set(), []
+        for access in self.ACCESS.finditer(code):
+            direct = self.DIRECT.match(source, access.start())
+            if direct:
+                names.add(direct.group(1) or direct.group(2))
+                continue
+            indirect = self.INDIRECT.match(source, access.start())
+            if not indirect:
+                continue
+            key = indirect.group(1) or indirect.group(2)
+            if key in constants:
+                names.add(constants[key])
+            else:
+                unresolved.append(key)
+        return names, unresolved
+
+    def all_reads(self) -> set:
+        found = set()
+        for source in self.hook_sources().values():
+            found |= self.env_reads(source)[0]
+        return found
+
+    def test_the_scanner_reads_code_not_comments_or_strings(self) -> None:
+        """Calibration. Without it, a clean result and a broken probe look
+        identical - and the broken one is likelier."""
+        fixture = "\n".join([
+            'ENV = "AGENT_VIA_CONSTANT"',
+            'a = os.environ.get("AGENT_REAL_ONE")',
+            "b = os.environ['AGENT_REAL_TWO']",
+            'c = os.getenv("AGENT_REAL_THREE")',
+            "d = os.environ.get(ENV)",
+            "# os.environ.get('AGENT_IN_COMMENT')",
+            'msg = "os.environ.get(AGENT_IN_STRING)"',
+        ])
+        names, unresolved = self.env_reads(fixture)
+        self.assertEqual(
+            names,
+            {"AGENT_REAL_ONE", "AGENT_REAL_TWO", "AGENT_REAL_THREE",
+             "AGENT_VIA_CONSTANT"})
+        self.assertEqual([], unresolved)
+
+    def test_blanking_preserves_offsets(self) -> None:
+        for name, source in self.hook_sources().items():
+            blanked = self.code_only(source)
+            self.assertEqual(len(blanked), len(source), name)
+            self.assertEqual(blanked.count("\n"), source.count("\n"), name)
+
+    def test_no_hook_reaches_the_environment_by_a_key_this_cannot_resolve(self) -> None:
+        """A bare key the scanner cannot resolve would let an undocumented knob
+        pass, so it fails here instead of being skipped."""
+        for name, source in self.hook_sources().items():
+            unresolved = self.env_reads(source)[1]
+            self.assertEqual(
+                [], unresolved,
+                f"{name}: os.environ read through unresolved name(s) "
+                f"{unresolved} - use a literal, a module-level constant, or "
+                "teach env_reads the form")
+            code = self.code_only(source)
+            for label, pattern in self.UNFOLLOWABLE:
+                self.assertIsNone(pattern.search(code), f"{name}: {label}")
+
+    def test_the_guard_rejects_the_forms_it_cannot_follow(self) -> None:
+        """Positive control: without it this only proves the tree is clean."""
+        self.assertEqual(
+            (set(), ["name"]), self.env_reads("v = os.environ[name]"),
+            "a computed key must be reported, not skipped")
+        self.assertEqual(
+            (set(), ["other"]), self.env_reads("v = os.environ.get(other, 1)"),
+            "a bare key with no matching constant must be reported")
+        for label, code in (("bound", "env = os.environ"),
+                            ("copied", 'e = os.environ.copy()["AGENT_X"]'),
+                            ("enumerated", "for key in os.environ:")):
+            self.assertTrue(
+                any(pattern.search(code) for _, pattern in self.UNFOLLOWABLE),
+                f"the guard misses {label}: {code!r}")
+
+    def test_every_knob_a_hook_reads_is_documented(self) -> None:
+        undocumented = sorted(self.all_reads()
+                              - set(self.NAME.findall(read_repo(self.DOC))))
+        self.assertEqual(
+            [], undocumented,
+            f"read by main/claude/hooks/*.py but absent from {self.DOC}: "
+            + ", ".join(undocumented))
+
+    def test_every_documented_knob_still_exists_in_a_hook(self) -> None:
+        """Reverse drift: advice for a knob nothing carries is worse than none.
+
+        Lenient by design - see the class docstring.
+        """
+        present = set()
+        for source in self.hook_sources().values():
+            present |= set(self.NAME.findall(source))
+        for extra in (ROOT / "main/claude/githooks").glob("*"):
+            if extra.is_file():
+                present |= set(self.NAME.findall(
+                    extra.read_text(encoding="utf-8", errors="replace")))
+        stale = sorted(set(self.NAME.findall(read_repo(self.DOC))) - present)
+        self.assertEqual(
+            [], stale,
+            f"named in {self.DOC} but absent from every hook: " + ", ".join(stale))
+
+class GateRefutationTests(unittest.TestCase):
+    """Every fail-closed gate says what would make it wrong to keep.
+
+    Distilled from ECC's `harness-adapter-compliance` (surveyed 2026-09-08,
+    `docs/research/ecc-survey.md` rule D3; MIT, no bytes taken). It gives each
+    of twelve harness rows a `last_verified_at` field and nothing that expires
+    it - the oldest value sits four months behind HEAD, and a repo-wide grep
+    for the field finds only the generator and the document it generates. The
+    lesson taken is not the field but its absence of a check: a field nobody
+    can fail is decoration.
+
+    Applied here the useful field is not a date. Every deployment manifest row
+    is already machine-verified weekly, so a hand-kept date would record when a
+    person last looked while the machine looks every week. What has no check is
+    the opposite end: a gate that should be removed. Seven fail-closed gates
+    collect a cost on every matching tool call and none of them said what would
+    make that cost wrong to keep paying.
+
+    This pins the count and the shape, not the wording. A gate added to
+    `docs/hook-system.md` without a refutation condition fails here, which is
+    the only moment anyone is thinking about that gate's stop condition.
+    """
+
+    DOC = "docs/hook-system.md"
+    HEADING = "## 每個閘的推翻條件"
+
+    def gate_rows(self) -> list:
+        """The fail-closed table is the owner of what counts as a gate."""
+        body = read_repo(self.DOC)
+        section = body.split("### Fail-closed gate")[1].split("### 怎麼認出")[0]
+        return [line for line in section.splitlines()
+                if line.startswith("| [")]
+
+    def refutation_bullets(self) -> list:
+        body = read_repo(self.DOC)
+        self.assertIn(self.HEADING, body,
+                      f"{self.DOC} has no refutation section")
+        section = body.split(self.HEADING)[1].split("\n## ")[0]
+        # A bullet is its first line plus its indented continuations. Reading
+        # the first line alone was enough until a condition wrapped onto the
+        # second one and this reported it as having no trigger - the scanner
+        # was wrong, not the bullet.
+        bullets, current = [], None
+        for line in section.splitlines():
+            if line.startswith("- **"):
+                if current is not None:
+                    bullets.append(current)
+                current = line
+            elif current is not None and line.startswith("  ") and line.strip():
+                current += " " + line.strip()
+            elif current is not None and not line.strip():
+                bullets.append(current)
+                current = None
+        if current is not None:
+            bullets.append(current)
+        return bullets
+
+    def test_every_fail_closed_gate_has_a_refutation_condition(self) -> None:
+        gates = self.gate_rows()
+        bullets = self.refutation_bullets()
+        self.assertEqual(
+            len(gates), len(bullets),
+            f"{len(gates)} fail-closed gate(s) but {len(bullets)} refutation "
+            "condition(s) - a gate with no stop condition collects a cost "
+            "nobody can argue with")
+        # Matched at the bullet head, not as a loose substring: mutation found
+        # that renaming a bullet to `managed-target-guard-REMOVED` satisfied a
+        # substring check while naming a gate that does not exist. Tightening it
+        # then exposed two asymmetries in the extraction itself - a path-leaf
+        # split turned `githooks/pre-commit` into `pre-commit`, and backticks
+        # survived on one side only - which is the second thing mutation buys.
+        clean = lambda text: text.replace("`", "").strip()
+        heads = {clean(bullet.split("**")[1]) for bullet in bullets}
+        for row in gates:
+            name = clean(row.split("[", 1)[1].split("]", 1)[0])
+            self.assertTrue(
+                any(head == name or head.startswith(name + " ") for head in heads),
+                f"no refutation condition is headed by {name} (heads: {sorted(heads)})")
+
+    def test_a_refutation_condition_states_an_observation_not_a_feeling(self) -> None:
+        """A stop condition that cannot be observed is a preference.
+
+        Cheap proxy, deliberately: each bullet has to carry either a number or
+        an explicit alternative state ("改成", "改由", "開始"). It cannot tell a
+        good condition from a bad one; it can tell a condition from a mood, and
+        that is the failure this section exists to prevent.
+        """
+        observable = ("連續", "超過", "從未", "改成", "改由", "開始", "覆蓋每一條")
+        for bullet in self.refutation_bullets():
+            self.assertTrue(
+                any(token in bullet for token in observable),
+                f"no observable trigger in: {bullet[:80]}")
+
 if __name__ == '__main__':
     unittest.main()
 

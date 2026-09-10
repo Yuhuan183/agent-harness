@@ -46,6 +46,7 @@ Pick by what a wrong answer costs, not by what is convenient:
   implementation detail, not a contract.
 - Claim changes what users see or where things land → L4, and name the L5 that is still outstanding.
 - Absolute measured numbers headed for shipped docs → L5, or say which environment they came from.
+- A number in a `description` is read every load; put it at L5 or drop it, never merely cite it.
 
 ## 3. Four hard rules
 

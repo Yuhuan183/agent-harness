@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Read: when a session gets expensive earlier than expected
 """What actually fills a window, from this machine's real sessions. Reports; never fails.
 
 Why this exists. `docs/architecture/context-engineering.md` said the resident
@@ -44,6 +45,7 @@ says what this machine's work looks like, not what the repo mandates.
 
 Usage:
     scripts/context-inflow-report.py [--sessions N] [--json]
+
 """
 from __future__ import annotations
 

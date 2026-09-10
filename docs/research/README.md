@@ -9,7 +9,7 @@
 `readable-zh-tw` 蒸餾自另一個上游, 它的 pin, 目標分岔與逐次同步紀錄獨立成篇, 見
 [readable-zh-tw 的上游](readable-zh-tw-upstream.md) (`scripts/readable-zh-tw-recheck.sh`).
 
-> 對齊日期: 2026-07-28, 上游與場域研究於 2026-08-08 重查 (Pilotfish v1.3.10), Deep Agents 於 2026-08-20 再查 (0.7.7), Pilotfish 兩支與 Headroom 於 2026-08-21 再查 (Pilotfish 未動; pilotfish-codex 1.7.1 首次納入). 這是目前專案採用決策的入口; 各來源的取證細節留在分題文件.
+> 對齊日期: 2026-07-28, 上游與場域研究於 2026-08-08 重查 (Pilotfish v1.3.10), Deep Agents 於 2026-08-20 再查 (0.7.7), Pilotfish 兩支與 Headroom 於 2026-08-21 再查 (Pilotfish 未動; pilotfish-codex 1.7.1 首次納入). 2026-09-08 第一次勘查聚合型同業 ECC, 同日重跑[全語料盤點](landing-readiness.md#2026-09-08-重跑-21-份-而落地順序沒有改變) (18→21 份, 新候選零) 並補做[機制側盤點](mechanism-evidence-map.md) —— 那一份帶回**第九條結論**. 這是目前專案採用決策的入口; 各來源的取證細節留在分題文件.
 
 ## 這份文件回答什麼
 
@@ -29,9 +29,11 @@ flowchart LR
 
 **先驗永遠可以被本機證據推翻**, 反過來不行. 這是全篇最重要的一條規則.
 
-## 一分鐘版: 八個現行結論
+## 一分鐘版: 九個現行結論
 
 harness 應該縮到「模型無法可靠自行維持, 且能被驗證」的邊界. 落在邊界內的是: 權限, 派工深度, 可寫 artifact 所有權, Plan 收斂, provider route, 獨立驗證條件, 可追溯結果, 部署邊界. 落在邊界外的是風格偏好, 一般工程常識, 重複提醒 - 這些寫進 resident prompt 只會稀釋其他規則.
+
+第 9 條是 2026-09-08 加的, 而它和前八條不同: 前八條說**規則該長什麼樣**, 它說**下一塊錢花在哪**. 加它的理由是機制側盤點量到的一件事 —— 本 repo 的證據幾乎全部落在契約層, 而機制有一半是 gate, 那一層一個行為量測都沒有. 推翻條件: `evals/` 開始把 gate 當量測對象之後, 這一條要重新排序.
 
 | # | 本專案採用 | 拒絕掉的替代做法 |
 |---|---|---|
@@ -43,6 +45,7 @@ harness 應該縮到「模型無法可靠自行維持, 且能被驗證」的邊�
 | 6 | Claude no-write roles 不給 Bash; 要跑命令的獨立 verdict 交給 Codex read-only sandbox | 用 shell allowlist 擋掉危險命令 |
 | 7 | provider/model 決策只用同 role, 同 task class, 同 route cell 的本機結果, 樣本不足就探索 | 直接照外部排行榜選 provider |
 | 8 | Git 是可攜真相源; installer lock, 憑證, session, 服務狀態留 machine-local | 把整個 HOME 都納管 |
+| 9 | 下一批證據花在**沒有被量過的那一層** —— 現在是 gate 層 (7 個 fail-closed 閘, 52 個 eval 情境無一瞄準) | 繼續加固實質防線 (37/37 零中招, 下界 0.922), 或用「加一道新閘」代替「量現有的閘」 |
 
 ## 來源衝突與裁決
 
@@ -118,6 +121,7 @@ v1.3.5-v1.3.10 的增量分成三種處置:
 | Raymondhou0917/speak-human-tw | 上游 | pin `fa09500c77e1ec7747677377e30599d9426433db` (2026-09-05 推進; 對前一個 `ee860be6` +9, touched 只有 `assets/`) | 2026-09-05 | `readable-zh-tw` 的上游. **連續五輪**都是機器人重畫星數圖 (每日一則), 來源檔逐位元組沒動. 下次看 `upstream-pin-report.py` 的 `touched` 那行有沒有 `assets/` 以外的路徑, 逐次處置在 [readable-zh-tw-upstream](readable-zh-tw-upstream.md#2026-09-05-重查-九個-commit-全是星數圖-第五輪) |
 | rebelytics/one-skill-to-rule-them-all | 上游 | pin **`f4a95a180404bd4de35365da66849a243e3d07be`** (`v3.1.0`, 2026-09-04; 2026-09-05 推進, 歷任 `281f1346` v2.0.0 → `9d1491b8` v3.0.0); head `2967fa5f` (+1, 只動 `CONTRIBUTING.md`) | 2026-09-05 | `task-observer` 的上游. 3.0 換儲存模型 (朝我方形狀走); **3.1 補的是儀器守則** (絕對路徑, 探針當回合跑, 空結果先怪儀器, 觸發用真實 tool record 做正負控制, 指標要耐久), 七個來源檔動六個加一份 25 條的種子原則. 逐條在 [ledger 3.1 節](task-observer-upstream.md#rebelytics-31-改版逐條-2026-09-05-上游在補儀器的守則-我方多半已有): 四條沒有的全排進 [升級計畫](../plans/upgrade-plan-2026-09.md) (P1 冒號名, P2 耐久指標, P3 編輯殘渣, P5 有界停止點), 兩條已當場收 (等待要發生得了; 守衛帶三個量測數). 上游同名, 血緣方向仍未查, 同形全押佐證位; 3.0 逐條在 [08-31 節](task-observer-upstream.md#rebelytics-30-改版逐條-2026-08-31-上游朝我方的形狀走了過來), 2.0 逐條在[原節](task-observer-upstream.md#rebelyticsone-skill-to-rule-them-all-逐條處置-2026-08-28) |
 | `anthropics/claude-plugins-community` 的 `eli5` | 同業 | path 最後 commit 仍是 `863e70dc7cff21a2facc749e40a7ecd1a5d19833` (2026-08-21, 09-05 重查未動); marketplace 仍 2,282 個條目, 而 repo 樹上只有 4 個 plugin 目錄 —— 其餘條目指向外部 repo. **path 是根目錄的 `eli5`, 不是 `plugins/eli5`**: 2026-08-31 兩次查空是查法錯了, 不是上游消失 | 2026-09-05 | 七條裡六條沒採; **同日 R1 的推翻條件 (a) 由使用者觸發**, 兩份 app prompt 的專家宣告一起改成「expert at my own work, not at every topic」. 落地的是改造版不是上游原句, 所以仍然沒有 ATTRIBUTION. 逐條裁決與新推翻條件在 [community-skills-survey.md](community-skills-survey.md) |
+| `affaan-m/ecc` (Everything Claude Code) | 同業 | pin `5064474d4d762dc9640234a41617cccb79185cec` (head, 2026-09-07; `VERSION` 檔 `2.2.1`); MIT; 68 agent / 286 skill / 94 command / 24 個 hook entry / 277 支測試 | 2026-09-08 | **第一次勘查, 走相反方向的同業** (要覆蓋面, 不要最小規則集). **2026-09-08 已蒸餾一條** (B15 環境開關雙向文件 → `test_deployment.HookEnvDocumentationTests`, 概念改造零位元組, 出處記在 docstring). 42 條規則逐條處置在 [ecc-survey.md](ecc-survey.md), 11 條沒有本地等價的排進 [ECC 升級計畫](../plans/upgrade-plan-ecc-2026-09.md), 尚未落地. 它是**聚合者不是獨立觀察者** —— 旗艦守衛 fact-forcing 來自 `zunoworks/gateguard`, 雙審來自第三方, 286 支 skill 裡 42 支 `origin: community`, 計票前要先算血緣. 效果數字一個字都不能借 (n=2 個任務的 1–10 主觀分, 而且那個數字住在 skill `description` 裡). 下次看什麼: 更新頻率高到 pin 比對很快失去意義 (2026-09-07 一天 26 個 commit), 對它有價值的是逐節重查而不是 SHA; 而且**它是同業列, `upstream-pin-report.py` 撿不到** (計畫 Q9) |
 | Claude Code client 的注入區塊 | 供應商製品 | **2.1.261 (2026-09-05): `opus_5_prompt_bundle` 的兩行文字不在, `tengu_heron_brook` 無, `tengu_fennel_godwit=false`, 「section not active on this build」**; 前一狀態 (2.1.247, 文字在且生效) 自 08-28 持續到 09-05, weekly-integrity 開場報的 | 2026-09-05 | **版本是機器本機的, 旗標是伺服器推的**, 兩邊都不該從這張表讀. 這一格只登記「有這個東西」與「它移動過」; 當場查用 `~/.claude/scripts/prompt-bundle-report` (`weekly-integrity` 每週跑, 只在狀態移動時出聲), 完整取證在 [context-and-vendors.md](context-and-vendors.md) 的 08-28 節與 09-05 補記. 對 2.1.247 量的結果, 其量測面已過期 —— 戳章要重跑, 排 [升級計畫 P10](../plans/upgrade-plan-2026-09.md) |
 | Artificial Analysis Intelligence Index | 研究 | **v4.1.1** (August 2026-current) | 2026-08-14 | 點版本會回溯重算全部分數 - v4.1.1 只換了 𝜏³-Banking 的 dataset 與三項評測的 grader, 前緣分數就整體上移約 2 分. 引用絕對值前先確認版本, 見 [model-evidence.md](model-evidence.md) |
 | `Sahir619/fable-method` | 上游 | plugin `v1.4.0`; 最後一個 commit `88b5cf3` (2026-07-15); MIT; 未封存 (2026-09-05 pin-report current) | 2026-09-05 | **這一列是 2026-08-28 的對應性檢查補上的, 而它本來就該在.** 本 repo 2026-07-22 從它蒸餾了 INTENT/TWINS/AUTH 強制行與權威順序, QC fraud 清單, 以及 trap-fixture 做法, 但它**沒有 ATTRIBUTION 也沒有 pin**, 所以四個上游共用的每一道檢查都看不到它 (pin-report 現在看得到, 因為 `main/.agents/scripts/ATTRIBUTION.md` 補了). 案例與逐條取捨在 [trap-experiments](trap-experiments.md#fable-method-案例-2026-07-22); 缺口與待辦見該節 |
@@ -301,6 +305,7 @@ fable-method 的 1/4 是 [0.006, 0.806], 4/4 是 [0.398, 1.000], 重疊了一大
 | [lifecycle-replay.md](lifecycle-replay.md) | replay 的四項存活判準, 三個生命週期問題與結論 |
 | [clause-pricing.md](clause-pricing.md) | 從 lifecycle-replay 分出來的一條線: 能不能用產出品質給常駐子句定價 |
 | [landing-readiness.md](landing-readiness.md) | 全語料盤點: 18 份研究文合起來說現在該落地什麼, 含覆蓋率自述與四項建議. 2026-08-31 因為上一版落地評估只碰到 4 份而補做; 其中發現一在執行時被自己的掃描推翻, 撤回過程留在原地 |
+| [mechanism-evidence-map.md](mechanism-evidence-map.md) | 機制側盤點: 115 個機制各自站在什麼證據上, 誰在盯它不過期. 2026-09-08 因為現有三份綜合文件全部從**證據**那一側出發, 答不出「這個機制憑什麼在這裡」而補做; 量到的最大缺口是 52 個 eval 情境無一瞄準 gate 層 |
 | [wording-effect-scale.md](wording-effect-scale.md) | 措辭效應能不能外推, 與量它的 INTENT 連續尺 (30 run 的最終帳). 2026-08-31 依主題從 cross-upstream-synthesis 第三輪拆出 |
 | [local-experiments.md](local-experiments.md) | 本機任務結果 |
 | [community-skills-survey.md](community-skills-survey.md) | 第三方社群 skill 的逐條裁決與整合方案 |
@@ -315,6 +320,7 @@ fable-method 的 1/4 是 [0.006, 0.806], 4/4 是 [0.398, 1.000], 重疊了一大
 | [mattpocock-skills-integration.md](mattpocock-skills-integration.md) | 工程工作流 skill 的上游快照, 工作流比較, 採用與拒絕理由 |
 | [upstream-distillation-ledger.md](upstream-distillation-ledger.md) | 上游每一節蒸餾到哪裡, 捨棄了什麼 (`scripts/upstream-recheck.sh` 可覆核). 涵蓋 mattpocock/skills 與 sepia, 加每輪全掃的讀數表 (08-28, 08-31, 09-05); rebelytics 的逐條自 2026-09-05 起拆到 task-observer-upstream |
 | [task-observer-upstream.md](task-observer-upstream.md) | `task-observer` 的上游 rebelytics 逐版逐條 (v2.0.0 08-28, v3.0.0 08-31, v3.1.0 09-05); 2026-09-05 從帳本拆出, 兩層驗證記在帳本的拆檔節 |
+| [ecc-survey.md](ecc-survey.md) | 同業 `affaan-m/ecc` 的 42 條逐條處置, 三個反面觀察與兩個分歧; 落地排程在 [ECC 升級計畫](../plans/upgrade-plan-ecc-2026-09.md) |
 | [readable-zh-tw-upstream.md](readable-zh-tw-upstream.md) | `readable-zh-tw` 的上游 pin, 目標分岔與逐次同步紀錄 |
 
 ## 驗證缺口

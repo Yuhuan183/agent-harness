@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Read: when sync reports the git hook path is taken by another tool
 # Points a checkout's git at this repo's tracked hooks (main/claude/githooks),
 # which is what turns the tracked pre-commit file into an installed gate.
 #

@@ -92,6 +92,68 @@ settings 的前置過濾做不到上面這些判定, 所以改成「字串裡有
 | [runtime-guard](../main/claude/hooks/runtime-guard.py) (無 `--gate`) | SessionStart | 版本不足時先警告, 讓使用者在派工前就知道 reviewer 會被擋 |
 | [compact-reseed](../main/claude/hooks/compact-reseed.py) | SessionStart[compact] | 壓縮後注入一句提醒, 要求重新申報目標, 進行中決策與未決項. PreCompact 無法塑造摘要, 所以這件事只能落在壓縮**之後**這一刻 |
 
+## 每個閘的推翻條件
+
+一道關不起來的閘會誘人相信一個假保證; 一道**沒有人知道什麼時候該拿掉**的閘則一直收租.
+所以七個有界 gate 各寫一條: 什麼觀察會讓它該被移除或降級成提醒. 寫不出來的那個閘,
+問題不在文件而在它本來就沒有停止條件.
+
+由 `test_deployment.GateRefutationTests` 釘住條數與可觀察性 (不釘措辭). 蒸餾自 ECC 的
+`harness-adapter-compliance` —— 它替 12 個 harness 各留一個 `last_verified_at` 欄位卻沒有任何
+測試讓它過期, 最舊的一格離 HEAD 四個月, 全 repo grep 只有產生器與它產生的文件命中
+(見 [ecc-survey](research/ecc-survey.md) 的 D3). **借的是教訓不是形狀**: 加了欄位就要同時加讓它
+過期的檢查, 否則欄位只是裝飾. 而在這個 repo 裡, 需要那個檢查的不是部署 manifest
+(40 列每週都被機器驗) 而是這裡 —— 七個閘每次匹配的工具呼叫都在收費, 卻沒有一個說得出
+什麼會讓那筆費用變成不該付的.
+
+- **commit-test-gate** — 連續 20 次 `git commit` 裡超過一半帶 `AGENT_SKIP_TEST_GATE=1` 前綴.
+  那時它擋下的不是紅狀態而是流程, 逃生口已經變成正常路徑; 該問的是套件為什麼常紅.
+- **push-consent-gate** — 連續 10 次 push 全部事先取得同意, 且沒有一次是助理自己碰放行 sentinel.
+  它 2026-09-06 才從提醒升成閘, 理由是提醒沒擋住連續五次未經同意的 push; 上面那個觀察成立
+  就表示升級的前提消失, 該退回提醒.
+- **leaf-redispatch** — client 本身開始保證單層派工 (載體在真派工裡量不到巢狀呼叫).
+  那時它是永遠不會觸發的死碼, 而死碼比沒有碼更糟: 它讓人以為有一道防線.
+- **runtime-guard `--gate`** — reviewer 的唯讀邊界改由 frontmatter allowlist 單獨保證,
+  不再依賴 CLI 版本. 版本檢查那時沒有對象.
+- **verifier-quota** — ledger 顯示同一 top-level task (以 prompt 為界) 的第二個 verifier
+  從未給出不同結論.
+  那時它擋的純粹是成本. 反方向的觀察 (擋到的多數其實是新任務) 讓它變成誤報機器; 兩邊都成立
+  才拿掉, 只有一邊成立是重新調而不是移除. **它本來就是預算護欄不是安全邊界**, 所以這條的
+  門檻比其他六個低.
+- **managed-target-guard** — 部署改成不可寫 (唯讀掛載, 或 HOME 那一份是指回 checkout 的 symlink).
+  寫入託管檔這條路本身消失, 閘就沒有邊界要守.
+- **githooks/pre-commit** — CI 覆蓋每一條 commit 路徑而且在 push 之前就跑完.
+  在那之前它守的是文字層看不到的那一段 (wrapper script, 名為 `git` 的 function, PATH 覆蓋),
+  而 `--no-verify` 與 `-c core.hooksPath=` 仍然繞得過去 —— 它從來不是無條件的.
+
+**五支 fail-open hook 不在這裡**, 因為它們不攔截: 沒有「誤擋」可觀察, 它們的停止條件是
+「沒有人讀它產生的東西」, 那是另一種量法.
+
+## Hook 讀的環境開關
+
+上面兩張表的「逃生口」欄只列了**攔截時**用得到的那幾個. 這一節列**全部** —— 因為
+`main/claude/hooks/*.py` 讀而這份文件沒寫的開關, 操作者沒有辦法發現它存在, 而它可能正是
+攔截訊息叫他去設的那一個.
+
+由 `test_deployment.HookEnvDocumentationTests` 雙向釘住: 程式讀了這裡沒寫的會紅, 這裡寫了
+程式已經不帶的也會紅. 蒸餾自 ECC 的 `tests/ci/gateguard-env-documented.test.js`
+(勘查見 [ecc-survey](research/ecc-survey.md) 的 B15), 形狀借用, 沒有借任何一個位元組.
+
+| 開關 | 誰讀 | 做什麼 | 預設 |
+|---|---|---|---|
+| `AGENT_SKIP_TEST_GATE=1` | [commit-test-gate](../main/claude/hooks/commit-test-gate.py), [githooks/pre-commit](../main/claude/githooks/pre-commit) | 放行一次刻意的紅狀態提交. **不是環境讀取**: 它是指令前綴, gate 對指令字面比對, 所以正規化不會讓它更容易被解除 | 無 |
+| `AGENT_ALLOW_SECOND_VERIFIER=1` | [verifier-quota](../main/claude/hooks/verifier-quota.py) | 同一 prompt 內放行第二個 outcome verifier | 無 |
+| `AGENT_HARNESS_PYTHON` | [commit-test-gate](../main/claude/hooks/commit-test-gate.py) | 指定跑套件用的直譯器, 跳過搜尋. **攔截訊息會指名它**, 所以它必須在這裡查得到 | 依序試 `sys.executable` 與內建清單 |
+| `AGENT_HARNESS_REPO` | [managed-target-guard](../main/claude/hooks/managed-target-guard.py) | 指定來源 checkout 的位置, 亦即這個閘拿哪一份 manifest 判斷「託管」 | 讀 `~/.agents/skills/.agent-harness-source` 標記 |
+| `AGENT_RUNTIME_VERSION` | [weekly-integrity](../main/claude/hooks/weekly-integrity.py) | 直接指定 runtime 版本, 不跑子行程去問. **設了它, 版本漂移就報不出來** | 實際探測 |
+| `AGENT_DENIAL_LOG` | [denial_log](../main/claude/hooks/denial_log.py) | 拒絕紀錄要寫去哪. 套件用它避免寫進開發者本機那一份 | `~/.claude/telemetry/denials.jsonl` |
+| `AGENT_EXPERIENCE_PENDING` | [experience-pending](../main/claude/hooks/experience-pending.py) | 暫存檔位置 | `~/.agents/telemetry/experience-pending.jsonl` |
+| `AGENT_EXPERIENCE_LEDGER` | 同上 | ledger 位置 | `~/.agents/telemetry/experience.jsonl` |
+| `AGENT_EXPERIENCE_LOG_BIN` | 同上 | 寫入 ledger 的程式 | `~/.agents/skills/experience-ledger/scripts/experience-log` |
+
+後四個主要給套件與 replay 用, 但它們**照樣列在這裡**: 一個只在測試裡出現的覆寫仍然是這台
+機器上真的會被讀的東西, 而「它只有測試在用」是註解該說的話, 不是省略它的理由.
+
 ## 為什麼 hook 值得信任: 三關驗證
 
 hook 的價值不在「有掛」, 而在「真的擋得住」. 抓不到蓄意錯誤的 hook 等於不存在. 所以每個
@@ -129,6 +191,24 @@ Hook 建置規範 (真實目錄先證明可跑 → 合成 pipe-test → `jq` 驗
 
 `scripts/denial-report.py` 按 gate, reason 與日期彙總; `python3
 ~/.claude/hooks/denial_log.py --tail 20` 印最近幾筆原始列.
+
+### 拒絕訊息衰減 (2026-09-08 起)
+
+同一個閘在同一 session 連續攔截時, 前三次發完整訊息, 之後改成單行並帶本 session 的序號.
+理由不是版面: **近乎相同的多行攔截區塊會在 context window 裡累積, 拉高模型掉進退化重複
+迴圈的機率** —— 這是 ECC #2142 的機轉描述 (勘查見 [ecc-survey](research/ecc-survey.md) 的 B4),
+形狀借用, 沒有借任何一個位元組, 也沒有借它的效果數字 (它沒發表).
+
+**條件在落地前量過** (`scripts/denial-report.py`, 2026-09-08): 最長連續攔截是
+`commit-test-gate` 18 次, `managed-target-guard` 5 次.
+
+只有**訊息完全靜態**的閘會衰減. `commit-test-gate` 不衰減, 兩個理由各自成立:
+它的訊息帶著失敗套件的十五行尾巴, 套件變了訊息就變; 而它的 git 側那一半拿不到 payload,
+沒有 session 可以計數.
+
+序號由 `denial_log.record()` 回傳, 而**它算不出來時 (沒有 session, 或紀錄讀不到) 一律發完整
+訊息**. 簿記是 fail-open 的, 所以簿記壞掉只能讓訊息變吵, 不能讓它變安靜 —— 反過來就是拿
+「記錄失敗」換掉一次該讓人看懂的攔截.
 
 ### 沒人讀的儀器不會告訴你它壞了 (2026-08-20)
 

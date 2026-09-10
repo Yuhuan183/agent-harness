@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Read: every change to the Codex contract, and before quoting any per-rollout number
 """Census of the Codex host prompt, per session kind, from local rollouts.
 
 Companion to `prompt-surface-census.py`: that one measures the prompt surface
@@ -38,6 +39,7 @@ deletion decision", not "the numbers changed".
     scripts/codex-prompt-census.py                  # table
     scripts/codex-prompt-census.py --min-cli 0.145  # current generation only
     scripts/codex-prompt-census.py --json
+
 """
 from __future__ import annotations
 

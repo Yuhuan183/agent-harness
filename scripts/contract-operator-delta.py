@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Read: automatic: the git hook prints it for any staged prompt-surface file. Read the output, not the exit code
 """Report how a diff moved the logical operators inside prompt-surface files.
 
 Evidence, not a gate. It always exits 0 and never blocks anything, because the
@@ -25,6 +26,7 @@ Usage:
     scripts/contract-operator-delta.py --staged        # HEAD vs the index
     scripts/contract-operator-delta.py --range A..B    # between two commits
     scripts/contract-operator-delta.py --json
+
 """
 
 from __future__ import annotations

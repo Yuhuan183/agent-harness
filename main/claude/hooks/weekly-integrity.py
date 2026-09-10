@@ -211,6 +211,40 @@ def carrier_validated_on():
     return tuple(map(int, match.groups())) if match else None
 
 
+
+# Every un-reconciled dispatch printed its own line and kept printing it until
+# somebody reconciled it, so this one finding grew a line at a time with no
+# ceiling - the only unbounded part of what SessionStart injects. Measured
+# 2026-09-08 the whole finding was 1,600 bytes on a drift-heavy run, a fifth of
+# ECC's 8,000-character cap (`docs/research/ecc-survey.md` rule B10), so a size
+# cap over everything would trade real signal for nothing at this scale.
+#
+# This is a listing bound instead, and the distinction is the whole point: the
+# number an operator needs is *how much* is unreconciled, so the total is
+# stated and a sample is shown. A truncation that loses the count would hide
+# the one figure that says whether to care.
+STALE_DISPATCH_SAMPLE = 10
+
+
+def summarise_stale_dispatches(stale) -> str:
+    """The un-reconciled dispatch finding, with its listing bounded."""
+    ids = sorted(stale)
+    head = (
+        "un-reconciled dispatches (launched or completed but never "
+        "logged to the experience ledger; log with experience-log "
+        "--from-pending --dispatch-id <id> --outcome <o>, or retire a "
+        "native Codex launch that never ran with experience-stage "
+        "--cancel)"
+    )
+    if len(ids) <= STALE_DISPATCH_SAMPLE:
+        return head + ":\n" + "\n".join(ids)
+    shown = ids[:STALE_DISPATCH_SAMPLE]
+    return (
+        f"{head} — {len(ids)} of them, oldest {STALE_DISPATCH_SAMPLE} shown:\n"
+        + "\n".join(shown)
+        + f"\n... and {len(ids) - STALE_DISPATCH_SAMPLE} more"
+    )
+
 def live_runtime_version():
     """This machine's Claude Code version, or None when it cannot be read.
 
@@ -830,13 +864,7 @@ try:
                         unroutable.add(dispatch_id)
         if stale:
             unroutable = sorted(unroutable & set(stale))
-            findings.append(
-                "un-reconciled dispatches (launched or completed but never "
-                "logged to the experience ledger; log with experience-log "
-                "--from-pending --dispatch-id <id> --outcome <o>, or retire a "
-                "native Codex launch that never ran with experience-stage "
-                "--cancel):\n" + "\n".join(sorted(stale))
-            )
+            findings.append(summarise_stale_dispatches(stale))
             if unroutable:
                 # experience-log refuses a role it does not route, so naming
                 # these without naming the command that does work would leave

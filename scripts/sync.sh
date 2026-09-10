@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Read: its own output, every deploy; nothing else reads it for you
 # Syncs config from the agent-harness project back to global (~/.claude, ~/.codex, ~/.agents).
 # Only overwrites portable contract files; machine state (Codex config.toml, Claude Code ~/.claude.json MCP entries, auth, sessions, cache) is never touched.
 # Usage:

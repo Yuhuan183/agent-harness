@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Read: automatic: weekly-integrity runs `--verify` and reports drift
 """Ownership-aware merge of the repo's settings.json into a deployed one.
 
 A wholesale copy is wrong for this file because three writers share it: this
@@ -32,6 +33,7 @@ The repo is the sole authority on its own entries and never an authority on
 anyone else's. `--check` asserts that every group in a settings file is owned
 and that every hook script it names exists in the repo, which is what keeps
 ownership honest as hooks are added.
+
 """
 
 from __future__ import annotations

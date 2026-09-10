@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Read: after changing anything about where the suite writes
 """Does running the suite change anything on this machine? Reports; never fails.
 
 Why this exists. On 2026-08-20 the suite was found to have written 35,853
@@ -29,6 +30,7 @@ outside the repository", and the suite is only the default answer worth having.
 
 Usage:
     scripts/machine-state-check.py [--command CMD] [--trees A,B] [--json]
+
 """
 from __future__ import annotations
 

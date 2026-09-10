@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Read: monthly, and before arguing about whether a gate should stay - the refutation conditions in docs/hook-system.md are counted here
 """Read the denial log. Reports; never fails.
 
 Why this exists. `denial_log` was built on 2026-08-08 to answer one question -
@@ -31,6 +32,7 @@ where the row points.
 
 Usage:
     scripts/denial-report.py [--days N] [--json]
+
 """
 from __future__ import annotations
 

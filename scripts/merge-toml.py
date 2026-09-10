@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Read: automatic: weekly-integrity runs `--verify` and reports drift
 """Section-level merge of a repo TOML fragment into a machine-owned TOML file.
 
 `~/.codex/config.toml` holds machine state this repo must never author: GPT
@@ -26,6 +27,7 @@ The merge is textual and section-scoped, deliberately:
 
 Re-serialising through a TOML writer was rejected: it would silently reformat
 and strip the comments in a file the user edits by hand.
+
 """
 
 from __future__ import annotations

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Read: during a recheck round, after the pin report says something moved and the bytes need verifying
 # Re-fetch the pinned upstream and check it is still what the ledger describes.
 #
 # The distillation's ATTRIBUTION files say a recheck must fetch upstream rather

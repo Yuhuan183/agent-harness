@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Read: at setup, and when a shell function stops resolving
 # Installs the agent-harness agent-launch shell functions into a zsh startup file.
 # Idempotent: the marked block is stripped and re-appended, so re-running never
 # duplicates. Machine-local only; NOT part of scripts/sync.sh or the deployment

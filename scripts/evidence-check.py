@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Read: before landing any document that states a version, a count or a measured number
 """Is the recorded evidence still attached to anything real? Reports; never fails.
 
 Two instruments, one question. Both were built after a 2026-08-08 check found
@@ -57,6 +58,7 @@ checked, which would cost more than it saved.
 
 Usage:
     scripts/evidence-check.py [--json] [--attestation-age DAYS]
+
 """
 from __future__ import annotations
 

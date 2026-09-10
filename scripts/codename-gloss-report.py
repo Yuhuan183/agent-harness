@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Read: when a new eval codename appears, or when a reader-facing document gains a section
 """Report internal codenames used without explanation. Reports; never fails.
 
 `docs/README.md` rule 8 splits documents by reader, and one tier - 說明與研究 -
@@ -24,6 +25,7 @@ in it: they are written for whoever ran the batch.
 
 Usage:
     scripts/codename-gloss-report.py [--json]
+
 """
 from __future__ import annotations
 

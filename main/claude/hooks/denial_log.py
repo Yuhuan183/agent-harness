@@ -21,6 +21,16 @@ logging worked: `record` swallows every exception, and a caller that cannot even
 import this module keeps its own fallback. The cost of a lost line is one
 missing row; the cost of a raised exception inside a fail-closed hook is a
 blocked commit nobody can explain.
+
+Since 2026-09-08 `record` also returns the denial's ordinal within its session,
+which is what lets a gate stop repeating itself. Near-identical multi-line
+denials accumulate in the context window and raise the odds of the model
+dropping into a degenerate repetition loop (ECC #2142, surveyed in
+`docs/research/ecc-survey.md`); the longest run measured here was 18 for
+`commit-test-gate` and 5 for `managed-target-guard`. `None` means the ordinal
+could not be established, and a gate that gets `None` must emit its full
+message - loud and repetitive is the safe direction when the bookkeeping is
+unavailable, short and quiet is not.
 """
 from __future__ import annotations
 
@@ -50,13 +60,59 @@ def log_path() -> str:
     return os.path.expanduser(os.environ.get(ENV) or LOG)
 
 
-def record(gate: str, reason: str, event: object = None, **detail: object) -> None:
-    """Append one denial. Never raises, never blocks, never writes to stderr.
+# How many denials of one gate carry the full message before it condenses.
+# ECC uses three and nothing here argues for a different number; the local
+# streaks (18 and 5) are long enough that any small N behaves the same.
+FULL_DENIALS = 3
+
+
+def session_denials(gate: str, session: str) -> "int | None":
+    """How many times this gate already denied in this session, or None.
+
+    None is not zero. It means the log could not be read, and the caller owes
+    the full message in that case - see the module docstring.
+    """
+    if not gate or not session:
+        return None
+    try:
+        with open(log_path(), encoding="utf-8") as handle:
+            rows = handle.read().splitlines()
+    except (OSError, ValueError):
+        return None
+    seen = 0
+    for line in rows:
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue          # a torn line is not a reason to lose the count
+        if row.get("gate") == gate and row.get("session_id") == session:
+            seen += 1
+    return seen
+
+
+def condensed(gate: str, ordinal: int, summary: str, recovery: str) -> str:
+    """The short form, carrying its ordinal so consecutive denials differ.
+
+    The ordinal is doing real work: without it the condensed lines would be
+    identical to each other, which is the failure this exists to avoid moved
+    one step along rather than fixed.
+    """
+    return (f"[{gate}] (denial #{ordinal} this session) {summary} {recovery}\n")
+
+
+def record(gate: str, reason: str, event: object = None,
+           **detail: object) -> "int | None":
+    """Append one denial and return its ordinal within the session.
 
     `gate` is the hook's own name, `reason` a short stable code so rows can be
     counted without parsing prose, and `event` the hook payload when the caller
     has one - only its identifiers are kept, never its content.
+
+    Returns the 1-based ordinal for this gate in this session, or None when
+    there is no session to count within or the log could not be read. Never
+    raises: a caller that ignores the return value behaves exactly as before.
     """
+    ordinal = None
     try:
         row = {
             "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -68,12 +124,17 @@ def record(gate: str, reason: str, event: object = None, **detail: object) -> No
                 if event.get(key):
                     row[key] = event[key]
         row.update({k: v for k, v in detail.items() if v is not None})
+        session = row.get("session_id")
+        prior = session_denials(gate, session) if session else None
         out = log_path()
         os.makedirs(os.path.dirname(out), exist_ok=True)
         with open(out, "a", encoding="utf-8") as handle:
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+        # Counted before this row was written, so the first denial is #1.
+        ordinal = None if prior is None else prior + 1
     except Exception:
-        pass
+        return None
+    return ordinal
 
 
 def main() -> int:

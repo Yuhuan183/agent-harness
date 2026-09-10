@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Read: when a document is added or split, and whenever the sprawl guard goes red - it names which tier grew
 """Size report for the repo-only `docs/` tree. Reports; never fails.
 
 The deployed surface is measured by `scripts/prompt-surface-census.py` and
@@ -26,6 +27,7 @@ this script only reports what that envelope currently says.
 
 Usage:
     scripts/docs-size-report.py [--json]
+
 """
 from __future__ import annotations
 

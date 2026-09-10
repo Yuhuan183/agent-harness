@@ -155,16 +155,29 @@ def main() -> int:
     if hit is None:
         return 0
     target, source = hit
-    sys.stderr.write(
+    # Recorded first, because the record is what tells us whether this session
+    # has already read the long version. Bookkeeping stays fail-open: an
+    # ordinal of None means the full message, never a quieter one.
+    ordinal = None
+    if denial_log is not None:
+        ordinal = denial_log.record("managed-target-guard",
+                                    "wrote-to-managed-target",
+                                    payload, caller=path)
+    full = (
         f"[managed-target-guard] blocked: {path} is deployment output. "
         f"{target} is written by scripts/sync.sh from {source}; an edit here is "
         "reverted by the next deploy and is tested by nothing. Edit "
         f"{source} in the checkout, run the suite, then deploy with "
         "scripts/sync.sh --apply (the user runs that step).\n"
     )
-    if denial_log is not None:
-        denial_log.record("managed-target-guard", "wrote-to-managed-target",
-                          payload, caller=path)
+    if (denial_log is not None and ordinal is not None
+            and ordinal > denial_log.FULL_DENIALS):
+        sys.stderr.write(denial_log.condensed(
+            "managed-target-guard", ordinal,
+            f"{path} is deployment output.",
+            f"Edit {source}, then scripts/sync.sh --apply."))
+    else:
+        sys.stderr.write(full)
     return 2
 
 

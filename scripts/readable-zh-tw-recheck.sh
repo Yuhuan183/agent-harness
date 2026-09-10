@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Read: during a recheck round, for that upstream only
 # Re-fetch readable-zh-tw's upstream and check it is still what the研究 doc describes.
 #
 # Same contract as scripts/upstream-recheck.sh, different upstream: that one
