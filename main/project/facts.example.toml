@@ -1,0 +1,12 @@
+# agent-harness project facts. One file; both contract blocks render from it.
+# Every key is required. Write "none" when a fact genuinely does not apply -
+# an empty value is an unanswered question, and project-init refuses to
+# render until every question has an answer.
+
+project = ""          # the repository's name as people say it
+test_command = ""     # the command that runs the suite
+lint_command = ""     # the linter, or "none"
+shortest_loop = ""    # the fastest check that can refute a change: a typecheck, one focused test, a build
+truth_sources = []    # what wins on conflict, most authoritative first (a schema, a tracker, an upstream)
+traps = []            # environment quirks a newcomer hits: env vars, ports, a test that hangs
+review_lenses = []    # seams worth a bounded read-only review pass: serialization, concurrency, a contract boundary

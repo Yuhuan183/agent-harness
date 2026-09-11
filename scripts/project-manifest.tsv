@@ -1,0 +1,3 @@
+# source (repo-relative)	target (project-relative, under the repository project-init is pointed at)	mode
+main/project/CLAUDE.project.md	CLAUDE.md	merge-block
+main/project/AGENTS.project.md	AGENTS.md	merge-block

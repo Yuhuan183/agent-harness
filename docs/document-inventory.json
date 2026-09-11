@@ -19,6 +19,7 @@
     "main/codex/skills/**/*.md",
     "main/.agents/*.md",
     "main/.agents/docs/*.md",
+    "main/project/*.md",
     "main/.agents/skills/**/*.md",
     ".agents/skills/**/*.md"
   ],

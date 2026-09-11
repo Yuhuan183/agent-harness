@@ -64,6 +64,7 @@ flowchart LR
 | [`main/claude/`](main/claude/README.md) | Claude Code 契約, roles, skills, hooks, prompts, routing | `~/.claude/` |
 | [`main/codex/`](main/codex/README.md) | Codex 契約, roles, resolver, bridge, 可攜 config 片段 | `~/.codex/` |
 | [`main/.agents/`](main/.agents/README.md) | 兩端共用 skills, routing core 與 runtime 知識 | `~/.agents/` |
+| [`main/project/`](main/project/README.md) | 專案層樣板: 另一個 repo 一份事實包, 由 `scripts/project-init.py` 渲染成區塊 | `<repo>/CLAUDE.md`, `<repo>/AGENTS.md` |
 | [`docs/`](docs/README.md) | 方法論, 研究, 部署說明與歷史決策; 不回寫全域 | — |
 | [`evals/`](evals/) | 行為 trap fixtures 與機械 grader; 只在 repo 內取證 | — |
 | [`.agents/skills/`](.agents/skills/) | repo 內部維運 skills (如 harness-review); dev-only | — |
