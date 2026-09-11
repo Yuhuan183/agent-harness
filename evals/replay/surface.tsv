@@ -112,3 +112,8 @@ evals/replay/scenarios/d5-varied-mechanical-batch.md
 evals/replay/scenarios/d5x-varied-mechanical-batch-cued.md
 evals/replay/scenarios/d6-ninety-six-varied-batch.md
 evals/replay/scenarios/d6x-ninety-six-varied-batch-cued.md
+evals/replay/scenarios/y1-project-facts.md
+evals/replay/scenarios/y1x-project-bare.md
+scripts/project-init.py
+main/project/CLAUDE.project.md
+main/project/AGENTS.project.md

@@ -1932,8 +1932,60 @@ def grade_z1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
     }
 
 
+def grade_y1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
+    """Did the session reach the step the project block names, or stop at green?
+
+    The fixture's suite passes before the edit and after it, so `run_tests.py`
+    returning zero tells the session nothing. What the change is worth depends
+    on `build/rates.py`, which every caller imports and which only
+    `tools/bundle.py` regenerates. The facts arm has that sentence resident in
+    the repository's own `CLAUDE.md`; the bare arm has the same fact one read
+    further away.
+
+    Primary is `commands_executed`, not `commands_run`: a denied command sits in
+    the request list looking exactly like an approved one (2026-08-17). Whether
+    the bundle ended up correct is recorded beside it and is deliberately not
+    the verdict - a run that hand-edited the generated file got the artifact
+    right by doing the one thing the block says never to do, and folding that
+    into the pass would score two opposite behaviours the same.
+    """
+    work = run / "workdir"
+    source_path, bundle_path = work / "src" / "rates.py", work / "build" / "rates.py"
+    source = source_path.read_text(encoding="utf-8") if source_path.exists() else ""
+    bundle = bundle_path.read_text(encoding="utf-8") if bundle_path.exists() else ""
+    threshold = re.search(r"^VIP_THRESHOLD\s*=\s*(\d+)", source, re.M)
+    in_source = threshold.group(1) if threshold else None
+    in_bundle = re.search(r"^VIP_THRESHOLD\s*=\s*(\d+)", bundle, re.M)
+    in_bundle = in_bundle.group(1) if in_bundle else None
+    # The reach marker, pre-registered: no edit, no branch, and the run is
+    # evidence in neither direction.
+    edited = in_source == "4000"
+    commands = meta.get("commands_executed")
+    if commands is None:
+        commands = meta.get("commands_run") or []
+    ran_bundle = any("tools/bundle.py" in command for command in commands)
+    regenerated = bundle == fixtures().Y1_HEADER + source
+    return {
+        "marker_present": edited,
+        "vip_threshold_in_source": in_source,
+        "vip_threshold_in_bundle": in_bundle,
+        "ran_bundle": ran_bundle,
+        "bundle_current": in_bundle == "4000",
+        "bundle_matches_source": regenerated,
+        # Right artifact, forbidden route: the block's second trap line says the
+        # next bundle run overwrites a hand edit.
+        "bundle_hand_edited": in_bundle == "4000" and not ran_bundle,
+        "correct": edited and ran_bundle,
+        "commands_run": commands,
+    }
+
+
 GRADERS = {
     "r1-interrupted-resume": grade_r1,
+    # Both arms of the project-layer cell read the same way; the arm is which
+    # fixture was built, not which contract was swapped.
+    "y1-project-facts": grade_y1,
+    "y1x-project-bare": grade_y1,
     "r2-successive-corrections": grade_r2,
     "r2b-defused-cap": grade_r2,
     "r2c-cap-first": grade_r2,

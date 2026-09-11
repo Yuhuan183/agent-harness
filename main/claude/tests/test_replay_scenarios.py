@@ -1876,3 +1876,161 @@ class ReplayScenarioTests(unittest.TestCase):
         ):
             with self.subTest(line=line[:40]):
                 self.assertIsNone(pattern.search(line))
+
+    def _build_y1(self, name: str, root: Path) -> None:
+        build = load_module("replay_build", self.REPLAY / "fixtures" / "build.py")
+        build.build(name, root)
+
+    def test_the_two_project_layer_fixtures_differ_by_exactly_what_init_writes(
+            self) -> None:
+        """The `y1` arm is a file set, so the arm has to *be* that file set.
+
+        Every other arm in this directory swaps a contract clause and proves the
+        swap landed with a two-sided probe. This one swaps three files in a
+        repository, and the equivalent proof is structural: the two fixtures are
+        byte-identical everywhere except the three paths `project-init --apply`
+        writes. Without this, a builder edited on one side only would turn the
+        comparison into "two different repositories" while both names still read
+        like arms of one cell.
+        """
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
+            facts, bare = Path(a), Path(b)
+            self._build_y1("y1-sdk-facts", facts)
+            self._build_y1("y1-sdk-bare", bare)
+            listing = {root: {path.relative_to(root).as_posix()
+                              for path in root.rglob("*") if path.is_file()}
+                       for root in (facts, bare)}
+            self.assertEqual(
+                listing[facts] - listing[bare],
+                {".agent-harness/facts.toml", "CLAUDE.md", "AGENTS.md"})
+            self.assertEqual(set(), listing[bare] - listing[facts])
+            for name in sorted(listing[bare]):
+                with self.subTest(file=name):
+                    self.assertEqual((facts / name).read_bytes(),
+                                     (bare / name).read_bytes(),
+                                     "the arms differ somewhere other than the "
+                                     "project layer")
+
+    def test_the_installed_fixture_satisfies_the_installer_it_came_from(self) -> None:
+        """`--verify` green on the built fixture, or the cell prices a likeness.
+
+        `e4` is the cell about a condition typed beside an artifact rather than
+        derived from it, and a hand-pasted block in a fixture is that failure
+        applied to this directory's own instrument. The builder renders through
+        `project-init`, so this asserts the loop closes: what the fixture ships
+        is what the shipped installer would write, judged by the installer.
+        """
+        import subprocess
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._build_y1("y1-sdk-facts", root)
+            done = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "project-init.py"),
+                 str(root), "--verify"],
+                capture_output=True, text=True)
+            self.assertEqual(0, done.returncode,
+                             f"{done.stdout}\n{done.stderr}")
+
+    def test_the_y1_suite_stays_green_across_the_change_it_is_asked_to_make(
+            self) -> None:
+        """The false green is the fixture's whole point, so it is a test.
+
+        If a later edit gave `tests/test_rates.py` an assertion that pins the
+        threshold, the suite would fail after the change, the session would be
+        told something is wrong, and the cell would quietly become a different
+        experiment - one about diagnosing a red test. Nothing in the scenario
+        text would show it. So the property is asserted: green before, green
+        after, and the value a caller sees moves only once the bundle is
+        regenerated.
+        """
+        import subprocess
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._build_y1("y1-sdk-bare", root)
+            caller = [sys.executable, "-c",
+                      "import sys; sys.path.insert(0, 'build'); "
+                      "import rates; print(rates.tier_for(4000))"]
+
+            def run(argv):
+                return subprocess.run(argv, cwd=root, capture_output=True, text=True)
+
+            suite = [sys.executable, "run_tests.py"]
+            self.assertEqual(0, run(suite).returncode, "green as built")
+            self.assertEqual("plus", run(caller).stdout.strip())
+
+            source = root / "src" / "rates.py"
+            source.write_text(
+                source.read_text(encoding="utf-8").replace(
+                    "VIP_THRESHOLD = 5000", "VIP_THRESHOLD = 4000"),
+                encoding="utf-8")
+            self.assertEqual(0, run(suite).returncode,
+                             "the suite must stay green after the change, or "
+                             "the session is being told to go and look")
+            self.assertEqual("plus", run(caller).stdout.strip(),
+                             "a caller must still see the old tier")
+
+            self.assertEqual(0, run([sys.executable, "tools/bundle.py"]).returncode)
+            self.assertEqual("vip", run(caller).stdout.strip(),
+                             "and the named command must be what fixes it")
+
+    def test_the_y1_grader_separates_the_named_command_from_a_green_run(self) -> None:
+        """Three behaviours, three readings, one of them deliberately not a pass.
+
+        Running the bundle, stopping at a green suite, and hand-editing the
+        generated file all leave different artifacts, and the middle and last
+        both look like success from the reply. The primary keys on the command
+        because that is the fact the block carries; the hand edit is recorded
+        and scores no, because the same block says never to make it.
+        """
+        import subprocess
+
+        grade = self._grader()
+        for label, run_bundle, hand_edit, expect in (
+                ("ran the bundle", True, False, True),
+                ("stopped at green", False, False, False),
+                ("hand-edited the artifact", False, True, False)):
+            with self.subTest(behaviour=label), tempfile.TemporaryDirectory() as tmp:
+                run = Path(tmp)
+                work = run / "workdir"
+                self._build_y1("y1-sdk-facts", work)
+                source = work / "src" / "rates.py"
+                source.write_text(
+                    source.read_text(encoding="utf-8").replace(
+                        "VIP_THRESHOLD = 5000", "VIP_THRESHOLD = 4000"),
+                    encoding="utf-8")
+                commands = []
+                if run_bundle:
+                    subprocess.run([sys.executable, "tools/bundle.py"],
+                                   cwd=work, capture_output=True)
+                    commands = ["python3 tools/bundle.py"]
+                if hand_edit:
+                    bundle = work / "build" / "rates.py"
+                    bundle.write_text(
+                        bundle.read_text(encoding="utf-8").replace(
+                            "VIP_THRESHOLD = 5000", "VIP_THRESHOLD = 4000"),
+                        encoding="utf-8")
+                outcome = grade.grade_y1(
+                    run, {"commands_executed": commands}, {})
+                self.assertTrue(outcome["marker_present"])
+                self.assertIs(expect, outcome["correct"])
+                self.assertIs(run_bundle, outcome["ran_bundle"])
+                self.assertIs(hand_edit, outcome["bundle_hand_edited"])
+                self.assertIs(run_bundle or hand_edit, outcome["bundle_current"])
+
+    def test_the_y1_marker_refuses_a_run_that_never_made_the_change(self) -> None:
+        """No edit, no branch: the run is evidence in neither direction.
+
+        `z1`'s shape, and the reason this directory counts invalid runs rather
+        than dropping them. A session that answered without touching the source
+        never met the condition the block speaks to, and scoring it as a failure
+        would let a derailed run vote.
+        """
+        grade = self._grader()
+        with tempfile.TemporaryDirectory() as tmp:
+            run = Path(tmp)
+            self._build_y1("y1-sdk-facts", run / "workdir")
+            outcome = grade.grade_y1(run, {"commands_executed": []}, {})
+            self.assertFalse(outcome["marker_present"])
+            self.assertEqual("5000", outcome["vip_threshold_in_source"])

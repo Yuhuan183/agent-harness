@@ -578,6 +578,87 @@ speak-human-tw 第五輪機器人, rebelytics 3.0→3.1; sepia 出 v0.7.0; clien
 `templates/agents/*.md` 的措辭; 07-22 實際讀的那版 (v1.3.10 之前) 的原文; 一支的成本約
 十二個工具呼叫, 比 09-08 樣本的六個多一倍, 因為多了一次上游抓取.
 
+#### 2026-09-11 專案層 P2: 兩個真 repo, 一個不該裝, 一個裝了
+
+**先看 WorkSpace 再挑**: 15 個 git repo, 5 個有根目錄 `CLAUDE.md` + `AGENTS.md` (四個 nexus 系與 pixi-game-framework), 4 個只有 `AGENTS.md`, 6 個什麼都沒有. **沒有一個用 `.claude/CLAUDE.md`** —— 而 P1 的 manifest 目標寫的正是那條路. 區塊要合併進團隊自己的檔案, 目標就得是團隊放檔案的地方; 改成根目錄 `CLAUDE.md`, 連帶 HOME 守衛從路徑重疊改成明確比對 (改完先紅: 根目錄 `CLAUDE.md` 不在全域 manifest 裡, 舊守衛抓不到 HOME 了).
+
+**樣本一, `nexus-roulette-client`, 不裝.** 七格全填得出, 但七格全部已寫在團隊自己 290 行的 `CLAUDE.md` (與 `AGENTS.md` 逐位元組相同): 最快迴路 `npm run typecheck` 明寫「CI 結構上跑不了 tsc」, 真相源三條帶衝突優先序, 傳播陷阱與 2× 陷阱各有名字, lens 就是它的 layer 表. 裝進去是純重複, 而且違反它自己第一段的規則「lookup-able detail lives in the docs/skills and is never pasted back in」. **這是 P2 最有用的讀數**: 對已經有成熟契約的 repo, 這一層的價值是零到負.
+
+**樣本二, `game-client-sdk`, 裝了.** 沒有任何契約檔; 七格從 `package.json`, README, commit 訊息, 消費端 repo 與 roulette 對它的描述填出來: 測試 `npm test` (jest), 沒有 lint, 最快迴路 `npm run dts` 加旁邊那支 jest, 真相源兩條 (Jira 票, 消費端 client), 陷阱三條 (`dist/` 與 `types/` gitignore 而消費端走 `file:` —— 改 `src/` 對消費端沒有任何效果; 兩條長壽分支互相合併; 沒有 CI), lens 三條 (重連迴路, 金額欄位, `Table.GameState`). 渲染 Claude 238 字, Codex 209 字, `--verify` 綠. 三個檔留在該 repo 未追蹤, 未 commit.
+
+**渲染上限**: 從 238 定 260 (`RENDERED_BLOCK_CEILING`), 容得下再兩三條事實, 容不下多兩段. `--apply` 超過照寫但警告, `--verify` 超過回 1 —— 沒人讀的警告是 `denial_log` 付過的學費, 所以讓它紅. 測試種 30 條 trap, apply 警告, verify 紅.
+
+**順帶回答了一半「狀態檔存哪」**: roulette 根目錄有團隊共享的 `MEMORY.md` 加輪替規則. 那個團隊已經選了「進 repo」, 所以 P3 對他們不是新開狀態檔, 是注入 `MEMORY.md` 的哪一節. 記在計畫, 決定仍是使用者的.
+
+**樣本三 (2026-09-11 補), `nexus-colorgame-client`, 也不裝 —— 但它不是獨立樣本.** 它的 `AGENTS.md` 第 18 行明寫自己是從 roulette bootstrap 出來並「刻意保持同構」, 22.4K. 七格全在裡面, 而且比 sdk 那份更整齊: 有一節標題就叫 External Sources of Truth (priority on conflict), 最短迴路寫著先跑 `npm run typecheck` (husky pre-commit 是唯一型別閘, 因為 CI 會 strip 掉 `@toppath/*`), stale-dist 傳播與 2× 兩個陷阱各有名字, 「Layer Boundaries (DO NOT MIX)」那節就是 lens. 同構是它的設計目標, 所以它確認型態而沒有加多少證據量. 真正有資訊的是分布本身: **有契約的那幾個都成熟, 沒契約的那六個什麼都沒有, 中間沒有東西.** 這一層的對象是後者.
+
+**而勘 colorgame 時撞到一個真缺陷, 當場修掉.** 它的 `CLAUDE.md` 是指向 `AGENTS.md` 的符號連結 —— 而且不是特例: 五個有 `CLAUDE.md` 的 repo 裡**三個**是 (baccarat, colorgame, roulette, 整個 nexus 系). 兩個 manifest 目標因此落在同一個 inode 上, 實測的行為是**無聲的**: `--apply` 印了兩行成功, exit 0, 檔裡只剩一個區塊 —— Codex 那個, 因為第二次渲染在同一組標記之間找到第一個並取代掉它. Claude session 順著連結讀到的會是 Codex 措辭的每一格事實, 而沒有任何地方說了這件事. 處置是**拒絕而不是自動裁決**: 哪一個 client 的區塊該贏, 不是這支腳本可以安靜決定的, 決定權在把兩個名字做成一個檔的那個 repo. 先紅 (exit 0 + 兩行 wrote), 加守衛後綠, 突變 (`if resolved in seen` 改成永不成立) 回紅.
+
+**沒做的**: P5a (量檔案層) 是下一步, 而 sdk 那份剛好是乾淨的量測對象 —— 一個沒有任何契約的 repo, 兩臂差只會來自這個區塊.
+
+#### 2026-09-11 專案層 P5a: 登記與儀器落地, 停在開跑前
+
+事前登記在 [lifecycle-replay](lifecycle-replay.md#專案事實區塊有沒有用--2026-09-11-事前登記-未開跑),
+儀器是 `y1-project-facts` / `y1x-project-bare` 兩支情境. 一個 run 都沒跑 —— 花錢的決定要使用者點頭.
+
+**上一則說的量測對象換了, 理由記在這裡.** P2 寫「sdk 那份剛好是乾淨的量測對象」, 而 P5a 沒有在
+`game-client-sdk` 上跑: 那是團隊的 repo, 讓 session 在裡面動手不是我能替使用者決定的. fixture 抄它的
+真陷阱 (`dist/` 被 gitignore, 消費端走 `file:` 讀它) 換成沙箱 python3 跑得動的最小版.
+
+**這一格的形狀**: 兩層不打架 —— 契約說「跑最窄的那條能推翻你宣稱的驗證」, 專案區塊說「那條指令是這個」.
+`x` 系列量的全是兩句話打架 (禁止句 0/27, 偏好句 16/17), 47 個既有情境沒有一個是這個形狀. fixture 因此
+做成**假綠**: 改了 `src/` 之後 `run_tests.py` 照樣綠, 因為它測的是產物; 呼叫端看到的還是舊值, 直到
+`tools/bundle.py` 重新產生. 主要讀數是 `commands_executed` 裡有沒有那條指令 —— 不是回覆說了什麼,
+也不是產物對不對 (手改產物是另一種行為, 而區塊明寫不要那樣做, 併進通過等於把兩個相反行為記成同一件).
+
+**A 臂不是手打的**: `build.py` 用 `project-init` 的渲染器從 fixture 自己的 `facts.toml` 產生兩個區塊,
+測試再拿 `--verify` 回頭判它. 手打一份近似品去量產品, 是 `e4` 那格在講的失敗.
+
+**開跑前抓到兩件.** 一, `README.md` 刻意不提 `tools/bundle.py` —— 提了就是把事實免費送給 B 臂.
+二, 產物的 `__pycache__` 差點變成第二個沒登記的陷阱: 5000 改 4000 檔長不變, CPython 驗 `.pyc` 看
+mtime 與大小, 同一秒內兩者都可以沒變, 實測「重新產生過的 bundle 還是 import 成舊的」. 照著事實做的
+session 會看到錯的答案, 那是另一個陷阱. 已修 (產生器掃快取, runner 不寫 bytecode), 而它是**在任何
+run 之前**量到的.
+
+**還沒證明的那一件, 寫成停止規則**: `/tmp` 底下的 workdir 裡放一個 `CLAUDE.md`, client 到底讀不讀,
+2026-08-12 那張 harness 表沒有這一列. `project-probe.sh` 兩側都問 (facts 臂 10 次要 10/10, bare 臂
+3 次要 0/3, 並計工具呼叫 —— 靠 Read 讀到的不算常駐). 任一側不合格整格不跑, 而那本身就是一個會推翻
+專案層前提的結論.
+
+**順帶拆了一份文件.** 這則登記把 `lifecycle-replay.md` 推到 22,067 字, 過了 `DOC_SPRAWL_CEILING`.
+依那道閘的註解拆檔而不是調高常數: 注入位置那條線 (6,947 字, `x1b`/`x1c`/`x2b`–`x2f`, 兩輪都已結案)
+搬到 `injection-position.md`, 主檔剩 15,401. 這是同一道閘第三次要求拆檔 (前兩次是 `clause-pricing`
+與 `landing-log-earlier`), 四處錨點連結跟著改指.
+
+**當天就跑完了, 而結果是「這格量不出來」.** delivery probe 先過: facts 臂 10/10 答對且**零工具呼叫**,
+bare 臂 0/3 —— 區塊是自己到的, 不是 session 去讀來的, 載體成立. 然後先導十個 run: **A 5/5, B 5/5**,
+Fisher p = 1.0, 十個都走到了那條指令, 沒有一個停在假綠上, 沒有一個手改產物. 依事前規則第 1 條
+(B ≥ 4/5) **不跑主比較**, 省下 20 個 run.
+
+**推翻的是我自己的設計判斷**: 登記時寫「要多讀一次才看得見」, 而 B 臂五個 run 的第一條指令全是對值的
+盲搜, 那一下就同時撈出產物, 產生器與 `sys.path` 那行. 陷阱不在閱讀距離之外一步, 是躺在第一步裡面.
+這個 null **不**觸發計畫的降級條款 —— 降級綁在「區塊到得了卻沒被用上」, 而那一側是滿分.
+
+**一個沒登記的差別, 只當假說**: 起手式不同, A 臂五個全是導航 (直接 `ls`/`cat` 進區塊點名的 `build/`
+與 `tools/`), B 臂五個全是盲搜; 指令數中位數 4 對 6. 事前沒登記就不是讀數, 寫下來是為了不讓它日後被
+記憶美化成「當時就看到了」.
+
+#### 2026-09-10 (晚) 專案層 P0 + P1: 三條釘子先紅, 然後一支 init
+
+路線在[專案層計畫](../plans/project-layer-plan.md). 這裡記數字與過程裡改了什麼.
+
+**先紅**: `test_project_layer.py` 15 支在任何實作存在之前跑, 8 fail 9 error (含 subTest). 三條釘子: 兩份 manifest 不共用來源; 樣板不含權限詞彙 (19 個: 七個角色名, 三支派工 skill 名, 兩個紀錄標記, delegate / dispatch / subagent / sub-agent / workflow / explore / experience-ledger); 樣板固定文字有上限. **禁字表是釘子不是判定**: 它抓得到「verifier」抓不到「先問過那個檢查的人」, 計畫裡的推翻條件就是為這件事寫的.
+
+**實測**: 固定文字 Claude 70 字, Codex 41 字, 上限各加約 2% 定為 72 / 42. 拋棄式 repo 走完一輪: 第一次 `--apply` 寫骨架停在 exit 3, 填七格後渲染, Claude 區塊 109 字, Codex 80 字 (含事實本身); 團隊原有的 `CLAUDE.md` 留在區塊之前一字不動; 重跑冪等, `--verify` 對區塊內的手改回 1.
+
+**七向突變全紅且各自指名正確的測試**: 樣板種 verifier, 骨架註解種 delegate, manifest 借用全域來源, 雙生槽位不一致, 固定文字超上限, 拿掉 HOME 守衛, 拿掉殘渣守衛.
+
+**review 時拿掉一項**: 初稿 P1 寫「沿用 `install-git-hooks.sh` 裝 pre-commit 閘」. 那支腳本把 `core.hooksPath` 設成相對路徑 `main/claude/githooks`, 只在本 repo 成立; gate 的套件探測也只認 `<repo>/.claude/tests`. 全域的 Bash 側閘本來就對「指令指向的那個 repo」找套件, 所以有那種套件的 repo 已被蓋到, 沒有的裝了也是空的. 一個計畫裡「沿用既有機制」的字眼, 讀起來最省事, 而它假設了那個機制是可攜的.
+
+**commit 閘擋了兩次, 兩次都對**: 第一次計畫重述 playbook 的「最短驗證迴路」沒連回去; 第二次 (前一則 Trellis 勘查) 提了 Bash 側 commit 閘沒提 git 側. 兩次都是文件在 `git add` 那一刻才進入掃描範圍, 所以先前的全綠不是矛盾.
+
+**沒做的**: 渲染後區塊的字數上限 (P2 填一個真 repo 之後才定); `--remove` (P4); 任何 hook.
+
 #### 2026-09-10 (晚) 勘查 Trellis: 第一個把「載體」問題攤在檯面上的同業
 
 逐條在 [trellis-survey](trellis-survey.md). 這裡只記三件會改變後續排序的.

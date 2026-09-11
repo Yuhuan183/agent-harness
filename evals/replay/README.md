@@ -30,6 +30,7 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 - **`v`** — 驗證子句 — 用產出正確性定價
 - **`x`** — 語言底線
 - **`e`** — 工程 skill 蒸餾的驗收格 (M1)
+- **`y`** — 專案層 — repo 裡的常駐事實區塊值不值那些字
 
 | 情境 | 量什麼 | fixture |
 |---|---|---|
@@ -79,9 +80,11 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | `x2d-decision-soft-append` | 注入位置第二輪 arm B 校準梯 L3 — 軟禁止, 走 --append-system-prompt | `r2-successive-corrections` |
 | `x2e-decision-named-preference-append` | 注入位置第二輪 arm B 校準梯插入級 L1.5 — 點名 `DECISION:` 的偏好 (不是禁止), 走 --append-system-prompt; L1 未點名得 4/5, L2 點名且有條件禁止得 0/6, 帶子若存在就在中間 | `r2-successive-corrections` |
 | `x2f-decision-quantified-preference-append` | 注入位置第二輪的重開條件 — 量化到一半的偏好 (L1.8), 走 --append-system-prompt; 禁止句 0/27, 偏好句 10/11, 這一級問一句明說「一半」的指令能不能把 B 臂放進 30–70% | `r2-successive-corrections` |
+| `y1-project-facts` | 專案層裝好之後, repo 根目錄那個常駐事實區塊會不會讓 session 走到事實指向的那一步 (重新產生產物), 而不是停在一個自己會綠的檢查上 | `y1-sdk-facts` |
+| `y1x-project-bare` | y1 的對照臂 —— 同一個 repo, 沒裝專案層. 事實仍在 repo 裡讀得到 (run_tests.py 的 sys.path 那行, build/rates.py 的檔頭), 只是沒有人把它放到眼前 | `y1-sdk-bare` |
 | `z1-four-zh-shapes` | readable-zh-tw 在本機文字上會不會被叫, 叫了之後 2026-09-05 借進來的四個中文形狀有沒有真的被改掉 | `z1-zh-draft` |
 
-共 47 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
+共 49 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
 
 <!-- scenario-index:end -->
 
@@ -142,6 +145,7 @@ was written.
 | leaves can be dispatched | default tools | two `Agent` calls, both returned |
 | the workdir is writable | `mktemp -d` outside `~/.claude` | a write under `~/.claude` is refused outright |
 | an injected client instruction arrives | `--append-system-prompt` | one session answered `CONTRACT=YES` and `INJECTED=YES`; delivery 10/10 |
+| a repository's own `CLAUDE.md` arrives | a file at the workdir root | 10 of 10 answered from the block, **0 tool calls**; 0 of 3 without the file (2026-09-11, `project-probe.sh`) |
 
 ### Two conditions with no control
 
@@ -1599,7 +1603,7 @@ pre-existing defect in a tool this batch only borrowed.
 ## 注入位置: 一句矛盾指令從哪裡送進來都贏 (2026-09-01, 50 個 run)
 
 事前登記與完整判讀在
-[lifecycle-replay](../../docs/research/lifecycle-replay.md#注入位置第三格--2026-08-31-事前登記-尚未開跑).
+[injection-position](../../docs/research/injection-position.md#注入位置第三格--2026-08-31-事前登記-尚未開跑).
 這裡只記結果列與它們的量測面.
 
 | 臂 | 矛盾指令的位置 | 到達 | 發出 `DECISION:` |
@@ -1843,7 +1847,7 @@ run 目錄 (`telemetry_diverted_to`), memory 沒有. 因為每個 run 都是新�
 
 ## 注入位置第二輪: 對比是二元的, 量不出位置 (2026-09-06, 23 個 run)
 
-事前登記, 逐級讀數與結案在 [lifecycle-replay](../../docs/research/lifecycle-replay.md#注入位置第二輪--對比強度先校準-2026-09-06-事前登記-未開跑).
+事前登記, 逐級讀數與結案在 [injection-position](../../docs/research/injection-position.md#注入位置第二輪--對比強度先校準-2026-09-06-事前登記-未開跑).
 這裡只記結果列與量測面.
 
 ```text

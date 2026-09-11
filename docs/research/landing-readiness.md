@@ -187,7 +187,7 @@ TWINS), 累計約 67 個 run 沒有一次踩中實質陷阱 —— 沒有弱化�
 - 依發現六第 1 條: 「沒遵守」與「session 壞了」必須先分得開, 否則就是那個會說謊的 gate.
 
 三道關當天都過了, 事前登記寫在
-[lifecycle-replay](lifecycle-replay.md#注入位置第三格--2026-08-31-事前登記-尚未開跑):
+[injection-position](injection-position.md#注入位置第三格--2026-08-31-事前登記-尚未開跑):
 四個臂 (基線 / `--append-system-prompt` / `SessionStart` hook / 儀器對照), 15 個 run 一臂,
 判準與作廢條件開跑前寫死. 第三關靠 reach marker 加一個**契約帶反規則的對照臂** —— 那一臂
 必須測到不遵守, 否則是 grader 讀錯而不是「位置都無效」.
