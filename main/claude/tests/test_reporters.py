@@ -586,6 +586,67 @@ class UpstreamPinReportTests(unittest.TestCase):
         self.assertEqual(quiet["areas"], {})
         self.assertEqual(quiet["state"], "moved")
 
+    def test_a_move_the_last_check_already_read_is_not_reported_as_new(self) -> None:
+        """`MOVED` is measured against the pin, and the pin is not the last look.
+
+        Measured on 2026-09-11: seven upstreams read `MOVED`, and three of them
+        - `mattpocock/skills` +2, `rebelytics/one-skill-to-rule-them-all` +1,
+        `Nanako0129/pilotfish` +19 - were moves whose diffs were already
+        classified, with the dispositions sitting in their own ATTRIBUTION files
+        and in the currency table. Nothing in the report said so, and the round
+        that day nearly re-read all three. The pin stays where it is on purpose
+        for a marketplace upstream, so this is not a stale pin; it is the report
+        answering a question nobody asked twice.
+
+        The check date is already parsed out of the currency table and the head
+        commit's date already arrives in the compare response, so this compares
+        two things the report is holding rather than fetching anything new.
+
+        Two properties, and the second is the one that bites. The head's date
+        decides, not the first new commit's: `Nanako0129/sepia` that day had its
+        first new commit on the check date itself and its head five days later,
+        so keying on the range's start would have called genuinely new material
+        already-seen. And a missing date answers `None`, never `False` - the
+        same distinction the unreachable branch exists for.
+        """
+        module = self._module()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "a").mkdir()
+            (root / "a" / "ATTRIBUTION.md").write_text(
+                "- **Source**: <https://github.com/seven/eta>\n"
+                "- **Reviewed commit**: `" + "7" * 40 + "`\n", encoding="utf-8")
+            index = root / "README.md"
+            index.write_text(
+                "| 來源 | 類別 | 現況 | 查核日 | 備註 |\n|---|---|---|---|---|\n"
+                "| seven/eta | 上游 | pin `" + "7" * 40 + "` | 2026-09-10 | attributed too |\n"
+                "| `eight/theta` | 上游 | pin `" + "8" * 40 + "` | 2026-09-05 | index only |\n",
+                encoding="utf-8")
+            by_repo = {e["repo"]: e for e in module.collect(root, index)}
+            self.assertEqual(by_repo["eight/theta"].get("checked"), "2026-09-05")
+            self.assertEqual(
+                by_repo["seven/eta"].get("checked"), "2026-09-10",
+                "the check date must survive a row joining an attribution entry, "
+                "which is the case every distilled upstream is in")
+
+        # sepia's shape: the range opens on the check date and ends after it.
+        straddles = module.summarise({"ahead_by": 36, "commits": [
+            {"sha": "a" * 40, "commit": {"committer": {"date": "2026-09-05T09:00:00Z"}}},
+            {"sha": "b" * 40, "commit": {"committer": {"date": "2026-09-10T09:00:00Z"}}}]})
+        self.assertEqual(straddles["head_date"], "2026-09-10",
+                         "the head's date decides, not the range's first commit")
+        self.assertIs(True, module.unseen({**straddles, "checked": "2026-09-05"}))
+
+        # pilotfish's shape: the whole range predates the last look.
+        classified = module.summarise({"ahead_by": 19, "commits": [
+            {"sha": "c" * 40, "commit": {"committer": {"date": "2026-08-22T09:00:00Z"}}},
+            {"sha": "d" * 40, "commit": {"committer": {"date": "2026-08-28T09:00:00Z"}}}]})
+        self.assertIs(False, module.unseen({**classified, "checked": "2026-09-10"}))
+
+        # No check date, or no head date: say so rather than claiming it is old.
+        self.assertIsNone(module.unseen({**classified}))
+        self.assertIsNone(module.unseen({"checked": "2026-09-10"}))
+
     def test_a_fetch_it_cannot_complete_is_never_reported_as_current(self) -> None:
         """The distinction the whole report rests on. Offline this takes the
         network-error branch and online the 404 branch; both must land on

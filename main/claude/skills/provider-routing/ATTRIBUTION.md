@@ -87,6 +87,29 @@ Pilotfish before 2026-07-22 exists in this tree. The claim in
 therefore now rests on the absence of a record rather than on chronology, and
 it is written down there in those terms.
 
+## 2026-09-11: upstream has not moved since the 2026-09-10 check, and one 佐證
+
+Head is still `ea0d20bb` (2026-08-28), so nothing here was re-classified. The
+pin report called it `MOVED +19` because that count is measured from the
+distillation pin rather than from the last look; the report now says so itself.
+
+One commit in that already-seen range is worth recording. `#63` (`v1.4.1`)
+removed upstream's blanket refusal of a symlinked `CLAUDE.md` and now accepts
+one whose resolved target is a readable regular file. This repository's
+`project-init` went the other way on the same day and **refuses** two manifest
+targets that resolve to one inode. Both are right, because the shapes differ:
+upstream writes one policy block into the user's global file, and a link is
+then just a link; we render two blocks for two clients, so one inode means the
+second render replaces the first and only one client's wording survives.
+
+The 佐證 is not the disposition, it is the prevalence: an independent
+implementation shipped a release for this, and three of the five
+contract-bearing repositories in this workspace keep `CLAUDE.md` as a symlink.
+Upstream also records what it did not fix - the pathname predicates and the
+`grep` after them are not race-resistant, with descriptor-based validation
+deferred - which is the kind of self-reported negative that raises trust in the
+rest.
+
 ## Rechecking
 
 Fetch

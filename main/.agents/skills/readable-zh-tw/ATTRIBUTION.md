@@ -9,7 +9,10 @@
 > 保留舊名，因為那是當時的事實。
 
 - 專案：[speak-human-tw](https://github.com/Raymondhou0917/speak-human-tw)
-- 蒸餾自：`fa09500c77e1ec7747677377e30599d9426433db`（2026-09-05 的 master，2026-09-05 查）—— 這一輪前進九個 commit（2026-08-28 到 09-05 每日一則），和前四輪一樣全部是 GitHub Actions 更新星數圖，只動 `assets/readme/star-history-real.svg`；六個來源檔對新舊兩個 SHA 都 matches，推進 pin 只是記帳。歷任 pin：`2c27cca`（2026-07-18，上游前進 32 個 commit 而六個來源檔**逐位元組相同**）→ `8f1cdb5ec52e46178f9d04a316bdf610466ee71c`（2026-08-21）→ `aa37c20be932c56079ea73e8e7421770057b0835`（2026-08-24）→ `ee860be6fb190cbc53dc1d45a2a47c9c9c680243`（2026-08-28）
+- 蒸餾自：`6ccc24a76c6bb7ff516bb27d3044c8a330ca62d6`（2026-09-11 的 master，2026-09-11 查）—— 第六輪，
+  上游再前進六個 commit，**仍然只動 `assets/readme/star-history-real.svg`**（+11-11，GitHub Actions
+  的星數圖）。前一個 pin 是下面那個，推進一樣只是記帳。
+- 前一個 pin：`fa09500c77e1ec7747677377e30599d9426433db`（2026-09-05 的 master，2026-09-05 查）—— 這一輪前進九個 commit（2026-08-28 到 09-05 每日一則），和前四輪一樣全部是 GitHub Actions 更新星數圖，只動 `assets/readme/star-history-real.svg`；六個來源檔對新舊兩個 SHA 都 matches，推進 pin 只是記帳。歷任 pin：`2c27cca`（2026-07-18，上游前進 32 個 commit 而六個來源檔**逐位元組相同**）→ `8f1cdb5ec52e46178f9d04a316bdf610466ee71c`（2026-08-21）→ `aa37c20be932c56079ea73e8e7421770057b0835`（2026-08-24）→ `ee860be6fb190cbc53dc1d45a2a47c9c9c680243`（2026-08-28）
 - 最近的發行版：`v1.4.0` = `5f8e5aab0c814a01e88b088b581cd86d2371b510`（2026-07-10）——
   **本 skill 不是從這個 tag 蒸餾的**。原始 commit 訊息寫「v1.4.0」，但蒸餾發生在
   2026-07-20，而 master 在 07-11 與 07-18 各動過一次；我方副本裡的「罐頭反應鏡頭」
@@ -23,6 +26,11 @@
 我方版本重用了上游的 38 種 AI 痕跡分類法、六步改寫流程與台灣在地化層，屬衍生作品；依 MIT 條款保留上游著作權與許可聲明如下。
 
 2026-09-05 另自 [sepia](https://github.com/Nanako0129/sepia)（Nanako0129，MIT）的 `skills/sepia/references/languages/zh.md`（head `0162048ac8123e675fb40028298d72245eff2acb`）借了四個中文痕跡的**形狀**，各自併進 patterns.md 既有的第 10、15、19 條與「不是痕跡」一行：動詞贅語、說明文第二人稱、名詞化、「事實上」開段。數字（簡中 2023 年語料）一個不借，上游自己的證據邊界一節也這麼說。沒有逐字取用；pin 與逐條處置記在 `docs/research/upstream-distillation-ledger.md` 的 sepia 節。
+
+2026-09-11 重查 sepia：上游前進 36 個 commit 到 `aa5a80d58378e94cea32441d81d54675d1736232`，動了 14 個檔，
+而**我方借形狀的 `skills/sepia/references/languages/zh.md` 不在其中**，所以那四個形狀不受影響，pin 不動。
+同一輪新增的「編輯指紋」材料（改稿的主訊號是實詞比例下降，對應**刪除測試**與**還原測試**）是真候選但今日
+**不採用**：它會動到常駐面，值得自己一趟。逐條在 ledger 的 2026-09-11 節。
 
 ---
 

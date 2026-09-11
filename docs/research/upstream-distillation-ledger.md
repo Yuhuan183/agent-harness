@@ -656,3 +656,43 @@ ATTRIBUTION, 因為沒有內容落進 `main/` —— P4 落地那天要補一份
 或 P11b 的 eval) 一次都不命中, 就回到 `patterns.md` 拿掉, 因為那是簡中 2023 的形狀不一定跨到繁中 2026;
 上游自己的邊界一節就是這麼寫的. **2026-09-06 量了**: `z1-four-zh-shapes` 五個 run, 五個種下的形狀 5/5
 被清掉, skill 5/5 被叫 (replay README Part 15). 條件不成立, 形狀留著.
+
+## 2026-09-11 重查: 九個 pin 七個報動, 但其中三個是報告在重報已分類過的事
+
+**先講儀器, 因為它改變了這一輪的工作量.** `upstream-pin-report.py` 的 `MOVED` 是拿 **pin** 比 head, 而
+時效表另外記「查核日」, 兩者從來沒對接. 今天七個 `MOVED` 裡, `mattpocock/skills` (+2),
+`rebelytics/one-skill-to-rule-them-all` (+1) 與 `Nanako0129/pilotfish` (+19) 的 head 日期分別是 09-04,
+09-04 與 08-28, **全部早於它們自己那列的查核日**, 而且逐條處置早就寫在各自的 ATTRIBUTION 裡. 報告沒說,
+這一輪差點把三格重做一遍. 已修: 報告現在把這種列標成 `seen +N` 並印出「nothing after the <date> check」.
+判準用 **head 的日期**而不是「第一個新 commit」的日期 —— `sepia` 今天的範圍起點正好落在查核日當天而終點在
+五天後, 用起點會把真的新東西讀成看過了. 三個限制寫在函式旁邊: compare 上限 250 個 commit, rebase 會改寫
+committer date, 查核日只到「日」. 所以它是標題不是判決, diff 仍然要人讀.
+
+| 來源 | 這一輪的處置 | 檢查了什麼 |
+|---|---|---|
+| `mattpocock/skills` | **未動** (相對上次查核) | head `3cca18b3` 與 ATTRIBUTION 09-05 記的同一個; compare 只列兩個檔 (`CLAUDE.md` 一行, `scripts/link-skills.sh`), 兩個 pin 之間整棵樹就差這兩個檔, 比登記要求的「blob id + tree 形狀清點」更強 |
+| `rebelytics/one-skill…` | **未動** | head `2967fa5f` 與 ATTRIBUTION 09-05 記的同一個; 只有 `CONTRIBUTING.md` +8 |
+| `Nanako0129/pilotfish` | **未動**, 但補一條**佐證** | head `ea0d20bb` (08-28) 早於 09-10 查核日. 讀了 `#63` (`v1.4.1`) 的實作: 它把「`CLAUDE.md` 是符號連結就拒絕」放寬成「解析後是可讀的一般檔就接受」. 與我方今天的處置**相反**, 而且相反是對的 —— 見下 |
+| `Raymondhou0917/speak-human-tw` | **推進 pin**, 純記帳 | 第六輪, 仍然只有 `assets/readme/star-history-real.svg` (+11-11). 該列登記的「下次看 `assets/` 以外有沒有路徑」判準成立 |
+| `Nanako0129/sepia` | **不採用 (今日)**, 一條佐證 + 一條候選 | 36 個 commit 動了 14 個檔, **我方借形狀的 `skills/sepia/references/languages/zh.md` 不在其中**. 新的 `research/detectors.md` 自述「skill 執行期不需要它」, 屬研究 metadata; 它的 Pangram 前處理事實 (小寫化 + unidecode) 是我方「標點不是訊號」的**佐證** |
+| `mindfold-ai/Trellis` | **不影響勘查** | 三個都是實作修正: 跨會話任務誤綁定改成明示 opt-in, headless subagent 提問轉發, SQLite 延遲讀頁. 勘查的三項候選 (docs-only 對照臂, ablate 形狀, 防止機制六級表) 一個都沒被動到 |
+| `affaan-m/ecc` | **沒有重新分類** | head `c9148d0b` (09-10) 確實晚於 09-08 查核日, 是真的新. 但它那列早就寫著「更新頻率高到 pin 比對很快失去意義, 對它有價值的是逐節重查」, 而逐節重查這一輪**沒做** |
+
+### pilotfish `#63` 是佐證, 而處置相反 —— 因為形狀不同
+
+上游把 `if [ -L "$config_file" ]` 的整段拒絕拿掉, 改成 `if [ -e ... ] || [ -L ... ]` 後續用 `-f` 與 `-r`
+判斷解析結果. 他們**允許**符號連結, 因為他們只寫**一個** policy 區塊進使用者的全域 `CLAUDE.md`; 我方今天
+**拒絕**, 因為 `project-init` 有**兩個**目標, 兩個名字塌成一個 inode 時第二次渲染會取代第一次, 只剩一個
+client 的措辭. 同一個現實 (`CLAUDE.md` 常常是符號連結) 兩種正確答案, 差別在區塊數量.
+
+這是本 repo 第一次拿到「獨立實作撞到同一個現實」的佐證, 而它抬高的不是我方的處置, 是**那個現實的普遍性**:
+工作區五個有 `CLAUDE.md` 的 repo 裡三個是符號連結, 上游則是為了使用者的全域檔特地改了一版.
+
+順帶一條可信度加分: 上游自己記下沒修的部分 ——「路徑判定與後續 `grep` 不抗競態, descriptor 驗證延後,
+除非跨 UID 可寫的路徑祖先進入範圍」. 自述負面結果的上游, 它說可以的部分比較可信.
+
+### 沒檢查的
+
+`pilotfish` 那 14 個 benchmark 綁定 commit 的內容 (該列登記的「先讀 spontaneous-dispatch 的 cue-free
+資料」仍未讀); `ecc` 的逐節重查; `sepia` 那兩個檢查 (刪除測試, 還原測試) 要不要進 `readable-zh-tw` ——
+那會動到常駐面, 值得自己一趟, 不在這一輪硬塞.

@@ -15,7 +15,7 @@
 | 專案 | [Raymondhou0917/speak-human-tw](https://github.com/Raymondhou0917/speak-human-tw) |
 | 作者 | Raymond Hou (雷蒙三十) |
 | 授權 | MIT |
-| 我方 pin | `fa09500c77e1ec7747677377e30599d9426433db` (2026-09-05 的 master, 2026-09-05 查; 前一個 ee860be6 是 2026-08-27 的 master) |
+| 我方 pin | `6ccc24a76c6bb7ff516bb27d3044c8a330ca62d6` (2026-09-11 的 master, 2026-09-11 查; 前一個 fa09500c 是 2026-09-05 的 master) |
 | 重查 | `scripts/readable-zh-tw-recheck.sh [sha]` |
 
 **2026-08-19 補上 SHA 之前, ATTRIBUTION 只寫版本號.** 那讓它成為
@@ -202,3 +202,24 @@ research README 那一列, 本節 —— `test_ledger` 的 pin-site 斷言會抓
 數字 (簡中, 2023 年 ChatGPT 語料) 一個都不借, 上游自己的證據邊界一節也這麼說.
 
 **推翻條件**: 同 08-28.
+
+## 2026-09-11 重查: 六個 commit, 第六輪
+
+`fa09500c77e1ec7747677377e30599d9426433db` -> `6ccc24a76c6bb7ff516bb27d3044c8a330ca62d6`,
+六個 commit, 2026-09-06 到 09-11, 訊息全是「chore: 自動更新 Star History 星數成長圖
+(GitHub Actions)」, 動到的檔案只有一個: `assets/readme/star-history-real.svg` (+11/-11).
+
+**查了什麼.** `upstream-pin-report.py` 的 `touched` 那行報 `assets/ (1)`; compare 的檔案清單
+確認就那一個檔; `readable-zh-tw-recheck.sh 6ccc24a7` 六個來源檔**全部 matches**. 累計
+`2c27cca` -> `6ccc24a7` 53 個 commit, 六個來源檔自 2026-07-18 起沒動過一個位元組.
+
+**推翻條件第六次不成立**, 所以照舊只推進 pin, 四處一起動: ATTRIBUTION, `readable-zh-tw-recheck.sh`
+的預設 SHA, research README 那一列, 本節. 這一輪四處裡我先只改了 ATTRIBUTION, `test_contracts` 的
+pin-site 斷言當場抓出另外兩處 —— 那個守衛是 08-28 為這件事寫的, 而它今天真的擋下了一次漏改.
+
+**一件跟這個上游無關但值得記在這裡的事**: 找漏改的那一步, 第一次搜尋回報腳本裡沒有舊 SHA, 而腳本
+第 32 行就有. 那是被改寫過的搜尋, 全域契約有一條專講這種情況 —— 回報「沒命中」不可信, 要直接讀檔
+核對. 今天實際命中一次, 而它差點讓我把一處漏改讀成「已經沒有了」.
+
+同輪的 sepia 讀數 (那 36 個 commit 沒有動到 `references/languages/zh.md`, 以及新的編輯指紋材料為何
+今日不採用) 在 [ledger 的 2026-09-11 節](upstream-distillation-ledger.md#2026-09-11-重查-九個-pin-七個報動-但其中三個是報告在重報已分類過的事).

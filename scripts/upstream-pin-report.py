@@ -68,8 +68,14 @@ SHA = re.compile(r"\b([0-9a-f]{40})\b")
 # The research README's currency table: `| 來源 | 類別 | 現況 | 查核日 | ...`.
 # An upstream enters that table before anything distilled from it reaches
 # `main/`, so for a while its pin lives there and nowhere else.
-INDEX_ROW = re.compile(r"^\|\s*(?P<source>[^|]*)\|\s*(?P<kind>[^|]*)\|(?P<state>[^|]*)\|",
+# The 查核日 group is optional on purpose. Requiring it would make a row with
+# fewer cells fail to match at all, and a scan that silently drops rows reads
+# exactly like one that found nothing to report - the failure the distillation
+# skill names as worse than a probe that finds nothing.
+INDEX_ROW = re.compile(r"^\|\s*(?P<source>[^|]*)\|\s*(?P<kind>[^|]*)\|(?P<state>[^|]*)\|"
+                       r"(?:(?P<checked>[^|]*)\|)?",
                        re.MULTILINE)
+ISO_DAY = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
 SLASH = re.compile(r"\b([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)\b")
 PIN_CELL = re.compile(r"pin `([0-9a-f]{40})`")
 API = "https://api.github.com/repos/{repo}/compare/{base}...{head}"
@@ -130,8 +136,10 @@ def parse_research_index(path: Path) -> list[dict]:
         pin = PIN_CELL.search(row.group("state"))
         if not repo or not pin:
             continue
+        checked = ISO_DAY.search(row.group("checked") or "")
         entries.append({"repo": f"{repo.group(1)}/{repo.group(2)}", "pin": pin.group(1),
-                        "skills": [], "sites": ["research-index"]})
+                        "skills": [], "sites": ["research-index"],
+                        "checked": checked.group(1) if checked else None})
     return entries
 
 
@@ -146,6 +154,12 @@ def collect(root: Path, index: Path) -> list[dict]:
         if key in found:
             if "research-index" not in found[key]["sites"]:
                 found[key]["sites"].append("research-index")
+            # The date lives on the row, and for every distilled upstream the
+            # row and an attribution describe the same pin. Dropping it here
+            # would leave the date readable for exactly the sources nobody has
+            # distilled yet.
+            if entry.get("checked") and not found[key].get("checked"):
+                found[key]["checked"] = entry["checked"]
         else:
             found[key] = entry
     return list(found.values())
@@ -178,7 +192,34 @@ def summarise(body: dict) -> dict:
             "head": commits[-1].get("sha", "")[:8],
             "areas": areas,
             "since": (commits[0].get("commit", {})
-                      .get("committer", {}).get("date", ""))[:10]}
+                      .get("committer", {}).get("date", ""))[:10],
+            "head_date": (commits[-1].get("commit", {})
+                          .get("committer", {}).get("date", ""))[:10]}
+
+
+def unseen(entry: dict) -> bool | None:
+    """Did anything arrive after the currency table's last look? None if unknown.
+
+    `MOVED` is measured against the pin, and the pin is deliberately not the
+    last look - for a marketplace upstream it stays where the catalog serves.
+    On 2026-09-11 seven upstreams read `MOVED` and three of them were moves
+    already classified, with the dispositions written in their ATTRIBUTION
+    files; the report said nothing, and the round nearly re-read all three.
+
+    Keyed on the head's date rather than the first new commit's, because sepia
+    that day opened its range on the check date and closed it five days later:
+    the range's start would have called new material already-seen.
+
+    Three limits, none of them hidden. A compare response caps at 250 commits,
+    so a longer range names a head that is not the branch's. `committer` dates
+    are rewritten by a rebase. And a check date is a day, so a move later on
+    the day of the check reads as seen. Each makes this a heading, not a
+    verdict - the diff is still read by a person.
+    """
+    head, checked = entry.get("head_date"), entry.get("checked")
+    if not head or not checked:
+        return None
+    return head > checked
 
 
 def moved(repo: str, pin: str) -> dict:
@@ -221,8 +262,14 @@ def main() -> int:
     for entry in entries:
         skills = ", ".join(sorted(entry["skills"])) or "research README only"
         if entry["state"] == "moved":
-            mark = f"MOVED +{entry['ahead']}"
+            fresh = unseen(entry)
+            mark = ("MOVED +" if fresh is not False else "seen +") + str(entry["ahead"])
             tail = f"  head {entry['head']}, first new commit {entry['since']}"
+            if fresh is False:
+                tail += (f"\n{'':14s}nothing after the {entry['checked']} check "
+                         "(head is older); its diff already has dispositions")
+            elif fresh is True:
+                tail += f"\n{'':14s}new since the {entry['checked']} check"
             areas = sorted(entry.get("areas", {}).items(),
                            key=lambda pair: (-pair[1], pair[0]))
             if areas:
