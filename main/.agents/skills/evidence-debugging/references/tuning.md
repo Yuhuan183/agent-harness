@@ -44,6 +44,31 @@ repeatedly, and stop conditions it has paid for.
 - Non-deterministic defects need a measured reproduction rate quoted before and
   after, not "seems better".
 
+## After a repair: which level should have caught it
+
+A fix that only fixes the instance is half a finding. Before closing, name the
+level where this defect could have been stopped, and why it was not:
+
+| Level | Stops it by | Here that means |
+|---|---|---|
+| Documentation | a sentence read at the right moment | a contract clause, a skill body, `AGENTS.md` |
+| Architecture | making the shape impossible | a manifest, a fenced block, one source rendered twice |
+| Pre-deploy | failing before the thing ships | manifest validation in `sync.sh`, a TOML or JSON parse |
+| Runtime | refusing at the moment it happens | a hook |
+| Test | a check that goes red | the suite |
+| Review | a second reader with authority to stop | QC, `verifier`, `plan-verifier` |
+
+Two rules, both paid for here. **Name the level even when the answer is
+"documentation", and especially then** — that is the answer that predicts a
+repeat, because prose carries weight rather than enforcement. And **this is not
+the evidence ladder**: that one ranks how strongly a claim is established, this
+one ranks where a defect gets stopped. A mechanism has a coordinate on both and
+they rarely agree — a commit gate is a gate on the first and runtime on the
+second; a test-first rule is prose on the first and test on the second.
+
+This is a preference, not a gate: nothing checks that the level was named, and
+nothing could without a carrier field to check.
+
 ## Reporting
 
 Traditional Chinese (Taiwan) to the user; English for code, identifiers,

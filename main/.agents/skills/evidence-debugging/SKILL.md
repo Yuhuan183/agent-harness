@@ -104,7 +104,8 @@ minimised *and* the original scenario, then the narrow relevant suite.
 
 A change is not finished until the original scenario no longer reproduces, tagged
 instrumentation is gone, throwaway harnesses are deleted, and the hypothesis that
-turned out correct is written down where the next reader will find it.
+turned out correct is written down where the next reader will find it, named
+alongside the level that should have stopped it (`references/tuning.md`).
 
 ## Two ways to be wrong that look like being right
 

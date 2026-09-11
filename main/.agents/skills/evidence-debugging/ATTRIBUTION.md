@@ -85,6 +85,29 @@ the finding", and the cleanup gate are upstream's ideas in this repo's words.
   its own rule is local, and it is there because that is the move a local
   incident actually made.
 
+## A second source, for one shape only — `mindfold-ai/Trellis`
+
+`references/tuning.md` gained a post-repair question on 2026-09-11: which level
+should have stopped this defect. The six-stage framing was seen in Trellis's
+`trellis-break-loop`, surveyed at `88f4834449da9b4f607ec05e322408a0aa66f2ce`
+and written up in `docs/research/trellis-survey.md` (row L3).
+
+**Nothing of upstream's is reproduced, and this is deliberate rather than
+incidental.** Trellis is **AGPL-3.0**, unlike every other upstream this
+repository draws on, so the survey's standing rule is that no prose of its may
+enter `main/`. What was taken is the idea of asking the question at all, plus
+the ordering from weakest to strongest. The stages themselves — documentation,
+architecture, pre-deploy, runtime, test, review — are ordinary engineering
+practice rather than upstream's invention, the third column is this repository's
+own mechanisms, and the two rules under the table come from local incidents: the
+"say documentation out loud" rule from this repo's own measurements that prose
+is weight rather than enforcement, and the collision warning because
+`evidence-ladder` already ships a six-level table on an unrelated axis.
+
+Recorded here rather than only in the research tier because this file is what a
+reader checks for licence obligations, and this is the first AGPL-licensed
+source any part of this tree has borrowed a shape from.
+
 ## Rechecking
 
 `scripts/upstream-recheck.sh` re-fetches the pinned files and checks them
