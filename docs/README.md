@@ -25,6 +25,7 @@
 | 深度審查本 repo 設計 | [harness-review](../.agents/skills/harness-review/SKILL.md) (dev-only) | [orchestration 不變量](plans/orchestration-state.md) |
 | 重查上游或蒸餾一個新的 | [upstream-distillation](../.agents/skills/upstream-distillation/SKILL.md) (dev-only) | [時效性基準](research/README.md#時效性基準), [peer-harnesses](research/peer-harnesses.md) |
 | 決定下一步做什麼 | [待辦方向](research/README.md#待辦方向) | [等證據的項目](plans/pending-evidence.md), [ECC 計畫](plans/upgrade-plan-ecc-2026-09.md) |
+| 給另一個 repo 一份專案層 | [`main/project/`](../main/project/README.md) — 誰該裝, 誰不該裝 | [專案層計畫](plans/project-layer-plan.md) (2026-09-11 結案), [Trellis 勘查](research/trellis-survey.md), [Playbook 第 9 節](engineering-playbook.md#9-enforcement-層級與-bootstrap) |
 
 ## 文件責任
 
@@ -56,6 +57,7 @@
 | 跨層 · 證據 | [全語料盤點](research/landing-readiness.md) | 21 份研究文的落地就緒度: 覆蓋率, 發現, 建議與明確不做 | 各文件的原始論證 (在原地) |
 | 跨層 · 清單 | [等證據的項目](plans/pending-evidence.md) | 每一項還在等的「未來證據」: 等什麼, 觸發事件與判定規則 | 已判定的項目 (在 landing-log 與各研究文), 條件原文與依據 (在原地) |
 | 跨層 · 計畫 | [ECC 升級計畫](plans/upgrade-plan-ecc-2026-09.md) | 2026-09-08 勘查同業 ECC 之後的排程: 十三項的現況表 (09-10 全部結案) 與重開條件 | 逐條處置 (在 ecc-survey), 落地當天的量測數 (在 landing-log), 機制側的缺口 (在 mechanism-evidence-map) |
+| 跨層 · 計畫 | [專案層計畫](plans/project-layer-plan.md) | 每個 repo 一份事實包的路線與結案狀態 (2026-09-11: P0–P2 與 P5a 落地, P3/P4/P5b 不建與各自理由及重開條件); 全域管權限與證據, 專案管事實的邊界規則; 七條 `DECISION` | 怎麼裝與誰不該裝 (在 [`main/project/README.md`](../main/project/README.md)), 為什麼要有它與和 Trellis 的取捨 (在 trellis-survey), 量測讀數 (在 [lifecycle-replay](research/lifecycle-replay.md) 與 [landing-log](research/landing-log.md)) |
 
 ## Runtime 真相源
 

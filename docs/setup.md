@@ -184,6 +184,20 @@ weekly integrity 都會驗.
   確認 git diff, 再 sync 並開新 session. 只改 `~/.claude` 會被 weekly integrity 視為相對
   Git source 的 drift.
 
+## 專案層: 給另一個 repo 一份事實包
+
+全域部署管的是**你**: 角色, 派工, 驗證, 閘, 全部住在 HOME. 專案層管的是**某個 repo**: 它怎麼跑測試, 真相源在哪, 有什麼陷阱. 路線與階段在[專案層計畫](plans/project-layer-plan.md) (2026-09-11 結案); 這裡只講怎麼用.
+
+**誰該裝**: 還沒有任何契約檔的 repo. **誰不該裝**: 已經有成熟 `CLAUDE.md` 或 `AGENTS.md` 的 repo —— 七格事實它們自己寫過了, 裝進去只是重複 (工作區 15 個 repo 裡有 5 個是這種). **已量到**: 區塊會自己抵達 session, 不用 session 去讀 (10/10, 零工具呼叫). **沒量到**: 它會不會因此改變行為 —— 唯一一格兩臂都滿分, 所以這裡不主張行為效應.
+
+```bash
+main/.agents/scripts/python3-run scripts/project-init.py <repo>            # dry-run: 會寫什麼, 附 diff
+main/.agents/scripts/python3-run scripts/project-init.py <repo> --apply    # 第一次寫事實骨架後停下; 填完再跑一次才渲染
+main/.agents/scripts/python3-run scripts/project-init.py <repo> --verify   # 0 一致, 1 區塊被改過, 4 沒裝
+```
+
+事實只住一處, `<repo>/.agent-harness/facts.toml`; 兩個契約區塊 (repo 根目錄的 `CLAUDE.md` 與 `AGENTS.md`) 從它渲染, 以標記圍欄合併進去, 團隊原有的內容一字不動. 沒填完的事實不渲染 —— 填不出來的那一格就是這個 repo 還沒回答的問題. 不裝 hook, 不裝 git hook, 不對本 repo 或 HOME 執行 (會拒絕).
+
 ## 驗收
 
 - 新 session 中全域 CLAUDE.md 只有兩節短規則; `provider-routing`, `baton-dispatch`,
