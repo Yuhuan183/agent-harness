@@ -127,6 +127,16 @@ orchestrator 帶進 payload 的穩定 task id, runtime 目前沒有, 所以缺�
 因為那裡的重複是同一個 prompt 的機械性複製, 判得出來. native 側請在派工前自己確認可寫
 範圍不相交.
 
+**第三條: `[LEAF_DISPATCH]` / `[LEAF_RESULT]` 兩行紀錄也沒有機制, 而這一條容易被誤讀.**
+契約寫的是「每次派工與 QC 之後各報一行固定格式的紀錄」, 語氣是 must; 但 tests 之外沒有任何
+hook 或腳本解析它們 (唯一碰到字串的是 `codex-prompt-census.py`, 而它只是拿來當污染標記).
+**被檢查的是 ledger 那一列, 不是這兩行**: 契約同一句的後半「then log the outcome with
+`experience-ledger`」才是耐久載體, 而它有 schema, 有拒絕重複與拒絕早記的守衛.
+
+分清楚的實際差別: 兩行紀錄是寫給讀的人看的, 漏掉不會有東西變紅; ledger 漏掉會在
+`weekly-integrity` 的對帳裡浮出來. 所以「沒發那兩行」是紀律問題, 「沒記 ledger」是可偵測的缺口.
+沒有任何文件宣稱前者有閘 —— 這一段存在只是為了讓 must 的語氣不被讀成「有東西在擋」.
+
 ## 四種 `route_source` 的強度
 
 由強到弱, 寫在 [metrics](../main/.agents/skills/experience-ledger/references/metrics.md):
