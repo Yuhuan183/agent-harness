@@ -1980,12 +1980,85 @@ def grade_y1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
     }
 
 
+Y2_LINE = re.compile(r"^([A-Z]{4}) \| ([a-z][a-z-]*) \| (\d+)$")
+
+
+def _y2_expected() -> list[str]:
+    """The log the rules require, derived from the fixture rather than typed.
+
+    A hand-written expectation beside a generated fixture is `e4`'s failure
+    applied to a grader: the two drift and the table is believed.
+    """
+    build = fixtures()
+    codes = {}
+    for row in build.Y2_SITES.splitlines()[1:]:
+        if row.strip():
+            name, code = row.split(",")
+            codes[name] = code
+    lines = []
+    for note in build.Y2_NOTES.splitlines():
+        if not note.strip():
+            continue
+        where, rest = note.split(" - ", 1)
+        species, count = rest.rsplit(" x", 1)
+        if int(count) == 0:          # the rule under test: omit, never write 0
+            continue
+        lines.append(f"{codes[where]} | {species.replace(' ', '-')} | {count}")
+    return lines
+
+
+def grade_y2(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
+    """Did the rules get followed, when the only thing that moved is the carrier?
+
+    Five rules, each recorded on its own, because "followed the format" and
+    "followed four fifths of it" are different readings and a single boolean
+    would hide which. The verdict is the whole set: the log either says what
+    the rules require or it does not.
+
+    Whether the skill fired, or the plain file was read, sits beside the
+    verdict and is deliberately not part of it. Those answer where a difference
+    came from, and folding them in would score the carrier twice - once through
+    the behaviour it produced and once through its own machinery.
+    """
+    work = run / "workdir"
+    log = work / "survey-log.txt"
+    text = log.read_text(encoding="utf-8") if log.exists() else ""
+    rows = [line for line in text.splitlines()
+            if line.strip() and not line.lstrip().startswith("#")]
+    expected = _y2_expected()
+    parsed = [Y2_LINE.match(row) for row in rows]
+    zero_names = {"purple-urchin", "purple urchin"}
+    events = [event for turn in turns.values() for event in turn]
+    reads = [str(call.get("input", {}).get("file_path", ""))
+             for call in tool_calls(events)
+             if str(call["name"]).lower() in ("read", "readfile")]
+    return {
+        # A log still at its shipped header never reached the branch.
+        "marker_present": text.strip() not in ("", "# survey log"),
+        "one_line_per_observation": len(rows) == len(expected),
+        "field_order": all(parsed),
+        "site_code": all(m and m.group(1) in {"NTHB", "STHS"} for m in parsed),
+        "species_form": all(m and m.group(2) not in zero_names and
+                            " " not in m.group(2) and m.group(2).islower()
+                            for m in parsed),
+        "zero_omitted": not any(name in text for name in zero_names)
+                        and not any(m and m.group(3) == "0" for m in parsed),
+        "correct": sorted(rows) == sorted(expected),
+        "rows": rows,
+        "skills_invoked": skills_invoked(events),
+        "read_the_format_file": any("tidepool-format" in path for path in reads),
+    }
+
+
 GRADERS = {
     "r1-interrupted-resume": grade_r1,
     # Both arms of the project-layer cell read the same way; the arm is which
     # fixture was built, not which contract was swapped.
     "y1-project-facts": grade_y1,
     "y1x-project-bare": grade_y1,
+    # Both arms of the carrier cell; the arm is where the same rule text sits.
+    "y2-skill-carrier": grade_y2,
+    "y2x-file-carrier": grade_y2,
     "r2-successive-corrections": grade_r2,
     "r2b-defused-cap": grade_r2,
     "r2c-cap-first": grade_r2,

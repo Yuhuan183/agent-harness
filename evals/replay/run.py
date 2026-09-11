@@ -164,6 +164,29 @@ def resident_skills() -> list[str]:
     return sorted(d.name for d in root.iterdir() if (d / "SKILL.md").is_file())
 
 
+def project_skills(workdir: Path) -> list[str]:
+    """Skills the fixture registers itself, which the HOME reader cannot see.
+
+    The pool a session selects from is HOME plus whatever the working directory
+    adds; `test_contracts.py` budgets this checkout's own `.claude/skills/`
+    precisely because those descriptions are resident in every session opened
+    here. A fixture can use the same door, and T1's carrier arm does - it ships
+    a skill inside the workdir so that no directory under the operator's HOME
+    has to be swapped for an arm. Measured before it was relied on, 2026-09-11:
+    ten of ten sessions named a workdir-registered skill with no tool call,
+    zero of three without it (`skill-carrier-probe.sh`).
+
+    Kept apart from `resident_skills` rather than merged into it. "Installed on
+    this machine" and "shipped by this fixture" are different facts, and the
+    arm under test is the second one; a single list would make the two arms of
+    that cell indistinguishable in their own `meta.json`.
+    """
+    root = workdir / ".claude" / "skills"
+    if not root.is_dir():
+        return []
+    return sorted(d.name for d in root.iterdir() if (d / "SKILL.md").is_file())
+
+
 def parse_scenario(path: Path) -> tuple[dict, list[str]]:
     """Frontmatter plus the turns, in order.
 
@@ -235,7 +258,7 @@ def child_env(run_dir: Path, workdir: Path | None = None) -> dict[str, str]:
     return env
 
 
-def allowed_tools(execute: bool = False) -> list[str]:
+def allowed_tools(execute: bool = False, listing: bool = False) -> list[str]:
     """Two grants, each one closing a hole the first pilot opened up.
 
     `acceptEdits` approves edits in the workdir and the simplest shell reads,
@@ -298,6 +321,24 @@ def allowed_tools(execute: bool = False) -> list[str]:
         # through `sh x.sh`. One working idiom is enough, and it is the one the
         # transcripts already reach for.
         grants.append("Bash(sh:*)")
+    if listing:
+        # Opt-in for the same reason execution is, and appended after it so
+        # `allowed_tools(True)` keeps the exact shape every run already in
+        # `runs/` was measured under.
+        #
+        # `y2`'s first pilot is why this exists. It returned 5/5 against 0/5 and
+        # measured nothing about carriers: all five bare-arm runs asked to list
+        # the workdir to find the rule file they were meant to read, all five
+        # were denied, and the arm whose skill description arrived unasked never
+        # needed to look. A cell where one arm cannot take the action its design
+        # depends on is grading the permission list, which is the failure this
+        # function's own docstring records from the other direction.
+        #
+        # `/bin/ls` rather than `ls`: the matcher keys on the leading token and
+        # that is what all five transcripts typed. One working idiom, the same
+        # ruling `./x.sh` got. No shim: `ls` reads, and unlike an interpreter it
+        # cannot be talked into writing somewhere else.
+        grants.append("Bash(/bin/ls:*)")
     return grants
 
 
@@ -421,11 +462,12 @@ def client_version() -> str:
 
 def argv_for(prompt: str, session: str, first: bool,
              inject: str | None = None, execute: bool = False,
+             listing: bool = False,
              settings: str | None = None) -> list[str]:
     argv = ["claude", "--print", prompt,
             "--output-format", "stream-json", "--verbose",
             "--permission-mode", "acceptEdits",
-            "--allowedTools", *allowed_tools(execute),
+            "--allowedTools", *allowed_tools(execute, listing),
             "--strict-mcp-config"]
     if settings:
         # Absolute, because the turn runs with cwd set to the scenario's
@@ -457,10 +499,11 @@ def argv_for(prompt: str, session: str, first: bool,
 def run_turn(prompt: str, session: str, first: bool, workdir: Path,
              env: dict[str, str], interrupt_after: float | None,
              inject: str | None = None, execute: bool = False,
+             listing: bool = False,
              settings: str | None = None) -> dict:
     """One turn. Returns what happened, including whether it was cut short."""
     proc = subprocess.Popen(argv_for(prompt, session, first, inject, execute,
-                                     settings),
+                                     listing, settings),
                             cwd=workdir,
                             env=env, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
@@ -606,7 +649,15 @@ def main() -> int:
     # assumed to be.
     work = Path(tempfile.mkdtemp(prefix="replay-", dir="/tmp"))
     built = build_fixture(spec["fixture"], work)
-    if str(spec.get("allow_execution", "")).lower() == "true":
+    # Read once and passed down. The same expression stood in three places
+    # before `allow_listing` joined it, and three copies of a grant decision is
+    # three chances to thread a new one through two of them - a flag that
+    # silently fails to apply is what voided `y2`'s first pilot.
+    execute = str(spec.get("allow_execution", "")).lower() == "true"
+    listing = str(spec.get("allow_listing", "")).lower() == "true"
+    if execute:
+        # Only execution needs the sandboxed interpreters on PATH; listing does
+        # not, because `ls` reads and cannot be talked into writing.
         env = child_env(run_dir, work)
 
     stale = drifted()
@@ -647,8 +698,7 @@ def main() -> int:
         for index, prompt in enumerate(turns, start=1):
             cut = interrupt_after if index == interrupt_turn else None
             result = run_turn(prompt, session, index == 1, work, env, cut,
-                          spec.get("inject_system"),
-                          str(spec.get("allow_execution", "")).lower() == "true",
+                          spec.get("inject_system"), execute, listing,
                           args.settings)
             with events.open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps({"replay_turn": index,
@@ -787,18 +837,23 @@ def main() -> int:
         # model, which nothing pinned until a comparison needed them.
         "client_version": client_version(),
         "model_env": os.environ.get("ANTHROPIC_MODEL") or "cli-default",
-        "allow_execution": str(spec.get("allow_execution", "")).lower() == "true",
+        "allow_execution": execute,
+        "allow_listing": listing,
         # The boolean alone cannot say what an execution grant meant on the day,
         # and the grant set has already changed once. The list travels with the
         # run so old and new stay comparable.
         "resident_skills": resident_skills(),
+        # Read from the retained copy, not the live workdir: by this point the
+        # original has been copied to `run_dir/workdir` and removed, and a field
+        # that silently reads an empty list off a deleted path would record the
+        # carrier arm as carrying nothing.
+        "project_skills": project_skills(final),
         # Recorded with the home folded to `$HOME`. The grants handed to
         # `--allowedTools` keep the real absolute path because the CLI needs it;
         # what is written down does not, and the drift a reader looks for here
         # is the grant *set* rather than which machine ran it.
         "granted_tools": [grant.replace(str(Path.home()), "$HOME")
-                          for grant in allowed_tools(
-                              str(spec.get("allow_execution", "")).lower() == "true")],
+                          for grant in allowed_tools(execute, listing)],
         "commands_run": fold_home(commands_run(events)),
         "commands_executed": fold_home(commands_executed(events)),
         "deployed_contract_sha256": sha(DEPLOYED) if DEPLOYED.exists() else None,

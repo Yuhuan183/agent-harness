@@ -114,6 +114,8 @@ evals/replay/scenarios/d6-ninety-six-varied-batch.md
 evals/replay/scenarios/d6x-ninety-six-varied-batch-cued.md
 evals/replay/scenarios/y1-project-facts.md
 evals/replay/scenarios/y1x-project-bare.md
+evals/replay/scenarios/y2-skill-carrier.md
+evals/replay/scenarios/y2x-file-carrier.md
 scripts/project-init.py
 main/project/CLAUDE.project.md
 main/project/AGENTS.project.md

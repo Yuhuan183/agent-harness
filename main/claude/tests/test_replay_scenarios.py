@@ -182,8 +182,18 @@ class ReplayScenarioTests(unittest.TestCase):
         describes.
 
         So a run records the list, and this checks the list it recorded against
-        the one the code would produce for that run's flag. A key that merely
+        the one the code would produce for that run's flags. A key that merely
         exists would pass while holding last month's grants.
+
+        Flags, plural, since 2026-09-11: `allow_listing` joined `allow_execution`
+        and this assertion went red on the four runs that had it, because it
+        recomputed today's list from the execution flag alone. The runs were
+        right and the test was stale - which is this guard working, one level up
+        from what it was written for. A flag added to the harness has to be
+        added here too, or every run made after it becomes incomparable to every
+        run made before it, silently, which is the exact failure the docstring
+        above describes. Absent reads as false on purpose: a run made before the
+        flag existed genuinely did not have the grant.
         """
         module = load_module("replay_run", self.REPLAY / "run.py")
         recorded = 0
@@ -195,7 +205,8 @@ class ReplayScenarioTests(unittest.TestCase):
             with self.subTest(run=meta.parent.name):
                 self.assertEqual(
                     self._home_agnostic(
-                        module.allowed_tools(bool(data["allow_execution"]))),
+                        module.allowed_tools(bool(data["allow_execution"]),
+                                             bool(data.get("allow_listing")))),
                     self._home_agnostic(data["granted_tools"]),
                     "this run recorded grants the harness no longer issues")
         # `recorded` is 0 until the first run under this change, so the producer
@@ -1876,6 +1887,194 @@ class ReplayScenarioTests(unittest.TestCase):
         ):
             with self.subTest(line=line[:40]):
                 self.assertIsNone(pattern.search(line))
+
+    def test_listing_the_workdir_is_its_own_opt_in_grant(self) -> None:
+        """The grant `y2`'s first pilot needed and did not have.
+
+        That batch came back 5/5 against 0/5 and measured nothing about
+        carriers. All five bare-arm runs asked to list the working directory and
+        all five were denied, so the arm that had to *find* its rule file could
+        not look, while the arm whose skill description arrived unasked never
+        needed to. The separation was the permission list, which is the mistake
+        `allowed_tools` own docstring records from the other direction.
+
+        Granted as `/bin/ls` and not `ls`: the matcher keys on the leading
+        token, and `/bin/ls` is what all five transcripts actually typed. One
+        working idiom, the same ruling `./x.sh` got.
+
+        Opt-in per scenario, and appended after the execution grants rather than
+        mixed into them, so `allowed_tools(True)` keeps the exact shape every
+        run already in `runs/` was measured under. A default that widened would
+        make old and new runs quietly incomparable, and no `meta.json` would say
+        so.
+        """
+        module = load_module("replay_run", self.REPLAY / "run.py")
+        default = module.allowed_tools()
+        self.assertEqual(4, len(default))
+        # Compared against the whole grant, never a substring: the first draft
+        # asked whether any default grant contained "ls" and matched the "ls"
+        # inside "skills", so it would have stayed red against a correct
+        # implementation. That is this repo's recurring miss - a check keyed on
+        # rendering rather than substance - committed once more while writing
+        # the guard for a different one.
+        self.assertNotIn("Bash(/bin/ls:*)", default)
+        self.assertEqual(default, module.allowed_tools(True)[:4])
+        self.assertNotIn("Bash(/bin/ls:*)", module.allowed_tools(True),
+                         "execution must not smuggle in the listing grant")
+        with_listing = module.allowed_tools(True, True)
+        self.assertEqual(module.allowed_tools(True), with_listing[:-1])
+        self.assertEqual("Bash(/bin/ls:*)", with_listing[-1])
+        self.assertEqual(default + ["Bash(/bin/ls:*)"],
+                         module.allowed_tools(False, True),
+                         "listing is independent of execution, not layered on it")
+        # The cell the grant exists for has to ask for it, or the next batch
+        # repeats the void.
+        bare = (self.REPLAY / "scenarios" / "y2x-file-carrier.md").read_text(
+            encoding="utf-8")
+        carrier = (self.REPLAY / "scenarios" / "y2-skill-carrier.md").read_text(
+            encoding="utf-8")
+        for name, text in (("y2x-file-carrier", bare), ("y2-skill-carrier", carrier)):
+            with self.subTest(scenario=name):
+                self.assertIn("allow_listing: true", text,
+                              "both arms take the same grant or the arms differ "
+                              "by more than the carrier")
+
+    def _build(self, name: str, root: Path) -> None:
+        build = load_module("replay_build", self.REPLAY / "fixtures" / "build.py")
+        build.build(name, root)
+
+    def test_the_y2_arms_differ_by_the_carrier_and_nothing_else(self) -> None:
+        """T1 is a carrier question, so the carrier has to be the only variable.
+
+        The rule text is written once in the builder and placed twice: under a
+        skill's frontmatter in one arm, as an ordinary file in the other. If the
+        two ever drift, the cell silently becomes a comparison of two different
+        rule sets while both names still read like arms of one experiment - the
+        same failure the `y1` arms are guarded against, one directory over.
+        """
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
+            skill_arm, file_arm = Path(a), Path(b)
+            self._build("y2-tidepool-skill", skill_arm)
+            self._build("y2-tidepool-file", file_arm)
+            listing = {root: {path.relative_to(root).as_posix()
+                              for path in root.rglob("*") if path.is_file()}
+                       for root in (skill_arm, file_arm)}
+            self.assertEqual({".claude/skills/tidepool-notes/SKILL.md"},
+                             listing[skill_arm] - listing[file_arm])
+            self.assertEqual({"notes/tidepool-format.md"},
+                             listing[file_arm] - listing[skill_arm])
+            for name in sorted(listing[skill_arm] & listing[file_arm]):
+                with self.subTest(file=name):
+                    self.assertEqual((skill_arm / name).read_bytes(),
+                                     (file_arm / name).read_bytes())
+            body = (skill_arm / ".claude/skills/tidepool-notes/SKILL.md").read_text(
+                encoding="utf-8").split("---", 2)[2].lstrip("\n")
+            self.assertEqual(
+                body, (file_arm / "notes/tidepool-format.md").read_text(encoding="utf-8"),
+                "the rules must be the same bytes under both carriers")
+
+    def test_the_y2_log_ships_without_showing_the_format(self) -> None:
+        """One example row would make the carrier irrelevant.
+
+        The session writes into `survey-log.txt`. A correctly formatted row
+        already sitting there could be copied, and both arms would comply
+        without consulting the rules at all - measuring nothing, while looking
+        exactly like a measurement that came out level.
+        """
+        grade = self._grader()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._build("y2-tidepool-file", root)
+            shipped = (root / "survey-log.txt").read_text(encoding="utf-8")
+            for line in shipped.splitlines():
+                self.assertIsNone(grade.Y2_LINE.match(line.strip()),
+                                  f"the shipped log demonstrates the format: {line}")
+
+    def test_the_y2_grader_reads_each_rule_on_its_own(self) -> None:
+        """Five rules, five readings, and a verdict that needs all of them.
+
+        Every mutation below breaks exactly one thing a session could get wrong
+        while looking finished: a dropped observation, the wrong separator, a
+        real site code for the wrong pool, a species that is not in the required
+        form, and the zero written down instead of left out. A grader that
+        answered these with one boolean would make the interesting halves of the
+        result unreadable.
+        """
+        grade = self._grader()
+        good = grade._y2_expected()
+        self.assertEqual(4, len(good), "two zero counts are omitted, four remain")
+        cases = {
+            "one_line_per_observation": good[:-1],
+            "field_order": [good[0].replace(" | ", ",")] + good[1:],
+            "site_code": ["ESTL" + good[0][4:]] + good[1:],
+            "species_form": [good[0].replace("green-anemone", "Green-Anemone")] + good[1:],
+            "zero_omitted": good + ["NTHB | purple-urchin | 0"],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            run = Path(tmp)
+            self._build("y2-tidepool-skill", run / "workdir")
+            log = run / "workdir" / "survey-log.txt"
+
+            log.write_text("# survey log\n" + "\n".join(good) + "\n", encoding="utf-8")
+            outcome = grade.grade_y2(run, {}, {})
+            self.assertTrue(outcome["marker_present"])
+            self.assertTrue(outcome["correct"], outcome["rows"])
+            for rule in cases:
+                self.assertTrue(outcome[rule], rule)
+
+            for rule, rows in cases.items():
+                with self.subTest(broken=rule):
+                    log.write_text("# survey log\n" + "\n".join(rows) + "\n",
+                                   encoding="utf-8")
+                    outcome = grade.grade_y2(run, {}, {})
+                    self.assertFalse(outcome["correct"])
+                    self.assertFalse(outcome[rule])
+
+    def test_the_y2_marker_refuses_a_log_nobody_wrote(self) -> None:
+        """`z1`'s shape: no write, no branch, and the run votes in neither side."""
+        grade = self._grader()
+        with tempfile.TemporaryDirectory() as tmp:
+            run = Path(tmp)
+            self._build("y2-tidepool-file", run / "workdir")
+            outcome = grade.grade_y2(run, {}, {})
+            self.assertFalse(outcome["marker_present"])
+            self.assertFalse(outcome["correct"])
+
+    def test_a_run_records_the_skills_its_workdir_added_to_the_pool(self) -> None:
+        """`resident_skills` reads HOME, and T1's arm does not live there.
+
+        The pool a session selects from is HOME plus whatever the working
+        directory registers - `test_contracts.py` budgets this checkout's own
+        `.claude/skills/` for exactly that reason. The T1 carrier arm puts a
+        skill inside the fixture so that no directory under the operator's HOME
+        has to be swapped, and with only the HOME reader recording the pool, the
+        one thing that distinguishes the two arms would be absent from both
+        runs' `meta.json`.
+
+        That is the failure this directory keeps rediscovering in a new place: a
+        run that records the arm it asked for rather than the bytes it got. The
+        two readings stay separate fields rather than one merged list, because
+        "installed on this machine" and "shipped by the fixture" are different
+        facts and a batch that confuses them cannot be re-scored.
+        """
+        run = load_module("replay_run", self.REPLAY / "run.py")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            work = Path(temp_dir)
+            self.assertEqual([], run.project_skills(work),
+                             "a bare workdir contributes nothing")
+            skill = work / ".claude" / "skills" / "tidepool-notes"
+            skill.mkdir(parents=True)
+            (skill / "SKILL.md").write_text(
+                "---\nname: tidepool-notes\ndescription: |\n  Record tidepool "
+                "surveys. Do not use for anything else.\n---\n", encoding="utf-8")
+            # A directory without a SKILL.md is not a skill, the same rule the
+            # HOME reader already applies.
+            (work / ".claude" / "skills" / "not-a-skill").mkdir()
+            self.assertEqual(["tidepool-notes"], run.project_skills(work))
+            self.assertNotIn(
+                "tidepool-notes", run.resident_skills(),
+                "the HOME reader must not absorb the fixture's pool; the two "
+                "are separate facts")
 
     def _build_y1(self, name: str, root: Path) -> None:
         build = load_module("replay_build", self.REPLAY / "fixtures" / "build.py")

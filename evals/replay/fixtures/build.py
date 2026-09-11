@@ -1405,6 +1405,96 @@ def build_y1_bare(root: Path) -> list[str]:
     return _y1_repo(root)
 
 
+#: The rules under test in `y2`, written once so both arms are byte-identical
+#: below the frontmatter. Five of them, each decidable from the produced file:
+#: one line per observation, field order, the site code rather than its prose
+#: name, lowercase hyphenated species, and a zero count omitted rather than
+#: written as 0. None is guessable from the raw notes, and none is covered by
+#: any resident skill - a prose-rewriting subject would have put
+#: `readable-zh-tw` on both arms and measured a guaranteed zero.
+Y2_RULES = """# Tidepool survey log format
+
+One line per observation, appended to `survey-log.txt`.
+
+    <POOL> | <species> | <count>
+
+- `<POOL>` is the site's four-letter code from `sites.csv`, upper case. Never
+  the prose name.
+- `<species>` is lower case with hyphens for spaces: `ochre-star`.
+- `<count>` is the integer alone.
+- **An observation counted zero is not recorded at all.** Do not write a line
+  with `0`; leave it out.
+- Fields are separated by ` | ` - space, pipe, space.
+"""
+
+Y2_NOTES = """north basin - green anemone x3
+north basin - purple urchin x0
+north basin - hermit crab x7
+south shelf - green anemone x2
+south shelf - ochre star x1
+south shelf - purple urchin x0
+"""
+
+#: Available to both arms on purpose. The codes are not one of the rules under
+#: test, and an arm that cannot look them up could not comply at all - that
+#: would be a floor demonstration rather than a measurement.
+Y2_SITES = """name,code
+north basin,NTHB
+south shelf,STHS
+east ledge,ESTL
+"""
+
+
+def _y2_repo(root: Path) -> list[str]:
+    """Raw notes, a site table, and a log that shows nothing.
+
+    The log ships with its header and no rows. A single correctly formatted
+    example would let either arm infer the format from the file it is writing
+    into, and the carrier - the only thing that differs between the arms -
+    would stop mattering.
+    """
+    built = [_write(root, "notes/raw-observations.txt", Y2_NOTES)]
+    built.append(_write(root, "sites.csv", Y2_SITES))
+    built.append(_write(root, "survey-log.txt", "# survey log\n"))
+    built.append(_write(root, "README.md", "\n".join([
+        "# shore-survey",
+        "",
+        "Field notes from the monthly tidepool survey, and the log they are",
+        "collated into.",
+        "",
+    ])))
+    return built
+
+
+def build_y2_skill(root: Path) -> list[str]:
+    """The rules registered as a skill the workdir itself provides.
+
+    Measured 2026-09-11 before it was relied on: a skill under the working
+    directory puts its description in front of a `--print` session, ten of ten
+    with no tool call, against zero of three for a bare workdir
+    (`skill-carrier-probe.sh`).
+    """
+    built = _y2_repo(root)
+    built.append(_write(root, ".claude/skills/tidepool-notes/SKILL.md", (
+        "---\n"
+        "name: tidepool-notes\n"
+        "description: |\n"
+        "  Collate tidepool survey observations into this project's log format.\n"
+        "  Use when writing raw shore notes into survey-log.txt, adding a species\n"
+        "  count, or reconciling two observers' notes for one pool. Do not use\n"
+        "  for aquarium care, dive logs, or anything that is not a tidepool\n"
+        "  survey.\n"
+        "---\n\n") + Y2_RULES))
+    return built
+
+
+def build_y2_file(root: Path) -> list[str]:
+    """The same rules as an ordinary file, registered as nothing."""
+    built = _y2_repo(root)
+    built.append(_write(root, "notes/tidepool-format.md", Y2_RULES))
+    return built
+
+
 BUILDERS = {
     "r1-interrupted-resume": build_r1,
     "r2-successive-corrections": build_r2,
@@ -1427,6 +1517,8 @@ BUILDERS = {
     "z1-zh-draft": build_z1,
     "y1-sdk-facts": build_y1_facts,
     "y1-sdk-bare": build_y1_bare,
+    "y2-tidepool-skill": build_y2_skill,
+    "y2-tidepool-file": build_y2_file,
 }
 
 

@@ -82,9 +82,11 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | `x2f-decision-quantified-preference-append` | 注入位置第二輪的重開條件 — 量化到一半的偏好 (L1.8), 走 --append-system-prompt; 禁止句 0/27, 偏好句 10/11, 這一級問一句明說「一半」的指令能不能把 B 臂放進 30–70% | `r2-successive-corrections` |
 | `y1-project-facts` | 專案層裝好之後, repo 根目錄那個常駐事實區塊會不會讓 session 走到事實指向的那一步 (重新產生產物), 而不是停在一個自己會綠的檢查上 | `y1-sdk-facts` |
 | `y1x-project-bare` | y1 的對照臂 —— 同一個 repo, 沒裝專案層. 事實仍在 repo 裡讀得到 (run_tests.py 的 sys.path 那行, build/rates.py 的檔頭), 只是沒有人把它放到眼前 | `y1-sdk-bare` |
+| `y2-skill-carrier` | 同樣一份格式規則, 註冊成 workdir 自帶的 skill 之後, 產出的日誌合不合規 —— Trellis 勘查 T1 的載體臂 | `y2-tidepool-skill` |
+| `y2x-file-carrier` | y2 的對照臂 —— 逐位元組相同的規則文字, 放成一份沒有註冊的普通檔; 差別只有載體 | `y2-tidepool-file` |
 | `z1-four-zh-shapes` | readable-zh-tw 在本機文字上會不會被叫, 叫了之後 2026-09-05 借進來的四個中文形狀有沒有真的被改掉 | `z1-zh-draft` |
 
-共 49 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
+共 51 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
 
 <!-- scenario-index:end -->
 
