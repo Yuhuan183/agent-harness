@@ -31,7 +31,6 @@ import hashlib
 import json
 import re
 import sys
-import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -97,23 +96,13 @@ def claude_role(relative: str) -> dict:
     return text_record(relative, body)
 
 
-def codex_role(relative: str) -> dict:
-    text = read_bytes(relative).decode("utf-8")
-    payload = tomllib.loads(text)
-    body = payload.get("developer_instructions")
-    if not isinstance(body, str):
-        raise ValueError(f"{relative}: missing developer_instructions")
-    return text_record(relative, body)
-
-
 # A role's body is dispatch-time cost, paid only when that role runs. Its name
-# and description are not: both CLIs list every registered role in every
-# session as the agent-selection surface, exactly the way a skill's name and
-# description are listed. Counting only the body left the always-loaded half of
-# a role outside the census and outside every budget, so a clause moved from a
-# skill description into a role description cost the same and measured as
-# nothing (2026-08-01 review).
-CODEX_ROLE_REGISTRY = "main/codex/config.merge.toml"
+# and description are not: the CLI lists every registered role in every session
+# as the agent-selection surface, exactly the way a skill's name and description
+# are listed. Counting only the body left the always-loaded half of a role
+# outside the census and outside every budget, so a clause moved from a skill
+# description into a role description cost the same and measured as nothing
+# (2026-08-01 review).
 
 
 def claude_role_metadata(relative: str) -> dict:
@@ -124,26 +113,6 @@ def claude_role_metadata(relative: str) -> dict:
         raise ValueError(f"{relative}: frontmatter missing {sorted(missing)}")
     metadata = f"{fields['name']} {fields['description']}"
     return text_record(relative, metadata, kind="role-metadata")
-
-
-def codex_role_metadata() -> list[dict]:
-    """One record per registered role; Codex reads them from one shared file."""
-    payload = tomllib.loads(read_bytes(CODEX_ROLE_REGISTRY).decode("utf-8"))
-    agents = payload.get("agents") or {}
-    records = []
-    for role in ROLES:
-        entry = agents.get(role)
-        description = entry.get("description") if isinstance(entry, dict) else None
-        if not isinstance(description, str):
-            raise ValueError(
-                f"{CODEX_ROLE_REGISTRY}: missing description for [agents.{role}]")
-        records.append(text_record(
-            CODEX_ROLE_REGISTRY,
-            f"{role} {description}",
-            kind="role-metadata",
-            path=f"{CODEX_ROLE_REGISTRY}#agents.{role}",
-        ))
-    return records
 
 
 def skill_paths(directory: str) -> list[str]:
@@ -181,37 +150,6 @@ def skill_frontmatter_fields(frontmatter: str) -> dict[str, str]:
     return fields
 
 
-IMPLICIT_INVOCATION = re.compile(
-    r"^\s*allow_implicit_invocation\s*:\s*(\S+)", re.MULTILINE)
-
-
-def codex_injects_metadata(relative: str) -> bool:
-    """Whether a Codex session is handed this skill's name and description.
-
-    `agents/openai.yaml` is read by the harness, not the agent, and its
-    `policy.allow_implicit_invocation` decides whether the skill is injected into
-    the model context at all. False means it is absent until someone types
-    `$skill` - so its metadata is a dispatch cost there, not a resident one, and
-    counting it as resident overstates what a Codex turn actually pays.
-
-    Two sources agree on that reading. skill-creator's own
-    `references/openai_yaml.md` says false means "not injected into the model
-    context by default, but can still be invoked explicitly via `$skill`"; and
-    the 2026-08-17 Codex discovery probe found exactly the false-flagged skills
-    missing from the session's skill list while all seven others appeared - 9 of
-    9. Absent file or absent key means true, which is the documented default.
-
-    Claude has no equivalent: `disable-model-invocation` is `false` on the two
-    skills that state it and unset on the rest, so every Claude skill is injected
-    and every one of them is resident there.
-    """
-    config = (ROOT / relative).parent / "agents" / "openai.yaml"
-    if not config.is_file():
-        return True
-    found = IMPLICIT_INVOCATION.search(config.read_text(encoding="utf-8"))
-    return True if found is None else found.group(1).strip('"\'') != "false"
-
-
 def skill_parts(relative: str) -> tuple[dict, dict]:
     frontmatter, body = split_frontmatter(relative)
     fields = skill_frontmatter_fields(frontmatter)
@@ -243,12 +181,6 @@ def build_census() -> dict:
         skill_parts(relative)
         for relative in skill_paths("main/claude/skills")
     ]
-    codex_skills = [
-        (*skill_parts(relative), codex_injects_metadata(relative))
-        for relative in skill_paths("main/codex/skills")
-    ]
-    for metadata, _, injected in codex_skills:
-        metadata["injected"] = injected
     providers = {
         "claude": {
             "resident": [
@@ -264,24 +196,6 @@ def build_census() -> dict:
                 claude_role(f"main/claude/agents/{role}.md") for role in ROLES
             ],
         },
-        "codex": {
-            "resident": [
-                text_record("main/codex/AGENTS.contract.md"),
-                *(metadata for metadata, _, injected in codex_skills if injected),
-                *codex_role_metadata(),
-            ],
-            # A skill Codex does not inject costs nothing until `$skill` pulls it
-            # in, at which point both halves arrive together - so its metadata is
-            # filed beside its body rather than in the resident layer.
-            "dispatch": [
-                *(metadata for metadata, _, injected in codex_skills
-                  if not injected),
-                *(body for _, body, _ in codex_skills),
-            ],
-            "roles": [
-                codex_role(f"main/codex/agents/{role}.toml") for role in ROLES
-            ],
-        },
     }
     totals = {
         provider: {
@@ -294,7 +208,7 @@ def build_census() -> dict:
         "schema": 1,
         "generated_by": "scripts/prompt-surface-census.py",
         "unit": {
-            "skills": "name and description are resident, body is dispatch-time; on Codex a skill with allow_implicit_invocation false is not injected, so both halves are dispatch-time and the record carries injected=false",
+            "skills": "name and description are resident, body is dispatch-time",
             "bytes": "UTF-8 bytes of the effective prompt text",
             "words": "one CJK character or one non-space non-CJK run",
             "roles": "role body only; the always-loaded name and description are counted in resident as role-metadata",

@@ -51,13 +51,12 @@ def word_count(text: str) -> int:
 def source_of(deployed: str) -> Path:
     """Where a deployed spelling lives in the checkout.
 
-    `.claude/` and `.codex/` drop their dot under `main/`; `.agents/` keeps it.
-    Same rule as the manifest, restated because a report has no business
-    importing the test harness.
+    `.claude/` drops its dot under `main/`; `.agents/` keeps it. Same rule as
+    the manifest, restated because a report has no business importing the test
+    harness. `.codex/` was mapped the same way until 2026-09-14.
     """
     head, _, rest = deployed.partition("/")
-    stem = {".claude": "main/claude", ".codex": "main/codex",
-            ".agents": "main/.agents"}.get(head)
+    stem = {".claude": "main/claude", ".agents": "main/.agents"}.get(head)
     return ROOT / (f"{stem}/{rest}" if stem else deployed)
 
 
@@ -140,7 +139,7 @@ def main() -> int:
 
     first: dict[str, tuple[str, int]] = {}
     raises: collections.Counter[str] = collections.Counter()
-    # Ceilings have gone down as well as up - `.codex/AGENTS.contract.md` went
+    # Ceilings have gone down as well as up - the retired Codex contract went
     # 590 -> 540 when a clause moved out - and counting a tightening as a raise
     # would report the ratchet slipping in exactly the case where it held.
     drops: collections.Counter[str] = collections.Counter()

@@ -109,19 +109,18 @@ def load_deployment_manifest(repo):
                 raise ValueError(f"malformed deployment manifest line {line_number}")
             source, target = fields[:2]
             mode = fields[2] if len(fields) == 3 else ""
-            if mode not in ("", "merge", "merge-json", "merge-toml"):
+            if mode not in ("", "merge", "merge-json"):
                 raise ValueError(f"invalid deployment mode on line {line_number}")
             restricted = {
                 "merge": ("main/.agents/skills", ".agents/skills"),
                 "merge-json": ("main/claude/settings.json", ".claude/settings.json"),
-                "merge-toml": ("main/codex/config.merge.toml", ".codex/config.toml"),
             }
             if mode in restricted and (source, target) != restricted[mode]:
                 raise ValueError(
                     f"{mode} mode is restricted to its declared mapping on line {line_number}"
                 )
-            source_prefixes = ("main/.agents/", "main/claude/", "main/codex/")
-            target_prefixes = (".agents/", ".claude/", ".codex/")
+            source_prefixes = ("main/.agents/", "main/claude/")
+            target_prefixes = (".agents/", ".claude/")
             if not source.startswith(source_prefixes) or not target.startswith(target_prefixes):
                 raise ValueError(f"unsafe deployment manifest line {line_number}")
             if any(part in ("", ".", "..") for part in source.split("/")) \

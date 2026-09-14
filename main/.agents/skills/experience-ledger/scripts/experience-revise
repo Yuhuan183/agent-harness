@@ -44,10 +44,10 @@ ROOT = Path(__file__).resolve().parents[4]
 def bundle(name: str) -> Path:
     """Locate a sibling bundle from either the deployed or the source layout.
 
-    Deployed, this script sits in `~/.agents/...` beside `~/.claude` and
-    `~/.codex`. In the source checkout the shared root keeps its dot but the two
-    CLI bundles are stored undotted (`main/claude`, `main/codex`) so neither CLI
-    discovers the source tree as live config; the dot returns at deploy time.
+    Deployed, this script sits in `~/.agents/...` beside `~/.claude`. In the
+    source checkout the shared root keeps its dot but the CLI bundle is stored
+    undotted (`main/claude`) so the CLI does not discover the source tree as
+    live config; the dot returns at deploy time.
     """
     dotted = ROOT / f".{name}"
     return dotted if dotted.exists() else ROOT / name

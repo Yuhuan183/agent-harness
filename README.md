@@ -20,7 +20,6 @@ skills, routing 與監控機制納入 Git —— 讓全域 agent 配置可以 re
 flowchart LR
     subgraph repo["Git source checkout"]
         claude["main/claude/<br/>Claude contracts, roles, hooks"]
-        codex["main/codex/<br/>Codex contracts, roles, resolver"]
         shared["main/.agents/<br/>shared skills and routing core"]
         docs["docs/<br/>playbook, research, setup"]
         devonly["evals/ + .agents/skills/<br/>trap fixtures, dev review skill"]
@@ -31,12 +30,10 @@ flowchart LR
 
     subgraph home["Managed HOME targets"]
         homeClaude["~/.claude"]
-        homeCodex["~/.codex"]
         homeAgents["~/.agents"]
     end
 
     claude --> sync --> homeClaude
-    codex --> sync --> homeCodex
     shared --> sync --> homeAgents
     manifest --> sync
     docs -. "guides; not deployed" .-> repo
@@ -62,7 +59,6 @@ flowchart LR
 | 路徑 | 真相源與職責 | 部署目標 |
 |---|---|---|
 | [`main/claude/`](main/claude/README.md) | Claude Code 契約, roles, skills, hooks, prompts, routing | `~/.claude/` |
-| [`main/codex/`](main/codex/README.md) | Codex 契約, roles, resolver, 可攜 config 片段 | `~/.codex/` |
 | [`main/.agents/`](main/.agents/README.md) | 兩端共用 skills, routing core 與 runtime 知識 | `~/.agents/` |
 | [`main/project/`](main/project/README.md) | 專案層樣板: 另一個 repo 一份事實包, 由 `scripts/project-init.py` 渲染成區塊 | `<repo>/CLAUDE.md`, `<repo>/AGENTS.md` |
 | [`docs/`](docs/README.md) | 方法論, 研究, 部署說明與歷史決策; 不回寫全域 | — |
@@ -84,8 +80,7 @@ scripts/sync.sh --apply
 # 3. 開新的 Claude Code / Codex session, 讓契約與 roles 重新載入
 ```
 
-`sync.sh --apply` 依 manifest 併入 `main/codex/config.merge.toml` (`merge-toml`, 見
-[main/codex/DEPLOY.md](main/codex/DEPLOY.md)); 不由 sync 管理的只有選用 Headroom
+不由 sync 管理的只有選用 Headroom
 proxy 與 MCP. legacy fallback 見 [配置說明](docs/setup.md).
 
 Claude profile 若要持久切換, 先在 source checkout 執行:
@@ -96,18 +91,18 @@ main/claude/scripts/model-routing activate-profile --profile <balanced|fast|qual
 scripts/sync.sh --apply
 ```
 
-Codex leaf 不需改檔, 派工前直接解析:
+Leaf 不需改檔, 派工前直接解析:
 
 ```bash
-main/codex/scripts/model-routing resolve --priority balanced --role executor
-main/codex/scripts/model-routing resolve --priority quality-guarded --role verifier
+main/claude/scripts/model-routing resolve --priority balanced --role executor
+main/claude/scripts/model-routing resolve --priority quality-guarded --role verifier
 ```
 
 ## 機制與護欄
 
 | 機制 | 解決的問題 | 真相源 |
 |---|---|---|
-| Routing validator/pin check | 阻止不完整 profile, 品質門檻以下 route 與 Claude pin 漂移 | `main/claude/scripts/model-routing`, `main/codex/scripts/model-routing` |
+| Routing validator/pin check | 阻止不完整 profile, 品質門檻以下 route 與 Claude pin 漂移 | `main/claude/scripts/model-routing` |
 | Alias generation check | `opus` 指向哪個世代由 CLI 決定; 以 leaf transcript 的真實 model id 驗證 config 的宣稱 | [model-routing.py](main/claude/scripts/model-routing.py) |
 | Runtime guard | 需要新版能力的 reviewer 在版本過舊或未知時停止 | [runtime-guard.py](main/claude/hooks/runtime-guard.py) |
 | Capability-aware verifier | Claude 的 no-write role 不提供 Bash; 需要執行命令的獨立驗證改派 Codex read-only sandbox | [provider-routing](main/claude/skills/provider-routing/SKILL.md) |
@@ -133,7 +128,6 @@ main/codex/scripts/model-routing resolve --priority quality-guarded --role verif
 
 可攜片段只提供 merge 來源:
 
-- `main/codex/config.merge.toml` 由 `sync.sh` 以 `merge-toml` 併入 `~/.codex/config.toml`
 
 ## 驗證
 
@@ -142,7 +136,7 @@ main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests -v
 main/claude/scripts/model-routing validate
 main/claude/scripts/model-routing check-pins
 main/claude/scripts/model-routing check-aliases
-main/codex/scripts/model-routing validate
+main/claude/scripts/model-routing validate
 git diff --check
 scripts/sync.sh
 ```

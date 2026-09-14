@@ -37,23 +37,22 @@ class MachineStateHygieneTests(unittest.TestCase):
 
     def test_machine_state_files_are_gitignored(self) -> None:
         ignore = read(".gitignore")
-        for entry in ("main/claude/mcp_servers.json", "main/codex/config.toml",
+        for entry in ("main/claude/mcp_servers.json",
                       ".claude/.headroom_wrap_marker.json", "__pycache__/", "*.pyc"):
             self.assertIn(entry, ignore)
         # Confirmed ignored by git itself (exit 0 == path is ignored).
-        for path in ("main/claude/mcp_servers.json", "main/codex/config.toml"):
+        for path in ("main/claude/mcp_servers.json",):
             self.assertEqual(git("check-ignore", path).returncode, 0, path)
         self.assertEqual(
             git("check-ignore", ".claude/.headroom_wrap_marker.json").returncode, 0
         )
         # Root-level agent directories are reserved for project-specific
         # configuration and must not inherit the deployable bundle ignores.
-        for path in (".claude/mcp_servers.json", ".codex/config.toml"):
+        for path in (".claude/mcp_servers.json",):
             self.assertEqual(git("check-ignore", path).returncode, 1, path)
         # And not tracked.
         tracked = git("ls-files").stdout.splitlines()
         self.assertNotIn("main/claude/mcp_servers.json", tracked)
-        self.assertNotIn("main/codex/config.toml", tracked)
 
     def test_settings_are_user_owned_and_portable(self) -> None:
         settings = json.loads(read(".claude/settings.json"))
@@ -329,7 +328,6 @@ class MachineStateHygieneTests(unittest.TestCase):
 
     def test_headroom_routing_ownership_is_explicit(self) -> None:
         runtime = read(".agents/docs/headroom-runtime.md")
-        codex = read(".codex/AGENTS.contract.md")
         setup = read("docs/setup.md")
         for text in (runtime, setup):
             self.assertIn("wrap-first", text)
@@ -346,7 +344,7 @@ class MachineStateHygieneTests(unittest.TestCase):
         # v0.34 rejects the retired flag outright, so a doc that still spells it
         # anywhere hands the reader a command that fails. Forbid the bare flag,
         # not just the two full invocations it used to appear in.
-        for text in (runtime, codex, setup):
+        for text in (runtime, setup):
             self.assertNotIn("--no-context-tool", text)
             self.assertNotIn("--context-tool", text)
         # The same release moved the injection entry point to --serena-instructions
@@ -1685,9 +1683,8 @@ class HookEnvDocumentationTests(unittest.TestCase):
     reports any other indirect form as a failure. A parser that silently
     ignores what it cannot parse reports a clean tree for the wrong reason.
 
-    Codex has no hook directory (`main/codex/hooks` does not exist), so this
-    rule has no twin to land on; the parity obligation is discharged by that
-    absence rather than by a second copy.
+    One bundle ships hooks, so this rule has one place to land and no twin to
+    keep in step with.
     """
 
     DOC = "docs/hook-system.md"

@@ -19,8 +19,8 @@ as `leaf-redispatch`.
 Scope, and why it is not wider:
 
 - **Wholesale rows only.** A three-column row is merged, so its target holds
-  machine state this repo never authors (`~/.claude/settings.json`,
-  `~/.codex/config.toml`), and a local key belongs there. The one merged row with
+  machine state this repo never authors (`~/.claude/settings.json`), and a
+  local key belongs there. The one merged row with
   repo-owned children is `.agents/skills`, whose owners are named in
   `INSTALLED.txt`; those children are covered and the rest of the directory is
   not, which is what lets an unmanaged skill be edited in place.
@@ -76,7 +76,7 @@ def managed_targets(repo: str) -> dict[str, str]:
                 raise ValueError("malformed deployment manifest line")
             source, target = fields[:2]
             mode = fields[2] if len(fields) == 3 else ""
-            if not target.startswith((".agents/", ".claude/", ".codex/")):
+            if not target.startswith((".agents/", ".claude/")):
                 raise ValueError("unsafe deployment manifest target")
             if mode:
                 continue                      # merged: holds machine state too

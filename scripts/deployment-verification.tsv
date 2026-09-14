@@ -22,20 +22,3 @@
 .claude/skills/experience-ledger	2026-09-10	claude 2.1.267	listed with its description in the session's skill list through the symlink into ~/.agents/skills
 .claude/skills/task-observer	2026-09-10	claude 2.1.267	listed with its description in the session's skill list (the thin wrapper's frontmatter, shared body via shared-instructions.md)
 .claude/skills/evidence-ladder	2026-09-10	claude 2.1.267	listed with its description in the session's skill list through the symlink into ~/.agents/skills
-.codex/AGENTS.md	2026-09-10	codex 0.154.0	a codex exec read-only run quoted the contract's first heading, "Global Working Contract", as its global instructions
-.codex/README.md	2026-09-10	codex 0.154.0	human index of ~/.codex; no machine consumer; parity only
-.codex/ANALYSIS.md	2026-09-10	codex 0.154.0	human summary of the Codex distillation; no machine consumer; parity only
-.codex/DEPLOY.md	2026-09-10	codex 0.154.0	read by a person or a Codex task bootstrapping a new machine; no automatic consumer; parity only
-.codex/model-routing.toml	2026-09-10	codex 0.154.0	~/.codex/scripts/model-routing validate read it: valid, 3 profiles, 3 benchmark models
-.codex/config.toml	2026-09-10	codex 0.154.0	codex --strict-config --version parses the merged file; [agents] carries max_threads 4 and max_depth 1 and seven [agents.*] rows whose config_file each resolves under CODEX_HOME
-.codex/prompts	2026-09-10	codex 0.154.0	manual paste into ChatGPT Personalization; no machine consumer; parity only
-.codex/agents	2026-09-10	codex 0.154.0	all seven role TOML files are the config_file targets of the merged [agents.*] rows and resolve under CODEX_HOME; a live spawn was not probed (needs a dispatching task)
-.codex/scripts	2026-09-10	codex 0.154.0	model-routing validate ran from ~/.codex/scripts and imported ~/.agents/scripts/routing_core.py; bridge-brief and bridge-jobs were never exercised here and were removed with the bridge on 2026-09-14
-.codex/skills/leaf-dispatch	2026-09-10	codex 0.154.0	listed by name in a codex exec read-only run's available skills
-.codex/skills/headroom-protocol	2026-09-10	codex 0.154.0	listed by name in a codex exec read-only run's available skills, through the symlink into ~/.agents/skills
-.codex/skills/readable-zh-tw	2026-09-10	codex 0.154.0	listed by name in a codex exec read-only run's available skills, through the symlink into ~/.agents/skills
-.codex/skills/evidence-debugging	2026-09-10	codex 0.154.0	allow_implicit_invocation false, so absent from the listed skills by design; loaded by explicit $evidence-debugging in a codex exec read-only run and quoted its first heading
-.codex/skills/test-first-change	2026-09-10	codex 0.154.0	allow_implicit_invocation false, so absent from the listed skills by design; loaded by explicit $test-first-change in a codex exec read-only run and quoted its first heading
-.codex/skills/experience-ledger	2026-09-10	codex 0.154.0	listed by name in a codex exec read-only run's available skills, through the symlink into ~/.agents/skills
-.codex/skills/task-observer	2026-09-10	codex 0.154.0	listed by name in a codex exec read-only run's available skills, through the symlink into ~/.agents/skills
-.codex/skills/evidence-ladder	2026-09-10	codex 0.154.0	allow_implicit_invocation false, so absent from the listed skills by design; loaded by explicit $evidence-ladder in a codex exec read-only run and quoted its first heading

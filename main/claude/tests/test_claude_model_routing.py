@@ -38,13 +38,13 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         # as_of can age past its own stated cadence without anything noticing.
         # `prior_review_days` is the machine-readable twin, and `check-priors`
         # is what actually ages it; assert the behaviour, not the substring.
-        for rel in ("main/claude/model-routing.toml", "main/codex/model-routing.toml"):
+        for rel in ("main/claude/model-routing.toml",):
             text = (ROOT / rel).read_text(encoding="utf-8")
             self.assertIn("prior_review", text, rel)
             self.assertIn("prior_review_days = 90", text, rel)
 
     def test_check_priors_ages_as_of_against_the_declared_cadence(self) -> None:
-        for script in (SCRIPT, ROOT / "main/codex/scripts/model-routing"):
+        for script in (SCRIPT,):
             config = tomllib.loads(
                 (script.parent.parent / "model-routing.toml").read_text(encoding="utf-8")
             )
@@ -73,7 +73,7 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         raise the number until it stops complaining, which is how a cadence
         stops meaning anything.
         """
-        for script in (SCRIPT, ROOT / "main/codex/scripts/model-routing"):
+        for script in (SCRIPT,):
             source = (script.parent.parent / "model-routing.toml").read_text(
                 encoding="utf-8"
             )
@@ -90,7 +90,7 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, f"{script}: {result.stderr}")
 
     def test_validate_rejects_a_malformed_review_cadence(self) -> None:
-        for script in (SCRIPT, ROOT / "main/codex/scripts/model-routing"):
+        for script in (SCRIPT,):
             source = (script.parent.parent / "model-routing.toml").read_text(
                 encoding="utf-8"
             )
@@ -111,7 +111,7 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
                     self.assertIn(expected, result.stderr, f"{script}: {bad}")
 
     def test_validate_rejects_nonfinite_revision_policy_values(self) -> None:
-        for script in (SCRIPT, ROOT / "main/codex/scripts/model-routing"):
+        for script in (SCRIPT,):
             source = (script.parent.parent / "model-routing.toml").read_text(
                 encoding="utf-8"
             )
@@ -138,7 +138,6 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
     def test_validate_rejects_nonfinite_model_metrics(self) -> None:
         score_lines = {
             SCRIPT: "score = 52.46",
-            ROOT / "main/codex/scripts/model-routing": "score = 50.73",
         }
         for script, score_line in score_lines.items():
             source = (script.parent.parent / "model-routing.toml").read_text(
@@ -360,14 +359,6 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         # Sonnet is the known unmeasured cell: AA publishes max effort only.
         self.assertIn("claude-sonnet-5/medium", result.stdout)
 
-        # Both providers share one reporter, and the Codex table — which does
-        # carry a per-effort score for every approved rung — must come back clean.
-        codex = subprocess.run(
-            [str(ROOT / "main/codex/scripts/model-routing"), "validate"],
-            capture_output=True, text=True,
-        )
-        self.assertEqual(codex.returncode, 0, codex.stderr)
-        self.assertNotIn("WARNING:", codex.stdout)
 
     def test_floor_coverage_detects_an_inverted_tier(self) -> None:
         # Behavioral proof with a planted inversion: a stronger tier whose
@@ -409,11 +400,11 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         `allowed` became `approved_routes` on 2026-07-29 because the old name
         read as a threshold the code never implemented. Every floor check works
         by membership in a tier, so a table under the wrong name is not a
-        stricter floor or a looser one — it is no floor, silently. Both twins
+        stricter floor or a looser one — it is no floor, silently. The resolver
         must refuse that config, and the per-route check must refuse a tier it
         cannot look up rather than wave the route through.
         """
-        for twin in ("main/claude/model-routing.toml", "main/codex/model-routing.toml"):
+        for twin in ("main/claude/model-routing.toml",):
             original = (ROOT / twin).read_text(encoding="utf-8")
             legacy = original.replace("[quality_floor.approved_routes]",
                                       "[quality_floor.allowed]", 1)

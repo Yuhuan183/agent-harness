@@ -657,7 +657,7 @@ profile 語意與各 surface 的套用方式在
 [graph engineering](../architecture/graph-engineering.md#routing-同一個角色-不同的檔位).
 
 現行 pins, 品質門檻和 availability 的唯一真相源是
-[Claude routing](../../main/claude/model-routing.toml) 和 [Codex routing](../../main/codex/model-routing.toml).
+[Claude routing](../../main/claude/model-routing.toml).
 研究摘要不再複製容易過期的 route 表格和操作命令.
 
 2026-07-22 快照下的決策理由:

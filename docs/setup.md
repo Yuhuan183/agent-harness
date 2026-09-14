@@ -6,7 +6,7 @@ Codex `config.toml`, Claude Code `~/.claude.json` 的 MCP entry) 永不納入版
 
 ## 目錄對應
 
-`main/` 是唯一的全域部署來源. 根目錄保留給本專案專用的 `.claude/`, `.codex/`,
+`main/` 是唯一的全域部署來源. 根目錄保留給本專案專用的 `.claude/`,
 `.agents/` 或其他配置; 除非明確加入 deployment manifest, 這些專案設定不會被
 `scripts/sync.sh` 寫進 HOME.
 
@@ -16,8 +16,6 @@ Codex `config.toml`, Claude Code `~/.claude.json` 的 MCP entry) 永不納入版
 | `main/claude/` (契約檔, routing, 自有 skills, hooks, scripts, prompts, sh) | `~/.claude/` | script 自動 (tests/examples/plans 僅存 repo, 不部署) |
 | `headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787` | `~/.claude.json` | **手動執行** (機器狀態, 不入庫) |
 | `main/claude/examples/headroom-mcp.legacy.json` | `~/.claude/mcp.json` | 僅供無 Claude CLI 的 legacy client 手動 merge |
-| `main/codex/AGENTS.contract.md` (部署為 `AGENTS.md`), `README.md`, `ANALYSIS.md`, `DEPLOY.md`, `model-routing.toml`, `prompts/`, `agents/`, `scripts/`, skills (含 `leaf-dispatch` 與 symlink) | `~/.codex/` | script 自動 |
-| `main/codex/config.merge.toml` | `~/.codex/config.toml` | script 自動 **section-scoped merge** (只寫 `[agents]`/`[agents.*]`, 見 `main/codex/DEPLOY.md`) |
 | Antigravity CLI settings/MCP | `~/.gemini/` | 機器狀態, 不由本 repo 同步; 只有原生 `headroom wrap agy` 可用時才由 wrapper 管理 |
 
 跨 agent runtime 知識 (`headroom-runtime.md`) 在 `main/.agents/docs/`, Claude 與 Codex 共用同一份,
@@ -32,8 +30,8 @@ skill 源檔放 `main/claude/skills/` (部署為 `~/.claude/skills/`), 契約源
 `sync.sh` 部署後的 `$HOME` 版本. 此不變式由
 `test_harness_sources_are_not_discoverable_while_developing` 守住.
 
-共用 skill 原則上採 symlink 佈局: `main/claude/skills/<name>` 與
-`main/codex/skills/<name>` 都連到 `../../.agents/skills/<name>`. 需要平台專用
+共用 skill 原則上採 symlink 佈局: `main/claude/skills/<name>`
+連到 `../../.agents/skills/<name>`. 需要平台專用
 frontmatter 時使用薄 wrapper. 目前 Claude `task-observer` 以 wrapper 明確允許模型
 自動啟動, `headroom-protocol` 也以同樣方式讓 agent 依資料大小與用途自行判斷.
 兩者的內文與資源仍以 symlink 連回共用來源. `$HOME` 下三個目錄平級, 與專案同構, 因此
@@ -166,15 +164,13 @@ contract tests; 任何一項失敗都在寫入前停止. 所有可攜的 source�
   指令是被更新, 不會變成重複兩份); 其餘 group, repo 未定義的事件與 top-level key 一律原樣
   保留, `permissions.allow` 取聯集. 每次執行都會列出保留了哪些項目, 因此不需要覆寫逃生口,
   `--accept-settings-overwrite` 已移除.
-- **`~/.codex/config.toml`** (`merge-toml`). 只寫入 `[agents]` 與 `[agents.*]`; 其餘 section,
-  註解與格式逐字保留, repo 未宣告的 `[agents.*]` (使用者自建 agent) 保留並回報.
 
 兩者的部署後校驗都不是 byte 相等, 而是「重跑一次 merge 不再改變任何東西」, `sync.sh` 與
 weekly integrity 都會驗.
 
 另外兩件會讓 apply 停下或被判成 drift 的事:
 
-- 既有的 `~/.claude/CLAUDE.md` 或 `~/.codex/AGENTS.md` 內容從未出現在本 repo 歷史 (是別人的
+- 既有的 `~/.claude/CLAUDE.md` 內容從未出現在本 repo 歷史 (是別人的
   指引, 不是舊版契約) 時, apply 停止. 先手動合併, 或明確用 `--accept-contract-takeover` 接管.
 - 切換 Claude preset 要在 source checkout 執行
   `main/claude/scripts/model-routing activate-profile --profile <balanced|fast|quality_guarded>`,
@@ -199,8 +195,7 @@ main/.agents/scripts/python3-run scripts/project-init.py <repo> --verify   # 0 �
 
 - 新 session 中全域 CLAUDE.md 只有兩節短規則; `provider-routing`, `baton-dispatch`,
   `headroom-protocol` 出現在可用 skill 清單且能按需載入.
-- `~/.codex/skills/headroom-protocol` 是指向共用來源的 symlink; Claude 的
-  `headroom-protocol` 與 `task-observer` 是平台 wrapper, 其共用內文與資源分別連回
+- `headroom-protocol` 與 `task-observer` 是平台 wrapper, 其共用內文與資源分別連回
   `~/.agents/skills/<name>`.
 - 跑 2–3 個真實任務比對遵循度與 token (方法見 `contract-slimming.md` 的驗收段).
 - 「client 真的在讀這個目標」的觀察記在 `scripts/deployment-verification.tsv`: manifest 每個目標一列,
@@ -219,8 +214,8 @@ scripts/sync.sh               # dry-run 確認影響面
 scripts/sync.sh --apply
 ```
 
-機器狀態不需要回滾 — `settings.json` 與 `config.toml` 走 merge, 本來就不會被整份
-覆蓋; `~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md` 若內容不曾出現在本 repo 歷史,
+機器狀態不需要回滾 — `settings.json` 走 merge, 本來就不會被整份
+覆蓋; `~/.claude/CLAUDE.md` 若內容不曾出現在本 repo 歷史,
 apply 會直接停下而不是覆蓋. 唯一沒有還原路徑的是「手動改在 repo 全權擁有的目錄裡」
 的檔案 (例如自己往 `~/.claude/hooks/` 塞東西), 那些會被 `rsync --delete` 清掉 —
 這類本機偏好請放 `settings.local.json`.

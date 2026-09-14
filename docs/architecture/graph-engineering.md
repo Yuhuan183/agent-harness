@@ -49,7 +49,7 @@ preflight, parity 與目標端證據四件齊全.
 |---|---|
 | 誰先做 | 預設沒有人 —— 直接執行是預設, 派工要先通過三項成本測試 |
 | 誰並行 | 以任務形狀 batching, 不以檔案數或 request bullet; 一個可寫 artifact 一個 owner |
-| 做完給誰 | 回 main. leaf 不再派工, Claude 側由 `leaf-redispatch` 擋, Codex 側由 `max_depth = 1` |
+| 做完給誰 | 回 main. leaf 不再派工, 由 `leaf-redispatch` 擋 |
 
 ## 一次派工的完整迴路
 
@@ -95,7 +95,6 @@ flowchart TD
 |---|---|
 | Main session | 使用者在 task/session 開始前選擇; 專案不會在執行中偷換模型 |
 | Claude named roles | deployment preset; 一次原子更新全部 frontmatter pins, 重新部署並開新 session |
-| Native Codex leaf | 每次派工由 resolver 回傳 model/effort/invocation |
 
 實際的 pin, effort 與 availability 證據在兩份 `model-routing.toml`; 選擇理由與數據口徑在
 [研究摘要](../research/README.md).
@@ -110,8 +109,9 @@ main 把派工與 QC 結果**獨立成固定紀錄**, 不混在一般說明裡, 
 [LEAF_RESULT] dispatch_id=review-01|task=semantic seam review|outcome=accepted|qc=full|ledger=logged
 ```
 
-`request_source` 分得出 `claude-code`, `codex`, `claude-code-plugin-codex` 與
-`codex-claude-cli`. 逐字模板只在兩份派工 skill 裡, 本文不複製.
+`request_source` 現在只會寫進 `claude-code`. ledger 裡還有 `codex`,
+`claude-code-plugin-codex` 與 `codex-claude-cli` 三種歷史值, 那是 2026-09-14 之前的紀錄,
+讀得出來但不會再產生. 逐字模板只在派工 skill 裡, 本文不複製.
 
 ## 還沒貼合的部分
 
@@ -120,8 +120,8 @@ main 把派工與 QC 結果**獨立成固定紀錄**, 不混在一般說明裡, 
   花了」仍然沒有東西回答得出來, 而在 ledger 長出樣本之前硬編一個, 只會做出一個沒有校準的
   數字.
 - **並行幾乎沒有真實樣本.** ledger 裡絕大多數是單筆派工; 合批的判準寫得比用過的次數多.
-- **跨 provider 的額度擋不住, 只數得到.** verifier 額度只認 Claude 的拼法, 走 bridge 的那一側
-  靠主 session 判斷 —— 而那不是漏做: bridge 的名字涵蓋所有 Codex 角色, 把它列進閘會誤擋
-  同一輪的第二個**實作**派工. 2026-08-21 起 `weekly-integrity` 事後數它 (ledger 有 payload
-  缺的角色欄位, 因為那是 QC 之後寫進去的), 所以現在是**預防不了但看得見**. 實測到那天為止,
-  hook 看得到的 112 筆派工裡, 沒有任何一輪花掉兩個 outcome verifier.
+- **~~跨 provider 的額度擋不住, 只數得到~~ — 2026-09-14 以減法補上.** verifier 額度只認
+  Claude 的拼法, 走 bridge 的那一側擋不住, 因為 bridge 的名字涵蓋所有 Codex 角色, 列進閘
+  會誤擋同一輪的第二個**實作**派工. 收掉 bridge 之後 outcome verifier 只剩一種拼法, 而閘
+  數得到它 —— 缺口是被移走而不是被加固的. 實測到 2026-08-21 為止, hook 看得到的 112 筆
+  派工裡, 沒有任何一輪花掉兩個 outcome verifier.

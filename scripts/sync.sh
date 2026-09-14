@@ -84,8 +84,7 @@ validate_manifest() {
   while IFS=$'\t' read -r src_rel dst_rel mode extra; do
     [[ -z "$src_rel" || "$src_rel" == \#* ]] && continue
     if [[ -z "$dst_rel" || -n "$extra" \
-          || ( -n "$mode" && "$mode" != "merge" && "$mode" != "merge-json" \
-               && "$mode" != "merge-toml" ) ]]; then
+          || ( -n "$mode" && "$mode" != "merge" && "$mode" != "merge-json" ) ]]; then
       log "ERROR: malformed deployment manifest row: $src_rel"
       return 1
     fi
@@ -102,16 +101,8 @@ validate_manifest() {
       log "ERROR: merge-json mode is restricted to Claude settings: $src_rel -> $dst_rel"
       return 1
     fi
-    # merge-toml exists for one file: ~/.codex/config.toml carries GPT model
-    # and effort, MCP, plugins, marketplaces, desktop, shell policy, and
-    # per-project trust alongside the agent registrations this repo owns.
-    if [[ "$mode" == "merge-toml" \
-          && "$src_rel:$dst_rel" != "main/codex/config.merge.toml:.codex/config.toml" ]]; then
-      log "ERROR: merge-toml mode is restricted to Codex config: $src_rel -> $dst_rel"
-      return 1
-    fi
     case "$src_rel:$dst_rel" in
-      main/.agents/*:.agents/*|main/claude/*:.claude/*|main/codex/*:.codex/*) ;;
+      main/.agents/*:.agents/*|main/claude/*:.claude/*) ;;
       *) log "ERROR: unsafe deployment mapping: $src_rel -> $dst_rel"; return 1 ;;
     esac
     case "/$src_rel/:/$dst_rel/" in
@@ -223,7 +214,6 @@ preflight() {
   validate_manifest
   report_routing_warnings Claude "$REPO/main/claude/scripts/model-routing"
   "$REPO/main/claude/scripts/model-routing" check-pins >/dev/null
-  report_routing_warnings Codex "$REPO/main/codex/scripts/model-routing"
   git -C "$REPO" diff --check
   # Tests exercise sync.sh itself. The sentinel prevents recursive suites while
   # preserving every non-recursive preflight check in nested dry-runs.
@@ -256,9 +246,9 @@ MERGED_DST=()
 MERGED_TOOL=()
 
 # Per-file deployment inventory. Several manifest targets are shared
-# namespaces rather than this repo's territory: ~/.claude/hooks, ~/.claude/
-# agents, ~/.claude/scripts and ~/.codex/prompts are where third-party
-# installers put their own files too. A directory-wide `rsync --delete`
+# namespaces rather than this repo's territory: ~/.claude/hooks,
+# ~/.claude/agents, ~/.claude/scripts and ~/.claude/skills are where
+# third-party installers put their own files too. A directory-wide `rsync --delete`
 # removed those as "leftovers already deleted from the repo" — the same
 # ownership error that let a vendor hook be dropped from settings.json.
 # Deleting is therefore driven by what this repo deployed last time, recorded
@@ -395,9 +385,8 @@ sync_path() { # $1 = repo-relative source  $2 = HOME-relative target  $3 = optio
     sync_skill_root "$1" "$2"
     return
   fi
-  if [[ "$mode" == "merge-json" || "$mode" == "merge-toml" ]]; then
+  if [[ "$mode" == "merge-json" ]]; then
     local merger="merge-settings.py"
-    [[ "$mode" == "merge-toml" ]] && merger="merge-toml.py"
     MERGED_SRC+=("$src"); MERGED_DST+=("$dst"); MERGED_TOOL+=("$merger")
     if [[ $APPLY -eq 1 ]]; then
       mkdir -p "$(dirname "$dst")"
@@ -537,23 +526,20 @@ done
 
 # Machine state remains deliberately outside the manifest.
 log "note: Claude Code MCP state lives in ~/.claude.json and is not auto-overwritten; add Headroom with 'headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787'."
-log "note: ~/.codex/config.toml is merged section-scoped ([agents] only, see DEPLOY.md); GPT model/effort, MCP, plugins, desktop, and project trust are preserved, never authored here."
 
 # --- Verification ---
 if [[ $APPLY -eq 1 ]]; then
   # Shared skill symlinks and platform wrappers resolve to SKILL.md.
-  for l in "$HOME/.claude/skills/headroom-protocol" "$HOME/.codex/skills/headroom-protocol" \
-           "$HOME/.claude/skills/readable-zh-tw" "$HOME/.codex/skills/readable-zh-tw" \
-           "$HOME/.claude/skills/experience-ledger" "$HOME/.codex/skills/experience-ledger" \
-           "$HOME/.claude/skills/task-observer" "$HOME/.codex/skills/task-observer"; do
+  for l in "$HOME/.claude/skills/headroom-protocol" \
+           "$HOME/.claude/skills/readable-zh-tw" \
+           "$HOME/.claude/skills/experience-ledger" \
+           "$HOME/.claude/skills/task-observer"; do
     [[ -f "$l/SKILL.md" ]] || { log "ERROR: $l failed to resolve to SKILL.md"; exit 1; }
   done
   # Every synced path matches the repo (including removal of files already deleted from the repo)
   FAIL=0
   cmp -s "$REPO/main/claude/CLAUDE.contract.md" "$HOME/.claude/CLAUDE.md" \
     || { log "ERROR: ~/.claude/CLAUDE.md does not match CLAUDE.contract.md"; FAIL=1; }
-  cmp -s "$REPO/main/codex/AGENTS.contract.md" "$HOME/.codex/AGENTS.md" \
-    || { log "ERROR: ~/.codex/AGENTS.md does not match AGENTS.contract.md"; FAIL=1; }
   [[ -f "$HOME/.agents/skills/.agent-harness-source" \
         && "$(<"$HOME/.agents/skills/.agent-harness-source")" == "$REPO" ]] \
     || { log "ERROR: ~/.agents/skills/.agent-harness-source does not identify this checkout"; FAIL=1; }

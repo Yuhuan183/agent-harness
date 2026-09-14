@@ -12,7 +12,7 @@
 | 路徑 | 職責 |
 |---|---|
 | `CLAUDE.contract.md` | Claude Code 執行契約源檔 (部署為 `~/.claude/CLAUDE.md`; 改名避免本 repo 內 session 重複載入); 僅主 agent 使用的精簡協調規則 |
-| `agents/` | 七個自足的 Claude leaf roles; model 與 effort 由 active deployment preset 的 frontmatter pins 決定; 各有 Codex 對應版於 `../.codex/agents/` |
+| `agents/` | 七個自足的 Claude leaf roles; model 與 effort 由 active deployment preset 的 frontmatter pins 決定 |
 | `skills/` | 依需求載入的工作流源檔 (部署為 `~/.claude/skills/<name>`); 哪一支放哪裡見[下一節](#skills-的三種佈局) |
 | `settings.json` | Hooks, 最小唯讀 allowlist 與介面設定; 不指定主模型, effort 或 fallback. plugin 一律屬本機自理, enable 寫 `settings.local.json` (不入庫, sync 不覆蓋) |
 | `examples/headroom-mcp.legacy.json` | 舊版 MCP 宣告範例, 僅供不支援 Headroom installer 的環境參考; 一般安裝使用 `headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787` |
@@ -64,5 +64,3 @@ scripts/usage-report --days 7 --by-session --top 20
 jq empty settings.json examples/headroom-mcp.legacy.json
 sh -n sh/statusline.sh && git diff --check
 ```
-
-Codex/ChatGPT 跨機器部署流程見 `../.codex/DEPLOY.md`.

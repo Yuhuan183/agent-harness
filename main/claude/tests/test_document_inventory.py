@@ -34,7 +34,7 @@ class DocumentInventoryTests(unittest.TestCase):
 
     def test_every_guidance_document_matches_a_review_or_exclusion_rule(self) -> None:
         candidates = {"README.md"}
-        for root in ("docs", "main/claude", "main/codex", "main/.agents",
+        for root in ("docs", "main/claude", "main/.agents",
                      "main/project"):
             candidates.update(
                 path.relative_to(ROOT).as_posix()
@@ -213,7 +213,7 @@ class DocumentInventoryTests(unittest.TestCase):
             "README.md",
             "docs/research/README.md",
             "docs/plans/orchestration-state.md",
-            "main/codex/AGENTS.contract.md",
+            "main/claude/CLAUDE.contract.md",
             ".agents/skills/harness-review/SKILL.md",
             "scripts/deployment-manifest.tsv",
         ):

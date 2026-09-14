@@ -1,7 +1,7 @@
 # 文件導覽
 
 本目錄保存 agent-harness 的方法論, 研究依據, 部署操作與歷史決策; 這些文件不會部署到
-`~/.claude`, `~/.codex` 或 `~/.agents`. 專案全貌與架構圖先看[根 README](../README.md).
+`~/.claude` 或 `~/.agents`. 專案全貌與架構圖先看[根 README](../README.md).
 
 ## 依目的閱讀
 
@@ -11,9 +11,9 @@
 | 從最內層往外看懂 agent engineering | [context](architecture/context-engineering.md) | [harness](architecture/harness-engineering.md), [loop](architecture/loop-engineering.md), [graph](architecture/graph-engineering.md) |
 | 評估一個升級提案 | [升級評估: 五個問題](architecture/architecture.md#六-升級評估-五個問題) | [跨層的兩條軸](architecture/architecture.md#四-跨層的兩條軸), [evidence-ladder](../main/.agents/skills/evidence-ladder/SKILL.md) |
 | 理解整體架構與資料流 | [根 README](../README.md) | [Harness Engineering Playbook](engineering-playbook.md) |
-| 安裝, 同步或回滾 | [配置與部署](setup.md) | [Claude README](../main/claude/README.md), [Codex README](../main/codex/README.md) |
+| 安裝, 同步或回滾 | [配置與部署](setup.md) | [Claude README](../main/claude/README.md) |
 | 修改 leaf role 或派工契約 | [Playbook: Leaf 分派](engineering-playbook.md#leaf-分派的三層契約) | [Briefs](../main/claude/skills/baton-dispatch/references/briefs-and-stops.md) |
-| 評估 model/effort/provider | [研究總結](research/README.md) | [Claude routing](../main/claude/model-routing.toml), [Codex routing](../main/codex/model-routing.toml) |
+| 評估 model 與 effort | [研究總結](research/README.md) | [Claude routing](../main/claude/model-routing.toml) |
 | 用 Fable 5 時避免被切到 Opus | [Fable 5 安全 fallback](research/fable-5-fallback.md) | [provider-routing](../main/claude/skills/provider-routing/SKILL.md) |
 | 查 experience-ledger 指標 | [Metrics](../main/.agents/skills/experience-ledger/references/metrics.md) | [skill 本體](../main/.agents/skills/experience-ledger/SKILL.md) |
 | 驗證派工狀態與路由證據 | [派工生命週期](dispatch-lifecycle.md) | [route_source 強度](../main/.agents/skills/experience-ledger/references/metrics.md) |
@@ -64,9 +64,7 @@
 實際執行行為不由本目錄決定:
 
 - Claude main contract: [`main/claude/CLAUDE.contract.md`](../main/claude/CLAUDE.contract.md)
-- Codex main contract: [`main/codex/AGENTS.contract.md`](../main/codex/AGENTS.contract.md)
 - Claude leaf roles: [`main/claude/agents/`](../main/claude/agents/)
-- Codex leaf roles: [`main/codex/agents/`](../main/codex/agents/)
 - 共用 skills: [`main/.agents/skills/`](../main/.agents/skills/)
 - 部署映射: [`scripts/deployment-manifest.tsv`](../scripts/deployment-manifest.tsv)
 

@@ -1,7 +1,7 @@
 # 常駐契約瘦身規範 (CLAUDE.md + AGENTS.md)
 
-適用對象: `main/claude/CLAUDE.contract.md` (部署為 `~/.claude/CLAUDE.md`) 與
-`main/codex/AGENTS.contract.md` (部署為 `~/.codex/AGENTS.md`). 這是規範而非歷程;
+適用對象: `main/claude/CLAUDE.contract.md` (部署為 `~/.claude/CLAUDE.md`). 2026-09-14
+之前還包含 Codex 那份, 隨該 bundle 一併退場. 這是規範而非歷程;
 歷次瘦身決策由 Git 與 [orchestration-history.md](plans/orchestration-history.md) 保存.
 
 ## 原則
@@ -25,8 +25,9 @@
    (`INTENT:`/`TWINS:`/`AUTH:`/`LEAF_DISPATCH` 等), 不遵守清單中的原則句;
    此類行屬於 role 契約與 QC 檢核, 不佔主契約預算 (fable-method 蒸餾, 取證見
    `evals/traps/`).
-5. **兩契約語意同步, 字面各自最短.** Claude 與 Codex 的同一條政策必須語意一致
-   (twin-parity 測試鎖定), 但照各平台慣用語各自壓縮, 不逐字互抄.
+5. **一條政策只有一個出處.** 這條原本寫的是「兩契約語意同步」—— 同一條政策在兩份契約裡
+   語意一致但字面各自最短, 由 twin-parity 測試鎖定. 2026-09-14 只剩一份契約, 同步的對象
+   消失, 留下的是它背後那件事: 政策寫一次, 其他地方指過去, 不逐字複述.
 
 ## 內容判定表
 
@@ -87,9 +88,11 @@
 - 調高預算需要證據: 先嘗試「移出到 skill/hook/role 契約」, 只有內容確屬
   「每 session 必要且推不出」時才擴預算, 並在 commit message 記明理由.
 - 以「供應商已保證」為由刪任何一條, 必須對照**任何會載入該契約的 session 中最薄的
-  host prompt 變體** — 同一個 CLI 版本下, Codex 給 subagent 與 top-level 的 prompt
-  不同. 用 `scripts/codex-prompt-census.py` 量, 不要抽一份就下結論 (2026-07-31 實測,
-  一次抽樣導致誤刪並已部署). Claude 側不記錄 system prompt, 因此無法用此法稽核.
+  host prompt 變體**. 這條規則 2026-09-14 失去了唯一能執行它的方法: 它靠
+  `codex-prompt-census.py` 讀 Codex 寫進 rollout 的 host prompt, 而那個 bundle 已退場;
+  規則最後一句本來就寫明 Claude 側不記錄 system prompt, 無法用此法稽核. 保留的是教訓而非
+  程序 —— 2026-07-31 實測, **一次抽樣導致誤刪並已部署**. 在沒有新的量測方法之前,
+  「供應商已保證」不構成刪除理由.
 - 下修預算的證據路徑就是下方〈驗收〉那兩條 (真實任務回歸, trap A/B), 與上修同源;
   它們未自動化, 成本是每次 3–5 個真實任務. **成本高不等於不存在** — 不要把「還沒跑」
   說成「沒辦法」. 各層餘裕實測與槓桿盤點見
@@ -119,7 +122,7 @@ model-in-the-loop 量得到: 測試只能釘住觸發詞在不在, 量不出改�
 沒有東西可以覆核, 而本 repo 對自己引用的數字要求重算而非讀回.
 
 `main/.agents/scripts/python3-run scripts/prompt-surface-census.py --check docs/research/prompt-surface-census.json`
-另行鎖定 Claude/Codex 的 resident, dispatch-time skill
+另行鎖定 resident, dispatch-time skill
 與 role body words, UTF-8 bytes, SHA-256. Prompt 變更要刻意刷新 snapshot; census 只證明
 surface identity 與大小, 不能取代上述 lifecycle/trap 行為驗收.
 

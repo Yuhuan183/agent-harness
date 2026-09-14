@@ -14,18 +14,20 @@
 | 狀態 | 承載物 | 怎麼看 |
 |---|---|---|
 | resolved | resolver 的 JSON 輸出 | `model-routing resolve --role <role>` |
-| launched | `dispatch_id` (`<session>:<agent>`) | pending stub 的 `SubagentStart` 列 (native Codex 由 `experience-stage --start` 自己寫) |
-| running | harness 追蹤的子代理狀態 | Claude 側由 SubagentStart/Stop 承載; native Codex 由 `experience-stage` 承載 |
+| launched | `dispatch_id` (`<session>:<agent>`) | pending stub 的 `SubagentStart` 列; 沒有 hook 的派工者由 `experience-stage --start` 自己寫 |
+| running | harness 追蹤的子代理狀態 | SubagentStart/Stop 承載; 沒有 hook 的派工者由 `experience-stage` 承載 |
 | collected | leaf 的最終回覆 + main 的 QC | `[LEAF_RESULT]` 記錄 |
 | logged | ledger 一列 schema-3 記錄 | `experience.jsonl`; `experience-report` 讀它 |
 
 漏掉任一個承載物, 該狀態就只能靠自述. 這正是 2026-07-26 兩個 finding 的共同形狀.
 
-### Native Codex 的承載物由派工者自己寫
+### 沒有 hook 的派工者自己寫承載物
 
-Claude 兩側的 stub 由 SubagentStart/Stop hook 落; native Codex 沒有這種 hook, 它的
-launched 與 collected 一度沒有承載物: 漏記的 outcome 沒進 ledger, 也沒有東西知道它
+Claude 兩側的 stub 由 SubagentStart/Stop hook 落. 任何沒有這種 hook 的派工路徑, 它的
+launched 與 collected 就沒有承載物: 漏記的 outcome 沒進 ledger, 也沒有東西知道它
 存在過. 漏記不是隨機的 — 難做或失敗的派工最容易被放掉, cohort 會偏向成功樣本.
+這一節是為 2026-09-14 之前的 native Codex 寫的, 留著是因為它擋的是「有承載物沒有 hook」
+這個形狀, 不是某一個 provider.
 
 ```bash
 ~/.agents/skills/experience-ledger/scripts/experience-stage --start --role executor
@@ -38,7 +40,7 @@ id 會被拒絕. 沒跑起來的用 `--cancel` 退掉, 跑過的一律記帳 (�
 會持續告警, 直到補記或 `--cancel`.
 
 這是受管 wrapper, 不是 hook: 忘記 `--start` 就照樣沒有承載物. 它擋的是「派了, 跑完,
-忘了記帳」, 不是「整條工具鏈都繞過去」; 後者要等 Codex runtime 提供 dispatch 事件.
+忘了記帳」, 不是「整條工具鏈都繞過去」; 後者要等該 runtime 提供 dispatch 事件.
 
 ## Plan readiness 與 discovery ownership
 
@@ -99,7 +101,7 @@ orchestrator 帶進 payload 的穩定 task id, runtime 目前沒有, 所以缺�
 
 **第三條: `[LEAF_DISPATCH]` / `[LEAF_RESULT]` 兩行紀錄也沒有機制, 而這一條容易被誤讀.**
 契約寫的是「每次派工與 QC 之後各報一行固定格式的紀錄」, 語氣是 must; 但 tests 之外沒有任何
-hook 或腳本解析它們 (唯一碰到字串的是 `codex-prompt-census.py`, 而它只是拿來當污染標記).
+hook 或腳本解析它們.
 **被檢查的是 ledger 那一列, 不是這兩行**: 契約同一句的後半「then log the outcome with
 `experience-ledger`」才是耐久載體, 而它有 schema, 有拒絕重複與拒絕早記的守衛.
 

@@ -13,10 +13,6 @@
     "main/claude/agents/*.md",
     "main/claude/prompts/*.md",
     "main/claude/skills/**/*.md",
-    "main/codex/*.md",
-    "main/codex/agents/*.toml",
-    "main/codex/prompts/*.md",
-    "main/codex/skills/**/*.md",
     "main/.agents/*.md",
     "main/.agents/docs/*.md",
     "main/project/*.md",
@@ -39,12 +35,10 @@
   "truth_sources_reviewed_separately": [
     "main/claude/settings.json",
     "main/claude/model-routing.toml",
-    "main/codex/model-routing.toml",
     "scripts/deployment-manifest.tsv",
     "scripts/sync.sh",
     "main/claude/hooks/**",
     "main/claude/scripts/**",
-    "main/codex/scripts/**",
     "main/claude/tests/**"
   ]
 }

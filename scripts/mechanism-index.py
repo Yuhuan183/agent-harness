@@ -45,7 +45,7 @@ def mechanisms() -> dict[str, str]:
         found[path.stem] = "hook"
     if (ROOT / "main/claude/githooks/pre-commit").exists():
         found["githooks/pre-commit"] = "hook"
-    for tree in ("main/claude/skills", "main/codex/skills", "main/.agents/skills"):
+    for tree in ("main/claude/skills", "main/.agents/skills"):
         for path in sorted((ROOT / tree).iterdir()):
             if path.is_dir():
                 found.setdefault(path.name, "skill")

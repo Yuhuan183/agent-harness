@@ -18,8 +18,6 @@
 [roles]
 main/claude/agents/executor.md
 main/claude/agents/mech-executor.md
-main/codex/agents/executor.toml
-main/codex/agents/mech-executor.toml
 [machinery]
 main/.agents/scripts/gate_lines.py
 evals/traps/s7-false-completion/grade.py

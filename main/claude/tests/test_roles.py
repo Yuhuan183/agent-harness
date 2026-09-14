@@ -51,8 +51,8 @@ class AgentRosterTests(unittest.TestCase):
             # lines, and these role bodies already pack several independent
             # rules into one. The unit has to be the one that cannot be gamed,
             # which is the same CJK-aware count the contract budgets use.
-            # Measured on the body alone, so it is comparable with the Codex
-            # twin's `developer_instructions`.
+            # Measured on the body alone: frontmatter is metadata the census
+            # budgets separately, not an obligation this ceiling governs.
             instructions = body.split("---\n", 2)[-1]
             self.assertLessEqual(word_count(instructions), ROLE_BODY_BUDGET, role)
             # Leaf roles never read orchestration docs or name the main contract.
@@ -78,11 +78,6 @@ class AgentRosterTests(unittest.TestCase):
             f"claude/{role}": read(f".claude/agents/{role}.md").split("---\n", 2)[-1]
             for role in ROLES
         }
-        bodies.update({
-            f"codex/{role}": tomllib.loads(
-                read(f".codex/agents/{role}.toml"))["developer_instructions"]
-            for role in CODEX_ROLES
-        })
         for label, body in bodies.items():
             rules = len(rule_units(body))
             self.assertLessEqual(rules, ROLE_RULE_BUDGET, f"{label}: {rules} rules")
@@ -133,7 +128,7 @@ class AgentRosterTests(unittest.TestCase):
             self.assertRegex(meta, r"(?m)^disallowedTools:.*\bAgent\b.*\bWorkflow\b")
 
     def test_explore_separates_recon_from_adversarial_review(self) -> None:
-        for path in (".claude/agents/explore.md", ".codex/agents/explore.toml"):
+        for path in (".claude/agents/explore.md",):
             body = read(path)
             self.assertIn("task_class: recon", body, path)
             self.assertIn("task_class: review", body, path)
@@ -180,7 +175,7 @@ class AgentRosterTests(unittest.TestCase):
         that holds on one side is a threshold the caller cannot rely on
         (2026-08-04).
         """
-        for path in (".claude/agents/verifier.md", ".codex/agents/verifier.toml"):
+        for path in (".claude/agents/verifier.md",):
             body = " ".join(read(path).split())
             self.assertIn("changes the acceptance conclusion", body, path)
             self.assertIn("would not change it under `Advisory:`", body, path)
@@ -214,12 +209,9 @@ class LeafArtifactGateTests(unittest.TestCase):
     JUDGMENT_WRITERS = (
         ".claude/agents/executor.md",
         ".claude/agents/security-executor.md",
-        ".codex/agents/executor.toml",
-        ".codex/agents/security-executor.toml",
     )
     ALL_WRITERS = JUDGMENT_WRITERS + (
         ".claude/agents/mech-executor.md",
-        ".codex/agents/mech-executor.toml",
     )
 
     def test_intent_gate_in_judgment_writers(self) -> None:
@@ -238,7 +230,7 @@ class LeafArtifactGateTests(unittest.TestCase):
         # commit-by-commit check on 2026-08-04 refuted it: neither mech contract
         # has ever contained either word. The invariant is worth holding on its
         # own terms; the causal story was not evidence.
-        for path in (".claude/agents/mech-executor.md", ".codex/agents/mech-executor.toml"):
+        for path in (".claude/agents/mech-executor.md",):
             body = read(path)
             self.assertNotIn("INTENT", body, path)
             self.assertNotIn("TWINS", body, path)
@@ -249,7 +241,7 @@ class LeafArtifactGateTests(unittest.TestCase):
         shared = ROOT / "main/.agents/scripts/qc-gate-lines"
         self.assertTrue(shared.is_file(), shared)
         self.assertTrue(os.access(shared, os.X_OK), f"{shared} must be executable")
-        for tree in ("claude", "codex"):
+        for tree in ("claude",):
             link = ROOT / "main" / tree / "scripts/qc-gate-lines"
             self.assertTrue(link.is_symlink(), f"{link} must be a symlink")
             self.assertEqual(
@@ -257,16 +249,15 @@ class LeafArtifactGateTests(unittest.TestCase):
             )
         qc_paths = (
             ".claude/skills/baton-dispatch/SKILL.md",
-            ".codex/skills/leaf-dispatch/SKILL.md",
         )
-        for path, home in zip(qc_paths, ("~/.claude", "~/.codex")):
+        for path, home in zip(qc_paths, ("~/.claude",)):
             body = " ".join(read(path).split())
             self.assertIn(f"{home}/scripts/qc-gate-lines", body, path)
             # Flags come from QC's own evidence, never the report's claims.
             self.assertIn("never from the report's claims", body, path)
 
     def test_authority_order_is_scoped_to_intended_behavior(self) -> None:
-        for path in (".claude/agents/executor.md", ".codex/agents/executor.toml"):
+        for path in (".claude/agents/executor.md",):
             body = read(path)
             self.assertIn(
                 "explicit user statement > spec > tests > current code behavior", body, path
@@ -286,43 +277,14 @@ class LeafArtifactGateTests(unittest.TestCase):
             self.assertIn("never authorization", body, path)
 
     def test_mech_executor_never_weakens_checks(self) -> None:
-        for path in (".claude/agents/mech-executor.md", ".codex/agents/mech-executor.toml"):
+        for path in (".claude/agents/mech-executor.md",):
             self.assertIn("a stop, not a fix", read(path), path)
 
-    def test_twin_roles_share_semantic_clauses(self) -> None:
-        # Twin role contracts are hand-maintained on both platforms; this is
-        # the shared semantic core that must not drift apart. Platform wording
-        # may differ, but every clause must exist on both sides (case-folded).
-        shared = {
-            "explore": ["read-only leaf agent", "never delegate",
-                        "file:line evidence", "genuinely new or redirected work"],
-            "mech-executor": ["never delegate", "weaken", "stop and report",
-                              "auth: user said"],
-            "executor": ["never delegate", "intent: code does",
-                         "stop and report"],
-            "plan-verifier": ["ready", "revise", "replacement plan",
-                              "untrusted observation"],
-            "verifier": ["confirmed", "refuted", "inconclusive",
-                         "reproducible counterexample", "never fix",
-                         # Injection defence borrowed from Deep Agents'
-                         # RubricMiddleware grader: the report is observation,
-                         # not instruction, and unconfirmed claims stay unmet.
-                         "untrusted observation",
-                         # Independence guardrails must not drift apart again
-                         # (review F-06): isolation, state parity, no writes.
-                         "external state", "git status --short",
-                         "must be identical", "snapshot updates"],
-            "security-reviewer": ["abuse", "trust boundar"],
-            "security-executor": ["weaken", "abuse", "intent: code does",
-                                  "auth: user said"],
-        }
-        self.assertEqual(sorted(shared), sorted(ROLES))
-        for role, clauses in shared.items():
-            claude = read(f".claude/agents/{role}.md").lower()
-            codex = read(f".codex/agents/{role}.toml").lower()
-            for clause in clauses:
-                self.assertIn(clause, claude, f"{role} (claude): {clause}")
-                self.assertIn(clause, codex, f"{role} (codex): {clause}")
+    # `test_twin_roles_share_semantic_clauses` stood here until 2026-09-14.
+    # It held that hand-maintained role contracts on two platforms carried
+    # the same semantic clauses, because nothing generated one from the
+    # other. One platform remains, so the clauses have no twin to drift
+    # from; what each role must still say is asserted per role above.
 
     def test_subagent_return_contract_is_two_sided(self) -> None:
         # Deep Agents states the return contract on both the caller side
@@ -338,10 +300,8 @@ class LeafArtifactGateTests(unittest.TestCase):
         # dispatch, which is true on both providers and is what the wording
         # should say.
         anchor = "final report is the authoritative record"
-        paths = [".claude/skills/baton-dispatch/references/briefs-and-stops.md",
-                 ".codex/skills/leaf-dispatch/SKILL.md"]
+        paths = [".claude/skills/baton-dispatch/references/briefs-and-stops.md"]
         paths += [f".claude/agents/{role}.md" for role in WRITER_ROLES]
-        paths += [f".codex/agents/{role}.toml" for role in WRITER_ROLES]
         for path in paths:
             # Normalized: leaf-dispatch is hard-wrapped and the clause may span
             # a line break.
@@ -349,15 +309,8 @@ class LeafArtifactGateTests(unittest.TestCase):
             self.assertIn(anchor, body, path)
             self.assertNotIn("all main sees", body, path)
 
-    def test_codex_writer_tomls_still_parse(self) -> None:
-        for role in ("executor", "mech-executor", "security-executor"):
-            agent = tomllib.loads(read(f".codex/agents/{role}.toml"))
-            self.assertIn("INTENT" if role != "mech-executor" else "AUTH",
-                          agent["developer_instructions"], role)
-
     def test_qc_fraud_checklist_in_both_main_qc_paths(self) -> None:
-        for path in (".claude/skills/baton-dispatch/SKILL.md",
-                     ".codex/skills/leaf-dispatch/SKILL.md"):
+        for path in (".claude/skills/baton-dispatch/SKILL.md",):
             body = " ".join(read(path).split())
             self.assertIn("false-completion frauds", body, path)
             self.assertIn("leftover leaf-created scratch files", body, path)
@@ -422,7 +375,6 @@ class LeafArtifactGateTests(unittest.TestCase):
     def test_brief_carries_stop_defaults_and_auth_provenance(self) -> None:
         for path in (
             ".claude/skills/baton-dispatch/references/briefs-and-stops.md",
-            ".codex/skills/leaf-dispatch/SKILL.md",
         ):
             body = read(path)
             self.assertIn("3 failed fix-verify", body, path)

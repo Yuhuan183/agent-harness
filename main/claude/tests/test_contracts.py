@@ -124,7 +124,6 @@ RESIDENT_CONTRACT_BUDGETS = {
     # reads 168.23. Words 642/645, rules 26/26. The Claude twin merged it (503 of
     # 520, 210.4 of 225) because that side has no rule slot left, which is the
     # same headroom difference the note above describes, mirrored.
-    "codex": ContractBudget(".codex/AGENTS.contract.md", 645, 26, 175, 0.15, 0.25),
 }
 
 
@@ -229,8 +228,6 @@ class ClaudeContractTests(unittest.TestCase):
             self.assertNotIn("xhigh", frontmatter(f".claude/agents/{role}.md"), role)
         for path in (
             ".claude/skills/provider-routing/SKILL.md",
-            ".codex/AGENTS.contract.md",
-            ".codex/config.merge.toml",
         ):
             text = read(path)
             for sanctioned in ("no role or bridge call uses xhigh",
@@ -268,7 +265,6 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertIn("## Cost test", skill)
         self.assertIn("delegation saves no compute", skill)
         self.assertIn("clearly exceeds dispatch overhead", read(".claude/CLAUDE.contract.md"))
-        self.assertIn("clearly exceeds\ndispatch overhead", read(".codex/skills/leaf-dispatch/SKILL.md"))
         self.assertIn("cablate/baton v0.1.1", skill)
         # The provenance sentence used to name a bare short SHA, and this
         # assertion is why it survived: the citation stopped resolving at some
@@ -300,84 +296,79 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertIn("LEAF_DISPATCH", skill)
         self.assertIn("LEAF_RESULT", skill)
 
-    def test_pilotfish_guardrails_are_backend_neutral_and_cross_surface(self) -> None:
+    def test_pilotfish_guardrails_are_backend_neutral(self) -> None:
+        """Named `..._and_cross_surface` until 2026-09-14, when the second
+        surface stopped shipping. Backend-neutrality is the half that survives:
+        these guardrails are stated without naming a model or a vendor, and the
+        assertions below still fail if a rewrite reintroduces one."""
         skill = read(".claude/skills/baton-dispatch/SKILL.md")
         brief = read(".claude/skills/baton-dispatch/references/briefs-and-stops.md")
         claude = read(".claude/CLAUDE.contract.md")
-        codex = read(".codex/AGENTS.contract.md")
         triggers = read(
             ".claude/skills/provider-routing/references/verifier-triggers.md"
         )
 
-        codex_dispatch = " ".join(read(".codex/skills/leaf-dispatch/SKILL.md").split())
-        codex_policy = codex + "\n" + codex_dispatch
-        for text in (skill, brief, codex_dispatch):
+        for text in (skill, brief):
             self.assertIn("stable one-shot brief", text)
             self.assertIn("independent and the same shape", text)
             self.assertIn("per-item acceptance", text)
         self.assertIn("known root cause and remedy", skill)
-        self.assertIn("known remedy", codex_policy)
         self.assertIn("not a numeric trigger", brief)
-        self.assertIn("never use an item-count trigger", codex_policy)
 
-        for text in (skill, triggers, codex_policy):
+        for text in (skill, triggers):
             self.assertIn("smallest coherent integration boundary", text)
             self.assertIn("intermediate evidence", text)
-        for text in (triggers, codex_policy):
-            self.assertIn("cross-language or FFI", text)
-            self.assertIn("serialization or pre-aggregation", text)
+        self.assertIn("cross-language or FFI", triggers)
+        self.assertIn("serialization or pre-aggregation", triggers)
         # Plan anti-churn moved from the resident Claude contract into the
-        # mandatory-pre-dispatch baton skill (union assertion, like codex).
+        # mandatory-pre-dispatch baton skill, so the assertion is on the union.
         claude_policy = claude + "\n" + skill
-        for text in (claude_policy, codex_policy):
-            self.assertIn("substantially unchanged Plan", text)
-            self.assertIn("material revision or new evidence", text)
-            self.assertRegex(text, r"silently (overrule|overriding)")
+        self.assertIn("substantially unchanged Plan", claude_policy)
+        self.assertIn("material revision or new evidence", claude_policy)
+        self.assertRegex(claude_policy, r"silently (overrule|overriding)")
 
-    def test_pilotfish_v134_readiness_and_discovery_are_cross_surface(self) -> None:
+    def test_pilotfish_v134_readiness_and_discovery_reach_every_surface(self) -> None:
+        """Named `..._are_cross_surface` until 2026-09-14. The upstream controls
+        were adopted on both bundles, and the check was that neither side kept a
+        control the other lacked. One side remains, so what is still worth
+        asserting is that the controls reach every surface that consumes them -
+        the dispatch skill, the brief, and the two role files - rather than
+        landing in one and being assumed in the rest."""
         claude_dispatch = read(".claude/skills/baton-dispatch/SKILL.md")
-        codex_dispatch = read(".codex/skills/leaf-dispatch/SKILL.md")
         brief = read(".claude/skills/baton-dispatch/references/briefs-and-stops.md")
         claude_plan = read(".claude/agents/plan-verifier.md")
-        codex_plan = tomllib.loads(
-            read(".codex/agents/plan-verifier.toml"))["developer_instructions"]
         claude_security = read(".claude/agents/security-reviewer.md")
-        codex_security = tomllib.loads(
-            read(".codex/agents/security-reviewer.toml"))["developer_instructions"]
 
-        for text in (claude_dispatch, codex_dispatch):
-            for phrase in (
-                "program envelope",
-                "next executable slice",
-                "readiness-unit ID",
-                "first readiness review",
-                "after two automatic revisions",
-                "Blocker",
-                "Minimum revision",
-                "Acceptance check",
-            ):
-                self.assertIn(phrase, text)
-        for text in (claude_dispatch, codex_dispatch, brief):
+        for phrase in (
+            "program envelope",
+            "next executable slice",
+            "readiness-unit ID",
+            "first readiness review",
+            "after two automatic revisions",
+            "Blocker",
+            "Minimum revision",
+            "Acceptance check",
+        ):
+            self.assertIn(phrase, claude_dispatch)
+        for text in (claude_dispatch, brief):
             self.assertIn("temporarily exclusive", text)
             self.assertIn("back-to-back", text)
             self.assertIn("cross-surface synthesis", text)
-        for text in (claude_plan, codex_plan):
-            self.assertIn("stable readiness-unit ID", text)
-            self.assertIn("READY", text)
-            self.assertIn("with no other text", text)
-            for field in (
-                "Blocker:",
-                "Evidence:",
-                "Minimum revision:",
-                "Acceptance check:",
-            ):
-                self.assertIn(field, text)
-            self.assertIn("security-reviewer", text)
-            self.assertIn("disposition", text)
-        for text in (claude_security, codex_security):
-            self.assertIn("stable ID", text)
-            self.assertIn("affected Plan", text)
-            self.assertIn("first readiness review", text)
+        self.assertIn("stable readiness-unit ID", claude_plan)
+        self.assertIn("READY", claude_plan)
+        self.assertIn("with no other text", claude_plan)
+        for field in (
+            "Blocker:",
+            "Evidence:",
+            "Minimum revision:",
+            "Acceptance check:",
+        ):
+            self.assertIn(field, claude_plan)
+        self.assertIn("security-reviewer", claude_plan)
+        self.assertIn("disposition", claude_plan)
+        self.assertIn("stable ID", claude_security)
+        self.assertIn("affected Plan", claude_security)
+        self.assertIn("first readiness review", claude_security)
 
     def test_verification_is_bounded_by_passes_and_by_state_change(self) -> None:
         # Two independent bounds, because they catch different loops. The pass
@@ -393,8 +384,7 @@ class ClaudeContractTests(unittest.TestCase):
         # units — one per "top-level task", five per "target", and the gate
         # counting per prompt — and a reader can only guess whether five passes
         # are permission to spend the quota five times (2026-08-04 review).
-        for path in (".claude/skills/baton-dispatch/SKILL.md",
-                     ".codex/skills/leaf-dispatch/SKILL.md"):
+        for path in (".claude/skills/baton-dispatch/SKILL.md",):
             text = " ".join(read(path).split())
             self.assertIn("five verification passes", text, path)
             self.assertIn("names what changed since the previous one", text, path)
@@ -476,9 +466,6 @@ class ClaudeContractTests(unittest.TestCase):
     def test_dispatch_skills_have_non_overlapping_ownership(self) -> None:
         baton = read(".claude/skills/baton-dispatch/SKILL.md")
         provider = read(".claude/skills/provider-routing/SKILL.md")
-        leaf = read(".codex/skills/leaf-dispatch/SKILL.md")
-        leaf_flat = " ".join(leaf.split())
-
         self.assertIn(
             "owns dispatch shape, grouping, briefs, collection, QC, and fixed records",
             baton,
@@ -491,642 +478,62 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertIn("Record formats and QC mechanics stay in `baton-dispatch`", provider)
         self.assertNotIn("qc-gate-lines", provider)
         self.assertNotIn("[LEAF_DISPATCH]", provider)
-        self.assertIn("Own Codex dispatch", leaf_flat)
-        self.assertIn("do not select main model", leaf_flat)
-
-
-class CodexContractRestatementTests(unittest.TestCase):
-    """Why the Codex contract keeps clauses the Claude contract may not.
-
-    The 2026-07-31 vendor-restatement audit deleted three of these, then a
-    re-review put them back. Both passes read the same provider-recorded
-    evidence — Codex writes its host prompt into `session_meta.base_instructions`
-    of every rollout — but the first pass read *one* rollout. There are eight
-    distinct prompts across 91 local rollouts, and the one it happened to read
-    is the only variant carrying both the "File editing constraints" and
-    "Destructive Actions" sections, so it maximised apparent vendor coverage.
-
-    The axis is session kind, not CLI version. On cli >= 0.145.0, over all 220
-    discovered rollouts (`scripts/codex-prompt-census.py --min-cli 0.145`):
-
-        kind        n    dirty-worktree  no-ask-scoped  autonomy  authority
-        top-level  59            59/59          59/59     59/59      51/59
-        subagent   90            43/90          43/90     43/90      57/90
-
-    An earlier pass quoted 0/47 for the subagent row. That was one rollout
-    store: the census globbed `sessions/` and never saw `archived_sessions/`,
-    which holds more than half the population and is the same population -
-    archiving is a user action, both stores carry the contract, and the two
-    separate on the same days under the same CLI. The corrected numbers do not
-    change the decision and strengthen the rule behind it: no clause reaches
-    full coverage for subagents, so every one of them has to stay.
-
-    Codex delivers this contract to subagents as instructions - the rollout
-    carries it as a `role: user` message headed `# AGENTS.md instructions` and
-    mirrors it in `world_state.agents_md` - so a clause the subagent prompt
-    omits has no other source. Deleting these removed the only statement of
-    "the user's uncommitted work is theirs; preserve it" from every current
-    subagent session, which is the half of the fleet that writes files.
-
-    The rule this yields: judge a restatement against the *thinnest* host
-    prompt any consumer of the contract runs under, never against a sampled
-    one. The Claude side of the audit cannot be run at all - Claude Code
-    records its system prompt nowhere, so the same sampling error there is
-    currently unfalsifiable.
-    """
-
-    #: Present in the top-level Codex prompt, absent from every current
-    #: subagent prompt, and the contract is loaded by both.
-    SUBAGENT_UNCOVERED = (
-        "preserve dirty worktrees and unrelated user work",
-        "need no approval",
-        "inspect and report",
-    )
-
-    def test_the_vendor_census_covers_every_justified_clause(self) -> None:
-        """The measurement behind these decisions has to be re-runnable.
-
-        The numbers above are a snapshot of one machine's rollouts. Left as
-        prose they rot silently, and the audit that produced them was already
-        re-derived once by hand and got it wrong. `scripts/codex-prompt-census.py`
-        regenerates them on demand; this fails if a clause is justified here
-        that the census does not measure, or vice versa, so the tool and the
-        reasoning cannot drift apart.
-
-        The census has no `--check` mode on purpose: its input is machine-local
-        and expected to move, so a pinned snapshot would fail for everyone who
-        is not the author. It is evidence for a human decision, not a gate.
-        """
-        import importlib.util
-
-        script = ROOT / "scripts/codex-prompt-census.py"
-        self.assertTrue(script.is_file(), script)
-        spec = importlib.util.spec_from_file_location("codex_prompt_census", script)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        measured = {clause for _, clause, _ in module.CONTRACT_CLAUSES}
-        justified = set(self.SUBAGENT_UNCOVERED) | {"require explicit authority"}
-        self.assertEqual(
-            justified, measured,
-            "every clause kept or dropped on vendor-coverage grounds must be a "
-            "column in the census, so the claim can be rechecked by running it")
-        # And the census must still be reading the vendor's words, not ours:
-        # a rollout for work in this repo quotes the contract everywhere else.
-        self.assertTrue(module.OUR_MARKERS, "circularity check was removed")
-
-    def test_clauses_the_subagent_prompt_does_not_carry_stay_in_the_contract(self) -> None:
-        policy = read(".codex/AGENTS.contract.md")
-        for clause in self.SUBAGENT_UNCOVERED:
-            self.assertIn(
-                clause, policy,
-                f"{clause!r} was removed as a vendor restatement, but the "
-                "Codex subagent prompt does not always restate it (43/90 on "
-                "cli >= 0.145.0) and subagents receive this contract")
-
-    def test_the_canonical_rule_admits_the_exception_this_class_relies_on(self) -> None:
-        """A named exception has to exist in the rule, not only in its gate.
-
-        `contract-slimming.md` said vendor restatements are deleted 一律 — with
-        no exception — while the test below requires one kept. The next audit
-        following the canonical document would delete the sentence and hit a
-        red test with no written reason, which is the contradiction that
-        principle 2b calls the more expensive failure shape.
-        """
-        rule = (ROOT / "docs/contract-slimming.md").read_text(encoding="utf-8")
-        self.assertIn("預設刪除", rule)
-        self.assertIn("不可回復的安全條款", rule,
-                      "the exception this class relies on is not in the rule")
-        self.assertIn("具名", rule, "the exception must require naming")
-
-    def test_the_census_reports_what_it_could_not_read(self) -> None:
-        """The denominator is the load-bearing part of this evidence.
-
-        Twice now the census has silently shrunk its own sample - once by
-        globbing one rollout store, once by dropping rollouts it could not
-        parse - and a smaller sample makes vendor coverage look *more*
-        complete, which is the direction that licenses a deletion that should
-        not happen. Exercises the parser against format drift, a missing
-        record, and an empty store, because an import-only test would pass
-        while every one of these was broken.
-        """
-        import importlib.util
-
-        spec = importlib.util.spec_from_file_location(
-            "codex_prompt_census", ROOT / "scripts/codex-prompt-census.py")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-
-        def run(rollouts: dict[str, list[dict]]) -> dict:
-            with tempfile.TemporaryDirectory() as temp:
-                home = Path(temp)
-                for name, rows in rollouts.items():
-                    target = home / name
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    target.write_text(
-                        "".join(json.dumps(r) + "\n" for r in rows),
-                        encoding="utf-8")
-                module.CODEX_HOME = home
-                return module.census()
-
-        def meta(base, source="cli", cli="0.146.0"):
-            return {"type": "session_meta",
-                    "payload": {"base_instructions": base, "cli_version": cli,
-                                "source": source, "timestamp": "2026-07-31T00:00:00Z"}}
-
-        prompt = "## Autonomy and persistence\nyou preserve them, ignore unrelated edits\n"
-
-        # Nested and flat stores are one population; the flat one is what the
-        # first version never globbed.
-        both = run({"sessions/2026/07/31/rollout-a.jsonl": [meta({"text": prompt})],
-                    "archived_sessions/rollout-b.jsonl":
-                        [meta({"text": prompt}, source="{'subagent': {}}")]})
-        self.assertEqual((both["discovered"], both["parsed"]), (2, 2))
-        self.assertEqual(both["stores"],
-                         {"sessions": 1, "archived_sessions": 1})
-        self.assertEqual(sorted(both["coverage"]), ["subagent", "top-level"])
-        self.assertTrue(both["supports_a_deletion_decision"])
-
-        # Format drift: a bare string is read, anything else is a named skip.
-        drift = run({"sessions/rollout-a.jsonl": [meta(prompt)],
-                     "sessions/rollout-b.jsonl": [meta({"body": prompt})],
-                     "sessions/rollout-c.jsonl": [{"type": "event_msg"}]})
-        self.assertEqual(drift["discovered"], 3)
-        self.assertEqual(drift["parsed"], 1, "a bare string must still parse")
-        self.assertEqual(drift["skipped"],
-                         {"unsupported_base_instructions": 1,
-                          "no_session_meta": 1})
-        self.assertFalse(drift["supports_a_deletion_decision"])
-        self.assertTrue(drift["unresolved"])
-
-        # An empty store answers nothing, and must not answer "fully covered".
-        empty = run({})
-        self.assertEqual((empty["discovered"], empty["parsed"]), (0, 0))
-        self.assertFalse(empty["supports_a_deletion_decision"])
-
-        # Circular evidence: our own contract inside the host prompt would mean
-        # the census is grading us against ourselves.
-        circular = run({"sessions/rollout-a.jsonl":
-                        [meta({"text": prompt + "\n# Global Working Contract\n"})]})
-        self.assertEqual(circular["our_markers_leaked_into_host_prompt"],
-                         ["Global Working Contract"])
-        self.assertFalse(circular["supports_a_deletion_decision"])
-
-    def test_the_authority_sentence_is_kept_on_purpose(self) -> None:
-        """The one clause whose deletion the audit considered and declined.
-
-        Unlike the three above, "# Destructive Actions" *is* in the subagent
-        prompt (73/77), so this sentence really is a restatement. It stays
-        anyway, because the failure directions are not symmetric: if the vendor
-        drops that section, an over-cautious Codex is recoverable and one
-        acting destructively without authority is not. A safety clause is not
-        worth ~35 words of savings when the tail risk has that shape.
-        """
-        policy = read(".codex/AGENTS.contract.md")
-        self.assertIn("require explicit authority", policy)
-
-
-class CodexBundleTests(unittest.TestCase):
-    def test_agents_md_mirrors_the_main_only_boundary(self) -> None:
-        agents = read(".codex/AGENTS.contract.md")
-        for phrase in (
-            "Main task only — orchestration",
-            "Direct execution is the default",
-            "not request bullets",
-            "one unknown bug's diagnosis",
-            "Collect the finished subagent response",
-            "hard boundary",
-            "### Independent verifier",
-            "Subagents use their own role contract",
-            "Report only outcome",
-            # Same progressive-disclosure rule as baton-dispatch on the Claude
-            # side: the contract's cost test resolves the common case by itself.
-            "Once a dispatch is going ahead, load the `leaf-dispatch` skill",
-        ):
-            self.assertIn(phrase, agents)
-        self.assertNotIn("Discovery → Plan → Approval", agents)
-
-    def test_dispatch_skill_metadata_triggers_only_after_the_decision(self) -> None:
-        """Both providers pay the body only once a dispatch is going ahead.
-
-        Skill metadata is resident on every turn; the body is not. That trade
-        only pays if the description does not fire on "should I delegate?" —
-        the question the resident contract answers by itself, usually with
-        "no". The Codex description used to say both things at once (`Load
-        before every leaf dispatch decision`, with 「要不要派」 as a trigger)
-        while its own body and contract said the decision comes first, so
-        asking whether to delegate loaded a ~1000-word file to decide not to.
-        """
-        for path in (".claude/skills/baton-dispatch/SKILL.md",
-                     ".codex/skills/leaf-dispatch/SKILL.md"):
-            meta = frontmatter(path)
-            self.assertIn("Load once a dispatch is going ahead", meta, path)
-            for pre_decision in ("before every leaf dispatch decision",
-                                 "任何 leaf 派工前", "要不要派", "Mandatory"):
-                self.assertNotIn(pre_decision, meta, path)
-
-    def test_codex_dispatch_detail_lives_in_leaf_dispatch_skill(self) -> None:
-        skill = " ".join(read(".codex/skills/leaf-dispatch/SKILL.md").split())
-        self.assertIn("dispatch_id=<id>", skill)
-        for phrase in (
-            "request_source=codex",
-            "[LEAF_DISPATCH]",
-            "[LEAF_RESULT]",
-            "false-completion frauds",
-            "3 failed fix-verify",
-            "fruitless lookups",
-            "provenance-labelled direct quote",
-            "at most one outcome verifier per top-level task",
-            "smallest coherent integration boundary",
-        ):
-            self.assertIn(phrase, skill)
-        # Detail moved out of the resident contract stays out.
-        agents = read(".codex/AGENTS.contract.md")
-        self.assertNotIn("false-completion frauds", agents)
-        self.assertNotIn("3 failed fix-verify cycles", agents)
-
-    def test_codex_bundle_avoids_claude_routing_vocabulary(self) -> None:
-        # The Codex contract must not carry Claude-specific model routing.
-        lowered = read(".codex/AGENTS.contract.md").lower()
-        for forbidden in ("fable", "opus", "dispatch gpt +", "dispatch claude"):
-            self.assertNotIn(forbidden, lowered)
-        # The ownership invariant must stay resident; the routing detail that
-        # states it may live in either the contract or the on-demand skill, so
-        # assert the union — otherwise moving a line between them reads as
-        # deleting it.
-        self.assertIn("The user owns the Codex GPT model", read(".codex/AGENTS.contract.md"))
-        self.assertIn("reserving the strongest route/high",
-                      read(".codex/AGENTS.contract.md")
-                      + read(".codex/skills/leaf-dispatch/SKILL.md"))
-
-    def test_no_deployed_prose_pins_a_model_version(self) -> None:
-        """Concrete model versions belong to the resolver, not to prose.
-
-        This clause used to read "reserving GPT-5.6 Sol/high", and the version
-        was pinned here as well, so the tree carried the same number in two
-        places and neither would notice the model moving. Worse, an s11 run on
-        2026-08-09 measured the cost of a stale one: five of fifteen replies
-        named GPT-5.4 while the routing table said gpt-5.6, because the file
-        holding the correct id was never loaded. Prose that names a version is
-        a second truth source with no way to be checked against the first.
-
-        `model-routing.toml` and the tests that assert against it are exempt by
-        construction: they *are* the routing truth, and a routing table without
-        model ids would resolve nothing.
-        """
-        version = re.compile(r"\b(?:gpt|claude|opus|sonnet|fable)[-\s]?\d+\.\d+",
-                             re.IGNORECASE)
-        surfaces = [
-            ".claude/CLAUDE.contract.md", ".codex/AGENTS.contract.md",
-            ".codex/skills/leaf-dispatch/SKILL.md",
-            ".claude/skills/baton-dispatch/SKILL.md",
-            ".claude/skills/provider-routing/SKILL.md",
-        ]
-        for path in surfaces:
-            with self.subTest(path=path):
-                found = version.findall(read(path))
-                self.assertEqual(
-                    found, [],
-                    f"{path}: names a model version in prose ({found}); let the "
-                    "resolver answer that, so there is one truth source rather "
-                    "than two that can disagree silently")
-
-    def test_config_merge_and_verifier_are_leaf_bounded(self) -> None:
-        config = tomllib.loads(read(".codex/config.merge.toml"))
-        self.assertEqual(config["agents"]["max_depth"], 1)
-        self.assertEqual(config["agents"]["max_threads"], 4)
-        self.assertEqual(
-            config["agents"]["verifier"]["config_file"], "./agents/verifier.toml"
-        )
-        verifier = tomllib.loads(read(".codex/agents/verifier.toml"))
-        self.assertEqual(verifier["sandbox_mode"], "read-only")
-        # Codex role files stay reusable; the per-dispatch resolver passes effort.
-        self.assertNotIn("model_reasoning_effort", verifier)
-        self.assertIn("routine low-risk work", verifier["description"])
-
-    def test_every_leaf_role_has_a_codex_counterpart(self) -> None:
-        # Claude role -> codex agent file (same lowercase spelling since the
-        # 2026-07-23 rename).
-        counterparts = {
-            "explore": "explore",
-            "plan-verifier": "plan-verifier",
-            "security-reviewer": "security-reviewer",
-            "mech-executor": "mech-executor",
-            "executor": "executor",
-            "verifier": "verifier",
-            "security-executor": "security-executor",
-        }
-        config = tomllib.loads(read(".codex/config.merge.toml"))
-        read_only = NO_WRITE_ROLES
-        for claude_role, codex_name in counterparts.items():
-            path = f".codex/agents/{codex_name}.toml"
-            agent = tomllib.loads(read(path))
-            self.assertEqual(agent["name"], codex_name, path)
-            # Routing profiles are selected per dispatch; role files stay reusable.
-            self.assertNotIn("model", agent, path)
-            self.assertNotIn("model_reasoning_effort", agent, path)
-            expected_sandbox = "read-only" if codex_name in read_only else "workspace-write"
-            self.assertEqual(agent["sandbox_mode"], expected_sandbox, path)
-            self.assertRegex(agent["developer_instructions"].lower(), r"(never|do not) delegate", path)
-            # Same ungameable unit as the Claude twin's body budget: a role
-            # that outgrows it on one provider only would drift silently.
-            self.assertLessEqual(
-                word_count(agent["developer_instructions"]), ROLE_BODY_BUDGET, path)
-            self.assertEqual(
-                config["agents"][codex_name]["config_file"],
-                f"./agents/{codex_name}.toml",
-                codex_name,
-            )
-
-    def test_model_routing_profiles_are_complete_and_dispatchable(self) -> None:
-        routing = tomllib.loads(read(".codex/model-routing.toml"))
-        self.assertEqual(routing["version"], 3)
-        self.assertEqual(
-            routing["selection"],
-            {
-                "default": "balanced",
-                "fast": "fast",
-                "quality_guarded": "quality_guarded",
-                "high_risk": "quality_guarded",
-            },
-        )
-        self.assertEqual(
-            set(routing["profiles"]),
-            {"balanced", "fast", "quality_guarded"},
-        )
-        self.assertEqual(routing["revision_policy"], {
-            "days": 90,
-            "min_samples": 10,
-            "half_life_days": 45.0,
-            "prefer_probability": 0.90,
-            "cohort_fields": ["role", "task_class"],
-            "excluded_task_classes": ["smoke", "other"],
-        })
-        self.assertEqual(
-            routing["revision_policy"],
-            tomllib.loads(read(".claude/model-routing.toml"))["revision_policy"],
-        )
-        required_roles = {"main", *CODEX_ROLES}
-        role_tiers = routing["quality_floor"]["roles"]
-        application = routing["route_application"]["roles"]
-        approved = routing["quality_floor"]["approved_routes"]
-        self.assertEqual(set(role_tiers), required_roles)
-        self.assertEqual(set(application), required_roles)
-        self.assertEqual(application["main"], "session_start_recommendation")
-        for role in CODEX_ROLES:
-            self.assertEqual(application[role], "dispatch_override", role)
-        for profile_name, profile in routing["profiles"].items():
-            self.assertEqual(set(profile["roles"]), required_roles, profile_name)
-            for role, route in profile["roles"].items():
-                model = routing["models"][route["model"]]
-                delivery = model["availability"]["native_leaf_override"]
-                self.assertIn(delivery, {"spawn_argument", "agent_config"})
-                if role != "main" and delivery == "agent_config":
-                    self.assertIn("agent_type", route, f"{profile_name}/{role}")
-                self.assertIn(route["effort"], model["efforts"], f"{profile_name}/{role}")
-                self.assertIn(
-                    f"{route['model']}/{route['effort']}",
-                    approved[role_tiers[role]],
-                    f"{profile_name}/{role} falls below its quality floor",
-                )
-                self.assertTrue(route["reason"], f"{profile_name}/{role}")
-                self.assertNotEqual(route["model"], "gpt-5.6-luna")
-
-        luna_availability = routing["models"]["gpt-5.6-luna"]["availability"]
-        self.assertEqual(
-            luna_availability,
-            {
-                "subscription": "documented",
-                "main_selector": "documented",
-                "native_leaf_override": "agent_config",
-            },
-        )
-        self.assertIn("smoke-tested", routing["models"]["gpt-5.6-luna"]["evidence"]["native_leaf"])
-        self.assertNotIn("surface_overrides", routing)
-        for model in routing["models"].values():
-            self.assertEqual(
-                set(model["efforts"]), {"low", "medium", "high", "xhigh", "max"}
-            )
-        self.assertAlmostEqual(
-            routing["models"]["gpt-5.6-terra"]["efforts"]["max"]
-            ["cost_usd_per_index_task"],
-            0.508,
-        )
-        self.assertAlmostEqual(
-            routing["models"]["gpt-5.6-sol"]["efforts"]["high"]
-            ["output_tokens_per_index_task"],
-            7545.3,
-        )
-
-    def test_model_routing_cli_validates_and_resolves_quality_first_priority(self) -> None:
-        script = ROOT / "main/codex/scripts/model-routing"
-        self.assertTrue(os.access(script, os.X_OK))
-        validated = subprocess.run(
-            [str(script), "validate"], check=True, capture_output=True, text=True,
-        )
-        self.assertIn("valid: 3 profiles", validated.stdout)
-        resolved = subprocess.run(
-            [str(script), "resolve", "--priority", "fast",
-             "--role", "executor"],
-            check=True, capture_output=True, text=True,
-        )
-        route = json.loads(resolved.stdout)
-        self.assertEqual(route["profile"], "fast")
-        self.assertEqual(route["surface"], "native-leaf")
-        self.assertEqual(route["application"], "dispatch_override")
-        self.assertEqual(route["quality_tier"], "judgment")
-        self.assertEqual(route["model"], "gpt-5.6-sol")
-        self.assertEqual(route["effort"], "medium")
-        high_risk = subprocess.run(
-            [str(script), "resolve", "--priority", "high-risk",
-             "--role", "executor"],
-            check=True, capture_output=True, text=True,
-        )
-        high_risk_route = json.loads(high_risk.stdout)
-        self.assertEqual(high_risk_route["profile"], "quality_guarded")
-        fast_support = subprocess.run(
-            [str(script), "resolve", "--priority", "fast",
-             "--role", "explore"],
-            check=True, capture_output=True, text=True,
-        )
-        fast_support_route = json.loads(fast_support.stdout)
-        self.assertEqual(fast_support_route["model"], "gpt-5.6-terra")
-        self.assertEqual(fast_support_route["effort"], "low")
-        self.assertEqual(fast_support_route["invocation"], {
-            "agent_type": "explore",
-            "fork_turns": "none",
-            "model_delivery": "spawn_argument",
-            "pass_model_override": True,
-        })
-        guarded = subprocess.run(
-            [str(script), "resolve", "--priority", "quality-guarded",
-             "--role", "explore"],
-            check=True, capture_output=True, text=True,
-        )
-        guarded_route = json.loads(guarded.stdout)
-        self.assertEqual(guarded_route["profile"], "quality_guarded")
-        self.assertEqual(guarded_route["model"], "gpt-5.6-sol")
-        self.assertEqual(guarded_route["effort"], "low")
-
-        original = read(".codex/model-routing.toml")
-        invalid = original.replace(
-            '[profiles.fast.roles.executor]\nmodel = "gpt-5.6-sol"',
-            '[profiles.fast.roles.executor]\nmodel = "gpt-5.6-terra"',
-            1,
-        )
-        self.assertNotEqual(invalid, original)
-        with tempfile.TemporaryDirectory() as temp_dir:
-            invalid_config = Path(temp_dir) / "model-routing.toml"
-            invalid_config.write_text(invalid, encoding="utf-8")
-            rejected = subprocess.run(
-                [str(script), "--config", str(invalid_config), "validate"],
-                capture_output=True, text=True,
-            )
-        self.assertNotEqual(rejected.returncode, 0)
-        self.assertIn("falls below quality tier judgment", rejected.stderr)
-
-        slow_fast = original.replace(
-            '[profiles.fast.roles.explore]\nmodel = "gpt-5.6-terra"',
-            '[profiles.fast.roles.explore]\nmodel = "gpt-5.6-sol"',
-            1,
-        )
-        self.assertNotEqual(slow_fast, original)
-        with tempfile.TemporaryDirectory() as temp_dir:
-            slow_config = Path(temp_dir) / "model-routing.toml"
-            slow_config.write_text(slow_fast, encoding="utf-8")
-            rejected_fast = subprocess.run(
-                [str(script), "--config", str(slow_config), "validate"],
-                capture_output=True, text=True,
-            )
-        self.assertNotEqual(rejected_fast.returncode, 0)
-        self.assertIn("is not optimal for decode_minutes_per_index_task",
-                      rejected_fast.stderr)
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            malformed_config = Path(temp_dir) / "model-routing.toml"
-            malformed_config.write_text("[broken", encoding="utf-8")
-            malformed = subprocess.run(
-                [str(script), "--config", str(malformed_config), "validate"],
-                capture_output=True, text=True,
-            )
-        self.assertEqual(malformed.returncode, 2)
-        self.assertIn("ERROR: cannot load routing config", malformed.stderr)
-        self.assertNotIn("Traceback", malformed.stderr)
-
-    def test_model_routing_bundle_is_documented_and_synced(self) -> None:
-        readme = read(".codex/README.md")
-        deploy = read(".codex/DEPLOY.md")
-        managed = set(deployment_manifest())
-        for artifact in ("model-routing.toml", "scripts/model-routing"):
-            self.assertIn(artifact, readme)
-            self.assertIn(artifact, deploy)
-        self.assertIn(("main/codex/model-routing.toml", ".codex/model-routing.toml"), managed)
-        self.assertIn(("main/codex/scripts", ".codex/scripts"), managed)
-        agents = read(".codex/AGENTS.contract.md")
-        # The resolver path is operational detail and lives wherever the
-        # dispatch mechanics live; only the "routes do not switch a running
-        # task" invariant has to be resident. Assert the union so relocating
-        # the command does not read as dropping it.
-        self.assertIn("${CODEX_HOME:-$HOME/.codex}/scripts/model-routing",
-                      agents + read(".codex/skills/leaf-dispatch/SKILL.md"))
-        self.assertIn("session-start recommendations", agents)
-
-    def test_codex_dispatch_reporting_matches_claude(self) -> None:
-        agents = read(".codex/AGENTS.contract.md")
-        self.assertIn("[LEAF_DISPATCH]", agents)
-        self.assertIn("[LEAF_RESULT]", agents)
-        self.assertIn("request_source=codex", agents)
-        self.assertIn("Never brief a subagent to delegate further", agents)
-        skill = read(".codex/skills/leaf-dispatch/SKILL.md")
-        self.assertIn("ledger=<logged|skipped(reason)>", skill)
-        self.assertIn("quality-check it against the brief", skill)
-
-    def test_deploy_and_analysis_preserve_machine_state(self) -> None:
-        deploy = read(".codex/DEPLOY.md")
-        analysis = read(".codex/ANALYSIS.md")
-        for phrase in (
-            "## One-shot Codex command",
-            # The rule is now enforced by merge-toml rather than by asking
-            # a human to be careful, so assert the scope guarantee itself.
-            "never replaces `config.toml`",
-            "writes only `[agents]` and `[agents.*]`",
-            "Credentials and login",
-            "Authentication only",
-            "Keep approval enabled",
-        ):
-            self.assertIn(phrase, deploy)
-        self.assertNotIn("/Users/", deploy)
-        self.assertIn("not automatic deployment", analysis)
-        self.assertIn("Git is the cross-machine source of truth", analysis)
 
 
 class AppPromptSurfaceTests(unittest.TestCase):
+    """One vendor's settings pages since 2026-09-14.
+
+    `custom-instructions.md` was pasted into ChatGPT Personalization and shipped
+    with the Codex bundle, so it left with it. Two tests went with it rather
+    than being narrowed, because narrowing would have kept their names over a
+    changed subject: `test_the_two_expert_prompts_move_the_audience_slider_together`
+    asserted that a *pair* of hand-maintained prompts could not drift apart, and
+    a pair needs two members; the manifest test asserted that the Codex prompt
+    row did not displace that bundle's contract, and neither row exists now.
+    """
+
     def test_app_prompts_keep_surface_ownership_and_action_boundaries(self) -> None:
         claude_chat = read(".claude/prompts/claude-app-profile.md")
         cowork = read(".claude/prompts/cowork-global-instructions.md")
-        chatgpt = read(".codex/prompts/custom-instructions.md")
 
         self.assertIn("Settings > Instructions for Claude", claude_chat)
         self.assertIn("Settings > Cowork > Global instructions", cowork)
-        self.assertIn("Settings > Personalization > Custom instructions", chatgpt)
-        self.assertIn("Applies to Chat and Work", chatgpt)
-        self.assertIn("$CODEX_HOME/AGENTS.md", chatgpt)
 
-        for prompt in (claude_chat, cowork, chatgpt):
+        for prompt in (claude_chat, cowork):
             self.assertIn("explicit authority", prompt)
         self.assertIn("reopen each produced file", cowork)
-        self.assertIn("reopen the outputs", chatgpt)
         self.assertIn("produced artifacts and where to find them", cowork)
 
-    def test_the_two_expert_prompts_move_the_audience_slider_together(self) -> None:
+    def test_the_expert_declaration_stays_scoped(self) -> None:
         """`eli5`'s refutation condition (a), landed 2026-08-28 on the user's request.
 
         The survey said moving the reader assumption toward zero-baseline means
-        changing *both* expert declarations or leaving a contradiction resident:
-        one side banning beginner explanations while the other invites them is
-        not a nudge, it is two different users. So the assertion is on the pair.
+        changing every expert declaration or leaving a contradiction resident:
+        one surface banning beginner explanations while another invites them is
+        not a nudge, it is two different users.
 
-        This pins a *preference*, not a rule - nothing about these files could
-        have failed behaviourally before, because they are pasted into two
-        vendors' settings pages by hand and no instrument reads them back. What
-        can fail, and is the failure this repo actually has, is the two sides
-        drifting apart: `claude-app-profile.md` and `custom-instructions.md`
-        state the same policy in two idioms and have no shared source.
+        This pins a *preference*, not a rule - nothing about this file could
+        have failed behaviourally, because it is pasted into a vendor's settings
+        page by hand and no instrument reads it back.
 
         `cowork-global-instructions.md` is deliberately not here. It never
         carried an expert declaration to contradict, and its instructions govern
         deliverables rather than how an explanation is pitched.
         """
-        expert_prompts = {
-            ".claude/prompts/claude-app-profile.md": read(
-                ".claude/prompts/claude-app-profile.md"),
-            ".codex/prompts/custom-instructions.md": read(
-                ".codex/prompts/custom-instructions.md"),
-        }
-        for name, prompt in expert_prompts.items():
-            with self.subTest(prompt=name):
-                # The expert declaration stays - it is what keeps "lead with the
-                # answer" from decaying into a tutorial - but it is now scoped.
-                self.assertIn("not at every topic", prompt)
-                # And the ban it used to carry is inverted.
-                self.assertIn("on first use", prompt)
-                self.assertNotIn("beginner explanations", prompt)
+        prompt = read(".claude/prompts/claude-app-profile.md")
+        # The expert declaration stays - it is what keeps "lead with the
+        # answer" from decaying into a tutorial - but it is now scoped.
+        self.assertIn("not at every topic", prompt)
+        # And the ban it used to carry is inverted.
+        self.assertIn("on first use", prompt)
+        self.assertNotIn("beginner explanations", prompt)
 
         cowork = read(".claude/prompts/cowork-global-instructions.md")
         self.assertNotIn("not at every topic", cowork)
 
-    def test_app_prompt_sources_are_managed_without_replacing_codex_contract(self) -> None:
+    def test_app_prompt_sources_are_managed(self) -> None:
         managed = set(deployment_manifest())
         self.assertIn(("main/claude/prompts", ".claude/prompts"), managed)
-        self.assertIn(("main/codex/prompts", ".codex/prompts"), managed)
-
-        readme = read(".codex/README.md")
-        analysis = read(".codex/ANALYSIS.md")
-        deploy = read(".codex/DEPLOY.md")
-        self.assertIn("ChatGPT Chat/Work", readme)
-        self.assertIn("`AGENTS.contract.md`", readme)
-        self.assertIn("ChatGPT Chat and Work", analysis)
-        self.assertIn("ChatGPT Chat and Work Personalization", deploy)
-        self.assertIn("Codex uses global `AGENTS.md` for personal instructions", deploy)
 
 
 class DocumentationBudgetTests(unittest.TestCase):
@@ -1143,12 +550,11 @@ class DocumentationBudgetTests(unittest.TestCase):
 
         census = json.loads(snapshot.read_text(encoding="utf-8"))
         self.assertEqual(census["schema"], 1)
-        self.assertEqual(set(census["providers"]), {"claude", "codex"})
+        self.assertEqual(set(census["providers"]), {"claude"})
         managed_sources = {source for source, _target in deployment_manifest()}
         self.assertNotIn("scripts/prompt-surface-census.py", managed_sources)
         for provider, skills_dir in (
             ("claude", "main/claude/skills"),
-            ("codex", "main/codex/skills"),
         ):
             expected_skills = {
                 path.relative_to(ROOT).as_posix()
@@ -1188,7 +594,6 @@ class DocumentationBudgetTests(unittest.TestCase):
         flag = re.compile(r"^\s*allow_implicit_invocation\s*:\s*(\S+)", re.M)
         for provider, skills_dir in (
             ("claude", "main/claude/skills"),
-            ("codex", "main/codex/skills"),
         ):
             resident = {
                 record["path"]
@@ -1206,7 +611,7 @@ class DocumentationBudgetTests(unittest.TestCase):
                     injected, relative in resident,
                     f"{relative}: injected={injected} but resident="
                     f"{relative in resident}")
-        for provider in ("claude", "codex"):
+        for provider in ("claude",):
             self.assertEqual(
                 set(census["providers"][provider]),
                 {"resident", "dispatch", "roles"},
@@ -1316,7 +721,7 @@ class DocumentationBudgetTests(unittest.TestCase):
         # description users invoke in either language. The body absorbed only a
         # pointer and stayed inside its own ceiling (2023 of 2090), so this is
         # the only raise the change needed. Measured 949 and 548 + ~2%.
-        metadata_budgets = {"claude": 968, "codex": 559}
+        metadata_budgets = {"claude": 968}
         # The widest legitimate description today is readable-zh-tw at 209: it
         # states its triggers twice, in zh-TW and English, because it is the
         # one skill invoked by users in either language.
@@ -1336,7 +741,7 @@ class DocumentationBudgetTests(unittest.TestCase):
         # Seven roles on each side. Claude spells them in agent frontmatter,
         # Codex in the `[agents.*]` registrations of config.merge.toml; both are
         # listed once per session. Measured today: Claude 136, Codex 61.
-        role_metadata_budgets = {"claude": 140, "codex": 63}
+        role_metadata_budgets = {"claude": 140}
         # The widest role line today is 21 words. A proportional ratchet on a
         # unit this small rounds to no slack at all, which would make an
         # ordinary wording fix fail the suite; 24 is the smallest cap that still
@@ -1574,9 +979,6 @@ class DocumentationBudgetTests(unittest.TestCase):
             # where the invocation mechanics already lived. The ceiling drops
             # with the content — leaving it at 590 would just invite a refill,
             # and this file sat 2 words under it.
-            ".codex/AGENTS.contract.md": RESIDENT_CONTRACT_BUDGETS["codex"].words,
-            ".codex/ANALYSIS.md": 500,
-            ".codex/DEPLOY.md": 550,
             # +90 (2026-07-23): record template and QC fraud checklist moved
             # in from the resident contract / provider-routing (net resident
             # payload down; skill is mandatory before every dispatch).
@@ -1636,7 +1038,6 @@ class DocumentationBudgetTests(unittest.TestCase):
             # half of a lost leaf (`--cancel` versus `failed`), so the new rule
             # names it to keep the two from being read as alternatives.
             # Measured 1212 + ~2%.
-            ".codex/skills/leaf-dispatch/SKILL.md": 1236,
             # The four below were unbudgeted until 2026-07-30: the ceiling
             # existed on the three files someone had remembered, not on the
             # tier, so the largest dispatch-time surface in the repo
@@ -1651,7 +1052,6 @@ class DocumentationBudgetTests(unittest.TestCase):
             # by both providers through a symlink; both deployed surfaces are
             # listed because both are what a session actually loads.
             ".claude/skills/experience-ledger/SKILL.md": 980,
-            ".codex/skills/experience-ledger/SKILL.md": 980,
             # Largest dispatch-time body in the repo, and the one that states
             # its triggers twice (zh-TW and English) because either language
             # can invoke it. Trimming it is deliberately a separate task.
@@ -1669,12 +1069,10 @@ class DocumentationBudgetTests(unittest.TestCase):
             # truth link to pay for a rule is the zero-headroom failure this file
             # already records twice. Measured 2115 + ~2%.
             ".claude/skills/readable-zh-tw/SKILL.md": 2157,
-            ".codex/skills/readable-zh-tw/SKILL.md": 2157,
             # Claude's copies are thin pointers; Codex carries the procedure,
             # so the two sides of these two skills are genuinely different
             # files and get their own ceilings rather than a shared one.
             ".claude/skills/headroom-protocol/SKILL.md": 135,
-            ".codex/skills/headroom-protocol/SKILL.md": 235,
             ".claude/skills/task-observer/SKILL.md": 145,
             # 770 -> 810 on 2026-08-31, and the ratchet's own rule says to argue
             # for it here. The added clause is the untrusted-input boundary:
@@ -1687,7 +1085,6 @@ class DocumentationBudgetTests(unittest.TestCase):
             # session, so an imperative copied in as a finding keeps arriving.
             # It was written twice before it fit: nothing here was displaced,
             # so the ceiling moved instead, which is the honest half of L6.
-            ".codex/skills/task-observer/SKILL.md": 810,
             # One source, symlinked to both providers: the plan forbids a wrapper
             # fork without refutable runtime evidence that the two sides need
             # different semantics, and there is none.
@@ -1714,7 +1111,6 @@ class DocumentationBudgetTests(unittest.TestCase):
             # justified probe at a time. Five words displaced from the structure
             # pointer, which said the same thing twice; measured 1058 + ~2%.
             ".claude/skills/evidence-debugging/SKILL.md": 1079,
-            ".codex/skills/evidence-debugging/SKILL.md": 1079,  # one source, both surfaces
             # Same single source, same reasoning. Measured 913 + ~2%. Its worked
             # examples are not in here: upstream `tdd` is 38 lines of index whose
             # substance lives in two TypeScript references, and the replacements
@@ -1726,7 +1122,6 @@ class DocumentationBudgetTests(unittest.TestCase):
             # one implementation, each a tracer bullet - had been dropped without
             # anyone recording it. Measured 971 + ~2%.
             ".claude/skills/test-first-change/SKILL.md": 991,
-            ".codex/skills/test-first-change/SKILL.md": 991,
             # Adopted 2026-08-19, written in this repo rather than distilled, so
             # there is no ATTRIBUTION beside it. Measured 1172 + ~2%. It is the
             # third largest dispatch body here and the ceiling is set from what
@@ -1750,7 +1145,13 @@ class DocumentationBudgetTests(unittest.TestCase):
             # sentence that makes it reachable, since a reference no section
             # names is a file nobody opens.
             ".claude/skills/evidence-ladder/SKILL.md": 1315,
-            ".codex/skills/evidence-ladder/SKILL.md": 1315,  # one source, both surfaces
+            # The two wrapper-backed bodies. Each was budgeted through the Codex
+            # bundle's copy of the same file - one source, two deployed surfaces,
+            # one ceiling written on the surface that has since left. These are
+            # the same ceilings, now written on the source instead, so nothing
+            # tightens or loosens: measured 794 of 810 and 226 of 235 today.
+            ".agents/skills/task-observer/SKILL.md": 810,
+            ".agents/skills/headroom-protocol/SKILL.md": 235,
         }
         self.assertEqual(
             {path for path in budgets if "/skills/" in path},
@@ -1942,7 +1343,6 @@ class DocumentationBudgetTests(unittest.TestCase):
             "docs/setup.md",
             "docs/research/README.md",
             "main/claude/README.md",
-            "main/codex/README.md",
             "main/.agents/README.md",
         ):
             self.assertIn(f"({target})", readme,
@@ -1951,7 +1351,7 @@ class DocumentationBudgetTests(unittest.TestCase):
     def test_documentation_navigation_links_resolve_locally(self) -> None:
         paths = [
             "README.md", "docs/README.md", "main/claude/README.md",
-            "main/codex/README.md", "main/.agents/README.md",
+            "main/.agents/README.md",
         ]
         missing = []
         for path in paths:
@@ -2164,7 +1564,7 @@ class DocumentationBudgetTests(unittest.TestCase):
         for name in installed:
             if f"skills/{name}/" not in shared_index:
                 missing.append(f"main/.agents/README.md: {name}")
-            for provider in ("claude", "codex"):
+            for provider in ("claude",):
                 if not (ROOT / f"main/{provider}/skills/{name}").exists():
                     continue
                 if name not in read(f".{provider}/README.md"):
@@ -2253,30 +1653,15 @@ class DocumentationBudgetTests(unittest.TestCase):
          r'SHA="\$\{1:-([0-9a-f]{40})\}"'),
     )
 
-    def test_the_twin_attributions_pin_the_same_commit(self) -> None:
-        """`leaf-dispatch` states its own pin, and it has to be the twin's.
-
-        The Codex half got an ATTRIBUTION on 2026-09-08 because the trail ran
-        one way only: the split is described on the Claude side, which is the
-        one directory a Codex-side reader is not in. Giving it a file means the
-        pin now exists twice, and this repo's answer to a number in two places
-        is not to avoid the second copy but to make them move together - the
-        same shape as UPSTREAM_PIN_SITES above.
-
-        The licence text is duplicated on purpose and is not checked for
-        sameness here: that directory deploys as its own copy under
-        `~/.codex/skills/`, and MIT requires the notice to travel with the copy.
-        """
-        pins = {}
-        for path in ("main/claude/skills/baton-dispatch/ATTRIBUTION.md",
-                     "main/codex/skills/leaf-dispatch/ATTRIBUTION.md"):
-            found = re.findall(r"`([0-9a-f]{40})`", read_repo(path))
-            self.assertTrue(found, f"{path}: no full commit to compare")
-            pins[path] = found[0]
-        self.assertEqual(
-            len(set(pins.values())), 1,
-            "the twin halves pin different commits, so one of them describes a "
-            f"body of text the other does not: {pins}")
+    # `test_the_twin_attributions_pin_the_same_commit` stood here until
+    # 2026-09-14. It held that `baton-dispatch`'s ATTRIBUTION and its
+    # `leaf-dispatch` twin cite the same commit, because the same distillation
+    # was described from two directories and a reader could land in either. One
+    # of those directories is gone, so the invariant has one operand and no
+    # twin to disagree with it. What it was protecting - a pin that is a full
+    # commit and moves everywhere at once - is still held by
+    # `test_the_other_upstreams_pin_moves_everywhere_at_once` below and by
+    # UPSTREAM_PIN_SITES above.
 
     def test_the_other_upstreams_pin_moves_everywhere_at_once(self) -> None:
         """The mechanism above covered one upstream, so the other one drifted.
@@ -2377,8 +1762,12 @@ class DocumentationBudgetTests(unittest.TestCase):
         # 2026-09-10 when `provider-routing` was traced to Pilotfish; the
         # first draft said 8, and a mutation that deleted that very notice
         # stayed green, which is the count the comment above warns about.
+        # 9 -> 8 on 2026-09-14: `leaf-dispatch/ATTRIBUTION.md` went with the
+        # Codex bundle. The floor tracks notices this repo still ships, so it
+        # drops when a borrowing leaves and never when one loses its notice -
+        # which is the direction this assertion exists to catch.
         self.assertGreaterEqual(
-            len(derived), 9,
+            len(derived), 8,
             "fewer attributions than known derivations; a notice was removed "
             "while its borrowing presumably stayed")
         for path in derived:
@@ -2424,7 +1813,7 @@ class SkillProvenanceTests(unittest.TestCase):
     and a SHA, never reads an original as an upstream.
     """
 
-    SKILL_ROOTS = ("main/claude/skills", "main/codex/skills",
+    SKILL_ROOTS = ("main/claude/skills",
                    "main/.agents/skills", ".agents/skills")
     ORIGIN = "**Origin**: this repository"
 
@@ -2442,7 +1831,10 @@ class SkillProvenanceTests(unittest.TestCase):
 
     def test_every_skill_carries_a_provenance_file(self) -> None:
         directories = self.skill_directories()
-        self.assertGreaterEqual(len(directories), 14,
+        # 14 -> 13 on 2026-09-14: one of the four skill roots was the Codex
+        # bundle's. The floor still catches a walk that finds almost nothing,
+        # which is what it is for.
+        self.assertGreaterEqual(len(directories), 13,
                                 "the skill walk found almost nothing")
         missing = sorted(shown.relative_to(ROOT).as_posix()
                          for real, shown in directories.items()
@@ -2487,7 +1879,7 @@ class SkillProvenanceTests(unittest.TestCase):
         "pilotfish": "the four-field REVISE block and the security-executor "
                      "description sentence",
     }
-    ROLE_DIRECTORIES = ("main/claude/agents/", "main/codex/agents/")
+    ROLE_DIRECTORIES = ("main/claude/agents/",)
 
     def test_each_upstream_shipping_in_a_role_file_names_that_directory(self) -> None:
         """A role directory cannot hold its own ATTRIBUTION.md.

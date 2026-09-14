@@ -1,12 +1,13 @@
-"""Shared core for the per-provider model-routing resolvers.
+"""Shared core for the model-routing resolver.
 
-Both `.claude/scripts/model-routing` and `.codex/scripts/model-routing`
-import this module via the common layout (`<root>/.agents/scripts/`, where
-<root> is the repo checkout or $HOME after sync). Provider-specific schema
-stays in each wrapper; this module owns the logic that is genuinely
-identical: config loading, profile selection, and the generic validation
-helpers for selection keys, availability schemas, quality-floor routes,
-and per-route floor checks, plus the shared validate reporter.
+`.claude/scripts/model-routing` imports this module via the common layout
+(`<root>/.agents/scripts/`, where <root> is the repo checkout or $HOME after
+sync). It was written for two wrappers and keeps that shape after the second
+retired on 2026-09-14: wrapper-specific schema stays in the wrapper, and this
+module owns the logic that is genuinely reusable - config loading, profile
+selection, and the generic validation helpers for selection keys, availability
+schemas, quality-floor routes, and per-route floor checks, plus the shared
+validate reporter.
 """
 
 from __future__ import annotations

@@ -69,15 +69,9 @@ class TaskObserverTests(unittest.TestCase):
             self.assertTrue(link.is_symlink(), link)
             self.assertEqual(os.readlink(link), target)
         self.assertTrue((claude / "shared-instructions.md").is_file())
-        self.assertTrue(codex.is_symlink(), codex)
-        self.assertEqual(
-            os.readlink(codex), "../../.agents/skills/task-observer"
-        )
-        self.assertTrue((codex / "SKILL.md").is_file())
         for pair in (
             ("main/.agents/skills", ".agents/skills"),
             ("main/claude/skills/task-observer", ".claude/skills/task-observer"),
-            ("main/codex/skills/task-observer", ".codex/skills/task-observer"),
         ):
             self.assertIn(pair, deployment_manifest())
         skill = read(".agents/skills/task-observer/SKILL.md")
@@ -93,7 +87,6 @@ class TaskObserverTests(unittest.TestCase):
         self.assertIn("allow_implicit_invocation: true", openai)
         sync = read("scripts/sync.sh")
         self.assertIn('"$HOME/.claude/skills/task-observer"', sync)
-        self.assertIn('"$HOME/.codex/skills/task-observer"', sync)
         attribution = read(".agents/skills/task-observer/ATTRIBUTION.md")
         self.assertIn("Eoghan Henn", attribution)
         self.assertIn("Creative Commons Attribution 4.0", attribution)

@@ -42,20 +42,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# Every file a session actually loads as instructions: both resident contracts,
-# every leaf role on both providers, and every skill body. Research notes and
-# tests are out of scope — they are read by people, not obeyed by models.
+# Every file a session actually loads as instructions: the resident contract,
+# every leaf role, and every skill body. Research notes and tests are out of
+# scope — they are read by people, not obeyed by models.
 SURFACE_GLOBS = (
     "main/claude/CLAUDE.contract.md",
-    "main/codex/AGENTS.contract.md",
-    "main/codex/ANALYSIS.md",
-    "main/codex/DEPLOY.md",
     "main/claude/agents/*.md",
-    "main/codex/agents/*.toml",
     "main/claude/skills/*/SKILL.md",
     "main/claude/skills/*/references/*.md",
-    "main/codex/skills/*/SKILL.md",
-    "main/codex/skills/*/references/*.md",
     "main/.agents/skills/*/SKILL.md",
     "main/.agents/skills/*/references/*.md",
 )

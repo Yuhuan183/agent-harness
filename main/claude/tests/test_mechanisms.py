@@ -599,30 +599,27 @@ class MechanismTests(unittest.TestCase):
             pending.unlink()
 
             # A git-managed ~/.claude answers drift only for the .claude
-            # targets; .codex/.agents manifest parity must still run and catch
-            # drift instead of being skipped wholesale (review F-05).
+            # targets; the other root's manifest parity must still run and
+            # catch drift instead of being skipped wholesale (review F-05).
+            # That second root was .codex until 2026-09-14 and is .agents now -
+            # the invariant is "more than one target root", not which one.
             stamp.unlink()
-            (repo / "main" / "codex").mkdir()
-            (repo / "main" / "codex" / "AGENTS.contract.md").write_text(
-                "agents contract\n", encoding="utf-8")
+            (repo / "main" / ".agents").mkdir()
+            (repo / "main" / ".agents" / "README.md").write_text(
+                "shared index\n", encoding="utf-8")
             (repo / "scripts/deployment-manifest.tsv").write_text(
                 "main/claude/CLAUDE.contract.md\t.claude/CLAUDE.md\n"
-                "main/codex/AGENTS.contract.md\t.codex/AGENTS.md\n",
+                "main/.agents/README.md\t.agents/README.md\n",
                 encoding="utf-8",
             )
-            # Created explicitly: this directory used to appear as a side
-            # effect of the fake Codex resolver above, which went with the
-            # check that read it. The sub-case below is about multi-root
-            # manifest parity, not about that resolver, so it makes its own
-            # target root.
-            (Path(temp_home) / ".codex").mkdir(parents=True, exist_ok=True)
-            (Path(temp_home) / ".codex" / "AGENTS.md").write_text(
+            (Path(temp_home) / ".agents").mkdir(parents=True, exist_ok=True)
+            (Path(temp_home) / ".agents" / "README.md").write_text(
                 "drifted\n", encoding="utf-8")
             git_managed_drift = subprocess.run(
                 [sys.executable, str(hook)], env=env,
                 check=True, capture_output=True, text=True)
             self.assertIn("deployment drift", git_managed_drift.stdout)
-            self.assertIn(".codex/AGENTS.md", git_managed_drift.stdout)
+            self.assertIn(".agents/README.md", git_managed_drift.stdout)
             self.assertNotIn("check failed", git_managed_drift.stdout)
             self.assertTrue(stamp.exists())
             # A probe that reports movement is a finding, not a broken check:
@@ -1121,11 +1118,10 @@ class MechanismTests(unittest.TestCase):
         self.assertIn("deployment-manifest.tsv", sync)
         self.assertNotIn("cross_platform =", hook)
         self.assertIn(("main/claude/CLAUDE.contract.md", ".claude/CLAUDE.md"), pairs)
-        self.assertIn(("main/codex/AGENTS.contract.md", ".codex/AGENTS.md"), pairs)
         self.assertIn(("main/.agents/skills", ".agents/skills", "merge"), entries)
         for source, target in pairs:
             self.assertTrue((ROOT / source).exists(), source)
-            self.assertRegex(target, r"^\.(agents|claude|codex)/")
+            self.assertRegex(target, r"^\.(agents|claude)/")
 
     def test_harness_sources_are_not_discoverable_while_developing(self) -> None:
         """`main/` is deployment source, never a working environment.
@@ -1180,7 +1176,6 @@ class MechanismTests(unittest.TestCase):
         sync = ROOT / "scripts/sync.sh"
         contracts = {
             "main/claude/CLAUDE.contract.md": ".claude/CLAUDE.md",
-            "main/codex/AGENTS.contract.md": ".codex/AGENTS.md",
         }
         with tempfile.TemporaryDirectory() as temp_home:
             for source, target in contracts.items():
@@ -1249,12 +1244,8 @@ class MechanismTests(unittest.TestCase):
                 (Path(temp_home) / ".claude/CLAUDE.md").read_text(encoding="utf-8"),
                 read(".claude/CLAUDE.contract.md"),
             )
-            self.assertEqual(
-                (Path(temp_home) / ".codex/AGENTS.md").read_text(encoding="utf-8"),
-                read(".codex/AGENTS.contract.md"),
-            )
             self.assertTrue(
-                (Path(temp_home) / ".codex/skills/experience-ledger/SKILL.md").is_file()
+                (Path(temp_home) / ".claude/skills/experience-ledger/SKILL.md").is_file()
             )
             for source_rel, target_rel, mode in deployment_manifest_entries():
                 source = ROOT / source_rel
@@ -1423,7 +1414,7 @@ class MechanismTests(unittest.TestCase):
         """Deleting must be driven by what this repo deployed, not by directory.
 
         `~/.claude/hooks`, `~/.claude/agents`, `~/.claude/scripts` and
-        `~/.codex/prompts` are the documented places for *every* installer's
+        `~/.claude/skills` are the documented places for *every* installer's
         files, not this repo's territory. The directory-wide `rsync --delete`
         that used to clean them read a vendor's file as a leftover of ours and
         removed it. The replacement is a per-file inventory, which has the
@@ -1450,7 +1441,7 @@ class MechanismTests(unittest.TestCase):
             # What a third-party installer leaves in those same directories.
             foreign = [home / ".claude/hooks/vendor.py",
                        home / ".claude/agents/vendor-agent.md",
-                       home / ".codex/prompts/vendor-prompt.md"]
+                       home / ".claude/scripts/vendor-tool.sh"]
             for path in foreign:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("vendor\n", encoding="utf-8")
@@ -1581,7 +1572,6 @@ class MechanismTests(unittest.TestCase):
         self.assertEqual(len(entries), len(deployment_manifest_entries()))
         # Every mode the manifest actually uses must be understood here.
         self.assertIn("merge-json", manifest_modes)
-        self.assertIn("merge-toml", manifest_modes)
         self.assertEqual(
             manifest_modes,
             {mode for _, _, mode in deployment_manifest_entries()},
@@ -1622,66 +1612,11 @@ class MechanismTests(unittest.TestCase):
             (deployed / "routing_core.py").write_text("tampered\n", encoding="utf-8")
             self.assertTrue(any("routing_core.py" in l for l in drift()), drift())
 
-    def test_codex_config_merge_preserves_machine_state(self) -> None:
-        # ~/.codex/config.toml carries GPT model/effort, MCP, plugins, desktop,
-        # shell policy and per-project trust next to the agent registrations
-        # this repo owns. Before merge-toml existed the manual step had left 6
-        # of 7 roles unregistered with nothing able to notice.
-        merge_toml = ROOT / "scripts/merge-toml.py"
-        machine = (
-            'model = "gpt-5.6-sol"\n'
-            'model_reasoning_effort = "high"\n\n'
-            "[mcp_servers.example]\n"
-            'url = "https://example.invalid/mcp"  # inline comment must survive\n\n'
-            "[agents]\n"
-            "max_threads = 99\n\n"
-            "[agents.verifier]\n"
-            'description = "stale wording"\n'
-            'config_file = "./agents/verifier.toml"\n\n'
-            "[agents.my-own]\n"
-            'description = "user agent"\n'
-            'config_file = "./agents/mine.toml"\n\n'
-            '[projects."<HOME>/repo"]\n'
-            'trust_level = "trusted"\n'
-        )
-        with tempfile.TemporaryDirectory() as temp_dir:
-            config = Path(temp_dir) / "config.toml"
-            config.write_text(machine, encoding="utf-8")
-            first = subprocess.run(
-                [sys.executable, str(merge_toml),
-                 str(ROOT / "main/codex/config.merge.toml"), str(config)],
-                capture_output=True, text=True,
-            )
-            self.assertEqual(first.returncode, 0, first.stderr)
-            merged = tomllib.loads(config.read_text(encoding="utf-8"))
-            text = config.read_text(encoding="utf-8")
-
-            # Re-running must be a no-op; that is also sync.sh's parity check.
-            second = subprocess.run(
-                [sys.executable, str(merge_toml),
-                 str(ROOT / "main/codex/config.merge.toml"), str(config), "--verify"],
-                capture_output=True, text=True,
-            )
-            self.assertEqual(second.returncode, 0, second.stderr)
-
-        declared = tomllib.loads(read(".codex/config.merge.toml"))["agents"]
-        role_names = [k for k, v in declared.items() if isinstance(v, dict)]
-        # Every repo-declared role is registered, with the repo's wording.
-        for role in role_names:
-            self.assertIn(role, merged["agents"], role)
-            self.assertEqual(merged["agents"][role]["description"],
-                             declared[role]["description"], role)
-        # Machine state survives: unrelated tables, a user's own agent, an
-        # inline comment, and the repo's own [agents] scalars are all intact.
-        self.assertEqual(merged["model"], "gpt-5.6-sol")
-        self.assertEqual(merged["model_reasoning_effort"], "high")
-        self.assertEqual(merged["mcp_servers"]["example"]["url"],
-                         "https://example.invalid/mcp")
-        self.assertEqual(merged["projects"]["<HOME>/repo"]["trust_level"],
-                         "trusted")
-        self.assertEqual(merged["agents"]["my-own"]["description"], "user agent")
-        self.assertIn("# inline comment must survive", text)
-        self.assertEqual(merged["agents"]["max_threads"], declared["max_threads"])
+    # `test_codex_config_merge_preserves_machine_state` stood here until
+    # 2026-09-14. It proved that `merge-toml.py` wrote only `[agents]` into a
+    # machine's `config.toml` and left model, MCP, plugins and trust alone.
+    # That merger existed for exactly one manifest row, and both the row and
+    # the script went with the Codex bundle.
 
     def test_repo_settings_hooks_are_all_owned_by_the_merge(self) -> None:
         # If a hook group stops being recognised as ours the merge can no
@@ -1701,14 +1636,14 @@ class MechanismTests(unittest.TestCase):
         # without --accept-contract-takeover (review F-02).
         sync = ROOT / "scripts/sync.sh"
         with tempfile.TemporaryDirectory() as temp_home:
-            foreign = Path(temp_home) / ".codex/AGENTS.md"
+            foreign = Path(temp_home) / ".claude/CLAUDE.md"
             foreign.parent.mkdir(parents=True)
             foreign.write_text("someone else's guidance\n", encoding="utf-8")
             env = {**os.environ, "HOME": temp_home,
                    "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1",}
             dry = subprocess.run([str(sync)], capture_output=True, text=True, env=env)
             self.assertEqual(dry.returncode, 0, dry.stderr)
-            self.assertIn("WARN: ~/.codex/AGENTS.md", dry.stdout)
+            self.assertIn("WARN: ~/.claude/CLAUDE.md", dry.stdout)
             blocked = subprocess.run([str(sync), "--apply"],
                                      capture_output=True, text=True, env=env)
             self.assertNotEqual(blocked.returncode, 0)
@@ -1720,14 +1655,14 @@ class MechanismTests(unittest.TestCase):
                 capture_output=True, text=True, env=env)
             self.assertEqual(accepted.returncode, 0, accepted.stderr + accepted.stdout)
             self.assertEqual(foreign.read_text(encoding="utf-8"),
-                             read(".codex/AGENTS.contract.md"))
+                             read(".claude/CLAUDE.contract.md"))
 
     def test_routing_wrappers_select_python_311_before_tomllib(self) -> None:
         # macOS system python3 is 3.9; public entrypoints share one selector
         # that can find a versioned Python without shell-profile aliases.
         selector = ROOT / "main/.agents/scripts/python3-run"
         self.assertTrue(os.access(selector, os.X_OK))
-        for path in (".claude/scripts/model-routing", ".codex/scripts/model-routing"):
+        for path in (".claude/scripts/model-routing",):
             wrapper = read(path)
             implementation = read(path + ".py")
             self.assertIn("../../.agents/scripts/python3-run", wrapper)
@@ -1964,7 +1899,7 @@ class MechanismTests(unittest.TestCase):
     def test_operator_delta_is_scoped_to_what_a_session_obeys(self) -> None:
         module = self._operator_delta_module()
         for path in ("main/claude/CLAUDE.contract.md",
-                     "main/codex/agents/executor.toml",
+                     "main/claude/agents/executor.md",
                      "main/claude/skills/baton-dispatch/SKILL.md"):
             self.assertTrue(module.in_surface(path), path)
         for path in ("docs/research/README.md", "main/claude/tests/support.py"):
@@ -2791,78 +2726,13 @@ class SettingsRetractionTests(unittest.TestCase):
             self.assertIn("Bash(machine:*)", allow)
             self.assertIn("retracted", self.last_stdout)
 
-    def test_withdrawn_agent_registration_is_retracted_from_config(self) -> None:
-        """Same defect at section level: a role dropped from source stayed registered."""
-        script = ROOT / "scripts/merge-toml.py"
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp = Path(temp_dir)
-            src, dst, man = temp / "src.toml", temp / "dst.toml", temp / "m.json"
-            dst.write_text('[model]\nname = "gpt"\n\n[agents.mine]\nconfig_file = "x"\n',
-                           encoding="utf-8")
-
-            def merge(repo: str) -> str:
-                src.write_text(repo, encoding="utf-8")
-                result = subprocess.run(
-                    [sys.executable, str(script), str(src), str(dst),
-                     "--managed", str(man)], capture_output=True, text=True)
-                self.assertEqual(result.returncode, 0, result.stderr)
-                self.last_stdout = result.stdout
-                return dst.read_text(encoding="utf-8")
-
-            merge('[agents.verifier]\nconfig_file = "v"\n\n'
-                  '[agents.executor]\nconfig_file = "e"\n')
-            text = merge('[agents.verifier]\nconfig_file = "v"\n')
-            self.assertNotIn("[agents.executor]", text)
-            self.assertIn("retracted section", self.last_stdout)
-            # The user's own agent and every machine section are untouched.
-            self.assertIn("[agents.mine]", text)
-            self.assertIn("[model]", text)
-
-    def test_a_fresh_install_records_what_it_owns(self) -> None:
-        """The install that writes the file also owns every entry in it.
-
-        Both mergers used to write the target and return before touching the
-        sidecar, so provenance began at the *second* sync. A missing sidecar
-        means "unknown, keep everything", which made a v1 fresh install the one
-        deployment whose entries could never be withdrawn: v2 read them back as
-        machine state (2026-07-29). Every retraction test before this one
-        pre-created the target, so none of them went through that branch.
-        """
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp = Path(temp_dir)
-            self._merge(temp, {"permissions": {"allow": ["Bash(ls:*)",
-                                                         "Bash(rm:*)"]}})
-            deployed = json.loads((temp / "dst.json").read_text(encoding="utf-8"))
-            deployed["permissions"]["allow"].append("Bash(machine:*)")
-            (temp / "dst.json").write_text(json.dumps(deployed), encoding="utf-8")
-
-            allow = self._merge(temp, {"permissions": {"allow": ["Bash(ls:*)"]}})
-            self.assertNotIn("Bash(rm:*)", allow)
-            self.assertIn("Bash(machine:*)", allow)
-            self.assertIn("Bash(ls:*)", allow)
-
-        script = ROOT / "scripts/merge-toml.py"
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp = Path(temp_dir)
-            src, dst, man = temp / "src.toml", temp / "dst.toml", temp / "m.json"
-
-            def merge(repo: str) -> str:
-                src.write_text(repo, encoding="utf-8")
-                result = subprocess.run(
-                    [sys.executable, str(script), str(src), str(dst),
-                     "--managed", str(man)], capture_output=True, text=True)
-                self.assertEqual(result.returncode, 0, result.stderr)
-                return dst.read_text(encoding="utf-8")
-
-            merge('[agents.verifier]\nconfig_file = "v"\n\n'
-                  '[agents.executor]\nconfig_file = "e"\n')
-            dst.write_text(dst.read_text(encoding="utf-8")
-                           + '\n[agents.mine]\nconfig_file = "x"\n',
-                           encoding="utf-8")
-            text = merge('[agents.verifier]\nconfig_file = "v"\n')
-            self.assertNotIn("[agents.executor]", text)
-            self.assertIn("[agents.mine]", text)
-            self.assertIn("[agents.verifier]", text)
+    # Two TOML-side retraction tests stood here until 2026-09-14:
+    # `test_withdrawn_agent_registration_is_retracted_from_config` and
+    # `test_a_fresh_install_records_what_it_owns`. Both drove
+    # `scripts/merge-toml.py`, which existed for one manifest row and left
+    # with the Codex bundle. The provenance rule they shared - a repo can
+    # retract what it deployed and must never delete what it did not - is
+    # still asserted on the JSON side by the two tests either side of this.
 
     def test_entries_of_unknown_provenance_are_never_deleted(self) -> None:
         """An upgrade has no sidecar yet; unknown must not mean machine-owned."""
@@ -2932,8 +2802,7 @@ class VerifierQuotaTests(unittest.TestCase):
         }
         for path, disclosure in scoped.items():
             self.assertIn(disclosure, read(path), path)
-        for contract in ("main/claude/CLAUDE.contract.md",
-                         "main/codex/AGENTS.contract.md"):
+        for contract in ("main/claude/CLAUDE.contract.md",):
             self.assertIn("per top-level task", read(contract), contract)
 
         # The contracts are exempt by construction: they state the rule, whose
@@ -3513,7 +3382,7 @@ class ManagedTargetGuardTests(unittest.TestCase):
         skill it does not ship is not its business. Both have to stay writable or
         the gate stops being narrow and starts being in the way."""
         with tempfile.TemporaryDirectory() as home:
-            for allowed in (".claude/settings.json", ".codex/config.toml",
+            for allowed in (".claude/settings.json",
                             ".claude/settings.local.json",
                             ".agents/skills/not-ours/SKILL.md",
                             ".claude/telemetry/notes.txt"):

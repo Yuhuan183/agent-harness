@@ -4,19 +4,20 @@
 > [docs/README.md](../../docs/README.md).
 
 不綁定單一 agent 的通用配置: 共用 skill 本體, 跨 agent runtime 知識, 專案 skill 清單.
-回寫到 `~/.agents/`. `.claude/` 與 `.codex/` 以相對 symlink 引用此處, 達到「一份本體,
-多處使用」.
+回寫到 `~/.agents/`. `.claude/` 以相對 symlink 引用此處, 達到「一份本體, 多處使用」.
+2026-09-14 之前 `.codex/` 也是這樣引用的, 共用層的形狀正是為了這種情況: 少一個引用方,
+本體不用動.
 
 > `~/.agents` 非公定標準 — AGENTS.md 標準規範 repo 內指令檔, Agent Skills 標準規範 skill
 > 格式, 均未定義全域共用目錄. 採用它是因為本機工具鏈 (skill 安裝器, find-skills) 已以它
-> 為共用 skill 家目錄, 且 `$HOME` 下 `~/.claude`/`~/.codex`/`~/.agents` 三者平級, 與本
+> 為共用 skill 家目錄, 且 `$HOME` 下 `~/.claude` 與 `~/.agents` 平級, 與本
 > 專案佈局同構, 使相對 symlink (`../../.agents/...`) 在專案內與全域皆成立.
 
 ## 內容索引
 
 | 路徑 | 職責 |
 |---|---|
-| `skills/headroom-protocol/` | 共用 skill 本體 (含 Codex 端 `agents/openai.yaml`); `.claude/skills` 與 `.codex/skills` 各以 symlink 引用 |
+| `skills/headroom-protocol/` | 共用 skill 本體; `.claude/skills` 以 symlink 引用 |
 | `skills/experience-ledger/` | 共用 skill 本體: 派工經驗記帳與指標分析 (含 `scripts/`); 帳本在 `~/.agents/telemetry/` (machine-local 不入庫) |
 | `skills/readable-zh-tw/` | 共用 skill 本體: 繁中可讀性, 兩個模式 —— 直出 (寫給人看的回應, 半形標點) 與改稿 (交進來的稿件, 全形標點); 蒸餾自上游, 見其 `ATTRIBUTION.md`; 同以 symlink 雙端引用 |
 | `skills/task-observer/` | skill 使用受挫時主動詢問, 明確同意後才記錄改善觀察; append-only JSONL 帳本在 `~/.agents/telemetry/`, 不會自動修改 skill |
@@ -31,7 +32,7 @@
 
 1. skill 本體放 `main/.agents/skills/<name>/`.
 2. 把 `<name>` 加進 `main/.agents/skills/INSTALLED.txt`.
-3. 在 `main/claude/skills/` 與需要的 `main/codex/skills/` 各建相對 symlink:
+3. 在 `main/claude/skills/` 建相對 symlink:
    `ln -s ../../.agents/skills/<name> <name>`.
 4. `scripts/sync.sh` 會精確同步清單內的 skill, 但保留 `~/.agents/skills/` 內不在清單中的
    第三方 skill; `rsync --links` 會原樣複製兩端 symlink.

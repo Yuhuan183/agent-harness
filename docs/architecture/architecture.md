@@ -26,7 +26,7 @@
   agent-harness (git) ── 唯一真相源
        │
        ├── deployment-manifest.tsv ──→ ① HOME            跟著「人」走 · 動詞
-       │      scripts/sync.sh              ~/.claude ~/.codex ~/.agents
+       │      scripts/sync.sh              ~/.claude  ~/.agents
        │                                    契約 · 角色 · skill · hook
        │
        └── project-manifest.tsv ─────→ ② 另一個 repo      跟著「repo」走 · 事實
@@ -65,7 +65,7 @@ flowchart TB
     sync["sync.sh<br/>preflight → merge/rsync → parity"]
 
     subgraph HOME["② 部署目標 (machine-local)"]
-        h["~/.claude · ~/.codex · ~/.agents"]
+        h["~/.claude · ~/.agents"]
     end
 
     pmanifest["project-manifest.tsv<br/>source→repo 根目錄"]
@@ -112,14 +112,14 @@ flowchart TB
 
 ## 二. 核心想法
 
-一句話: **把配置當程式管理** — 原本散在 `~/.claude`, `~/.codex`, `~/.agents` 的手寫契約
+一句話: **把配置當程式管理** — 原本散在 `~/.claude` 與 `~/.agents` 的手寫契約
 納入 Git, 可以 review, 測試, 部署, 回滾, 而不覆蓋憑證與機器狀態. 四個支柱:
 
 1. **品質優先的派工**: main 保留架構與最終判斷, leaf 只做有界, 可驗收的工作. 直接執行是
    預設, 只有平行性, context 保護, fresh-context 獨立性或較低成本角色明顯值得開銷時才派工.
 2. **可調整但不漂移的 routing**: benchmark 只是外部先驗, 真正修正選擇的是本機經過 review
    的派工結果 — 而且改 preset 一定經人核准, 不在執行中偷換.
-3. **跨平台一致契約**: Claude 與 Codex 用對應角色與相同品質語意.
+3. **角色語意一致**: 每個 leaf role 的權限與品質語意由一份契約決定, 不隨叫用方式漂移.
 4. **可恢復的部署**: source 是真相源, 同步前 preflight, 套用後 parity, 回滾靠 git 重新部署.
 
 方法論本身 (為什麼常駐檔要瘦, 規則什麼時候該進契約 vs skill vs hook) 在
@@ -243,10 +243,9 @@ flowchart LR
 不一樣的事值得先知道:
 
 - **skill 的 `description` 是常駐的, 本文不是.** 把一句話從本文搬進 description 是漲常駐,
-  不是搬家. 而 Codex 上 `allow_implicit_invocation: false` 的 skill 連 description 都不
-  注入, 兩半都算派工成本 —— 所以兩端不是同一張表.
-- **role 的 `description` 同樣常駐.** 兩家 CLI 都在每個 session 列出所有已註冊角色, 那份
-  清單就是選角面.
+  不是搬家.
+- **role 的 `description` 同樣常駐.** CLI 在每個 session 列出所有已註冊角色, 那份清單
+  就是選角面.
 - **`docs/` 沒有字數預算**, 因為它是拉取成本. 但它分兩層: 只有現行指引那一層必須是真的,
   紀錄那一層刻意保留被後來證據推翻的段落.
 - **這張表管的是本 repo 那一份, 不是 session 的常駐總量.** 2026-09-11 量到的比例:

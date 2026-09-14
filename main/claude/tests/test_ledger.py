@@ -46,7 +46,7 @@ class SharedSkillTests(unittest.TestCase):
     def _assert_symlinked_body(self, name: str) -> None:
         body = ROOT / "main/.agents/skills" / name
         self.assertTrue((body / "SKILL.md").is_file(), f"{name} body missing")
-        for stub in (f"main/claude/skills/{name}", f"main/codex/skills/{name}"):
+        for stub in (f"main/claude/skills/{name}",):
             link = ROOT / stub
             self.assertTrue(link.is_symlink(), f"{stub} is not a symlink")
             self.assertEqual(os.readlink(link), f"../../.agents/skills/{name}")
@@ -55,7 +55,6 @@ class SharedSkillTests(unittest.TestCase):
     def test_headroom_protocol_is_shared_with_explicit_auto_invocation(self) -> None:
         shared = ROOT / "main/.agents/skills/headroom-protocol"
         claude = ROOT / "main/claude/skills/headroom-protocol"
-        codex = ROOT / "main/codex/skills/headroom-protocol"
         self.assertTrue((shared / "SKILL.md").is_file())
         self.assertTrue(claude.is_dir())
         self.assertFalse(claude.is_symlink())
@@ -75,10 +74,6 @@ class SharedSkillTests(unittest.TestCase):
             "../../../.agents/skills/headroom-protocol/SKILL.md",
         )
         self.assertTrue(shared_link.is_file())
-        self.assertTrue(codex.is_symlink())
-        self.assertEqual(
-            os.readlink(codex), "../../.agents/skills/headroom-protocol"
-        )
         skill = read(".agents/skills/headroom-protocol/SKILL.md")
         self.assertIn("selected automatically or explicitly", skill)
         self.assertIn("headroom doctor", skill)
@@ -129,8 +124,7 @@ class SharedSkillTests(unittest.TestCase):
         cheapest next probe. Asserted by phrase because the clause is a
         behaviour, and a census can only say the file changed.
         """
-        for surface in (".claude/skills/evidence-debugging/SKILL.md",
-                        ".codex/skills/evidence-debugging/SKILL.md"):
+        for surface in (".claude/skills/evidence-debugging/SKILL.md",):
             with self.subTest(surface=surface):
                 skill = read(surface)
                 self.assertIn("not the deliverable", skill)

@@ -238,15 +238,31 @@ def deployed_skill_files() -> set[str]:
 
     Enumerated from the repo's own skill roots rather than from `$HOME`:
     `~/.claude/skills` is a shared namespace, so listing the deployed directory
-    would charge this repo for a third-party install. Symlinked shared skills
-    appear once per provider because both are separately deployed surfaces.
+    would charge this repo for a third-party install.
+
+    One provider since 2026-09-14. The loop stays because the shared skills are
+    symlinks into `.agents/`, so a second deployed surface would again list the
+    same body twice - and that, not the provider count, is what this has to keep
+    getting right.
+
+    A wrapper-backed skill contributes two files, not one. Five of the nine are
+    whole-directory symlinks, so the `.claude/` path *is* the shared body; the
+    other two carry a thin `SKILL.md` of their own and reach the body through
+    `shared-instructions.md`. Those bodies were budgeted through the Codex
+    bundle's copy of the same file until 2026-09-14, and deleting that bundle
+    took their only ceiling with it - 794 and 226 words left unratcheted, which
+    is the 2026-07-30 failure this set exists to prevent, committed again by the
+    same route. Derived from the tree rather than listed, so a third wrapper
+    cannot repeat it.
     """
     found = set()
-    for provider in ("claude", "codex"):
+    for provider in ("claude",):
         root = ROOT / "main" / provider / "skills"
         for entry in sorted(root.iterdir()):
             if (entry / "SKILL.md").is_file():
                 found.add(f".{provider}/skills/{entry.name}/SKILL.md")
+            if not entry.is_symlink() and (entry / "shared-instructions.md").exists():
+                found.add(f".agents/skills/{entry.name}/SKILL.md")
     return found
 
 
