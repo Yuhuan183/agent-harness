@@ -138,3 +138,6 @@ calibration cases, and the disposal traps — is in
 That file is the judgment half. Mechanics belong to whichever project owns the runtime: if it
 documents its own probe or harness pattern, follow that for how to wire one up, and this for whether
 its readings can be believed.
+
+How much of a set the evidence has to cover — and who decides — is in
+[references/coverage.md](references/coverage.md).

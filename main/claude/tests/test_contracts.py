@@ -14,7 +14,21 @@ ContractBudget = namedtuple(
     "ContractBudget", "path words rules bytes_per_rule filler_floor filler_cap")
 RESIDENT_CONTRACT_BUDGETS = {
     # measured 2026-08-04: 413 words, 14 rules, 203.6 bytes/rule, 0.209 filler
-    "claude": ContractBudget(".claude/CLAUDE.contract.md", 520, 16, 225, 0.15, 0.25),
+    #
+    # +25 (2026-09-14): the coverage rule - ask once how much of a set to
+    # inspect, and take every item unasked before anything irreversible. It
+    # cannot live in a skill: the failure it prevents is sampling that has
+    # already happened by the time anything would load one, and the question
+    # has to be asked before the work starts rather than while reporting it.
+    # Raised on the criterion this file's own doc sets for raising: all three
+    # density figures stay inside their caps and bytes-per-rule *improves*
+    # (220.3 -> 217.7 against a 225 cap, rules 16/16, filler 0.232 of 0.25), so
+    # the words bought another obligation rather than a longer sentence.
+    # Displacement was tried first and rejected: the only rules with slack are
+    # the delegation and rtk clauses, and both lose their subject at this size -
+    # the 540/540 defect `c143b72` fixed. 545 rather than 531 because a ceiling
+    # with zero headroom is what forced that defect.
+    "claude": ContractBudget(".claude/CLAUDE.contract.md", 545, 16, 225, 0.15, 0.25),
     # +10 (2026-08-03): the rtk clause gained the "a rewritten command may
     # report 0 matches without running" rule, and fitting it into 540 cost the
     # sentence its subject — "Authorization, approvals, and sandboxing ... may
@@ -126,6 +140,39 @@ class ClaudeContractTests(unittest.TestCase):
             "DECISION: <what and why>",
         ):
             self.assertIn(phrase, policy)
+
+    def test_the_coverage_rule_names_its_notches_and_its_exception(self) -> None:
+        """Sampling is the failure that looks identical to its own success.
+
+        A report that read three of forty files reads exactly like one that read
+        forty, so the defect is invisible at review time and only surfaces when
+        the unread item was the one that mattered - which this repo has already
+        paid for once: `contract-slimming.md` records a 2026-07-31 sampling that
+        caused a wrong deletion and shipped it.
+
+        The rule is resident rather than in a skill because the sampling has
+        already happened by the time anything would load one. What it must carry
+        is both halves: the three notches, so the user is choosing between named
+        costs rather than answering "thorough?", and the exception, which is the
+        half that keeps it cheap - precision is spent where a miss cannot be
+        undone instead of spread evenly. Asserted separately from the procedure
+        so that moving the procedure cannot quietly take the exception with it.
+        """
+        policy = read(".claude/CLAUDE.contract.md")
+        for notch in ("`Sample`", "`One per category`", "`Every item`"):
+            self.assertIn(notch, policy, "the user needs named costs to choose between")
+        self.assertIn("irreversible", policy,
+                      "without the exception the dial governs the one case it must not")
+
+        # And the procedure has to stay reachable: a reference no section names
+        # is a file nobody opens.
+        skill = read(".claude/skills/evidence-ladder/SKILL.md")
+        self.assertIn("references/coverage.md", skill)
+        coverage = read_repo(
+            "main/.agents/skills/evidence-ladder/references/coverage.md")
+        for half in ("push, deploy, publish, send, delete shared data",
+                     "counterexample"):
+            self.assertIn(half, coverage)
 
     def test_claude_md_does_not_restate_the_harness_system_prompt(self) -> None:
         """Claude Code already states these; a second copy is not free.
@@ -1696,8 +1743,14 @@ class DocumentationBudgetTests(unittest.TestCase):
             # being about built tools. The detail went to references/ first
             # (L3 before L6); what remains here is the rule itself, and it does
             # not fit in the space freed. Nothing was displaced.
-            ".claude/skills/evidence-ladder/SKILL.md": 1295,
-            ".codex/skills/evidence-ladder/SKILL.md": 1295,  # one source, both surfaces
+            # +20 (2026-09-14): a pointer, not a rule. The coverage procedure -
+            # the dial, the irreversible-action exception, and the one finding
+            # that reopens the question - is in `references/coverage.md`, where
+            # it costs nothing until read. What the body had to gain is the
+            # sentence that makes it reachable, since a reference no section
+            # names is a file nobody opens.
+            ".claude/skills/evidence-ladder/SKILL.md": 1315,
+            ".codex/skills/evidence-ladder/SKILL.md": 1315,  # one source, both surfaces
         }
         self.assertEqual(
             {path for path in budgets if "/skills/" in path},

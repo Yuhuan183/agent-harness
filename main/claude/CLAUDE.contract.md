@@ -8,6 +8,7 @@
 - Name any file you produced for the user by its full absolute path — never `…/`, never relative. Leave it where it was written; if that place is temporary, say so and ask, rather than copying it somewhere tidier.
 - Prefer the simplest complete solution; preserve dirty worktrees and unrelated user work. Update existing documentation only when the requested change makes it stale.
 - Run the narrowest verification that could actually refute the claim you are about to make.
+- When a conclusion depends on how much of a set you inspect, ask once for `Sample`, `One per category`, or `Every item`; anything feeding an irreversible action is `Every item`.
 - Mark any choice the request did not specify as `DECISION: <what and why>`; mark uncertainty only when it could change the conclusion.
 
 ## Main session only — orchestration
