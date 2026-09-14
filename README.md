@@ -8,7 +8,7 @@ skills, routing 與監控機制納入 Git —— 讓全域 agent 配置可以 re
 
 - **品質優先的派工**: main 保留架構與最終判斷; leaf 只處理有界, 可驗收的工作.
 - **可調整但不漂移的 routing**: benchmark 只是先驗, 真正修正選擇的是本機經過 review 的派工結果.
-- **跨平台一致契約**: Claude 與 Codex 使用對應角色與相同品質語意.
+- **角色契約自足**: 每個 leaf role 自帶權限, 停止條件與品質標準, 不必再去讀別的文件.
 - **可恢復的全域部署**: source checkout 是真相源; 同步前先驗證, 套用後比對; 回滾靠 git 重新部署.
 
 ## 架構速覽
@@ -59,7 +59,7 @@ flowchart LR
 | 路徑 | 真相源與職責 | 部署目標 |
 |---|---|---|
 | [`main/claude/`](main/claude/README.md) | Claude Code 契約, roles, skills, hooks, prompts, routing | `~/.claude/` |
-| [`main/.agents/`](main/.agents/README.md) | 兩端共用 skills, routing core 與 runtime 知識 | `~/.agents/` |
+| [`main/.agents/`](main/.agents/README.md) | 共用 skills, routing core 與 runtime 知識 | `~/.agents/` |
 | [`main/project/`](main/project/README.md) | 專案層樣板: 另一個 repo 一份事實包, 由 `scripts/project-init.py` 渲染成區塊 | `<repo>/CLAUDE.md`, `<repo>/AGENTS.md` |
 | [`docs/`](docs/README.md) | 方法論, 研究, 部署說明與歷史決策; 不回寫全域 | — |
 | [`evals/`](evals/) | 行為 trap fixtures 與機械 grader; 只在 repo 內取證 | — |

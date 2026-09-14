@@ -145,11 +145,11 @@ main/.agents/scripts/python3-run scripts/contract-operator-delta.py --staged
 - 壓縮或改寫契約的 commit, 把這張表貼進 commit message, 由人判讀.
 - 腳本**永遠 exit 0**. 合法的運算元變動遠多於違法的, 做成 fail-closed 會高誤報, 接著就會
   被繞過或加白名單, 最後比沒有更糟. 機器只負責讓人不會忘記看.
-- 涵蓋範圍是 session 真的會遵守的檔案: 兩份常駐契約, 兩端所有 role, 所有 skill 本體與
+- 涵蓋範圍是 session 真的會遵守的檔案: 常駐契約, 所有 role, 所有 skill 本體與
   references. 研究文件與測試不在內 — 那些是給人讀的, 不是給模型遵守的.
 
 矛盾稽核 (原則 2b) 另外做, 因為預算與 trap 都測不到它: 對照當期供應商 system prompt
-與兩份常駐契約逐條比, 找重述與牴觸各一類; `/doctor` (Claude Code) 可先跑一次當粗篩,
+與常駐契約逐條比, 找重述與牴觸各一類; `/doctor` (Claude Code) 可先跑一次當粗篩,
 但它評的是肥瘦不是矛盾, 仍需人工對照. CLI 大版本更新後重跑 — system prompt 會變,
 昨天不重複的句子今天可能重複了.
 

@@ -18,8 +18,7 @@ Codex `config.toml`, Claude Code `~/.claude.json` 的 MCP entry) 永不納入版
 | `main/claude/examples/headroom-mcp.legacy.json` | `~/.claude/mcp.json` | 僅供無 Claude CLI 的 legacy client 手動 merge |
 | Antigravity CLI settings/MCP | `~/.gemini/` | 機器狀態, 不由本 repo 同步; 只有原生 `headroom wrap agy` 可用時才由 wrapper 管理 |
 
-跨 agent runtime 知識 (`headroom-runtime.md`) 在 `main/.agents/docs/`, Claude 與 Codex 共用同一份,
-不在單一 agent 目錄下各留一份.
+跨 agent runtime 知識 (`headroom-runtime.md`) 放 `main/.agents/docs/`, 不放進單一 agent 目錄.
 
 ### `main/` 是部署源, 不是工作環境
 

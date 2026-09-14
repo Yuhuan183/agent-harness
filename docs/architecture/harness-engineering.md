@@ -52,7 +52,7 @@ Main 不是派工器而已: 它負責需求定義, 歧義, 架構, 風險, 切�
 | `security-reviewer` | 核准前的 trust-boundary 與 abuse-path 分析 | 唯讀; 不實作 |
 | `security-executor` | 已核准安全契約的實作 | 可寫入; 不得重開需求或弱化控制 |
 
-Claude 與 Codex 各有一份自足的角色契約; leaf 不讀 main 的 orchestration 文件, 也不能再派
+每個角色一份自足契約; leaf 不讀 main 的 orchestration 文件, 也不能再派
 下一層. 三個可寫角色另外各自帶了前景指令 10 分鐘上限, 以及放不下時該回傳什麼.
 
 ## 監控: 擋不住的那一半
