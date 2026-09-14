@@ -2,6 +2,8 @@
 
 `rtk` filters common CLI output before it enters model context. The `settings.json` PreToolUse hook rewrites supported commands automatically and fails open when RTK is absent.
 
+This file owns RTK guidance. A resident contract may state the one rule a session must hold without loading anything — never record "no hits" from a rewritten command — and points here for the rest.
+
 ## Who owns the hook
 
 The hook is registered by this repo's `settings.json` as `rtk hook claude` — not by

@@ -40,4 +40,4 @@ Report only outcome, verification evidence, material decisions or remaining risk
 
 ## RTK command output
 
-Prefix every shell command and chained segment with `rtk`. It leaves authorization, approvals, and sandboxing unchanged, but it may substitute another program, and that program can reject a flag and still report `0 matches`: go raw whenever evidence is hidden, and never record "no hits" without re-running raw. This contract owns RTK guidance.
+Prefix every shell command and chained segment with `rtk`. It leaves authorization, approvals, and sandboxing unchanged, but it may substitute another program, and that program can reject a flag and still report `0 matches`: go raw whenever evidence is hidden, and never record "no hits" without re-running raw. `RTK.md` owns the rest.

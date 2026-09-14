@@ -336,7 +336,11 @@ class MachineStateHygieneTests(unittest.TestCase):
             self.assertIn("`ANTHROPIC_BASE_URL`", text)
             self.assertIn("`OPENAI_BASE_URL`", text)
             self.assertIn("Codex App", text)
-        self.assertIn("This contract owns RTK guidance", codex)
+        # Ownership sits with the guide, not with a bundle's contract: a
+        # resident contract carries the one rule a session must hold unloaded
+        # and points at the file that argues it. Asserted on the guide so that
+        # retiring either bundle cannot orphan the guidance.
+        self.assertIn("This file owns RTK guidance", read(".claude/RTK.md"))
         self.assertIn("headroom wrap claude", runtime)
         self.assertIn("headroom wrap codex", runtime)
         # v0.34 rejects the retired flag outright, so a doc that still spells it
