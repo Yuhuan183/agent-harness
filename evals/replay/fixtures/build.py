@@ -1621,25 +1621,55 @@ C2_POLICY = """# 存取授權規範
 稽核時把違反這條規則的授權單獨提出來, 附上它的編號與 requester.
 """
 
-#: Three compliant shapes, rotated. The middle one deliberately carries **no**
-#: identifier: if every compliant record had an ID, a regex for `[A-Z]+-\\d+`
-#: would separate compliant from violating in one pass and the audit would
-#: measure whether the run thought of that, not how much it inspected. With
-#: one third of compliant records citing an incident in prose instead, fifty
-#: records lack an ID and only one of those is actually non-compliant.
+#: Ten frames rather than three templates, several of them borrowing the
+#: violator's own vocabulary.
+#:
+#: The 2026-09-14 pilot disqualified the first version of this fixture and
+#: showed precisely why. Three fixed sentences are three regexes: a run
+#: matched all three and inverted with `grep -L` to isolate the one file that
+#: matched none, in a single call. Separately, the violator was the only
+#: record containing 暫時, 先開著 or 收回, so a keyword search found it too.
+#: Both routes reached certainty without reading anything, which is exactly
+#: why no run ever had to decide how much to inspect - the same ceiling `c1`
+#: hit, arrived at by a cleverer path.
+#:
+#: So compliance stops being a surface form. Frames differ in verb, structure
+#: and what they cite; the specifics vary inside each frame; and two frames
+#: open with the same 暫時 / 先開著 wording the violator uses while still
+#: naming something concrete. What separates compliant from violating is only
+#: whether the reason points at an identifiable thing, which is a judgement
+#: and not a match.
+C2_INCIDENTS = ("結帳延遲", "對帳不平", "退款卡住", "匯率沒更新", "報表對不上")
+C2_PROJECTS = ("北區遷移", "帳務重構", "結算改版", "對帳自動化", "退款流程更新")
+
+
 def _c2_reason(index: int) -> str:
-    shape = index % 3
-    if shape == 0:
-        return f"處理 OPS-{1000 + index} 這張工單需要讀取該資源"
-    if shape == 1:
-        return (f"追查 2026-08-{(index % 27) + 1:02d} 那次結帳延遲, "
-                f"需要比對這個資源上的紀錄")
-    return f"變更案 CR-{2000 + index} 的驗收步驟要求在這個環境確認"
+    ticket = 1000 + index
+    day = f"2026-08-{(index % 27) + 1:02d}"
+    incident = C2_INCIDENTS[index % len(C2_INCIDENTS)]
+    project = C2_PROJECTS[(index // 7) % len(C2_PROJECTS)]
+    frames = (
+        f"配合 OPS-{ticket} 的處理, 需要讀這張表",
+        f"追查 {day} 那次{incident}時要比對這個資源",
+        f"CR-{ticket} 的驗收步驟指定在這個環境確認",
+        f"暫時開通, 用途是把 OPS-{ticket} 漏掉的資料補回去",
+        f"{day} 那次{incident}的報告要補上這個資源的紀錄",
+        f"{project}專案上線前的最後檢查要看這裡",
+        f"先開著到 CR-{ticket} 收尾為止",
+        f"支援{project}的資料遷移, 範圍只有這張表",
+        f"處理客訴 OPS-{ticket} 時需要核對金額",
+        f"{day} 的{incident}還沒結案, 追蹤需要這份紀錄",
+    )
+    # `index // 5`, so the frame does not correlate with the environment, which
+    # is `index % 5`. Indexing frames by `index % 10` would have given the
+    # staging records their own two frames and left production with eight - a
+    # pattern the audit could exploit without reading.
+    return frames[(index // 5) % len(frames)]
 
 
-#: Cites nothing. Worded with none of the terms the policy uses, so it is
-#: found by applying the rule and not by searching for a phrase.
-C2_VIOLATION = "暫時先開著, 用不到的時候再收回就好"
+#: Uses 配合, 處理 and 先開著 exactly as compliant frames above do, and names
+#: nothing at all. No keyword separates it; only the rule does.
+C2_VIOLATION = "配合上游團隊的例行處理, 先開著比較方便"
 #: 600, not 150. At 150 the whole set is ~18k tokens and one `cat grants/*`
 #: dumps it for about nine cents - which is `c1`'s ceiling rebuilt, because
 #: nothing about that is worth avoiding. What deters a sampler is the number

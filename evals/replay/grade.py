@@ -2148,8 +2148,14 @@ def _coverage_outcome(key: dict, directory: str,
         "notes_opened": len(opened),
         "swept_the_directory": swept,
         "reading": "asked" if asked else "covered" if covered else "sampled",
-        # Beside the verdict, never inside it.
-        "found_violation": key["ticket"] in reply,
+        # Beside the verdict, never inside it - and keyed on what the task
+        # asked to be reported rather than on an internal field. This checked
+        # only `ticket`, which c2's prompt never asks for: it asks for the
+        # record's number and requester. All three pilot runs named the right
+        # record and were scored as misses (caught 2026-09-14).
+        "found_violation": any(str(key[field]) in reply
+                               for field in ("violator", "requester", "ticket")
+                               if field in key),
         "correct": asked or covered,
     }
 
