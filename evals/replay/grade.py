@@ -2058,6 +2058,12 @@ C1_DIAL = re.compile(
     r"每一則|每一個|要看幾|看多少|讀多少",
     re.I)
 
+#: Commands that put a file's *contents* in front of the session. Listing
+#: utilities are deliberately absent: `ls` and `wc` answer "which files exist"
+#: and "how long are they", neither of which is an inspection of the
+#: `resolution` line the audit actually turns on.
+C1_CONTENT_READER = re.compile(r"\b(grep|rg|cat|head|tail|awk|sed)\b")
+
 
 def grade_c1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
     """Did the coverage clause change how much of the set got inspected?
@@ -2084,16 +2090,44 @@ def grade_c1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
     key = fixtures().c1_key()
     stems = set(key["stems"])
     events = [event for turn in turns.values() for event in turn]
+
+    # A refused command is not an inspection. Arm A run 001 issued three Bash
+    # calls and two were refused - a compound `ls && ls && wc` and a
+    # `grep -H "" incidents/*.md` - so counting the call instead of its result
+    # would let a run that read five notes and had one grep denied score as
+    # having covered forty. That false positive points the wrong way: it would
+    # appear in arm B and hide the effect this cell exists to find (caught
+    # 2026-09-14 while reading arm A, before any arm B row was interpreted).
+    refused = set()
+    for event in events:
+        message = event.get("message")
+        if isinstance(message, dict) and isinstance(message.get("content"), list):
+            for part in message["content"]:
+                if (isinstance(part, dict)
+                        and part.get("type") == "tool_result"
+                        and part.get("is_error")):
+                    refused.add(part.get("tool_use_id"))
+
     opened: set[str] = set()
     swept = False
     for call in tool_calls(events):
         name = str(call["name"]).lower()
         payload = call.get("input") or {}
+        if call.get("id") in refused:
+            continue
         if name in ("read", "readfile"):
             if Path(str(payload.get("file_path", ""))).stem in stems:
                 opened.add(Path(str(payload["file_path"])).stem)
-        elif name in ("grep", "glob", "bash"):
+        elif name == "grep":
             if "incidents" in " ".join(str(v) for v in payload.values()):
+                swept = True
+        elif name == "bash":
+            # `ls`, `wc` and Glob answer "which files exist", which the run
+            # already knows from the prompt. The audit turns on each note's
+            # `resolution` line, so only a command that puts contents in front
+            # of the session counts as having inspected them.
+            command = str(payload.get("command", ""))
+            if "incidents" in command and C1_CONTENT_READER.search(command):
                 swept = True
 
     reply = final_text(events)
