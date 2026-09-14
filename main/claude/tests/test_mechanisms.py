@@ -499,14 +499,12 @@ class MechanismTests(unittest.TestCase):
             bundle = scripts_dir / "prompt-bundle-report"
             bundle.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
             bundle.chmod(0o755)
-            # Both routing resolvers present and green: coverage is complete.
+            # The routing resolver present and green: coverage is complete.
+            # A second one under ~/.codex stood here until 2026-09-14; the hook
+            # stopped validating it when the bundle stopped shipping.
             claude_routing = scripts_dir / "model-routing"
             claude_routing.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
             claude_routing.chmod(0o755)
-            codex_routing = Path(temp_home) / ".codex" / "scripts" / "model-routing"
-            codex_routing.parent.mkdir(parents=True)
-            codex_routing.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-            codex_routing.chmod(0o755)
             experience_report = (Path(temp_home) / ".agents" / "skills" /
                                  "experience-ledger" / "scripts" / "experience-report")
             experience_report.parent.mkdir(parents=True)
@@ -557,13 +555,18 @@ class MechanismTests(unittest.TestCase):
             # Missing routing resolver: incomplete coverage is a finding, and
             # the throttle stamp must be withheld (F-05: no silent skips).
             env["AGENT_HARNESS_REPO"] = str(repo)
-            codex_routing.unlink()
+            # Proved on the Claude resolver since 2026-09-14. The invariant was
+            # never about which provider's resolver went missing - it is that an
+            # unavailable probe is incomplete coverage, so the finding is raised
+            # and the throttle stamp withheld rather than the check silently
+            # skipped.
+            claude_routing.unlink()
             unresolved = subprocess.run([sys.executable, str(hook)], env=env,
                                         check=True, capture_output=True, text=True)
             self.assertIn("resolver unavailable", unresolved.stdout)
             self.assertFalse(stamp.exists())
-            codex_routing.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-            codex_routing.chmod(0o755)
+            claude_routing.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            claude_routing.chmod(0o755)
 
             # ~/.claude as a git checkout keeps the original git-status path.
             subprocess.run(["git", "init", str(claude_dir)], check=True,
@@ -607,6 +610,12 @@ class MechanismTests(unittest.TestCase):
                 "main/codex/AGENTS.contract.md\t.codex/AGENTS.md\n",
                 encoding="utf-8",
             )
+            # Created explicitly: this directory used to appear as a side
+            # effect of the fake Codex resolver above, which went with the
+            # check that read it. The sub-case below is about multi-root
+            # manifest parity, not about that resolver, so it makes its own
+            # target root.
+            (Path(temp_home) / ".codex").mkdir(parents=True, exist_ok=True)
             (Path(temp_home) / ".codex" / "AGENTS.md").write_text(
                 "drifted\n", encoding="utf-8")
             git_managed_drift = subprocess.run(
@@ -835,10 +844,14 @@ class MechanismTests(unittest.TestCase):
     def test_weekly_integrity_surfaces_overdue_benchmark_priors(self) -> None:
         """`prior_review` needs a scheduled reader or it is only a note.
 
-        Both routing files say to re-audit the AA priors 90 days after as_of.
+        The routing file says to re-audit the AA priors 90 days after as_of.
         That sentence lives inside the config it governs, so nothing was ever
         going to read it on the 91st day: as_of would age quietly while the
         routes went on citing it as current evidence. This hook is the reader.
+
+        Ran over both bundles' resolvers until 2026-09-14. The hook stopped
+        reading the second one when it stopped being deployed, so an arm for it
+        here would assert a finding nothing can now produce.
         """
         hook = ROOT / "main/claude/hooks/weekly-integrity.py"
         stub = (
@@ -848,7 +861,7 @@ class MechanismTests(unittest.TestCase):
             "  *) exit 0;;\n"
             "esac\n"
         )
-        for provider in (".claude", ".codex"):
+        for provider in (".claude",):
             with tempfile.TemporaryDirectory() as temp_home:
                 scripts_dir = Path(temp_home) / provider / "scripts"
                 scripts_dir.mkdir(parents=True)

@@ -569,46 +569,18 @@ try:
         checks_completed = False
         findings.append(f"model-routing alias check failed: {exc}")
 
-    codex_routing = os.path.expanduser("~/.codex/scripts/model-routing")
-    # Return code only. `validate` also prints WARNING lines for a quality
-    # floor whose approved routes have no measured score, or whose tier minima
-    # do not separate — deliberately not relayed here. That state changes only
-    # when someone edits a routing file, and `scripts/sync.sh` preflight is the
-    # gate every such edit passes through, so the warnings are surfaced at the
-    # moment they can be acted on. A weekly repeat would be a standing alarm
-    # for a condition nobody is being asked to fix this week, which is the
-    # failure mode described in the reconciliation note below (2026-07-30
-    # review: the warnings really were invisible, but the missing surface was
-    # the deploy path, not this one).
-    try:
-        if not os.access(codex_routing, os.X_OK):
-            checks_completed = False
-            findings.append(
-                f"Codex model-routing resolver unavailable at {codex_routing}; "
-                "validation not run"
-            )
-        else:
-            validated = subprocess.run(
-                [codex_routing, "validate"], capture_output=True, text=True, timeout=budget(10)
-            )
-            if validated.returncode != 0:
-                checks_completed = False
-                detail = (validated.stderr or validated.stdout).rstrip()
-                findings.append(
-                    f"Codex model-routing check failed (exit {validated.returncode}):\n"
-                    f"{detail}"
-                )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        checks_completed = False
-        findings.append(f"Codex model-routing check failed: {exc}")
-
+    # A second resolver was validated here until 2026-09-14, when the Codex
+    # bundle stopped shipping. Nothing replaced it: the Claude resolver above is
+    # now the only one this repo deploys, and checking a path no manifest row
+    # produces would report its own absence every week.
+    #
     # `prior_review` says to re-audit the benchmark priors 90 days after as_of,
     # but a cadence stated only in prose, inside the config it governs, is a
     # note nobody is scheduled to read: as_of ages silently while the routes go
     # on citing it as current evidence. This is that scheduled reader. It
     # alarms without withholding the stamp, like pin drift — the finding
     # recurs weekly until someone re-audits and moves as_of.
-    for label, resolver in (("Claude", routing_script), ("Codex", codex_routing)):
+    for label, resolver in (("Claude", routing_script),):
         try:
             if not os.access(resolver, os.X_OK):
                 continue  # an unavailable resolver is already a finding above
