@@ -366,10 +366,12 @@ def route_floor_error(
 def leaf_routes(config: dict, profile_name: str | None = None):
     """Yield (role, route) for every leaf role of a profile.
 
-    Cross-provider schema contract for tooling: both routing files share
-    selection/profiles/quality_floor/revision_policy structures, so revision
-    tools consume either file through this accessor instead of hard-coding a
-    provider schema. Defaults to the selection.default profile.
+    Schema contract for tooling: a routing file carries
+    selection/profiles/quality_floor/revision_policy, and revision tools read it
+    through this accessor instead of hard-coding the layout. It was written when
+    two providers shipped one schema between them; one bundle remains, and the
+    indirection is kept because it is what lets a second one be added back
+    without touching the readers. Defaults to the selection.default profile.
     """
     name = profile_name or config["selection"]["default"]
     for role, route in config["profiles"][name]["roles"].items():

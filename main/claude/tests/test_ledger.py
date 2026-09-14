@@ -615,7 +615,11 @@ class SharedSkillTests(unittest.TestCase):
         self.assertEqual(claude["request_sources"], {"claude-code": 10})
         self.assertEqual(codex["FR"], 100.0)
         self.assertEqual(codex["request_sources"], {"codex": 1})
-        self.assertIn("explore codex", report["hints"]["executor/impl"])
+        # One Claude tier is fully sampled and still uncomparable: ranking needs
+        # a second candidate, and the Codex rows are history rather than a live
+        # route to rank against (bridge retired 2026-09-14).
+        self.assertIn("only claude-opus-5/medium reaches n>=10",
+                      report["hints"]["executor/impl"])
 
     def test_fallback_lineage_requires_all_three_fields(self) -> None:
         # F-04: origin + parent dispatch id + exactly one hop, together.
@@ -930,6 +934,23 @@ class SharedSkillTests(unittest.TestCase):
                     else:
                         row["token_scope"] = "output_only"
                     rows.append(row)
+            # A second Claude tier, output-only, so the tie-break has two
+            # candidates whose token scopes disagree. Before 2026-09-14 the two
+            # candidates were the two providers and this fixture got the mixed
+            # scope for free; on the tier axis a single-tier cohort never
+            # reaches `comparable_cost` at all, and the guard this test exists
+            # for would have gone untested while the test still passed.
+            # opus/low clears the `judgment` floor, so the tier is rankable.
+            for i in range(10):
+                rows.append({
+                    "ts": f"2026-07-20T{i:02d}:30:00+00:00",
+                    "schema": 3, "role": "executor", "task_class": "impl",
+                    "provider": "claude", "request_source": "claude-code",
+                    "outcome": "accepted", "tokens_out": 20,
+                    "profile": "balanced", "model": "claude-opus-5",
+                    "effort": "low", "route_source": "transcript-verified",
+                    "token_scope": "output_only",
+                })
             ledger.write_text(
                 "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8"
             )
@@ -1007,7 +1028,14 @@ class SharedSkillTests(unittest.TestCase):
             report["by_route_cohort_provider"]
             ["executor/impl/codex/balanced/gpt-5.6-sol/medium"]["n"], 5
         )
-        self.assertIn("explore claude, codex", report["hints"]["executor/impl"])
+        # The point of the fixture, restated on the tier axis: two routes at
+        # n=5 are two cohorts of five, never one of ten. The hint has to name
+        # both and reach neither floor - pooling them would have produced a
+        # comparison instead.
+        hint = report["hints"]["executor/impl"]
+        self.assertIn("no tier reaches n>=10", hint)
+        self.assertIn("claude-opus-5/low", hint)
+        self.assertIn("claude-sonnet-5/high", hint)
 
     def test_experience_report_excludes_smoke_and_other_from_decision_counts(self) -> None:
         report_script = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-report"

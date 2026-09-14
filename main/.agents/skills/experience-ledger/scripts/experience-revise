@@ -247,8 +247,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--claude-config", type=Path,
                         default=bundle("claude") / "model-routing.toml")
-    parser.add_argument("--codex-config", type=Path,
-                        default=bundle("codex") / "model-routing.toml")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--now", default=None, help="ISO timestamp override (tests)")
     args = parser.parse_args()
@@ -261,8 +259,11 @@ def main() -> int:
     rows = []
     configs = {}
     policies = {}
-    for provider, config_path in (("claude", args.claude_config),
-                                  ("codex", args.codex_config)):
+    # One provider since 2026-09-14. The loop stays because the comparison it
+    # feeds was never between providers: `revise` ranks a cohort's observed
+    # `model/effort` cells against the currently pinned one, and the provider
+    # is a fixed prefix on those keys.
+    for provider, config_path in (("claude", args.claude_config),):
         try:
             config = core.load_config(config_path)
         except (OSError, core.tomllib.TOMLDecodeError) as error:
@@ -273,9 +274,6 @@ def main() -> int:
         configs[provider] = config
         policy = dict(core.revision_policy(config))
         policies[provider] = policy
-
-    if policies["claude"] != policies["codex"]:
-        parser.error("provider revision_policy values must match for comparison")
 
     unusable = 0
     for provider, config in configs.items():

@@ -487,7 +487,6 @@ class ExperienceReviseTests(unittest.TestCase):
                               encoding="utf-8")
             result = subprocess.run(
                 [str(REVISE), "--claude-config", str(ROOT / "main/claude/model-routing.toml"),
-                 "--codex-config", str(ROOT / "main/codex/model-routing.toml"),
                  "--now", "2026-07-21T00:00:00+00:00"],
                 capture_output=True, text=True,
                 env={**os.environ, "AGENT_EXPERIENCE_LEDGER": str(ledger)},
@@ -500,22 +499,13 @@ class ExperienceReviseTests(unittest.TestCase):
             self.assertNotIn("claude-sonnet-5/low", executor_line)
             self.assertIn("suggestions are cohort-local", result.stdout)
 
-    def test_rejects_mismatched_provider_revision_policies(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            codex = Path(temp_dir) / "codex.toml"
-            codex.write_text(
-                (ROOT / "main/codex/model-routing.toml").read_text(encoding="utf-8")
-                .replace("prefer_probability = 0.90", "prefer_probability = 0.91"),
-                encoding="utf-8",
-            )
-            result = subprocess.run(
-                [str(REVISE),
-                 "--claude-config", str(ROOT / "main/claude/model-routing.toml"),
-                 "--codex-config", str(codex)],
-                capture_output=True, text=True,
-            )
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("revision_policy values must match", result.stderr)
+    # `test_rejects_mismatched_provider_revision_policies` stood here until
+    # 2026-09-14. It asserted that two routing files had to declare the same
+    # `revision_policy` before their cohorts could be compared - a guard with
+    # one operand once the Codex bundle stopped shipping. The comparison it
+    # protected now happens between tiers inside a single file, so the guard
+    # and its test were removed together rather than left as a branch no input
+    # can reach.
 
     def test_revision_does_not_pool_different_profiles(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

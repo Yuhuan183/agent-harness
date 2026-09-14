@@ -40,7 +40,10 @@ except ModuleNotFoundError as error:
 
 POSTERIOR_DRAWS = 4000
 TOKEN_FIELDS = ("tokens_in", "tokens_out", "cache_write_tokens", "cache_read_tokens")
-PROVIDERS = ("claude", "codex")
+# Cohort keys still carry whatever provider a record was logged under, so rows
+# from the retired Codex bundle keep reporting. This names the one provider
+# whose routes are still live enough to rank tiers within (2026-09-14).
+HINT_PROVIDER = "claude"
 REQUEST_SOURCE_PROVIDER = {
     "claude-code": "claude",
     "codex": "codex",
@@ -156,19 +159,20 @@ def load(path: str, since: datetime) -> tuple[list[dict], int]:
     return records, unusable
 
 
-def load_shared_policy(paths: list[Path]) -> tuple[dict, list[dict]]:
-    policies = []
-    configs = []
-    for path in paths:
-        config = core.load_config(path)
-        errors = core.check_revision_policy(config)
-        if errors:
-            raise ValueError(f"{path}: {'; '.join(errors)}")
-        policies.append(core.revision_policy(config))
-        configs.append(config)
-    if policies[1:] != policies[:-1]:
-        raise ValueError("provider revision_policy values must match for comparison")
-    return policies[0], configs
+def load_policy(path: Path) -> tuple[dict, dict]:
+    """Load one routing file and the revision policy it declares.
+
+    Took a list until 2026-09-14, because two routing files had to agree on
+    `revision_policy` before their cohorts could be compared. With one bundle
+    the comparison is between tiers inside a single file, so the agreement
+    check had no second operand left - and an error branch nothing can reach is
+    a check that cannot fail.
+    """
+    config = core.load_config(path)
+    errors = core.check_revision_policy(config)
+    if errors:
+        raise ValueError(f"{path}: {'; '.join(errors)}")
+    return core.revision_policy(config), config
 
 
 def decision_eligible(record: dict, excluded: set[str]) -> bool:
@@ -311,7 +315,7 @@ def p_beats(a: dict, b: dict) -> float:
 
 
 def comparable_cost(rows: dict[str, dict], min_samples: int) -> list[str]:
-    """Return tie-break evidence only when every provider has the same scope."""
+    """Return tie-break evidence only when every candidate has the same scope."""
     evidence = []
     for field, coverage, label, unit in (
         ("avg_total_secs", "total_secs", "end-to-end", "s"),
@@ -338,50 +342,75 @@ def comparable_cost(rows: dict[str, dict], min_samples: int) -> list[str]:
     return evidence
 
 
-def hints(route_stats: dict, current_routes: dict, min_samples: int,
-          prefer_p: float, excluded: set[str]) -> tuple[dict[str, str], set[str]]:
+def hints(route_stats: dict, config: dict, provider: str, min_samples: int,
+          prefer_p: float, excluded: set[str],
+          profile_name: str | None = None) -> tuple[dict[str, str], set[str]]:
     """Return one hint per cohort, plus the cohorts that only lack data.
 
     The second value separates "keep collecting" from "route differently".
     Both belong in the human report, but only the latter is worth waking an
     unattended consumer for: a cohort exists per role x class, so an
     insufficient-data hint would never clear.
+
+    The axis is `model/effort` within one provider (2026-09-14). It was the
+    provider itself while two bundles shipped, and keeping that axis after one
+    was retired would have put a permanent `explore codex` on every cohort -
+    a finding nobody is being asked to act on, which is the standing-alarm
+    failure this repo rules against elsewhere. The statistics are unchanged:
+    the same weighted rows, the same `p_beats`, the same comparable-cost
+    tie-break. Only the thing being compared moved, from "which provider wins
+    this cohort" to "which tier does", which is the choice that still gets made.
+
+    Candidates are the tiers actually observed for the cohort, not the ones a
+    profile could name: a route nobody has run has no evidence to rank. A
+    suggestion is additionally held to the role's quality floor, so a cheap tier
+    cannot be recommended into a role the config puts above it.
     """
     cohorts = {
         (key[0], key[1]) for key in route_stats
-        if key[1] not in excluded
+        if key[1] not in excluded and key[2] == provider
     }
+    floor_profile = profile_name or config.get("selection", {}).get("default")
 
     result = {}
     insufficient = set()
     for role, task_class in sorted(cohorts):
         key = f"{role}/{task_class}"
-        providers = {}
-        missing = []
+        tiers = {}
         under = []
-        for provider in PROVIDERS:
-            route = current_routes.get((provider, role.lower()))
-            if route is None:
-                missing.append(provider)
+        for stat_key, row in route_stats.items():
+            if stat_key[:3] != (role, task_class, provider):
                 continue
-            profile, model, effort = route
-            row = route_stats.get(
-                (role, task_class, provider, profile, model, effort)
-            )
-            if row is None:
-                missing.append(provider)
+            route_profile, model, effort = stat_key[3], stat_key[4], stat_key[5]
+            if profile_name and route_profile != profile_name:
+                continue
+            if row["AR"] is None:
+                continue
+            label = f"{model}/{effort}"
+            if row["n"] < min_samples:
+                under.append(label)
+                continue
+            if floor_profile and core.route_floor_error(
+                    config, floor_profile, role.lower(), model, effort,
+                    context=f"task_class={task_class}"):
+                continue
+            tiers[label] = row
+        if len(tiers) < 2:
+            # Two different shortages, and saying "n<min" for both would be
+            # false half the time: a lone tier at n=min is fully sampled and
+            # still uncomparable, because ranking needs something to rank it
+            # against.
+            observed = f"; also observed {', '.join(sorted(under))}" if under else ""
+            if tiers:
+                detail = (f"only {', '.join(sorted(tiers))} reaches "
+                          f"n>={min_samples}{observed}")
             else:
-                providers[provider] = row
-                if row["n"] < min_samples:
-                    under.append(provider)
-        if missing or under:
-            result[key] = (
-                f"explore {', '.join(sorted(set(missing + under)))} "
-                f"(comparable n<{min_samples})"
-            )
+                detail = (f"no tier reaches n>={min_samples}"
+                          f"{observed or ''}")
+            result[key] = f"explore a second tier: {detail}"
             insufficient.add(key)
             continue
-        ranked = sorted(providers.items(), key=lambda item: -item[1]["AR"])
+        ranked = sorted(tiers.items(), key=lambda item: -item[1]["AR"])
         (best, best_row), (runner, runner_row) = ranked[:2]
         probability = p_beats(best_row, runner_row)
         if probability >= prefer_p:
@@ -403,19 +432,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--claude-config", type=Path,
                         default=bundle("claude") / "model-routing.toml")
-    parser.add_argument("--codex-config", type=Path,
-                        default=bundle("codex") / "model-routing.toml")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--profile", default=None,
-                        help="evaluate hints against this profile's routes on both "
-                             "providers instead of each selection.default")
+                        help="rank only the tiers this profile names, instead of "
+                             "every tier the cohort has records for")
     parser.add_argument("--now", default=None, help="ISO timestamp override (tests)")
     args = parser.parse_args()
 
     try:
-        policy, configs = load_shared_policy([args.claude_config, args.codex_config])
+        policy, config = load_policy(args.claude_config)
     except (OSError, core.tomllib.TOMLDecodeError, ValueError) as error:
-        parser.error(f"cannot load shared revision policy: {error}")
+        parser.error(f"cannot load the revision policy: {error}")
     days = policy["days"]
     min_samples = policy["min_samples"]
     half_life = policy["half_life_days"]
@@ -430,17 +457,11 @@ def main() -> int:
     records, unusable = load(path, now - timedelta(days=days))
     stats = summarize(records, now, half_life, excluded)
     route_stats = summarize(records, now, half_life, excluded, by_route=True)
-    current_routes = {}
-    for provider, config in zip(PROVIDERS, configs):
-        profile = args.profile or config["selection"]["default"]
-        if profile not in config.get("profiles", {}):
-            parser.error(f"profile {profile!r} not defined for provider {provider}")
-        for role, route in core.leaf_routes(config, profile):
-            current_routes[(provider, role)] = (
-                profile, route["model"], route["effort"]
-            )
+    if args.profile and args.profile not in config.get("profiles", {}):
+        parser.error(f"profile {args.profile!r} is not defined")
     decisions, insufficient = hints(
-        route_stats, current_routes, min_samples, prefer_p, excluded
+        route_stats, config, HINT_PROVIDER, min_samples, prefer_p, excluded,
+        args.profile,
     )
     public = {key: {field: value for field, value in row.items()
                     if not field.startswith("_")}
