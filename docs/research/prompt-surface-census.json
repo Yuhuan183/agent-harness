@@ -31,13 +31,13 @@
           "words": 1176
         },
         {
-          "bytes": 6674,
-          "file_bytes": 7150,
-          "file_sha256": "90f7aa65ae2fe87fd2af93e274f00625ceac74826172b8854de6d9eb03349e87",
+          "bytes": 4811,
+          "file_bytes": 5284,
+          "file_sha256": "a6d15b889dad461c4e3cd9239f065f359ae7966112a5173f2a808a22b7474f34",
           "kind": "skill-body",
           "path": "main/claude/skills/experience-ledger/SKILL.md",
-          "sha256": "1d2dd79c0fa6be34502701834d1015a1e25f6b8237147795274a00214be8c55a",
-          "words": 906
+          "sha256": "e44078b11d8c4ca4f31fa753ce6e76ae3eeb59109b044cf59453ee3d422197f3",
+          "words": 645
         },
         {
           "bytes": 247,
@@ -120,13 +120,13 @@
           "words": 129
         },
         {
-          "bytes": 439,
-          "file_bytes": 7150,
-          "file_sha256": "90f7aa65ae2fe87fd2af93e274f00625ceac74826172b8854de6d9eb03349e87",
+          "bytes": 436,
+          "file_bytes": 5284,
+          "file_sha256": "a6d15b889dad461c4e3cd9239f065f359ae7966112a5173f2a808a22b7474f34",
           "kind": "skill-metadata",
           "path": "main/claude/skills/experience-ledger/SKILL.md",
-          "sha256": "0dd12f3a6c64ddc30242294b36e5114a46ea13824655a4ed1bb427a24f8ab366",
-          "words": 68
+          "sha256": "0c553dcc850dad2e0a3cdbe726aac72c5e9e3ec047410748ec4e9cd0d4938ea5",
+          "words": 70
         },
         {
           "bytes": 437,
@@ -301,14 +301,14 @@
   "totals": {
     "claude": {
       "dispatch": {
-        "bytes": 44622,
-        "payload_sha256": "3948a904142d99bfde5032954ff1ffb7cb637afb754e372721d4753646b70ebe",
-        "words": 7637
+        "bytes": 42759,
+        "payload_sha256": "c9293583873197ac2e30835c67f66af2fbdea2c9c75984e28e8c25a14971e901",
+        "words": 7376
       },
       "resident": {
-        "bytes": 9341,
-        "payload_sha256": "16be4cfd41b5c221a7c2333d6def6a1390c316100f256d4d8abe1bb67b4ff152",
-        "words": 1619
+        "bytes": 9338,
+        "payload_sha256": "fe131a3b78588983cd618c727a634f28155addd96e8057a984d17a2c3e583b64",
+        "words": 1621
       },
       "roles": {
         "bytes": 10690,

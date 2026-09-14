@@ -232,7 +232,7 @@ def summarise_stale_dispatches(stale) -> str:
         "un-reconciled dispatches (launched or completed but never "
         "logged to the experience ledger; log with experience-log "
         "--from-pending --dispatch-id <id> --outcome <o>, or retire a "
-        "native Codex launch that never ran with experience-stage "
+        "staged launch whose leaf never ran with experience-stage "
         "--cancel)"
     )
     if len(ids) <= STALE_DISPATCH_SAMPLE:

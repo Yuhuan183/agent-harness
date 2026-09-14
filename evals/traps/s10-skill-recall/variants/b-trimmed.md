@@ -22,9 +22,9 @@ Establish that a technical claim is true — pick the cheapest sufficient level 
 
 ## experience-ledger
 
-Dispatch experience ledger and analysis — log each outcome after QC, accumulate role × provider metrics (AR/CR/RB/FR/QS), and steer data-driven provider choice.
-觸發：記錄派工結果、依經驗選 provider、看派工指標、"log this dispatch"、"which provider is winning"。
-不觸發：派工決策本身（baton-dispatch）、provider 規則（provider-routing）、token 用量分析（usage-report）。
+Dispatch experience ledger and analysis — log each outcome after QC, accumulate role × task-class metrics (AR/CR/RB/FR/QS), and steer data-driven route choice.
+觸發：記錄派工結果、依經驗選 model/effort、看派工指標、"log this dispatch"、"which route is winning"。
+不觸發：派工決策本身（baton-dispatch）、路由規則（provider-routing）、token 用量分析（usage-report）。
 
 ## headroom-protocol
 

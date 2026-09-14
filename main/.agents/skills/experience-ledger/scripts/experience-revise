@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Config-driven, cohort-safe routing revision suggestions.
 
-Each provider's `revision_policy` supplies the sampling window, minimum sample
-count, decay, posterior threshold, cohort fields, and excluded task classes.
+The routing file's `revision_policy` supplies the sampling window, minimum
+sample count, decay, posterior threshold, cohort fields, and excluded task
+classes.
 Suggestions compare model/effort cells only inside the same
 profile/role/task_class and never edit routing files.
 """
