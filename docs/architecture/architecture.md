@@ -18,6 +18,36 @@
 都有一節「還沒貼合的部分」, 寫的是已知的落差, 不是待辦清單. 收斂是慢慢靠攏, 不是一次
 重排.
 
+## 〇. 一頁看完
+
+只畫關係與擁有者, 細節一律在下面各節 —— 這一格不重述任何東西, 它的用途是讓人知道**該往哪一節去**.
+
+```text
+  agent-harness (git) ── 唯一真相源
+       │
+       ├── deployment-manifest.tsv ──→ ① HOME            跟著「人」走 · 動詞
+       │      scripts/sync.sh              ~/.claude ~/.codex ~/.agents
+       │                                    契約 · 角色 · skill · hook
+       │
+       └── project-manifest.tsv ─────→ ② 另一個 repo      跟著「repo」走 · 事實
+              scripts/project-init.py      <repo>/CLAUDE.md · AGENTS.md
+                                           圍欄區塊, 團隊原文不動
+
+       ① 與 ② 一起進同一個 session 的 context
+                    │
+                    ▼
+        Main session ──→ 派工煞車 ──→ leaf ──→ QC ──→ ledger
+             ▲                                            │
+             └──────────── routing 修正 (人核准才改) ←──────┘
+```
+
+**歸屬只要問一句: 這句話換一個 repo 還成立嗎.** 成立的是動詞, 走 ①; 不成立的是事實, 走 ②.
+這條線由測試守住, 不靠自律 (見[第一節](#一-完整資料流)末段).
+
+往下讀: 資料流的細節與回饋邊在[第一節](#一-完整資料流); 四層與量它們的儀器在
+[第三節](#三-四層地圖); 怎麼實際部署在 [setup](../setup.md); 專案層為什麼只放事實,
+以及它量到與沒量到什麼, 在[專案層計畫](../plans/project-layer-plan.md).
+
 ## 一. 完整資料流
 
 ```mermaid
