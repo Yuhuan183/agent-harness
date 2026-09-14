@@ -291,7 +291,7 @@ flowchart LR
 
 範圍限制是開跑前寫死的, 要連著讀: 兩格都在**小 workdir, 任務點名了輸入路徑, 規則檔離一次列目錄
 只有一步**的條件下量的, 推不到真實 repo 的幾百個檔 —— 那個條件這兩個 fixture 複製不了.
-讀數與推翻過程在 [lifecycle-replay](../research/lifecycle-replay.md).
+讀數與推翻過程在 [carrier-evidence](../research/carrier-evidence.md).
 
 **還有一條軸不在這張表上, 刻意的.**「這個缺陷本來該在哪一級被擋」(文件 / 架構 / 部署前 / 執行期 /
 測試 / 審查) 排的是**缺陷在生命週期的哪一階段被攔下**, 這張表排的是**強制力與可觀測性**. 同一個機制

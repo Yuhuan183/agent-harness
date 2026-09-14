@@ -18,6 +18,42 @@
 本檔 2026-09 起, [`landing-log-2026-08.md`](landing-log-2026-08.md) 是 08-20 至 08-31,
 [`landing-log-earlier.md`](landing-log-earlier.md) 是 08-04 至 08-14.
 
+#### 2026-09-14 四件掛帳清掉, 而三件的病因與標題寫的不一樣
+
+| 掛帳 | 表象 | 真正的病因 |
+|---|---|---|
+| routing 三條 WARNING | 路由要調 | 警報疲勞: 三條都已裁決, 且永遠不會被行動 |
+| `experience-ledger` 979/980 | 超一個字 | Codex 退場沒收乾淨, 含兩條已經是假的宣稱 |
+| `lifecycle-replay` 19,670/20,000 | 快爆了 | 照閘的註解拆檔; 這是同一道閘第四次 |
+| `c1` 未開跑 | 還沒跑 | 儀器要先證明會響, 而開跑是花錢的決定 |
+
+**警報要能被承認, 但承認本身要脆弱.** `validate` 每次 sync 與每週檢查都印同樣三條 (support 與
+judgment 最低分同為 52.46, 加 6 條沒有分段分數的核准路由). 三條在 `quality_floor.notes` 裡早就
+各自裁決過, 也都是使用者擁有的路由決定 —— 也就是永遠不會被行動的警報, 而永遠亮著的燈會教人跳過新的
+那一條. 所以處置不是改路由, 是讓設定檔逐字引用警報原文去承認它, 印成 `NOTE (acknowledged)`.
+逐字是刻意的脆弱: 加一條 rung, 或 benchmark refresh 把 52.46 挪走, 文字就對不上, 警報自己回來.
+反向則是 ERROR 而不是 WARNING —— 承認一條不再發生的發現, 等於設定檔對自己的證據說謊, 那比原本的
+噪音嚴重.
+
+**這個改動會打開一個洞, 而它是既有測試抓到的, 不是我先想到的.** sync 的 preflight 只 forward
+`^WARNING: `, 所以改完之後三條發現會整批從部署閘消失 —— 正是 2026-07-30 修過的那個缺陷 (finding
+存在, 但沒有任何人會跑的指令印它) 換個名字回來. preflight 改成兩種嚴重度都 forward.
+
+**ledger 那一個字底下是兩條假宣稱.** SKILL.md 還在教 bridge 怎麼記帳, native Codex 怎麼自己 stage
+carrier, 並說「兩份 `model-routing.toml` 的 `revision_policy` 必須一致」—— 09-14 換軸之後只剩一份
+檔案, 這句已經是假的. 刪掉無人能執行的指令並修掉過期宣稱之後是 718/980, 不是靠削形容詞擠出來的.
+同批修了 `experience-report` 與 `experience-revise` 的 docstring, `metrics.md` 的來源混樣本那條,
+以及 `main/project/README.md` 的全域層括號.
+
+**刻意留下的**: `experience-stage` 與 `codex-usage` 兩支程式沒刪, 歷史列照樣讀得到 —— 與 09-14
+那一刀同一條規則, 退掉可部署面與指令面, 留下紀錄與讀取器. `weekly-integrity` 仍然會叫人跑
+`experience-stage --cancel`, 只是訊息不再說那是 native Codex 專用.
+
+**拆檔挑的那條縫.** 載體那條線 (`p2` 專案事實區塊, `y2` skill 對檔案, 共 5,514 字) 搬到
+`carrier-evidence.md`, 主檔剩 14,156. 挑這條的理由是兩格問的是同一件事 —— 換掉裝同樣的字的容器,
+行為會不會變 —— 而且兩格都已依規則停在先導, 是一條有頭有尾的探問. 標題與錨點原樣搬過去, 所以六處
+連結只換檔名 (其中四處帶錨點).
+
 #### 2026-09-10 計畫層收斂: 三份已結案文件退場, 現行內容各回擁有者
 
 深度 review 量到現行指引層 (`docs/*.md`, `docs/plans/*.md`, `docs/research/README.md`)
@@ -126,7 +162,7 @@ speak-human-tw 第五輪機器人, rebelytics 3.0→3.1; sepia 出 v0.7.0; clien
 
 #### 2026-09-11 專案層 P5a: 登記與儀器落地, 停在開跑前
 
-事前登記在 [lifecycle-replay](lifecycle-replay.md#專案事實區塊有沒有用--2026-09-11-事前登記-未開跑),
+事前登記在 [carrier-evidence](carrier-evidence.md#專案事實區塊有沒有用--2026-09-11-事前登記-未開跑),
 儀器是 `y1-project-facts` / `y1x-project-bare` 兩支情境. 一個 run 都沒跑 —— 花錢的決定要使用者點頭.
 
 **上一則說的量測對象換了, 理由記在這裡.** P2 寫「sdk 那份剛好是乾淨的量測對象」, 而 P5a 沒有在

@@ -174,6 +174,7 @@ v1.3.5 到 v1.3.10 的增量:
 | [lifecycle-replay.md](lifecycle-replay.md) | replay 的四項存活判準, 生命週期問題與結論, 以及各格的事前登記 |
 | [injection-position.md](injection-position.md) | 矛盾指令從哪個位置送進去會贏, 對比強度能不能調; 兩輪都已結案, 2026-09-11 依 `DOC_SPRAWL_CEILING` 的處置從 lifecycle-replay 拆出 |
 | [clause-pricing.md](clause-pricing.md) | 能不能用產出品質給常駐子句定價 |
+| [carrier-evidence.md](carrier-evidence.md) | 載體換掉行為會不會變: 專案事實區塊 (`p2`) 與 skill 對檔案 (`y2`); 兩格都停在先導, 都沒量到差. 2026-09-14 依 `DOC_SPRAWL_CEILING` 的處置從 lifecycle-replay 拆出 |
 | [landing-readiness.md](landing-readiness.md) | 全語料盤點: 21 份研究文合起來說現在該落地什麼 |
 | [mechanism-evidence-map.md](mechanism-evidence-map.md) | 機制側盤點: 115 個機制各自站在什麼證據上, 誰在盯它不過期; 最大缺口是 52 個 eval 情境無一瞄準 gate 層 |
 | [wording-effect-scale.md](wording-effect-scale.md) | 措辭效應能不能外推, 與量它的 INTENT 連續尺 |
