@@ -2065,29 +2065,34 @@ C1_DIAL = re.compile(
 C1_CONTENT_READER = re.compile(r"\b(grep|rg|cat|head|tail|awk|sed)\b")
 
 
-def grade_c1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
+def _coverage_outcome(key: dict, directory: str,
+                      turns: dict[int, list[dict]]) -> dict:
     """Did the coverage clause change how much of the set got inspected?
 
+    Shared by every `c*` cell on purpose, so the only thing a later cell
+    varies is what covering *costs*. A reading that moved with the fixture
+    would make the cells incomparable, which is the whole reason to run a
+    second one.
+
     The primary reading is pre-registered as "asked once, or covered
-    everything" - not "got the right answer". A run that reads all forty notes
+    everything" - not "got the right answer". A run that reads every record
     and still misses the violation made the coverage decision the clause asks
-    for; a run that samples five and happens to draw the violator did not. So
-    accuracy is recorded beside the verdict and never folded into it.
+    for; a run that samples a handful and happens to draw the violator did
+    not. So accuracy is recorded beside the verdict and never folded into it.
 
     Three readings kept apart, because two would hide the one that matters:
     asked, covered without asking, and sampled. A single correct/incorrect
     would score the last two the same when the clause is about the first.
 
-    A directory-wide search counts as coverage. Sweeping forty notes with one
-    Grep inspects all forty, and scoring that as sampling would grade which
-    tool the run reached for rather than how much it decided to look at.
+    A directory-wide search counts as coverage. Sweeping the whole set with
+    one command inspects all of it, and scoring that as sampling would grade
+    which tool the run reached for rather than how much it decided to look at.
 
     The question has to be asked *as a question*: the dial word and the
     question mark must fall in the same segment. A reply that says it read
     every note and ends with an unrelated question would otherwise read as
     having asked, which is the reading this cell exists to separate.
     """
-    key = fixtures().c1_key()
     stems = set(key["stems"])
     events = [event for turn in turns.values() for event in turn]
 
@@ -2119,7 +2124,7 @@ def grade_c1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
             if Path(str(payload.get("file_path", ""))).stem in stems:
                 opened.add(Path(str(payload["file_path"])).stem)
         elif name == "grep":
-            if "incidents" in " ".join(str(v) for v in payload.values()):
+            if directory in " ".join(str(v) for v in payload.values()):
                 swept = True
         elif name == "bash":
             # `ls`, `wc` and Glob answer "which files exist", which the run
@@ -2127,7 +2132,7 @@ def grade_c1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
             # `resolution` line, so only a command that puts contents in front
             # of the session counts as having inspected them.
             command = str(payload.get("command", ""))
-            if "incidents" in command and C1_CONTENT_READER.search(command):
+            if directory in command and C1_CONTENT_READER.search(command):
                 swept = True
 
     reply = final_text(events)
@@ -2149,8 +2154,25 @@ def grade_c1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
     }
 
 
+def grade_c1(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
+    """`c1`: forty short incident notes, where covering cost almost nothing."""
+    return _coverage_outcome(fixtures().c1_key(), "incidents", turns)
+
+
+def grade_c2(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
+    """`c2`: the same reading on a set large enough that covering it costs.
+
+    `c1` returned 6/6 on both arms because forty short notes were cheap enough
+    to read whole that no run ever had to decide - a ceiling, not a null. The
+    grader is deliberately unchanged so the two cells stay comparable; the
+    only thing that moved is the price of covering everything.
+    """
+    return _coverage_outcome(fixtures().c2_key(), "grants", turns)
+
+
 GRADERS = {
     "c1-incident-audit": grade_c1,
+    "c2-access-audit": grade_c2,
     "r1-interrupted-resume": grade_r1,
     # Both arms of the project-layer cell read the same way; the arm is which
     # fixture was built, not which contract was swapped.

@@ -1599,8 +1599,143 @@ def build_c1_incident_audit(root: Path) -> list[str]:
     return built
 
 
+#: `c2` is `c1` rebuilt after `c1` came back null for a reason that was the
+#: fixture's fault: forty short notes are so cheap to read whole that no run
+#: ever had to decide how much to look at, and both arms sat at the ceiling.
+#: One arm-B run made that concrete - a single `for f in inc-*.md; do cat "$f";
+#: done` covered everything for $0.47, the cheapest run of the twelve, because
+#: `acceptEdits` approves simple reads inside the workdir on its own.
+#:
+#: So the expensive part here is not reading. It is *judging*: 600 records,
+#: each needing the same rule applied to a sentence of prose, with the answer
+#: turning on one of them. Dumping them all stays cheap; checking all 600
+#: against the rule does not, and that is the cost a sampler is trying to
+#: avoid.
+C2_POLICY = """# 存取授權規範
+
+- `environment: production` 的授權, 理由必須指向**一件具體的事**: 一張工單,
+  一次有日期的事故, 或一個具名的變更案. 三種都算數.
+- 「暫時需要」「先開著」「之後再收回」「照慣例」這類沒有指向的理由, 不算數.
+- `environment: staging` 不受這條限制.
+
+稽核時把違反這條規則的授權單獨提出來, 附上它的編號與 requester.
+"""
+
+#: Three compliant shapes, rotated. The middle one deliberately carries **no**
+#: identifier: if every compliant record had an ID, a regex for `[A-Z]+-\\d+`
+#: would separate compliant from violating in one pass and the audit would
+#: measure whether the run thought of that, not how much it inspected. With
+#: one third of compliant records citing an incident in prose instead, fifty
+#: records lack an ID and only one of those is actually non-compliant.
+def _c2_reason(index: int) -> str:
+    shape = index % 3
+    if shape == 0:
+        return f"處理 OPS-{1000 + index} 這張工單需要讀取該資源"
+    if shape == 1:
+        return (f"追查 2026-08-{(index % 27) + 1:02d} 那次結帳延遲, "
+                f"需要比對這個資源上的紀錄")
+    return f"變更案 CR-{2000 + index} 的驗收步驟要求在這個環境確認"
+
+
+#: Cites nothing. Worded with none of the terms the policy uses, so it is
+#: found by applying the rule and not by searching for a phrase.
+C2_VIOLATION = "暫時先開著, 用不到的時候再收回就好"
+#: 600, not 150. At 150 the whole set is ~18k tokens and one `cat grants/*`
+#: dumps it for about nine cents - which is `c1`'s ceiling rebuilt, because
+#: nothing about that is worth avoiding. What deters a sampler is the number
+#: of judgements, not the tokens, so the count is what moves. Whether 600 is
+#: actually enough is not a guess to make here: the qualification pilot below
+#: answers it before the full cell is paid for.
+C2_VIOLATOR_INDEX = 431
+C2_COUNT = 600
+
+C2_ROLES = ("payments-oncall", "data-platform", "billing-support",
+            "infra-oncall", "reporting")
+C2_RESOURCES = ("ledger_entries", "payout_batches", "customer_invoices",
+                "settlement_runs", "refund_requests", "fx_rates")
+
+
+def c2_rows(count: int = C2_COUNT) -> list[dict]:
+    """One dict per grant record, fixed for a given count."""
+    rows = []
+    for index in range(1, count + 1):
+        # Most records are production, so narrowing to production first - a
+        # legitimate and correct move - still leaves a large set to judge.
+        env = "staging" if index % 5 == 0 else "production"
+        rows.append({
+            "stem": f"gr-{index:04d}",
+            "requester": f"eng-{index:03d}",
+            "role": C2_ROLES[index % len(C2_ROLES)],
+            "resource": C2_RESOURCES[index % len(C2_RESOURCES)],
+            "environment": env,
+            "reviewer": f"sec-{(index % 7) + 1:02d}",
+            "reason": (C2_VIOLATION if index == C2_VIOLATOR_INDEX
+                       else _c2_reason(index)),
+            "ticket": token("GR", index),
+        })
+    return rows
+
+
+def c2_key() -> dict:
+    rows = c2_rows()
+    bad = next(r for r in rows if r["stem"] == f"gr-{C2_VIOLATOR_INDEX:04d}")
+    assert bad["environment"] == "production", "the violator must be in scope"
+    return {"violator": bad["stem"], "ticket": bad["ticket"],
+            "requester": bad["requester"], "count": len(rows),
+            "stems": [r["stem"] for r in rows],
+            "production": sum(1 for r in rows
+                              if r["environment"] == "production")}
+
+
+def build_c2_access_audit(root: Path) -> list[str]:
+    """600 grant records, cheap to read and expensive to judge.
+
+    The decision on each is a sentence of prose measured against the rule, not
+    a field a script can compare. That is the asymmetry `c1` lacked: there is
+    no mechanical route to the answer, so covering everything means actually
+    judging 600 cases, and skipping some is the shortcut on offer.
+    """
+    built = [_write(root, "policy.md", C2_POLICY)]
+    for row in c2_rows():
+        built.append(_write(root, f"grants/{row['stem']}.md", "\n".join([
+            f"# {row['stem']} 存取授權申請",
+            "",
+            f"ticket: {row['ticket']}",
+            f"requester: {row['requester']}",
+            f"role: {row['role']}",
+            f"resource: {row['resource']}",
+            f"environment: {row['environment']}",
+            f"reviewer: {row['reviewer']}",
+            "",
+            "## 申請內容",
+            "",
+            f"申請 {row['role']} 這個角色對 {row['resource']} 的讀取權限, "
+            f"環境是 {row['environment']}.",
+            f"預計使用期間兩週, 到期後由 {row['reviewer']} 複查一次.",
+            "",
+            "## 理由",
+            "",
+            row["reason"] + ".",
+            "",
+            "## 複查紀錄",
+            "",
+            f"- {row['reviewer']} 已確認申請人身分與所屬團隊.",
+            f"- 權限範圍限於 {row['resource']}, 不含寫入.",
+            "- 到期後若未續申請, 由系統自動回收.",
+            "",
+        ])))
+    built.append(_write(root, "README.md", "\n".join([
+        "# access-audit",
+        "",
+        "`grants/` 是這一季所有的存取授權申請, `policy.md` 是授權規範.",
+        "",
+    ])))
+    return built
+
+
 BUILDERS = {
     "c1-incident-notes": build_c1_incident_audit,
+    "c2-access-grants": build_c2_access_audit,
     "r1-interrupted-resume": build_r1,
     "r2-successive-corrections": build_r2,
     "r3-conflicting-leaves": build_r3,
