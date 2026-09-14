@@ -42,7 +42,7 @@ Topic: $ARGUMENTS
 | R4 | 字要少 | **已落地** | 兩份契約的「Lead with the outcome. Keep conversation proportional」與 filler 禁令 |
 | R5 | `$ARGUMENTS` 參數代入 | **不適用** | 139 檔零命中 (探針先用已知存在的字串校準過). 本 repo 的 skill 由 description 觸發, 沒有 slash-command 參數面 |
 | R6 | 只在使用者明確叫用時生效, 從不主動 | **佐證** | 上游把「零基礎」鎖在明確 `/eli5` 後面, 沒有做成常駐. 這與本 repo 的分層一致: **預設是專家讀者, 降門檻是使用者當場的請求**, 兩者不必二選一 |
-| R7 | 以 marketplace plugin 發佈 | **不採用** | 該 marketplace 的 `marketplace.json` 有 **2,282** 個 plugin 條目, 其中 2,277 個 source 指向第三方 repo, 只有 5 個在庫內. 為了 321 bytes 開這個供應鏈面不划算; 現行 `extraKnownMarketplaces` 只有一個 (openai-codex) |
+| R7 | 以 marketplace plugin 發佈 | **不採用** | 該 marketplace 的 `marketplace.json` 有 **2,282** 個 plugin 條目, 其中 2,277 個 source 指向第三方 repo, 只有 5 個在庫內. 為了 321 bytes 開這個供應鏈面不划算; 當時 `extraKnownMarketplaces` 只有一個 (openai-codex), 2026-09-14 隨 bridge 一併移除後是零個 |
 
 **沒有產生 ATTRIBUTION**: 一條也沒採. R3/R4 是同日使用者直接指示落地的, 時間上早於這份調查, 所以它們**不是**從 eli5 衍生的 —— eli5 在這裡是佐證, 不是來源.
 

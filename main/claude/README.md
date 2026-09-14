@@ -14,7 +14,7 @@
 | `CLAUDE.contract.md` | Claude Code 執行契約源檔 (部署為 `~/.claude/CLAUDE.md`; 改名避免本 repo 內 session 重複載入); 僅主 agent 使用的精簡協調規則 |
 | `agents/` | 七個自足的 Claude leaf roles; model 與 effort 由 active deployment preset 的 frontmatter pins 決定; 各有 Codex 對應版於 `../.codex/agents/` |
 | `skills/` | 依需求載入的工作流源檔 (部署為 `~/.claude/skills/<name>`); 哪一支放哪裡見[下一節](#skills-的三種佈局) |
-| `settings.json` | Hooks, 最小唯讀 allowlist, codex plugin (唯一強依賴) 與介面設定; 不指定主模型, effort 或 fallback. 其他 plugin 屬本機自理, enable 寫 `settings.local.json` (不入庫, sync 不覆蓋) |
+| `settings.json` | Hooks, 最小唯讀 allowlist 與介面設定; 不指定主模型, effort 或 fallback. plugin 一律屬本機自理, enable 寫 `settings.local.json` (不入庫, sync 不覆蓋) |
 | `examples/headroom-mcp.legacy.json` | 舊版 MCP 宣告範例, 僅供不支援 Headroom installer 的環境參考; 一般安裝使用 `headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787` |
 | `hooks/`, `scripts/`, `sh/` | 監控, 用量診斷, 路由檢核 (`scripts/model-routing`), 執行版本防護, 紅測試 commit 閘 (`hooks/commit-test-gate.py` 配 `githooks/pre-commit`, 逃生口 `AGENT_SKIP_TEST_GATE=1`; `--no-verify`/`-c core.hooksPath=…` 這類自行停用 hook 的殘餘留給 CI) 與 statusline |
 | `prompts/` | Claude App 與 Cowork 可直接貼用的配置 |

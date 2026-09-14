@@ -49,8 +49,8 @@ skill 與清單本身, 但保留 `~/.agents/skills/` 中其他第三方 skill; w
 
 ## 新機器 bootstrap (前置依賴)
 
-sync 之前, 先確認以下工具鏈到位; 除 codex plugin 外, 其他 plugin/第三方 skill
-一律視為本機自理, 不由本 repo 管理.
+sync 之前, 先確認以下工具鏈到位; plugin 與第三方 skill 一律視為本機自理,
+不由本 repo 管理.
 
 ```bash
 # 0. Python >= 3.11 (routing 工具鏈與測試使用 stdlib tomllib;
@@ -68,12 +68,9 @@ brew install rtk ripgrep         # hook 依賴; 未裝時 fail-open, 可後補
 curl -LsSf https://astral.sh/uv/install.sh | sh   # headroom CLI 由 uv tool 管理
 uv tool install headroom-ai      # 詳見 ~/.agents/docs/headroom-runtime.md
 # Claude Code 與 Codex CLI 依官方文件安裝 (本 repo 不管理其版本)
-
-# 2. 唯一強依賴的 Claude plugin: codex (marketplace 已由 settings.json 帶入)
-claude plugin install codex@openai-codex
 ```
 
-- **其他 Claude plugins** (figma, warp, ui-ux-pro-max…): 非本 repo 依賴. 要用的話
+- **Claude plugins** (figma, warp, ui-ux-pro-max…): 本 repo 不依賴任何 plugin. 要用的話
   自行安裝, 並把 enable 設定寫在 `~/.claude/settings.local.json`. `settings.json` 會以
   ownership-aware `merge-json` 更新 repo 擁有的 hook group, 其他 top-level key 與第三方
   group 會保留; 本機偏好仍建議放 `settings.local.json` (不入庫, 不同步).

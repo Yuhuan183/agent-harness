@@ -155,16 +155,5 @@
     "type": "command",
     "command": "~/.claude/sh/statusline.sh",
     "padding": 2
-  },
-  "enabledPlugins": {
-    "codex@openai-codex": true
-  },
-  "extraKnownMarketplaces": {
-    "openai-codex": {
-      "source": {
-        "source": "git",
-        "url": "https://github.com/openai/codex-plugin-cc.git"
-      }
-    }
   }
 }
