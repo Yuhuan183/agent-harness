@@ -285,7 +285,20 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         # only asserts which generation that is, and `experience-log` copies
         # that assertion into the ledger. Behavioral proof with a planted stale
         # generation — an unfalsifiable assertion is not a check.
-        after = "2026-08-14T00:00:00Z"
+        # Relative to today, never a fixed date. This line read
+        # "2026-08-14T00:00:00Z" until 2026-09-14, when the suite went red with
+        # nothing in the repository changed: `check-aliases` caps its scan at
+        # `--max-days` (default 30), so a transcript stamped at `as_of` drops
+        # out of the window the day `as_of` turns thirty-one days old, and the
+        # planted drift stops being visible at all. The assertion was measuring
+        # the calendar rather than the checker - the shape this test's own
+        # comment calls an unfalsifiable assertion, arrived at by ageing.
+        #
+        # Confirmed rather than reasoned: the checker was run twice on
+        # transcripts identical except for the timestamp. The 2026-08-14 stamp
+        # exited 0 with "no leaf transcripts since as_of"; a fresh stamp exited
+        # 1 with the drift message. The checker was never wrong.
+        after = f"{date.today() - timedelta(days=1)}T00:00:00Z"
 
         def check(model: str, timestamp: str = after) -> subprocess.CompletedProcess:
             with tempfile.TemporaryDirectory() as temp_dir:
