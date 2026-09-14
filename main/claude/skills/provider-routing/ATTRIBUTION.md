@@ -49,6 +49,13 @@ fallback; the independence rule for which provider verifies; the provider
 extension protocol; route evidence and the ledger tie-in. Upstream is
 single-provider and has no provider fallback or cost ranking at all.
 
+Five of those were retired on 2026-09-14 with the Claude→Codex bridge: the
+bridge resolution procedure, cross-provider fallback, the independence rule,
+the provider extension protocol, and CP-first provider choice. They are listed
+above as written, because this file records what was distilled and from where,
+not what currently ships; the repository is single-provider again, which is the
+shape upstream had all along.
+
 ## The role files, traced 2026-09-10
 
 The line that stood here said the seven role files under `main/claude/agents/`

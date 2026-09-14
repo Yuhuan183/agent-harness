@@ -115,9 +115,9 @@ ROLE_FILLER_RANGE = (0.17, 0.32)
 PINNED_EFFORT_ROLES = ROLES
 FOLLOW_EFFORT_ROLES = ()
 
-# Interface tokens: single upgrade point — bump here and in the skill bodies together.
-CODEX_BRIDGE = "codex:codex-rescue"
-DISPATCH_OPTIONS = ("Dispatch GPT + Claude", "Dispatch GPT", "Dispatch Claude")
+# The Claude->Codex bridge interface tokens lived here (`codex:codex-rescue`
+# and the three-option dispatch gate) until 2026-09-14, when the route was
+# retired. Codex remains deployable as its own agent; nothing in Claude calls it.
 
 
 def read(path: str) -> str:

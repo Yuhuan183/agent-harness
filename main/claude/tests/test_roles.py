@@ -161,7 +161,7 @@ class AgentRosterTests(unittest.TestCase):
         self.assertIn("REFUTED", outcome)
         self.assertIn("INCONCLUSIVE", outcome)
         self.assertNotIn("READY", outcome)
-        self.assertIn('sandbox_mode = "read-only"', outcome)
+        self.assertIn("the exact missing check", outcome)
         self.assertIn("intermediate evidence", outcome)
         self.assertNotIn("Bash", frontmatter(".claude/agents/verifier.md"))
 
@@ -442,11 +442,6 @@ class LeafArtifactGateTests(unittest.TestCase):
         self.assertFalse((ROOT / "main/claude/hooks/readonly-bash.py").exists())
         for role in NO_WRITE_ROLES:
             self.assertNotIn("Bash", frontmatter(f".claude/agents/{role}.md"))
-
-    def test_bridge_brief_skeleton_carries_stops_and_authorization(self) -> None:
-        body = read(".codex/scripts/bridge-brief")
-        self.assertIn("Stops (append):", body)
-        self.assertIn("Authorization (append", body)
 
 
 if __name__ == "__main__":

@@ -1349,21 +1349,22 @@ class MachineStateHygieneTests(unittest.TestCase):
             "these documents enumerate the fail-closed gates but skip some; a "
             "partial inventory reads as a complete one")
 
-    def test_the_verifier_quota_docs_name_the_spelling_it_cannot_count(self) -> None:
-        """A quota that counts one provider's name has to say so where it is described.
+    def test_the_verifier_quota_counts_every_outcome_verifier_there_is(self) -> None:
+        """The disclosed hole is closed by subtraction, and that has to stay true.
 
-        `OUTCOME_VERIFIERS` keys on `subagent_type`, and the documented route for
-        a verdict that needs to run commands is a Codex `verifier` behind the
-        `codex:codex-rescue` bridge - a spelling the quota never counts. Three
-        docs disclosed the cross-prompt gap and not this one, so a reader could
-        take the gate for a per-task budget spanning both providers (2026-08-05
-        review).
+        `OUTCOME_VERIFIERS` keys on `subagent_type`. Until 2026-09-14 a Codex
+        `verifier` reached through the `codex:codex-rescue` bridge arrived under
+        the bridge's name, which covers every Codex role, so listing it would
+        have refused a second *implementation* dispatch in the same prompt. The
+        gate disclosed that gap instead of half-enforcing it, and three docs had
+        to name the uncounted spelling (2026-08-05 review).
 
-        Derived from the hook rather than pinned: adding the bridge name to the
-        tuple would close the gap and make the disclosure wrong, so this fails in
-        that direction too. Selects docs by markdown link to the hook - naming
-        the file in an inventory is not describing its scope, and only a
-        description can mislead about it.
+        Retiring the bridge removed the second spelling rather than widening the
+        key, so the disclosure is now the thing that would be wrong. This asserts
+        the state that replaced it: one counted spelling, and no doc describing
+        the quota still tells a reader there is a route it cannot see. It fails
+        in both directions - re-adding a second provider's name to the tuple, or
+        re-introducing the bridge into the prose, each breaks it.
         """
         source = read_repo("main/claude/hooks/verifier-quota.py")
         carrier = re.search(r"^OUTCOME_VERIFIERS = \(([^)]*)\)$",
@@ -1372,17 +1373,17 @@ class MachineStateHygieneTests(unittest.TestCase):
         self.assertEqual(
             set(re.findall(r"\"([^\"]+)\"", carrier.group(1))), {"verifier"},
             "the counted spellings changed; every doc describing the quota's "
-            "provider boundary has to move with it")
-        bridge = "codex:codex-rescue"
+            "scope has to move with it")
         describing = [path for path in tracked_markdown()
                       if re.search(r"\]\([^)]*hooks/verifier-quota\.py\)",
                                    read_repo(path))]
         self.assertGreaterEqual(len(describing), 2,
                                 "the quota's scope is documented somewhere")
         for path in describing:
-            assert_names(self, bridge, read_repo(path),
-                         f"{path}: describes the verifier quota without naming "
-                         f"{bridge}, the outcome-verifier route it cannot count")
+            self.assertNotIn(
+                "codex:codex-rescue", read_repo(path),
+                f"{path}: still describes the verifier quota as blind to a "
+                "bridge route that was retired on 2026-09-14")
 
     def test_every_copy_of_the_leaf_record_has_the_same_fields(self) -> None:
         """A fixed record format kept in three files is three formats.

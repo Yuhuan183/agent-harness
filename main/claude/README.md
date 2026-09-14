@@ -39,16 +39,13 @@
 
 ## 路由
 
-主模型與 effort 由使用者選擇; H/X 是建議組合, 不會自動切換. 跨 provider dispatch,
-fallback, role routing 與 verifier 觸發條件全部收斂在 `skills/provider-routing/`,
-按需載入. Claude 三個 profile 是 session/deployment preset, 不是 per-dispatch override; 以
+主模型與 effort 由使用者選擇; H/X 是建議組合, 不會自動切換. Role routing 與 verifier 觸發條件收斂在
+`skills/provider-routing/`, 按需載入. Claude 三個 profile 是 session/deployment preset, 不是 per-dispatch override; 以
 在 source checkout 用 `scripts/model-routing activate-profile --profile <name>` 一次更新全部
 frontmatter pins, review 後透過根目錄 `scripts/sync.sh --apply` 部署, 再開新 session. 該工具另
 提供 `validate`/`resolve`/`check-pins`/`check-aliases` (每週 integrity 會自動比對部署與
 source 漂移, 並以 leaf transcript 的真實 model id 驗證 `opus` 這類別名指向哪個世代);
-經 `codex:codex-rescue` 呼叫的 Codex twin 則必須先用
-`${CODEX_HOME:-$HOME/.codex}/scripts/model-routing resolve --surface claude-bridge`
-解析 per-dispatch profile, 不套用 Claude 的 frontmatter pin. 兩側各自的資料來源都只有一份.
+資料來源只有一份.
 
 ## 初始設定
 

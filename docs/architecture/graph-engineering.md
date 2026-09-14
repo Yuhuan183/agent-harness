@@ -96,7 +96,6 @@ flowchart TD
 | Main session | 使用者在 task/session 開始前選擇; 專案不會在執行中偷換模型 |
 | Claude named roles | deployment preset; 一次原子更新全部 frontmatter pins, 重新部署並開新 session |
 | Native Codex leaf | 每次派工由 resolver 回傳 model/effort/invocation |
-| Claude→Codex bridge | 每次派工以 `claude-bridge` surface 解析; 不套用 Claude pins |
 
 實際的 pin, effort 與 availability 證據在兩份 `model-routing.toml`; 選擇理由與數據口徑在
 [研究摘要](../research/README.md).

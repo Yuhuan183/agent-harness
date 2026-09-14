@@ -119,7 +119,7 @@ flowchart TB
    預設, 只有平行性, context 保護, fresh-context 獨立性或較低成本角色明顯值得開銷時才派工.
 2. **可調整但不漂移的 routing**: benchmark 只是外部先驗, 真正修正選擇的是本機經過 review
    的派工結果 — 而且改 preset 一定經人核准, 不在執行中偷換.
-3. **跨平台一致契約**: Claude, Codex 與 Claude→Codex bridge 用對應角色與相同品質語意.
+3. **跨平台一致契約**: Claude 與 Codex 用對應角色與相同品質語意.
 4. **可恢復的部署**: source 是真相源, 同步前 preflight, 套用後 parity, 回滾靠 git 重新部署.
 
 方法論本身 (為什麼常駐檔要瘦, 規則什麼時候該進契約 vs skill vs hook) 在

@@ -8,7 +8,7 @@ skills, routing 與監控機制納入 Git —— 讓全域 agent 配置可以 re
 
 - **品質優先的派工**: main 保留架構與最終判斷; leaf 只處理有界, 可驗收的工作.
 - **可調整但不漂移的 routing**: benchmark 只是先驗, 真正修正選擇的是本機經過 review 的派工結果.
-- **跨平台一致契約**: Claude, Codex 與 Claude→Codex bridge 使用對應角色與相同品質語意.
+- **跨平台一致契約**: Claude 與 Codex 使用對應角色與相同品質語意.
 - **可恢復的全域部署**: source checkout 是真相源; 同步前先驗證, 套用後比對; 回滾靠 git 重新部署.
 
 ## 架構速覽
@@ -62,7 +62,7 @@ flowchart LR
 | 路徑 | 真相源與職責 | 部署目標 |
 |---|---|---|
 | [`main/claude/`](main/claude/README.md) | Claude Code 契約, roles, skills, hooks, prompts, routing | `~/.claude/` |
-| [`main/codex/`](main/codex/README.md) | Codex 契約, roles, resolver, bridge, 可攜 config 片段 | `~/.codex/` |
+| [`main/codex/`](main/codex/README.md) | Codex 契約, roles, resolver, 可攜 config 片段 | `~/.codex/` |
 | [`main/.agents/`](main/.agents/README.md) | 兩端共用 skills, routing core 與 runtime 知識 | `~/.agents/` |
 | [`main/project/`](main/project/README.md) | 專案層樣板: 另一個 repo 一份事實包, 由 `scripts/project-init.py` 渲染成區塊 | `<repo>/CLAUDE.md`, `<repo>/AGENTS.md` |
 | [`docs/`](docs/README.md) | 方法論, 研究, 部署說明與歷史決策; 不回寫全域 | — |
@@ -100,7 +100,7 @@ Codex leaf 不需改檔, 派工前直接解析:
 
 ```bash
 main/codex/scripts/model-routing resolve --priority balanced --role executor
-main/codex/scripts/model-routing resolve --surface claude-bridge --priority quality-guarded --role verifier
+main/codex/scripts/model-routing resolve --priority quality-guarded --role verifier
 ```
 
 ## 機制與護欄
@@ -111,11 +111,10 @@ main/codex/scripts/model-routing resolve --surface claude-bridge --priority qual
 | Alias generation check | `opus` 指向哪個世代由 CLI 決定; 以 leaf transcript 的真實 model id 驗證 config 的宣稱 | [model-routing.py](main/claude/scripts/model-routing.py) |
 | Runtime guard | 需要新版能力的 reviewer 在版本過舊或未知時停止 | [runtime-guard.py](main/claude/hooks/runtime-guard.py) |
 | Capability-aware verifier | Claude 的 no-write role 不提供 Bash; 需要執行命令的獨立驗證改派 Codex read-only sandbox | [provider-routing](main/claude/skills/provider-routing/SKILL.md) |
-| Verifier 額度 | 同一個 prompt 內的第二個 Claude `verifier` 直接擋; 跨 prompt 與走 `codex:codex-rescue` 的 Codex verifier 不計 (bridge 名稱不分角色), 那段仍屬判斷 | [verifier-quota.py](main/claude/hooks/verifier-quota.py), [dispatch-lifecycle](docs/dispatch-lifecycle.md) |
+| Verifier 額度 | 同一個 prompt 內的第二個 Claude `verifier` 直接擋; 跨 prompt 不計, 那段仍屬判斷 | [verifier-quota.py](main/claude/hooks/verifier-quota.py), [dispatch-lifecycle](docs/dispatch-lifecycle.md) |
 | Delegation audit | 記錄 start/stop 並偵測 leaf 再派 leaf | [delegation-audit.py](main/claude/hooks/delegation-audit.py) |
 | Denial log | 每次攔截留一行 (gate, 短代碼 reason, session), 讓「多常擋人」數得出來; 只記錄不決策, 記錄失敗不影響攔截 | [denial_log.py](main/claude/hooks/denial_log.py), [hook 系統](docs/hook-system.md) |
 | Experience pending/ledger | 將 dispatch, route, source, token, 時間與 QC outcome 綁在一起 | [experience-ledger](main/.agents/skills/experience-ledger/SKILL.md) |
-| Bridge 存活對帳 | bridge job 比 launcher 長命; 重啟前擋下同一 prompt 的雙寫 | [dispatch-lifecycle](docs/dispatch-lifecycle.md), [bridge-jobs](main/codex/scripts/bridge-jobs) |
 | Weekly integrity | 每週檢查 source/HOME 漂移, pins, delegation alarm 與 ledger 狀態; 覆蓋不完整即列 finding 並扣住週章 | [weekly-integrity.py](main/claude/hooks/weekly-integrity.py) |
 | Commit test gate | 紅測試套件不得 commit. Bash hook 在執行前解析指令指向的 repo, git 側的 pre-commit 涵蓋文字看不到的路徑 (wrapper, function, PATH 覆蓋); 兩者都是本機閘, `--no-verify` 與 `-c core.hooksPath=…` 仍繞得過, 只有 CI 關得掉. 逃生口 `AGENT_SKIP_TEST_GATE=1` | [commit-test-gate.py](main/claude/hooks/commit-test-gate.py), [githooks/pre-commit](main/claude/githooks/pre-commit) |
 | Gate-line QC/trap evals | 機械稽核 leaf 報告的 INTENT/TWINS/AUTH owed lines; 行為 trap fixtures 作回歸資產 | [gate_lines.py](main/.agents/scripts/gate_lines.py), [evals/traps/](evals/traps/) |

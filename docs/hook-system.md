@@ -33,7 +33,7 @@ Hook 的「失敗模式」指的是它自己出錯時會怎樣, 這是設計時�
 | [push-consent-gate](../main/claude/hooks/push-consent-gate.py) | PreToolUse[Bash] | 指令任一段是 `git push` (含 `-C`, 絕對路徑, force, dry-run) 而使用者沒有在 30 分鐘內放行; 或指令本身碰到放行用的 sentinel (助理不得自己放行). 2026-09-06 加: 一次 push 的同意被讀成持續授權, 連續五次未經同意 push, 提醒沒有擋住, 所以改成閘 | 使用者在 prompt 打 `! touch ~/.claude/telemetry/push-consent-armed` 放行**一次**, 下一個 push 用掉它 |
 | [leaf-redispatch](../main/claude/hooks/leaf-redispatch.py) | PreToolUse[Agent] | caller `agent_type` 非空, 亦即 leaf 嘗試再派工 | 回到 main session 派工 |
 | [runtime-guard](../main/claude/hooks/runtime-guard.py) `--gate` | PreToolUse[Agent] | 派工受限 reviewer (verifier/plan-verifier/security-reviewer) 但 CLI 版本過舊或未知, 無法保證唯讀邊界 | 升級 CLI 重開 session, 或改在 main session 做 |
-| [verifier-quota](../main/claude/hooks/verifier-quota.py) | PreToolUse[Agent] | 同一 top-level task (以 prompt 為界) 派第二個 outcome verifier. **只認 Claude 的 `verifier`**: 走 `codex:codex-rescue` 的 Codex verifier 不計額度 (bridge 名稱不分角色, 列進去會誤擋同 prompt 的 Codex 實作派工), 這段仍屬判斷. **只有它自己狀態健康時會攔**: state 不可寫時兩個 verifier 都放行 (實測). 它是預算護欄不是安全邊界 | `AGENT_ALLOW_SECOND_VERIFIER=1` (確實是新任務時) |
+| [verifier-quota](../main/claude/hooks/verifier-quota.py) | PreToolUse[Agent] | 同一 top-level task (以 prompt 為界) 派第二個 outcome verifier. **只認 Claude 的 `verifier`**, 而 2026-09-14 收掉 bridge 之後 outcome verifier 只剩這一種拼法. **只有它自己狀態健康時會攔**: state 不可寫時兩個 verifier 都放行 (實測). 它是預算護欄不是安全邊界 | `AGENT_ALLOW_SECOND_VERIFIER=1` (確實是新任務時) |
 | [managed-target-guard](../main/claude/hooks/managed-target-guard.py) | PreToolUse[Write\|Edit\|NotebookEdit] | 寫入 manifest **整份**託管的 HOME 檔案 (兩欄列), 或 `INSTALLED.txt` 點名的共用 skill. 字面路徑與 symlink 解析後的路徑都比對, 因為 `~/.claude/skills/<name>` 是指向 `~/.agents/skills/<name>` 的連結. 三欄的 merge 列**不擋** (`settings.json`, `config.toml`, `.agents/skills` 其餘部分含機器狀態, 本來就該就地改). 讀不到 manifest 時放行並在 stderr 說明 —— 條件評估不了就不該代答 | 改 checkout 裡的來源, 再 `scripts/sync.sh --apply` |
 | [githooks/pre-commit](../main/claude/githooks/pre-commit) | Git pre-commit | 本 repo 走 git hook 路徑的 commit 且套件為紅 (或逾時). 這是 shell 的另一側: git 已經在動手了, 不必從文字推測目標, 所以 wrapper script, 名為 `git` 的 function, PATH 覆蓋都涵蓋 | `AGENT_SKIP_TEST_GATE=1`, `--no-verify` |
 
@@ -87,7 +87,7 @@ settings 的前置過濾做不到上面這些判定, 所以改成「字串裡有
 | Hook | 事件 | 做什麼 |
 |---|---|---|
 | [delegation-audit](../main/claude/hooks/delegation-audit.py) | SubagentStart/Stop | 記錄派工起訖, 偵測 leaf 再派 leaf 的違規 |
-| [experience-pending](../main/claude/hooks/experience-pending.py) | SubagentStart/Stop | 暫存 role, 時間, token, (bridge 的) rollout 路由, 供 QC 後寫入 ledger |
+| [experience-pending](../main/claude/hooks/experience-pending.py) | SubagentStart/Stop | 暫存 role, 時間, token 與 rollout 路由, 供 QC 後寫入 ledger |
 | [weekly-integrity](../main/claude/hooks/weekly-integrity.py) | SessionStart | 每週一次檢查 source/HOME 漂移, pins, benchmark prior 逾期, delegation alarm, ledger 狀態, 以及供應商注入的 prompt 區塊有沒有變 (`scripts/prompt-bundle-report`, 只在**移動時**出聲); 覆蓋不完整即列 finding. 節流戳記是 `~/.claude/telemetry/.integrity-last-run`, 且只在檢查全部跑完才前進; 剛部署完想立刻驗就刪掉它, 下次開 session 即重跑 |
 | [runtime-guard](../main/claude/hooks/runtime-guard.py) (無 `--gate`) | SessionStart | 版本不足時先警告, 讓使用者在派工前就知道 reviewer 會被擋 |
 | [compact-reseed](../main/claude/hooks/compact-reseed.py) | SessionStart[compact] | 壓縮後注入一句提醒, 要求重新申報目標, 進行中決策與未決項. PreCompact 無法塑造摘要, 所以這件事只能落在壓縮**之後**這一刻 |
@@ -195,7 +195,7 @@ gate 都用合成 stdin 做 pipe-test, 把正常, 該攔截, 防繞過三種輸�
 
 - no-write roles 的 frontmatter, settings 與 hook inventory 由 `test_roles.py` 確認沒有任何
   Bash 表面, 連退場的 `readonly-bash.py` 也斷言不存在.
-- `verifier-quota`, `bridge-jobs`, gate-line 錨定都有對應的機械測試, 見 `test_mechanisms.py`.
+- `verifier-quota` 與 gate-line 錨定都有對應的機械測試, 見 `test_mechanisms.py`.
 
 Hook 建置規範 (真實目錄先證明可跑 → 合成 pipe-test → `jq` 驗設定 → 失敗訊息回到模型 →
 保持秒級 → 新 session 驗載入) 與測試案例規範見 [playbook 第 5 節](engineering-playbook.md#5-驗證迴路).

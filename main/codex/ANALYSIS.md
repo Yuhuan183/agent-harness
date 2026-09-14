@@ -11,7 +11,7 @@ Codex receives the full global contract and registered leaf agents. ChatGPT Chat
 - Git is the cross-machine source of truth. GPT model/effort, auth, credentials, sessions, MCP/plugin paths, quotas, and local telemetry remain machine state.
 - Main owns framing, architecture, ambiguity, dispatch decisions, integration, synthesis, and final judgment.
 - Leaf roles receive self-contained contracts, never orchestrate, and are bounded by `agents.max_depth = 1`.
-- Codex native and Claude→Codex bridge routes are resolved per dispatch from `model-routing.toml`; main routes are session-start recommendations and cannot switch a running task.
+- Codex native routes are resolved per dispatch from `model-routing.toml`; main routes are session-start recommendations and cannot switch a running task.
 - Claude named roles use a separate deployment preset. Changing a Codex route never changes Claude frontmatter pins or either main model.
 
 ## Routing evidence
@@ -35,7 +35,7 @@ Delegation requires an observable outcome, measurable benefit over direct work, 
 | `main/codex/AGENTS.contract.md` | `$CODEX_HOME/AGENTS.md` |
 | `main/codex/config.merge.toml` | Merged into `$CODEX_HOME/config.toml` by `sync.sh` (`merge-toml` mode) |
 | `main/codex/agents/*.toml` | Registered Codex leaf roles |
-| `main/codex/model-routing.toml`, `main/codex/scripts/` | Native and Claude-bridge per-dispatch routing |
+| `main/codex/model-routing.toml`, `main/codex/scripts/` | Native per-dispatch routing |
 | `main/.agents/skills/experience-ledger/` | Shared machine-local outcome analysis |
 | `main/codex/prompts/custom-instructions.md` | ChatGPT Chat and Work Personalization; not the Codex agent contract |
 

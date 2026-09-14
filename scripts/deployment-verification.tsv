@@ -30,7 +30,7 @@
 .codex/config.toml	2026-09-10	codex 0.154.0	codex --strict-config --version parses the merged file; [agents] carries max_threads 4 and max_depth 1 and seven [agents.*] rows whose config_file each resolves under CODEX_HOME
 .codex/prompts	2026-09-10	codex 0.154.0	manual paste into ChatGPT Personalization; no machine consumer; parity only
 .codex/agents	2026-09-10	codex 0.154.0	all seven role TOML files are the config_file targets of the merged [agents.*] rows and resolve under CODEX_HOME; a live spawn was not probed (needs a dispatching task)
-.codex/scripts	2026-09-10	codex 0.154.0	model-routing validate ran from ~/.codex/scripts and imported ~/.agents/scripts/routing_core.py; bridge-brief and bridge-jobs not exercised this round
+.codex/scripts	2026-09-10	codex 0.154.0	model-routing validate ran from ~/.codex/scripts and imported ~/.agents/scripts/routing_core.py; bridge-brief and bridge-jobs were never exercised here and were removed with the bridge on 2026-09-14
 .codex/skills/leaf-dispatch	2026-09-10	codex 0.154.0	listed by name in a codex exec read-only run's available skills
 .codex/skills/headroom-protocol	2026-09-10	codex 0.154.0	listed by name in a codex exec read-only run's available skills, through the symlink into ~/.agents/skills
 .codex/skills/readable-zh-tw	2026-09-10	codex 0.154.0	listed by name in a codex exec read-only run's available skills, through the symlink into ~/.agents/skills

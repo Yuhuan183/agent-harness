@@ -51,13 +51,11 @@ AVAILABILITY_SCHEMA = {
     "subscription": {"documented", "unverified"},
     "main_selector": {"documented", "unverified"},
     "native_leaf_override": {"spawn_argument", "agent_config", "unverified"},
-    "claude_bridge_override": {"configured", "unverified"},
 }
 SURFACE_KEYS = {
     "native-leaf": ("native_leaf_override", {"spawn_argument", "agent_config"}),
-    "claude-bridge": ("claude_bridge_override", {"configured"}),
 }
-SURFACE_OVERRIDE_KEYS = {"native-leaf": "native_leaf", "claude-bridge": "claude_bridge"}
+SURFACE_OVERRIDE_KEYS = {"native-leaf": "native_leaf"}
 
 
 def is_dispatchable(model: dict, surface: str = "native-leaf") -> bool:
@@ -280,13 +278,6 @@ def command_resolve(
     metrics = model["efforts"][route["effort"]]
     if role == "main":
         invocation = {"model_delivery": "session_selector"}
-    elif surface == "claude-bridge":
-        invocation = {
-            "agent_type": "codex:codex-rescue",
-            "fork_turns": "none",
-            "model_delivery": "bridge_argument",
-            "pass_model_override": True,
-        }
     else:
         delivery = model["availability"]["native_leaf_override"]
         invocation = {

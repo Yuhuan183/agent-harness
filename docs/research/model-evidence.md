@@ -671,15 +671,16 @@ profile 語意與各 surface 的套用方式在
   和 critical roles 已位於品質門檻, 不任意降級.
 - 在 GPT 候選中, `Sol/high` 的 high 設定分數最高且 output token 最少, 所以 Codex critical roles
   用它; Claude critical roles 另由 Claude routing 的 Opus 品質門檻決定.
-- Luna native leaf 和 Claude bridge 路徑雖然都已驗證, 但現行 profile 不選 Luna;availability 不等於
+- Luna native leaf 路徑雖然已驗證, 但現行 profile 不選 Luna;availability 不等於
   routing recommendation. 若日後啟用 native Luna, 仍需 routing 檔標示的 `agent_config` delivery,
   不能假設 `spawn_agent.model` 原生接受.
 
 Claude 和 Codex 用相同的三種策略語意, 但各有自己的 routing 檔. Claude 原生 leaf 的 profile
 是 deployment preset: 先在 source checkout 用 `activate-profile` 一次更新所有 frontmatter pins,
-再 sync, 開新 session; 不是每次派工切換. native Codex 和透過 `codex:codex-rescue` 呼叫的 Codex
-twin 則是 per-dispatch route, 後者以 `resolve --surface claude-bridge` 取得 model/effort. 兩者都
+再 sync, 開新 session; 不是每次派工切換. native Codex 則是 per-dispatch route. 兩者都
 不會改變 main 模型; resolver 缺失, 設定無效或回傳不可派模型時, 就停止該次 Codex leaf.
+2026-09-14 之前還有第三條: Claude 經 `codex:codex-rescue` 派 Codex twin, 以
+`--surface claude-bridge` 解析. 那條路由連同該 surface 一起退場, 這裡的讀數是它留下的紀錄.
 
 Codex 官方手冊也建議: 一般 demanding agent 從 GPT-5.6 開始, read-heavy scan/supporting
 documents 可用 Terra;custom agent 可以省略 model/effort 繼承, 或在派工時明確指定. 這支持

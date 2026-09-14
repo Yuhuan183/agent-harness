@@ -362,34 +362,25 @@ class ClaudeContractTests(unittest.TestCase):
             "omit invocation-level `model`",
             "H** = Opus/high or Fable/low",
             "X** = Opus/high or Fable at medium\u2013xhigh",
-            "one cross-provider hop measured from the task's origin",
-            "A fallback provider cannot route back",
-            "one bounded retry",
-            *(f"`{option}`" for option in DISPATCH_OPTIONS),
             "never two writers on the same artifacts",
-            "Security keeps its capability split on either provider",
+            "Security keeps its capability split",
             "never include Fable",
-            f"`{CODEX_BRIDGE}`",
-            "--surface claude-bridge",
-            "--model <model>`",
-            "--effort <effort>`",
-            "single source of truth for Codex bridge model and effort",
-            "quality-guarded` only for high-risk, high-impact, or highly uncertain work",
-            "write-capable by default",
-            "explicitly prohibit writes",
             "`plan-verifier` returns READY/REVISE",
             "`verifier` returns CONFIRMED/REFUTED",
             "Do not stack gates over the same failure surface",
-            "Dual-provider",
             "profiles are **deployment presets**, not per-dispatch routes",
             "updates all pins transactionally",
-            f"invoked from Claude through the `{CODEX_BRIDGE}` bridge",
             "cost per acceptable outcome",
             "External indices are priors only",
         ):
             self.assertIn(phrase, skill)
-        self.assertIn("${CODEX_HOME:-$HOME/.codex}/scripts/model-routing", skill)
-        self.assertNotIn("--model gpt-5.6-sol", skill)
+        # The Claude->Codex bridge was retired on 2026-09-14. This skill routed
+        # it, so its vocabulary is the thing most likely to grow back by
+        # accident - a second provider reappearing here would restore the route
+        # without restoring the machinery that made it verifiable.
+        lowered = skill.lower()
+        for retired in ("codex", "bridge", "gpt", "cross-provider", "fallback"):
+            self.assertNotIn(retired, lowered, "the bridge is retired")
 
     def test_no_surface_grants_a_claude_no_write_role_a_command(self) -> None:
         """The capability is a frontmatter fact; the prose kept contradicting it.
@@ -447,8 +438,7 @@ class ClaudeContractTests(unittest.TestCase):
         )
         self.assertIn("does not choose a provider/model", baton)
         self.assertIn(
-            "Own provider/model/role selection, bridge resolution, "
-            "cross-provider fallback, and verifier eligibility",
+            "Own model/role selection and verifier eligibility",
             provider,
         )
         self.assertIn("Record formats and QC mechanics stay in `baton-dispatch`", provider)
@@ -861,11 +851,9 @@ class CodexBundleTests(unittest.TestCase):
                 "subscription": "documented",
                 "main_selector": "documented",
                 "native_leaf_override": "agent_config",
-                "claude_bridge_override": "configured",
             },
         )
         self.assertIn("smoke-tested", routing["models"]["gpt-5.6-luna"]["evidence"]["native_leaf"])
-        self.assertIn("smoke-tested", routing["models"]["gpt-5.6-luna"]["evidence"]["claude_bridge"])
         self.assertNotIn("surface_overrides", routing)
         for model in routing["models"].values():
             self.assertEqual(
@@ -932,20 +920,6 @@ class CodexBundleTests(unittest.TestCase):
         self.assertEqual(guarded_route["model"], "gpt-5.6-sol")
         self.assertEqual(guarded_route["effort"], "low")
 
-        bridge = subprocess.run(
-            [str(script), "resolve", "--surface", "claude-bridge",
-             "--priority", "fast", "--role", "explore"],
-            check=True, capture_output=True, text=True,
-        )
-        bridge_route = json.loads(bridge.stdout)
-        self.assertEqual(bridge_route["surface"], "claude-bridge")
-        self.assertEqual(bridge_route["model"], "gpt-5.6-terra")
-        self.assertEqual(bridge_route["effort"], "low")
-        self.assertEqual(
-            bridge_route["invocation"]["model_delivery"],
-            "bridge_argument",
-        )
-
         original = read(".codex/model-routing.toml")
         invalid = original.replace(
             '[profiles.fast.roles.executor]\nmodel = "gpt-5.6-sol"',
@@ -979,23 +953,6 @@ class CodexBundleTests(unittest.TestCase):
         self.assertNotEqual(rejected_fast.returncode, 0)
         self.assertIn("is not optimal for decode_minutes_per_index_task",
                       rejected_fast.stderr)
-
-        unavailable_bridge = original.replace(
-            'claude_bridge_override = "configured"',
-            'claude_bridge_override = "unverified"',
-            1,
-        )
-        self.assertNotEqual(unavailable_bridge, original)
-        with tempfile.TemporaryDirectory() as temp_dir:
-            bridge_config = Path(temp_dir) / "model-routing.toml"
-            bridge_config.write_text(unavailable_bridge, encoding="utf-8")
-            rejected_bridge = subprocess.run(
-                [str(script), "--config", str(bridge_config), "validate"],
-                capture_output=True, text=True,
-            )
-        self.assertNotEqual(rejected_bridge.returncode, 0)
-        self.assertIn("uses model unavailable to claude-bridge",
-                      rejected_bridge.stderr)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             malformed_config = Path(temp_dir) / "model-routing.toml"

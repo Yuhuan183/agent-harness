@@ -16,7 +16,7 @@
 | 評估 model/effort/provider | [研究總結](research/README.md) | [Claude routing](../main/claude/model-routing.toml), [Codex routing](../main/codex/model-routing.toml) |
 | 用 Fable 5 時避免被切到 Opus | [Fable 5 安全 fallback](research/fable-5-fallback.md) | [provider-routing](../main/claude/skills/provider-routing/SKILL.md) |
 | 查 experience-ledger 指標 | [Metrics](../main/.agents/skills/experience-ledger/references/metrics.md) | [skill 本體](../main/.agents/skills/experience-ledger/SKILL.md) |
-| 驗證派工狀態與路由證據 | [派工生命週期](dispatch-lifecycle.md) | [bridge-liveness](../main/claude/skills/provider-routing/references/bridge-liveness.md) |
+| 驗證派工狀態與路由證據 | [派工生命週期](dispatch-lifecycle.md) | [route_source 強度](../main/.agents/skills/experience-ledger/references/metrics.md) |
 | 診斷 context 或工具輸出 | [Headroom runtime](../main/.agents/docs/headroom-runtime.md) | [RTK](../main/claude/RTK.md) |
 | 理解 QC 怎麼把關 | [QC 白話說明](qc-explainer.md) | [baton-dispatch](../main/claude/skills/baton-dispatch/SKILL.md) |
 | 理解 hook 系統怎麼運作 | [Hook 系統](hook-system.md) | [settings.json](../main/claude/settings.json) |

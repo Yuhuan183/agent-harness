@@ -45,7 +45,7 @@ Keep the three routing dimensions separate: **role** defines authority and tools
 
 The approved Plan or release slice is a hard boundary. Agents may report adjacent opportunities but must stop before adding a domain, table, API, service, deployment responsibility, or materially larger file/schema surface.
 
-Claude no-write roles cannot execute Bash. Command-required independent verification belongs to a Codex `verifier` with `sandbox_mode = "read-only"`.
+Claude no-write roles cannot execute Bash, so independent verification that depends on running something has no leaf route: the leaf names the missing check and main runs it as intermediate evidence.
 
 ## Gate placement and Plan convergence
 
@@ -67,7 +67,7 @@ Before the first readiness review of a security-sensitive unit, complete `securi
 
 A finished agent's final response is its deliverable — the harness returns it on completion. Collect it from the finished task; never relaunch or ask a read-only recon agent (`explore`, `plan-verifier`, `security-reviewer`) to relay, restate, or report back a result it already produced. Use the resume channel only for genuinely new or redirected work. A dispatch returning nothing usable is not a result: re-brief once, then stop dispatching it — work directly or report it unverified. An absent verifier is never a pass, so nothing gated on it may be claimed: readiness, verification, credentials, or any outward write. A lost agent is not a user decision; do not hand it over as one. Treat a single load-bearing recon fact as an unverified input: sanity-check or re-run it in main, since the `verifier` gate covers executor output, not reconnaissance.
 
-Report the launch and the post-QC outcome as separate fixed records, never buried in prose, in exactly the two shapes above — `dispatch_id` included, since it is what ties the record to the pending stub and the ledger. Use actual active/resolved route values; native roles use request_source `claude-code`, bridge roles `claude-code-plugin-codex`. After QC, load `experience-ledger` and log the same neutral task label, task class, route, request source, and outcome; never claim `logged` before the command succeeds.
+Report the launch and the post-QC outcome as separate fixed records, never buried in prose, in exactly the two shapes above — `dispatch_id` included, since it is what ties the record to the pending stub and the ledger. Use actual active/resolved route values, with request_source `claude-code`. After QC, load `experience-ledger` and log the same neutral task label, task class, route, request source, and outcome; never claim `logged` before the command succeeds.
 
 Use spot QC for mechanical work from a complete spec; use full QC for judgment-heavy or verification work. Both tiers hunt false-completion frauds: weakened or bypassed checks, fixtures fabricated to satisfy a check, undeclared out-of-scope changes, missing owed `INTENT:`/`TWINS:`/`AUTH:` lines, and leftover leaf-created scratch files (pre-existing dirty-worktree files are not debris). Audit owed lines with `~/.claude/scripts/qc-gate-lines <report> --diff <diff-file> [--defect-fixed] [--outward-taken]`, setting flags from the diff and evidence, never from the report's claims. Never accept a `found 0/none` TWINS claim on the report's word: re-run the search yourself — grep the fixed construct across the scope — before accepting (`qc-gate-lines` flags these claims).
 Read [references/briefs-and-stops.md](references/briefs-and-stops.md) only when writing a brief, ownership map, or batch stop rule.

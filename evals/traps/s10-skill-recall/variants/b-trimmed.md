@@ -34,9 +34,9 @@ Compress an unusually large read-only blob when Headroom MCP tools exist and pro
 
 ## provider-routing
 
-Cross-provider routing — H/X profiles, GPT↔Claude fallback, codex bridge resolution, security routing, verifier triggers. Load before dispatching to GPT, on provider failure/handoff, or when deciding if a claim needs a verifier.
-觸發：「派給 GPT/Codex」「換 provider」「fallback」「要不要 verifier」「安全審查找誰」、跨 provider 交接。
-不觸發：單一 provider 的直接工作。
+Model and role routing — H/X profiles, deployment presets, role selection, security routing, verifier triggers. Load before choosing a named role, before changing a deployment preset, or when deciding if a claim needs an independent verifier.
+觸發：「派給哪個 role」「換 model/effort」「要不要 verifier」「安全審查找誰」。
+不觸發：role 已經定了的直接工作。
 
 ## readable-zh-tw
 
