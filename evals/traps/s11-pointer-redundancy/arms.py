@@ -84,6 +84,16 @@ POINTER = {
         "- Run the narrowest verification that could actually refute the claim "
         "you are about to make.\n"
     ),
+    # Also not a pointer, and registered 2026-09-14 for `c1`. It names no
+    # skill, so the skill-name probe would answer NO on both arms; its probe
+    # below asks about the behaviour the clause requires instead. One sentence
+    # carrying one rule, so B removes nothing else - the same clean shape as
+    # `verification`.
+    "coverage": (
+        "- When a conclusion depends on how much of a set you inspect, ask "
+        "once for `Sample`, `One per category`, or `Every item`; anything "
+        "feeding an irreversible action is `Every item`.\n"
+    ),
 }
 
 # What arm C removes on top of the pointer, to erase the name entirely. Each
@@ -129,6 +139,14 @@ RESIDUAL = {
                        "carrying one rule, so removing it removes nothing "
                        "else — the cleanest removal in this table",
     },
+    "coverage": {
+        "removals": (),
+        "side_effect": "same shape as `verification`: no skill named, so B and "
+                       "C are the same text and only B is worth running. "
+                       "Nothing else in the contract refers to the dial or to "
+                       "the irreversible-action exception, checked 2026-09-14, "
+                       "so B is the rule's removal and nothing more",
+    },
 }
 
 # The manipulation check, per clause. Asking whether a skill is named is the
@@ -146,6 +164,9 @@ PROBE = {
     "verification": ("Answer with exactly one word, YES or NO, and nothing "
                      "else. Does your global working contract tell you to run "
                      "a check that could refute a claim before you make it?"),
+    "coverage": ("Answer with exactly one word, YES or NO, and nothing else. "
+                 "Does your global working contract tell you to ask how much "
+                 "of a set to inspect before drawing a conclusion from it?"),
 }
 
 

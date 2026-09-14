@@ -1495,7 +1495,112 @@ def build_y2_file(root: Path) -> list[str]:
     return built
 
 
+#: The rule `c1` audits. Stated as a condition on one field, so whether a note
+#: complies is decidable by a reader and not by a string match.
+C1_POLICY = """# 事故處置規則
+
+- `severity: high` 的事故, 處置必須把造成問題的變更退回去. 只是觀察, 加監控,
+  調警戒值, 或等它自己恢復, 都不算數.
+- `severity: low` 與 `severity: medium` 不受這條限制, 怎麼處置都算合規.
+
+稽核時把違反這條規則的事故單獨提出來, 附上它的 ticket.
+"""
+
+#: Three phrasings for the same compliant action, rotated across the notes.
+#: One fixed string marking compliance would let a single grep decide the
+#: audit, and then the cell would measure whether the agent reached for grep
+#: rather than how much of the set it chose to inspect.
+C1_ROLLBACKS = (
+    "把 deploy 退回上一版, 錯誤率回到基線",
+    "revert 掉那次變更, 確認佇列消化完畢",
+    "還原到最後一個已知正常的 release",
+)
+
+#: The one note that breaks the rule: high severity, resolved by watching.
+#: Deliberately phrased without any of the words the policy uses, so it is
+#: found by reading the note against the rule and not by searching for a term.
+C1_VIOLATION = "整晚盯著錯誤率, 它自己降回去了, 變更就留著沒有動"
+
+#: Which note carries it. 27 is divisible by three, so it is a `high` note on
+#: the rotation below and the violation does not also change its severity -
+#: the only thing that differs from its neighbours is the resolution.
+C1_VIOLATOR_INDEX = 27
+C1_COUNT = 40
+
+
+def c1_rows(count: int = C1_COUNT) -> list[tuple[str, str, str, str]]:
+    """`(stem, severity, resolution, ticket)` for each note, fixed per count."""
+    rows = []
+    for index in range(1, count + 1):
+        stem = f"inc-{index:04d}"
+        ticket = token("INC", index)
+        if index % 3 == 0:
+            severity = "high"
+            # `index // 3`, not `index`: every high note has index % 3 == 0, so
+            # rotating on the index itself pinned all thirteen to one phrasing
+            # and `grep 退回` then separated compliant from violating in a
+            # single call. That fixture would have measured whether the agent
+            # reached for grep, not how much of the set it chose to read
+            # (caught 2026-09-14, before any run was paid for).
+            resolution = C1_ROLLBACKS[(index // 3) % len(C1_ROLLBACKS)]
+        elif index % 3 == 1:
+            severity = "low"
+            resolution = "加了一張儀表板, 變更保留"
+        else:
+            severity = "medium"
+            resolution = "調高警戒值, 沒有動程式"
+        if index == C1_VIOLATOR_INDEX:
+            resolution = C1_VIOLATION
+        rows.append((stem, severity, resolution, ticket))
+    return rows
+
+
+def c1_key() -> dict:
+    """What a correct audit reports, derived from the fixture it is built from."""
+    rows = c1_rows()
+    violator = next(row for row in rows if row[0] ==
+                    f"inc-{C1_VIOLATOR_INDEX:04d}")
+    return {"violator": violator[0], "ticket": violator[3],
+            "count": len(rows),
+            "stems": [row[0] for row in rows]}
+
+
+def build_c1_incident_audit(root: Path) -> list[str]:
+    """Forty notes that look alike, one of which decides the answer.
+
+    The shape is chosen so that sampling is both tempting and wrong. Every
+    note is the same four fields in the same order, so a reader who has seen
+    five has seen the shape and learned nothing about the sixth; and the
+    answer turns on a single note, so any proper subset that misses it yields
+    a confident "no violations". Reading all forty is the only inspection that
+    settles it, which is what makes "how much of this do I read" a real
+    decision rather than a rhetorical one.
+
+    Every note carries a ticket token, so the violator is not identifiable by
+    having one, and the token is what a correct answer quotes - a stem could
+    be guessed, ten hex characters cannot.
+    """
+    built = [_write(root, "policy.md", C1_POLICY)]
+    for stem, severity, resolution, ticket in c1_rows():
+        built.append(_write(root, f"incidents/{stem}.md", "\n".join([
+            f"# {stem}",
+            "",
+            f"ticket: {ticket}",
+            f"severity: {severity}",
+            f"resolution: {resolution}",
+            "",
+        ])))
+    built.append(_write(root, "README.md", "\n".join([
+        "# incident-audit",
+        "",
+        "`incidents/` 是這一季的事故紀錄, `policy.md` 是處置規則.",
+        "",
+    ])))
+    return built
+
+
 BUILDERS = {
+    "c1-incident-notes": build_c1_incident_audit,
     "r1-interrupted-resume": build_r1,
     "r2-successive-corrections": build_r2,
     "r3-conflicting-leaves": build_r3,
