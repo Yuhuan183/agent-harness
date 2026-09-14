@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -351,13 +353,22 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         # that gap visible instead of leaving it implied — coverage findings are
         # warnings, never failures, so reporting them cannot force a routing
         # change just to go green.
+        #
+        # All three findings this config produces are argued out in
+        # quality_floor.notes and acknowledged there, so they print as NOTEs.
+        # The finding's own text still has to appear: acknowledging one lowers
+        # its volume and must never edit what it says.
         result = run("validate")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("valid:", result.stdout)
-        self.assertIn("WARNING:", result.stdout)
         self.assertIn("no per-rung score", result.stdout)
         # Sonnet is the known unmeasured cell: AA publishes max effort only.
         self.assertIn("claude-sonnet-5/medium", result.stdout)
+        self.assertIn("NOTE (acknowledged):", result.stdout)
+        # Nothing is left shouting. Three permanent alarms on a command that
+        # runs every sync is what teaches the reader to skip the line a new
+        # finding would arrive on.
+        self.assertNotIn("WARNING:", result.stdout)
 
 
     def test_floor_coverage_detects_an_inverted_tier(self) -> None:
@@ -393,6 +404,70 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         self.assertEqual(
             routing_core.route_score(bound, "m", "max"), (53.0, "per-effort")
         )
+
+    def test_an_acknowledgement_covers_only_the_finding_it_quotes(self) -> None:
+        """Silencing is the risk this mechanism adds, so pin its boundary.
+
+        A routing file that can mark a finding "known" can mark a real one
+        known by accident. Three readings bound that: the quoted finding goes
+        quiet, a finding whose text has moved on comes back by itself, and an
+        acknowledgement matching nothing is an error rather than a warning -
+        a config asserting a decision about a finding that no longer exists is
+        misreporting its own evidence, which is worse than the alarm was.
+        """
+        spec = importlib.util.spec_from_file_location(
+            "routing_core_ack", ROOT / "main/.agents/scripts/routing_core.py"
+        )
+        routing_core = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(routing_core)
+
+        def config_with(acknowledgements, routes):
+            return {
+                "models": {"m": {"efforts": {"low": {"score": 40.0}}}},
+                "quality_floor": {
+                    "approved_routes": routes,
+                    "acknowledged_coverage": acknowledgements,
+                },
+            }
+
+        routes = {"support": ["m/low", "m/high"]}
+        bare = routing_core.floor_coverage(config_with([], routes))
+        self.assertEqual(len(bare["warnings"]), 1, bare)
+        finding = bare["warnings"][0]
+        self.assertIn("m/high", finding)
+
+        # 1. The quoted finding stops being a warning, and keeps its wording.
+        entry = [{"warning": finding, "reason": "adjudicated in notes"}]
+        acked = routing_core.floor_coverage(config_with(entry, routes))
+        self.assertEqual(acked["warnings"], [])
+        self.assertEqual(acked["notes"], [(finding, "adjudicated in notes")])
+        self.assertEqual(acked["stale_acknowledgements"], [])
+
+        # 2. Approve another unscored rung: the finding's text changes, so the
+        #    acknowledgement stops covering it and the alarm returns on its own.
+        widened = routing_core.floor_coverage(
+            config_with(entry, {"support": ["m/low", "m/high", "m/xhigh"]})
+        )
+        self.assertEqual(len(widened["warnings"]), 1, widened)
+        self.assertIn("m/xhigh", widened["warnings"][0])
+        self.assertEqual(widened["stale_acknowledgements"], [finding])
+
+        # 3. An entry missing either half is reported, not quietly ignored -
+        #    a typo in `warning` would otherwise acknowledge nothing and look
+        #    exactly like a working acknowledgement.
+        malformed = routing_core.floor_coverage(
+            config_with([{"reason": "quotes no finding"}], routes)
+        )
+        self.assertEqual(len(malformed["malformed_acknowledgements"]), 1)
+
+        # 4. Both failures fail the command rather than printing and passing.
+        #    stderr is captured: a passing test that prints ERROR lines is the
+        #    same alarm fatigue this mechanism exists to remove.
+        for bad in (config_with(entry, {"support": ["m/low"]}),
+                    config_with([{"reason": "quotes no finding"}], routes)):
+            with contextlib.redirect_stderr(io.StringIO()) as captured:
+                self.assertEqual(routing_core.report_validation(bad, []), 1)
+            self.assertIn("ERROR:", captured.getvalue())
 
     def test_a_floor_that_cannot_be_read_fails_instead_of_passing(self) -> None:
         """The rename's real risk is a config left on the old key.

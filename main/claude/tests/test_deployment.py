@@ -1056,15 +1056,21 @@ class MachineStateHygieneTests(unittest.TestCase):
         # The current Claude config has unmeasured approved routes, so a real
         # dry-run is a live fixture. Assert that first, or a silently clean
         # config would make this test pass by having nothing to show.
+        #
+        # Both severities count. Since 2026-09-14 a finding the routing file
+        # has adjudicated prints as `NOTE (acknowledged)` instead of `WARNING`,
+        # and all three of this config's findings are acknowledged. That is a
+        # volume control, not a mute: a finding that stops reaching the deploy
+        # gate is the same defect this test was written for.
         validate = subprocess.run(
             [str(ROOT / "main/claude/scripts/model-routing"), "validate"],
             capture_output=True, text=True, timeout=60)
         self.assertEqual(validate.returncode, 0, validate.stderr)
         expected = [line for line in validate.stdout.splitlines()
-                    if line.startswith("WARNING: ")]
+                    if line.startswith(("WARNING: ", "NOTE (acknowledged): "))]
         self.assertTrue(
             expected,
-            "no floor-coverage warning to surface; this test needs a fixture "
+            "no floor-coverage finding to surface; this test needs a fixture "
             "config rather than the live one")
 
         dry_run = subprocess.run(

@@ -230,6 +230,23 @@ critical_medium = "opus/medium is allowed so verifier can trade depth for speed 
 effort_source = "All named roles pin effort from the active deployment preset (user-directed 2026-07-22); no role follows the main-session effort."
 tier_separation = "`validate` reports that support and judgment share a measured minimum of 52.46 as of 2026-08-14. That is accurate and expected, not a defect to configure away: both tiers list claude-opus-5/low, so the two floors coincide at the bottom and the tiers separate by their ceilings and by role assignment, not by their weakest allowed rung. Recorded here so the warning reads as a known shape rather than an unexplained alarm; changing it means removing a rung from a tier, which is a routing decision the user owns."
 
+# Findings `validate` has already been argued out of. Each quotes the warning
+# verbatim, so a rung added to a tier or a benchmark refresh that moves 52.46
+# stops matching and restores the alarm; an entry matching nothing is an error,
+# not a warning. The reasoning lives in the notes above - this only records
+# that it was reached.
+[[quality_floor.acknowledged_coverage]]
+warning = "tiers support and judgment have the same measured minimum (52.46) - they do not separate on evidence"
+reason = "see quality_floor.notes.tier_separation: both tiers list claude-opus-5/low, so the floors coincide by construction and the tiers separate by ceiling and role assignment"
+
+[[quality_floor.acknowledged_coverage]]
+warning = "tier support approves 2 route(s) with no per-rung score: claude-sonnet-5/low, claude-sonnet-5/medium"
+reason = "AA publishes no per-rung index score for any Sonnet effort; these rungs are measured on Briefcase Elo instead, and the Sonnet floor is user-directed (see evidence_caveat and support_pin_evidence)"
+
+[[quality_floor.acknowledged_coverage]]
+warning = "tier judgment approves 4 route(s) with no per-rung score: claude-fable-5/high, claude-fable-5/medium, claude-fable-5/xhigh, claude-sonnet-5/medium"
+reason = "AA publishes per-rung scores for neither Fable nor Sonnet; Fable clears the judgment floor on its aggregate and is main-session-only (see quality_floor.notes.judgment_fable)"
+
 [profiles.balanced]
 description = "Meet every quality floor, then balance capability, speed, cost, and output tokens."
 

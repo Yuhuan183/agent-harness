@@ -332,7 +332,49 @@ def floor_coverage(config: dict) -> dict:
                 f"tier {tier} approves {len(data['unmeasured'])} route(s) with no "
                 f"per-rung score: {', '.join(sorted(data['unmeasured']))}"
             )
-    return {"tiers": tiers, "warnings": warnings}
+    acknowledged, malformed = acknowledged_coverage(config)
+    return {
+        "tiers": tiers,
+        "warnings": [w for w in warnings if w not in acknowledged],
+        "notes": [(w, acknowledged[w]) for w in warnings if w in acknowledged],
+        "stale_acknowledgements": sorted(set(acknowledged) - set(warnings)),
+        "malformed_acknowledgements": malformed,
+    }
+
+
+def acknowledged_coverage(config: dict) -> tuple[dict[str, str], list[str]]:
+    """Return adjudicated coverage findings, and any malformed entries.
+
+    A warning nobody can act on is worse than no warning. All three findings
+    this file emits today are permanent and already argued out in
+    `quality_floor.notes` - the tiers coincide at the bottom because both list
+    `claude-opus-5/low`, and the unscored rungs are unscored because AA
+    publishes no per-rung index for Sonnet or Fable. `validate` runs on every
+    sync and in the weekly check, so leaving three standing alarms trains the
+    reader to skip exactly the line a new finding would arrive on.
+
+    An acknowledgement quotes the warning verbatim, numbers included, so it
+    covers only the finding actually adjudicated: add a rung to a tier, or let
+    a benchmark refresh move 52.46, and the text stops matching and the warning
+    comes back by itself. The converse is an error rather than a warning - an
+    acknowledgement matching nothing is the routing file asserting a decision
+    about a finding that no longer exists, which is the single failure this
+    mechanism could introduce and so the one it has to be loud about.
+    """
+    entries = config.get("quality_floor", {}).get("acknowledged_coverage", [])
+    acknowledged: dict[str, str] = {}
+    malformed: list[str] = []
+    for index, entry in enumerate(entries):
+        warning = entry.get("warning") if isinstance(entry, dict) else None
+        reason = entry.get("reason") if isinstance(entry, dict) else None
+        if not warning or not reason:
+            malformed.append(
+                f"quality_floor.acknowledged_coverage[{index}] needs both "
+                f"`warning` and `reason`"
+            )
+            continue
+        acknowledged[warning] = reason
+    return acknowledged, malformed
 
 
 def route_floor_error(
@@ -405,7 +447,19 @@ def report_validation(config: dict, errors: list[str]) -> int:
     not. That split is deliberate: coverage gaps describe how well the
     published evidence backs the declared floors, and turning them into
     failures would force a routing-semantics change to make the check pass.
+
+    A coverage finding the routing file has adjudicated prints as a NOTE
+    instead, and a claim to have adjudicated one that no longer exists is an
+    error - see `acknowledged_coverage` for why that asymmetry is the point.
     """
+    coverage = floor_coverage(config)
+    errors = [
+        *errors,
+        *coverage["malformed_acknowledgements"],
+        *(f"acknowledged coverage finding no longer occurs, so the "
+          f"acknowledgement is stale: {stale}"
+          for stale in coverage["stale_acknowledgements"]),
+    ]
     if errors:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)
@@ -414,6 +468,8 @@ def report_validation(config: dict, errors: list[str]) -> int:
         f"valid: {len(config['profiles'])} profiles, "
         f"{len(config['models'])} benchmark models"
     )
-    for warning in floor_coverage(config)["warnings"]:
+    for warning in coverage["warnings"]:
         print(f"WARNING: {warning}")
+    for warning, reason in coverage["notes"]:
+        print(f"NOTE (acknowledged): {warning} - {reason}")
     return 0
