@@ -356,7 +356,7 @@ class ClaudeContractTests(unittest.TestCase):
             self.assertIn("one outcome verifier per acceptance claim", text, path)
             self.assertIn("only a changed candidate is a new claim", text, path)
 
-    def test_provider_routing_owns_model_and_fallback_policy(self) -> None:
+    def test_provider_routing_owns_model_and_role_policy(self) -> None:
         skill = read(".claude/skills/provider-routing/SKILL.md")
         for phrase in (
             "omit invocation-level `model`",
