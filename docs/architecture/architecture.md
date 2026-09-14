@@ -28,6 +28,7 @@ flowchart TB
         hooks["hooks + routing core<br/>確定性機制"]
         evals["evals/traps · evals/replay<br/>行為證據"]
         docs["docs<br/>方法與研究"]
+        project["main/project<br/>七格事實樣板"]
     end
 
     manifest["deployment-manifest.tsv<br/>唯一 source→HOME 映射"]
@@ -35,6 +36,12 @@ flowchart TB
 
     subgraph HOME["② 部署目標 (machine-local)"]
         h["~/.claude · ~/.codex · ~/.agents"]
+    end
+
+    pmanifest["project-manifest.tsv<br/>source→repo 根目錄"]
+
+    subgraph REPO["②b 另一個 repo (不是 HOME, 跟著那個 repo 走)"]
+        block["&lt;repo&gt;/CLAUDE.md · AGENTS.md<br/>標記圍欄區塊, 團隊原文不動"]
     end
 
     subgraph RUN["③ Runtime 派工迴路"]
@@ -50,6 +57,8 @@ flowchart TB
     end
 
     contracts & skills & hooks --> manifest --> sync --> HOME --> main
+    project --> pmanifest --> block
+    block -. "每回合隨該 repo 進 context" .-> main
     evals -. "回歸資產" .-> qc
     docs -. "指引, 不部署" .-> SRC
     main --> brake
@@ -58,6 +67,13 @@ flowchart TB
     routing -. "下一個 epoch" .-> brake
     qc -. "accepted/corrected/rebriefed/failed" .-> main
 ```
+
+**兩條部署路徑, 目標不同類.** ①→② 走 `deployment-manifest.tsv`, 目標是 HOME, 跟著**人**走;
+①→②b 走 `project-manifest.tsv`, 目標是另一個 repo 的根目錄, 跟著**那個 repo** 走. 邊界規則是
+「專案層只放事實, 動詞留在全域契約」, 由一份禁用清單守住: 18 個只屬於全域層的詞 (七個角色名,
+兩個派工紀錄標記, 四支 skill 名, 五個派工動詞) 出現在樣板裡就紅. ②b 只對沒有契約檔的 repo 裝
+—— 已有成熟契約的裝進去是純重複 (2026-09-11 兩次勘查的結論), 路線與各階段結案在
+[專案層計畫](../plans/project-layer-plan.md).
 
 四個區塊對應四個關注點, 各有專門文檔: **部署** (①→②, [setup](../setup.md)),
 **派工與 QC** (③, [qc-explainer](../qc-explainer.md)), **生命週期驗證**
@@ -124,7 +140,7 @@ flowchart LR
 | **Graph** | 一次派工樹 | 派工三維度, QC, 五個狀態 | dispatch ledger |
 | **Loop** | 一個任務 | 最短驗證迴路, 停止條件, 修訂上限 | replay 的四項存活判準 |
 | **Harness** | 一個角色 | 權限與工具面, fail-closed gate, 拒絕紀錄 | trap, hook 的 pipe-test |
-| **Context** | 一個子句 / 一個回合 | 字數上限, 密度指標, 三個付費點 | `prompt-surface-census.py`, `resident-pool-report.py` |
+| **Context** | 一個子句 / 一個回合 | 字數上限, 密度指標, 三個付費點; 專案事實區塊 (另一個 repo 的常駐面) | `prompt-surface-census.py`, `resident-pool-report.py`, `project-init.py --verify` |
 
 ### 什麼算一層
 
@@ -237,6 +253,22 @@ flowchart LR
 載入」這個問題量過兩次 —— `s11` 這一格跑了 90 個 run, replay 的 `d1`/`d2` 兩格又在派工
 路徑上加了 21 個 —— 答案都是零位移. 但尺並沒有瞎: 2026-08-15 的反向對照拿掉語言子句,
 中文輸出從 5/5 掉到 0/5. 子句確實有效, 只是它的作用面不是直覺猜的那一面.
+
+**換一個載體, 改變的是路徑不是結果 (2026-09-11, 兩格獨立量到).** 同樣一份規則, 放成 repo 根目錄
+的常駐事實區塊 (`y1`) 或註冊成 workdir 自帶的 skill (`y2`), 兩次的合規率都與對照臂相同 (各
+5/5 對 5/5, Fisher p = 1.0); 不同的是**怎麼到** —— 有載體的那臂直接導航到被點名的目錄或呼叫 skill,
+對照臂盲搜或自己讀檔. 對這張表的意思很具體: 「承載物」那一級的價值是**讓違規變得可判定**,
+不是讓遵守變得更可能, 而後者這兩格量不出來.
+
+範圍限制是開跑前寫死的, 要連著讀: 兩格都在**小 workdir, 任務點名了輸入路徑, 規則檔離一次列目錄
+只有一步**的條件下量的, 推不到真實 repo 的幾百個檔 —— 那個條件這兩個 fixture 複製不了.
+讀數與推翻過程在 [lifecycle-replay](../research/lifecycle-replay.md).
+
+**還有一條軸不在這張表上, 刻意的.**「這個缺陷本來該在哪一級被擋」(文件 / 架構 / 部署前 / 執行期 /
+測試 / 審查) 排的是**缺陷在生命週期的哪一階段被攔下**, 這張表排的是**強制力與可觀測性**. 同一個機制
+在兩條軸上都有座標而且常常不一致 —— `commit-test-gate` 在這裡是「閘」, 在那裡是「執行期」;
+`test-first-change` 在這裡是「散文」, 在那裡是「測試」. 硬併會壓掉一維, 所以它住在
+`evidence-debugging` 的 `references/tuning.md`, 是修完缺陷之後的回顧問句, 不是新規則進來要填的座標.
 
 ## 五. 四件不屬於任何一層的事
 
