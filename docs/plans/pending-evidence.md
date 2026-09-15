@@ -18,7 +18,7 @@
 | No-ops 例行掃描的第一個真實命中 | 任何一次檢討發現「規則存在但整段期間零觸發」 | 照 [ledger 的 No-ops 節](../research/upstream-distillation-ledger.md#no-ops-我們量過-但沒有在掃)決定是否建掃描 |
 | twin-guard 的一次真實漂移 | 雙生斷言在真實變更上抓到或漏掉一次 | 補真漂移測試, 案例記進 landing-log |
 | skill 效用的第一批 task-observer 觀察 | telemetry 帳本累積到可讀的量 | 三條判準 (2026-08-17 先寫, 之後不改口): **三筆以上**觀察指名 `evidence-debugging` 或 `test-first-change` 之一, 那是它們有負載的證據; **三筆以上**摩擦的教訓落在它們的守備範圍而它們沒被載入, 那是觸發面的證據; **連續一個月**沒有任何一筆指向它們, 那是「不是這台機器的瓶頸」的弱證據, 屆時討論退役. 抓得到「用了但不好」, 抓不到「沒用而該用」, 這個代價照實記 |
-| provider route cell 達樣本門檻 | 任一 role × task-class × provider 格累積到 `min_samples = 10` | 2026-08-31 讀數 18 格中 6 格達標; 達標的格由 `revision_policy` 接手, 其餘維持探索 |
+| route cell 達樣本門檻 | 任一 role × task-class 格內有兩個 `model/effort` 都累積到 `min_samples = 10` | 2026-09-14 起比較軸從 provider 換成 tier (Codex 退場); 達標的格由 `revision_policy` 接手, 其餘維持探索 |
 | 三十天內的下一次同形缺席誤讀 | 任何一次「探針覆蓋不足而結論已寫下」 | 2026-08-31 一天六次同形誤讀的處置停在措辭那一級 (`evidence-ladder` 加陽性對照與「一行式就是儀器」); 再發生就表示措辭這一級無效, 改問「哪些缺席宣稱可以被機械檢查」—— 候選是讓 `evidence-check.py` 對研究文裡的零/沒有/不存在句要求附一行探針指令. 檢討在 [landing-log](../research/landing-log.md) 08-31 節 |
 | rebelytics 血緣 | 3.0 的儲存模型與改名同形出現可對回的第三方 issue, 或任一回報者被查明與本 repo 有關 | 09-06 探針: 公開引用查無, 3.1 儀器守則各對得到第三方 issue. 3.1 的票從 09-06 起計獨立; 3.0 同形維持佐證; 任一回報者被查明有關就全部退回. 見 [task-observer-upstream](../research/task-observer-upstream.md#血緣探針-2026-09-06-公開引用查無-而-31-的儀器守則各有自己的-issue) |
 

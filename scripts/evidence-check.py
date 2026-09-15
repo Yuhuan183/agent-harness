@@ -94,7 +94,7 @@ ARCHIVED_STAMP = re.compile(r"\[surface ([0-9a-f]{8})(?: [a-z][a-z0-9-]*:[0-9a-f
 
 
 def stamp_census(text: str, current: str, groups: dict[str, str]) -> dict[str, object]:
-    """Count and read every stamp in one README against the shipping bytes.
+    """Count and read every stamp in one suite's markdown against the shipping bytes.
 
     Pure over its inputs so the reading is testable without a repository.
     `naming` holds, for each stale stamp that carries group digests, the groups
@@ -352,8 +352,14 @@ def audit_traps(drift: bool = False) -> list[dict[str, object]]:
                          "result_rows": 0, "stamped": 0, "current_stamps": 0,
                          "stale_stamps": 0, "unstamped_rows": 0})
             continue
-        readme = listing.parent / "README.md"
-        text = readme.read_text(encoding="utf-8") if readme.exists() else ""
+        # Every markdown file beside the listing, not README.md alone. A
+        # suite's stamped result rows can live in more than one file - the
+        # replay suite moved its per-cell narrative to JOURNAL.md on
+        # 2026-09-15 and all ten of its stamps went with it - and a census
+        # that read one filename would have reported zero stamps for a suite
+        # that had lost none.
+        text = "\n".join(path.read_text(encoding="utf-8")
+                         for path in sorted(listing.parent.glob("*.md")))
         # Result rows are counted by their date prefix, which is how s7-s10
         # write them. s11 reports a batch as one stamped block instead, so the
         # count would be zero while a stamp exists - and subtracting one from

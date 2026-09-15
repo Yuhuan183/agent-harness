@@ -144,57 +144,56 @@ v1.3.5 到 v1.3.10 的增量:
 | 防竄改 (雜湊鏈) 帳本 | 本專案的閘刻意是可被 `--no-verify` 停用的本機閘; 在一個承認可繞過的模型上加防竄改帳本, 買到的是形式不是保證 |
 | 用 ACE 的自動 Curator 改寫常駐契約 | 常駐層要人審與 Git 部署; 自動重寫直接撞上已證實的語意反轉失效 |
 
-## 文件索引
+## 文件索引與落地狀況
 
-**本文是這個目錄唯一的現行結論來源, 其餘每一份都是紀錄.** 紀錄會刻意保留被後來證據推翻的段落, 拿它當現行設計讀就會讀錯. 這條分界寫在 [`docs/document-inventory.json`](../document-inventory.json), 由 `test_document_inventory.py` 盯住, 並由 `scripts/docs-size-report.py` 分層回報.
+**本文是這個目錄唯一的現行結論來源, 其餘每一份都是紀錄.** 紀錄刻意保留被後來證據推翻的段落, 拿它當現行設計讀就會讀錯. 分界寫在 [`docs/document-inventory.json`](../document-inventory.json), 由 `test_document_inventory.py` 盯住. 檔案平放不開子目錄, 因為子目錄會逼出遞迴 glob, 而那正是 2026-08-19 從稽核信封裡拔掉的東西.
 
-**檔案維持平放, 不開子目錄.** 子目錄會逼出 `docs/research/**/*.md` 這條遞迴 glob, 而那正是 2026-08-19 從稽核信封裡拔掉的東西 (一條遞迴規則讓整個目錄悄悄變成現行指引, 三週沒人發現).
+「狀態」四種: **結案** = 問題答完, 不再加 run; **開著** = 還在收證據或還有登記未跑; **快照** = 某一天的盤點, 只對那天有效; **日誌** = 只追加不改寫. 「落地」寫的是這份文件的結論**現在住在哪個會被執行或部署的東西裡**; 寫「紀錄」表示它沒有改變任何部署面, 只有結論本身.
 
 ### 成本與常駐 — Context 層
 
-| 文件 | 回答什麼問題 |
-|---|---|
-| [context-and-vendors.md](context-and-vendors.md) | 常駐 context 有多貴, 兩家供應商官方怎麼說, client 注入區塊的觀察 |
-| [resident-context-options.md](resident-context-options.md) | 常駐成本現況, 可用槓桿與延後的 runtime-selection eval |
+| 文件 | 狀態 | 一句結論 | 落地 |
+|---|---|---|---|
+| [context-and-vendors.md](context-and-vendors.md) | 開著 (供應商指引會變) | 常駐內容是注意力稅; 兩家官方文件都說契約要短 | 字數與密度預算 (`support.py`, [contract-slimming](../contract-slimming.md)) |
+| [resident-context-options.md](resident-context-options.md) | 快照 (2026-09-10) | 常駐池裡本 repo 只管約六分之一, 其餘是機器上別的 skill | `resident-pool-report.py` 只報不擋 |
 
 ### 模型, routing 與同業 — Graph 層
 
-| 文件 | 回答什麼問題 |
-|---|---|
-| [model-evidence.md](model-evidence.md) | route 與 effort 怎麼選, 成本口徑怎麼算, 外部先驗有多可信; 末節登記「查過但不能用」的來源 |
-| [fable-5-fallback.md](fable-5-fallback.md) | 用 Fable 5 時怎麼避免被切到 Opus, 以及可行性邊界 |
-| [peer-harnesses.md](peer-harnesses.md) | 同業**各自**是什麼: Deep Agents, Pilotfish, pilotfish-codex, cablate/baton 的原始碼與版本拆解 |
-| [cross-upstream-synthesis.md](cross-upstream-synthesis.md) | 同業**合起來**說明什麼: 四輪跨上游整合的發現, 處置與推翻條件 |
+| 文件 | 狀態 | 一句結論 | 落地 |
+|---|---|---|---|
+| [model-evidence.md](model-evidence.md) | 開著 (先驗 90 天重查) | benchmark 只是先驗; 本機 ledger 達 n≥10 才動路由; 2026-08-31 撤回一條不能重現的窗口占用數 | `model-routing.toml` 的先驗與 `revision_policy` |
+| [fable-5-fallback.md](fable-5-fallback.md) | 結案 | Fable 在具名角色會被切到 Opus, 所以只在主 session 用 | `provider-routing` skill, routing 的 `judgment_fable` 註記 |
+| [peer-harnesses.md](peer-harnesses.md) | 快照 (各上游版本) | 四家同業各自是什麼 | 紀錄; 蒸餾去向在 upstream-distillation-ledger |
+| [cross-upstream-synthesis.md](cross-upstream-synthesis.md) | 結案 (五輪) | 規則生不生效由它怎麼寫決定 (15%→48%), 不由旁邊有幾條決定 (拿掉 83% 仍 p=0.68); 領頭假說被自己的推翻條件打掉 | 契約 `DECISION` 子句的措辭; 內容指紋戳章 (`trap-surface.py`) |
 
 ### 本機實驗 — 橫跨四層的證據面
 
-| 文件 | 回答什麼問題 |
-|---|---|
-| [trap-experiments.md](trap-experiments.md) | 可重播的失敗情境與反證 |
-| [lifecycle-replay.md](lifecycle-replay.md) | replay 的四項存活判準, 生命週期問題與結論, 以及各格的事前登記 |
-| [injection-position.md](injection-position.md) | 矛盾指令從哪個位置送進去會贏, 對比強度能不能調; 兩輪都已結案, 2026-09-11 依 `DOC_SPRAWL_CEILING` 的處置從 lifecycle-replay 拆出 |
-| [clause-pricing.md](clause-pricing.md) | 能不能用產出品質給常駐子句定價 |
-| [carrier-evidence.md](carrier-evidence.md) | 載體換掉行為會不會變: 專案事實區塊 (`p2`) 與 skill 對檔案 (`y2`); 兩格都停在先導, 都沒量到差. 2026-09-14 依 `DOC_SPRAWL_CEILING` 的處置從 lifecycle-replay 拆出 |
-| [landing-readiness.md](landing-readiness.md) | 全語料盤點: 21 份研究文合起來說現在該落地什麼 |
-| [mechanism-evidence-map.md](mechanism-evidence-map.md) | 機制側盤點: 115 個機制各自站在什麼證據上, 誰在盯它不過期; 最大缺口是 52 個 eval 情境無一瞄準 gate 層 |
-| [wording-effect-scale.md](wording-effect-scale.md) | 措辭效應能不能外推, 與量它的 INTENT 連續尺 |
-| [local-experiments.md](local-experiments.md) | 本機任務結果 |
-| [community-skills-survey.md](community-skills-survey.md) | 第三方社群 skill 的逐條裁決 |
-| [landing-log.md](landing-log.md) | 每一次查核的原始紀錄與原始措辭, 含被後來證據推翻的段落; 2026-09 起 |
-| [landing-log-2026-08.md](landing-log-2026-08.md) | 同上, 2026-08-20 至 08-31; 2026-09-11 依期間拆出 |
-| [landing-log-earlier.md](landing-log-earlier.md) | 同上, 2026-08-04 至 08-14; 依期間拆出, 因為 `DOC_SPRAWL_CEILING` 指名的處置是拆檔不是調高常數 |
-| [prompt-surface-census.json](prompt-surface-census.json) | deterministic resident/role surface 快照 |
+| 文件 | 狀態 | 一句結論 | 落地 |
+|---|---|---|---|
+| [trap-experiments.md](trap-experiments.md) | 結案 (s7–s11) | 假完成是最常見的失敗; 報告是主張不是證據 | QC 詐欺清單 (`baton-dispatch`), `qc-gate-lines`, INTENT/TWINS/AUTH 三行 |
+| [lifecycle-replay.md](lifecycle-replay.md) | 開著 (登記簿) | replay 的四項存活判準; 稀釋假說推翻, 措辭效應定案; 覆蓋度子句三格都量不到 (2026-09-15 收線) | 判準 3 由 `weekly-integrity` 執行; 措辭進契約 |
+| [injection-position.md](injection-position.md) | 結案 (2026-09-06) | 對比是二元的, 注入位置量不出 | 紀錄; 契約只保留「以 user context 進場」這個事實 |
+| [clause-pricing.md](clause-pricing.md) | 結案 (2026-08-17) | 派工類子句原理上無法用產出定價; 驗證類可以, 但 40 run 是天花板 | 驗證子句保留在契約 |
+| [carrier-evidence.md](carrier-evidence.md) | 結案 (2026-09-11) | 專案事實區塊會自己到, 行為效應量不到; skill 對檔案沒差 | `main/project/` 只主張事實有固定的家, 不主張行為 |
+| [wording-effect-scale.md](wording-effect-scale.md) | 結案 (2026-09-05) | INTENT 連續尺造好了; 措辭效應能不能外推仍未答 | `gate_lines.py` 的尺 |
+| [landing-readiness.md](landing-readiness.md) | 快照 (2026-08-31) | 四項建議全部結案, 兩項自己撤回 | 紀錄 |
+| [mechanism-evidence-map.md](mechanism-evidence-map.md) | 快照 (2026-09-08) | 115 個機制各站在什麼證據上; 最大缺口是 eval 沒有一格瞄準 gate 層 | ECC Q3/Q3b/Q8 不做的依據 |
+| [local-experiments.md](local-experiments.md) | 結案 (2026-07-22) | review 深度檔位 | 已吸收進角色 effort |
+| [community-skills-survey.md](community-skills-survey.md) | 結案 (2026-09-14) | 第三方 skill 逐條裁決 | 紀錄 |
+| [landing-log.md](landing-log.md) · [-2026-08](landing-log-2026-08.md) · [-earlier](landing-log-earlier.md) | 日誌 | 每一次查核的原始紀錄; 2026-09 / 08-20–31 / 08-04–14 | — |
+| [orchestration-history.md](orchestration-history.md) | 日誌 | 派工設計的逐日決策, 2026-07-12 起 | 當前狀態在 [不變量表](../plans/orchestration-state.md) |
+| [prompt-surface-census.json](prompt-surface-census.json) | 儀器輸出 | 常駐面的位元組快照 | `test_contracts` 比對它 |
 
 ### 上游與蒸餾 — 這些能力從哪來
 
-| 文件 | 回答什麼問題 |
-|---|---|
-| [mattpocock-skills-integration.md](mattpocock-skills-integration.md) | 工程工作流 skill 的上游快照, 工作流比較, 採用與拒絕理由 |
-| [upstream-distillation-ledger.md](upstream-distillation-ledger.md) | 上游每一節蒸餾到哪裡, 捨棄了什麼 (`scripts/upstream-recheck.sh` 可覆核); 涵蓋 mattpocock/skills 與 sepia, 加每輪全掃的讀數表 |
-| [task-observer-upstream.md](task-observer-upstream.md) | `task-observer` 的上游 rebelytics 逐版逐條 (v2.0.0, v3.0.0, v3.1.0) |
-| [ecc-survey.md](ecc-survey.md) | 同業 `affaan-m/ecc` 的 42 條逐條處置, 三個反面觀察與兩個分歧 |
-| [trellis-survey.md](trellis-survey.md) | 同業 `mindfold-ai/Trellis` 的逐層處置, 三個分歧與三項待量候選; 含 AGPL 與「效果數字不可引用」兩條限制 |
-| [readable-zh-tw-upstream.md](readable-zh-tw-upstream.md) | `readable-zh-tw` 的上游 pin, 目標分岔與逐次同步紀錄 |
+| 文件 | 狀態 | 一句結論 | 落地 |
+|---|---|---|---|
+| [upstream-distillation-ledger.md](upstream-distillation-ledger.md) | 開著 (稽核軌跡) | 上游每一節蒸餾到哪裡, 捨棄了什麼 | 各 skill 的 `ATTRIBUTION.md`; `upstream-pin-report.py` |
+| [mattpocock-skills-integration.md](mattpocock-skills-integration.md) | 結案 (2026-09-10) | 工程工作流 skill 的採用與拒絕 | `evidence-debugging`, `test-first-change` |
+| [task-observer-upstream.md](task-observer-upstream.md) | 結案 (2026-09-10) | rebelytics 逐版逐條 | `task-observer` |
+| [ecc-survey.md](ecc-survey.md) | 結案 (2026-09-10) | 42 條裡 11 條沒有等價; 七項落地, 六項量過不做 | hook 環境開關文件, 拒絕訊息衰減, `deployment-verification.tsv`, skill 溯源 |
+| [trellis-survey.md](trellis-survey.md) | 結案 (2026-09-11) | 借形狀不借 prose (AGPL); 三項待量候選量了兩項 | `main/project/` |
+| [readable-zh-tw-upstream.md](readable-zh-tw-upstream.md) | 開著 (pin 紀錄) | 上游 speak-human-tw 的目標分岔 | `readable-zh-tw` |
 
 ## 驗證缺口
 

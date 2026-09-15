@@ -152,7 +152,7 @@ ja-JP 522, zh-CN 416, tr 142, es 142, ko-KR 64, zh-TW 58, pt-BR 47, vi-VN 1, ur 
 (`grep -rni "nested subagent|depth limit|verifier quota"` 兩者皆空, 唯一命中是 `santa-method`
 要求兩個 reviewer 都通過). 本專案: direct execution 為預設, 三項成本測試沒過就不派.
 **裁決**: 本專案這一側有量測 —— replay 的 d3–d6 四對 cell 從 12 檔量到 96 檔, 派工成本是 inline
-的 1.1–3.6 倍且交會點不存在 ([replay README Part 15](../../evals/replay/README.md)). ECC 這一側
+的 1.1–3.6 倍且交會點不存在 ([replay JOURNAL Part 15](../../evals/replay/JOURNAL.md)). ECC 這一側
 沒有任何成本數字. 有量測的一側勝, 但這不是「ECC 錯」, 是**它的成本結構沒被量過**.
 會推翻的觀察: 一個形狀讓 inline 成本超過派工 —— 至今四對 cell 沒出現.
 

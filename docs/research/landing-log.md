@@ -180,7 +180,7 @@ speak-human-tw 第五輪機器人, rebelytics 3.0→3.1; sepia 出 v0.7.0; clien
 | P10 | client 注入段消失 → 戳章重跑 | 縮小: 戳章從沒含 client 半邊, 落在 wording-effect-scale 補記 |
 | P11 | sepia 後續 (a) Fable 5.1 prose layer (b) `readable-zh-tw` eval | (a) 三條供應商自述記進 ledger; (b) 決定要, 借 sepia 三 grader 形狀, 09-06 `z1` 跑了 |
 | P12 | 「查過但不能用」登記法 | 已完成 09-05: `model-evidence.md` 末節開表, 首輪三筆 |
-| P13 | 派工正控制 fixture | 09-06 做成 replay `d3`–`d6` 四對 cell (12 到 96 檔, 同形與異形): 煞車沒判錯過, 交會點不存在, inline 非單調而派工的線性項在 leaf 數上. 見 [replay README Part 15](../../evals/replay/README.md) |
+| P13 | 派工正控制 fixture | 09-06 做成 replay `d3`–`d6` 四對 cell (12 到 96 檔, 同形與異形): 煞車沒判錯過, 交會點不存在, inline 非單調而派工的線性項在 leaf 數上. 見 [replay JOURNAL Part 15](../../evals/replay/JOURNAL.md) |
 | P14 | 注入位置第二輪 | 09-06 跑完 23 run 約 $17 結案: 禁止句 0/27 對偏好句 10/11, 對比二元, 量不出位置; 副產品「契約規則輸給任何禁止句, 贏過任何偏好句」 |
 
 明確不做的 (依據在 ledger): rebelytics 的啟動種子, session-start 掃描, staging 三向對帳,
