@@ -34,9 +34,8 @@ rtk's own installer. Keep it that way:
   `docs/research/landing-log.md`.
 - `rtk gain` ends with `[warn] No hook installed — run rtk init -g`. Expected here;
   it only means rtk did not install the hook itself. Do not act on it.
-- Codex gets no hook: `rtk hook` supports claude, cursor, gemini, copilot, droid and
-  vibe, but not codex. That asymmetry is why the Codex contract carries a prefix
-  instruction and the Claude contract does not.
+- The contract carries no rtk prefix instruction because `rtk hook claude` does the
+  rewriting; a client without hook support would need one in its contract instead.
 
 ## Verify
 

@@ -88,7 +88,7 @@ App/Desktop 走相同路徑. Codex App 不在目前已驗證的 wrap surface.
 | Proxy | Claude/Codex/Antigravity 都以明確的 `headroom wrap <agent>` session 為標準 | 只壓縮實際經 proxy 的流量 |
 | Headroom MCP | `headroom mcp install` | 手動壓縮與 marker retrieval, 不等於全流量代理 |
 | Coding compressor | Headroom stable release | 以具日期的 release notes 與安裝版本 capability 為準, 不在無日期段落固定 backend |
-| RTK 指引 | harness 的 Claude/Codex contract | Headroom 不注入; `--serena-instructions` 維持關閉 |
+| RTK 指引 | harness 的 contract 與 `~/.claude/RTK.md` | Headroom 不注入; `--serena-instructions` 維持關閉 |
 | Serena code-memory | `headroom wrap` 的預設 (`--code-memory`) | 由 wrap 註冊 MCP, 不由本 repo 部署或版控 |
 | Headroom plugin | 維持停用 (`headroom@headroom-marketplace`) | 避免與 CLI/MCP 的 lifecycle 重複 |
 

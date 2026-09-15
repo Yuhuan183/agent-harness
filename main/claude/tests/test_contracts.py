@@ -1011,7 +1011,11 @@ class DocumentationBudgetTests(unittest.TestCase):
             ".claude/skills/baton-dispatch/SKILL.md": 1297,
             # QC mechanics and fixed records belong to baton-dispatch; keep
             # provider-routing focused on route, fallback, and eligibility.
-            ".claude/skills/provider-routing/SKILL.md": 1300,
+            # 1300 -> 666 on 2026-09-15: measured 652 + ~2%. The ceiling had sat at
+            # more than twice the body since the Codex half of this skill left
+            # on 2026-09-14, and a ceiling far above usage is room to regrow
+            # into without anyone deciding to.
+            ".claude/skills/provider-routing/SKILL.md": 666,
             # +45 (2026-07-25): invocation mechanics (fork_turns, spawn_argument
             # vs agent_config) moved out of the always-resident Codex contract
             # into this on-demand skill. The resident side of that trade is
@@ -1051,7 +1055,9 @@ class DocumentationBudgetTests(unittest.TestCase):
             # experience-ledger and readable-zh-tw are one source each, shared
             # by both providers through a symlink; both deployed surfaces are
             # listed because both are what a session actually loads.
-            ".claude/skills/experience-ledger/SKILL.md": 980,
+            # 980 -> 735 on 2026-09-15: measured 720 + ~2%, after the bridge and
+            # native-Codex instructions left the body on 2026-09-14.
+            ".claude/skills/experience-ledger/SKILL.md": 735,
             # Largest dispatch-time body in the repo, and the one that states
             # its triggers twice (zh-TW and English) because either language
             # can invoke it. Trimming it is deliberately a separate task.
@@ -1072,6 +1078,8 @@ class DocumentationBudgetTests(unittest.TestCase):
             # Claude's copies are thin pointers; Codex carries the procedure,
             # so the two sides of these two skills are genuinely different
             # files and get their own ceilings rather than a shared one.
+            # Thin wrappers: frontmatter plus a pointer to the shared body (128 and
+            # 137 words on 2026-09-15, within 5% of these ceilings).
             ".claude/skills/headroom-protocol/SKILL.md": 135,
             ".claude/skills/task-observer/SKILL.md": 145,
             # 770 -> 810 on 2026-08-31, and the ratchet's own rule says to argue
