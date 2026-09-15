@@ -1,8 +1,7 @@
 # 配置說明 (開發者與 agent 適用)
 
 把 agent-harness 的可攜契約套用到本機全域配置的完整流程. 設計原則:
-**專案是唯一編修處, 全域是套用目標**; 機器狀態 (憑證, sessions, cache,
-Codex `config.toml`, Claude Code `~/.claude.json` 的 MCP entry) 永不納入版控或同步.
+**專案是唯一編修處, 全域是套用目標**; 機器狀態 (憑證, sessions, cache, Claude Code `~/.claude.json` 的 MCP entry) 永不納入版控或同步.
 
 ## 目錄對應
 
@@ -46,8 +45,7 @@ skill 與清單本身, 但保留 `~/.agents/skills/` 中其他第三方 skill; w
 
 ## 新機器 bootstrap (前置依賴)
 
-sync 之前, 先確認以下工具鏈到位; plugin 與第三方 skill 一律視為本機自理,
-不由本 repo 管理.
+sync 之前, 先確認以下工具鏈到位; plugin 與第三方 skill 一律本機自理, 不由這裡管理.
 
 ```bash
 # 0. Python >= 3.11 (routing 工具鏈與測試使用 stdlib tomllib;
@@ -64,7 +62,7 @@ brew install rtk ripgrep         # hook 依賴; 未裝時 fail-open, 可後補
                                  # 每個 rg 命令以 `rtk: search failed` 收場
 curl -LsSf https://astral.sh/uv/install.sh | sh   # headroom CLI 由 uv tool 管理
 uv tool install headroom-ai      # 詳見 ~/.agents/docs/headroom-runtime.md
-# Claude Code 與 Codex CLI 依官方文件安裝 (本 repo 不管理其版本)
+# Claude Code 依官方文件安裝 (版本不由這裡管理)
 ```
 
 - **Claude plugins** (figma, warp, ui-ux-pro-max…): 本 repo 不依賴任何 plugin. 要用的話
@@ -73,7 +71,7 @@ uv tool install headroom-ai      # 詳見 ~/.agents/docs/headroom-runtime.md
   group 會保留; 本機偏好仍建議放 `settings.local.json` (不入庫, 不同步).
 - **第三方 skills (lark 全套等)**: 本機自帶, 非必要依賴, 不列入本專案的
   `INSTALLED.txt`, 也不由本 repo 部署; managed merge 會保留其既有目錄.
-  `.skill-lock.json` 只是 installer 的 machine-local 版本快照, 不是專案 skill ownership 清單, 也不由本 repo 追蹤或部署.
+  `.skill-lock.json` 只是 installer 的 machine-local 版本快照, 不是專案 skill ownership 清單, 不由這裡追蹤或部署.
 
 ## 套用步驟
 
@@ -150,21 +148,19 @@ Headroom 沒有 CLI context tools; Claude/Codex wrapper 不傳入那類選項. R
 這些 lifecycle 指令. preset 轉換, 升級後 restart/re-apply 判斷與健康檢查見
 [`headroom-runtime.md`](../main/.agents/docs/headroom-runtime.md).
 
-`scripts/sync.sh` 的 dry-run 與 apply 都會先跑 JSON, shell, 兩側 routing, Claude pins 與
+`scripts/sync.sh` 的 dry-run 與 apply 都會先跑 JSON, shell, routing, pins 與
 contract tests; 任何一項失敗都在寫入前停止. 所有可攜的 source→HOME 映射只定義在
 `scripts/deployment-manifest.tsv`, `sync.sh` 與 weekly integrity 共讀這一份; 新增或改名部署
 成品時不得另建第二份清單.
 
-**兩個檔案是合併部署, 不是覆蓋**, 因為它們同時有別的寫入者:
-
-- **`settings.json`** (`merge-json`, manifest 第三欄). 三個寫入者: 本 repo, Claude Code 自己
+**`settings.json` 是合併部署, 不是覆蓋** (`merge-json`, manifest 第三欄), 因為它有三個寫入者: 本 repo, Claude Code 自己
   (`/model`, `/effort`), 與第三方 hook 安裝程式. 合併看「所有權」而不是位置 —— 命令含
   `$HOME/.claude/hooks/` 或 `rtk hook claude` 的 hook group 屬於本 repo, 整組替換 (所以過期
   指令是被更新, 不會變成重複兩份); 其餘 group, repo 未定義的事件與 top-level key 一律原樣
   保留, `permissions.allow` 取聯集. 每次執行都會列出保留了哪些項目, 因此不需要覆寫逃生口,
   `--accept-settings-overwrite` 已移除.
 
-兩者的部署後校驗都不是 byte 相等, 而是「重跑一次 merge 不再改變任何東西」, `sync.sh` 與
+它的部署後校驗不是 byte 相等, 而是「重跑一次 merge 不再改變任何東西」, `sync.sh` 與
 weekly integrity 都會驗.
 
 另外兩件會讓 apply 停下或被判成 drift 的事:
@@ -192,7 +188,7 @@ main/.agents/scripts/python3-run scripts/project-init.py <repo> --verify   # 0 �
 
 ## 驗收
 
-- 新 session 中全域 CLAUDE.md 只有兩節短規則; `provider-routing`, `baton-dispatch`,
+- 新 session 中全域 CLAUDE.md 只有三節短規則; `provider-routing`, `baton-dispatch`,
   `headroom-protocol` 出現在可用 skill 清單且能按需載入.
 - `headroom-protocol` 與 `task-observer` 是平台 wrapper, 其共用內文與資源分別連回
   `~/.agents/skills/<name>`.
