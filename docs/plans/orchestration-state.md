@@ -1,6 +1,6 @@
 # Orchestration current state
 
-> Current as of 2026-08-20. 決策歷程在 [orchestration-history.md](orchestration-history.md);
+> Current as of 2026-09-15. 決策歷程在 [orchestration-history.md](../research/orchestration-history.md);
 > 完整差異由 Git 保存.
 
 這份文件只做一件事: **把必須成立的不變量收成一張可以逐條檢查的表**. 每一條的論證, 實作與
@@ -14,9 +14,9 @@
 | # | 必須成立的 | 擁有者 |
 |---|---|---|
 | 1 | 一個可寫 artifact 一個 owner; 單一未知 bug 的診斷, 首次修復與現場驗證留在同一條推理鏈 | [graph](../architecture/graph-engineering.md) |
-| 2 | Leaf agent 從不再派工. Claude 側由 `leaf-redispatch` 擋, Codex 側是 `agents.max_depth = 1` | [harness](../architecture/harness-engineering.md) |
+| 2 | Leaf agent 從不再派工, 由 `leaf-redispatch` hook 擋 | [harness](../architecture/harness-engineering.md) |
 | 3 | 每個 top-level task 至多一個 outcome verifier, 放在最小完整驗收邊界 | [loop](../architecture/loop-engineering.md) |
-| 4 | Claude 的 no-write 角色沒有 Bash; 需要跑命令的獨立驗證改派 Codex read-only sandbox | [harness](../architecture/harness-engineering.md) |
+| 4 | no-write 角色 (explore, plan-verifier, verifier, security-reviewer) 沒有 Bash; 需要跑命令的驗證留在主 session | [harness](../architecture/harness-engineering.md) |
 | 5 | 安全分析在核准契約存在之前一律唯讀; 之後由單一 security executor 實作 | [harness](../architecture/harness-engineering.md) |
 | 6 | 同一個 readiness-unit 至多兩次自動實質修訂, 之後把選項交還使用者 | [loop](../architecture/loop-engineering.md) |
 | 7 | 固定 `[LEAF_DISPATCH]` / `[LEAF_RESULT]` 紀錄帶 task identity, 完整 route, `request_source`, QC 結果與對應的 ledger identity | [graph](../architecture/graph-engineering.md) |

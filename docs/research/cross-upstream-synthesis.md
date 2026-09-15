@@ -845,7 +845,7 @@ ECC #2142 的機轉寫在 `gateguard-fact-force.js:934-948`: 近乎相同的四�
 PATH 覆蓋 —— 衰減若要落地, 兩側算同一個 gate 的連擊. 兩側加起來仍不是無條件的: git 側是 client 端的: `--no-verify` 與 `-c core.hooksPath=` 都繞得過去, 真正關得起來的那一層是 CI.)
 
 這一票只有 ECC 一家, 而且是機轉宣稱不是量測 —— 它沒有發表退化率的前後對照. **所以結論是
-「條件成立, 值得做, 但效果未經任何人量過」**, 排 [ECC 計畫 Q2](../plans/upgrade-plan-ecc-2026-09.md).
+「條件成立, 值得做, 但效果未經任何人量過」**, 排 [ECC 計畫 Q2](ecc-survey.md#升級計畫-結案表與重開條件).
 
 **推翻條件**: 本 repo 落地前重量, 最長連擊掉到 3 以下 —— 那時衰減沒有對象.
 
@@ -862,7 +862,7 @@ ECC 的 `harness-adapter-compliance.js` 要求 12 列每一列都填 `last_verif
 
 但誠實的補充: 我方這三件機器盯的是**上游與供應商的時效**, 不盯**自己機制的時效**.
 `deployment-manifest.tsv` 的 40 列沒有 `last_verified`, 7 個 fail-closed gate 沒有推翻條件 ——
-換句話說, ECC 犯的錯我方在另一個目錄裡也犯得起. 排 [Q5](../plans/upgrade-plan-ecc-2026-09.md)
+換句話說, ECC 犯的錯我方在另一個目錄裡也犯得起. 排 [Q5](ecc-survey.md#升級計畫-結案表與重開條件)
 與[機制盤點 M5](mechanism-evidence-map.md#這一輪之後該做什麼).
 
 **推翻條件**: ECC 補上過期測試 → 這一格從「我方獨有」降為「兩家都有」, 而 Q5 要改成同形而不是補它缺的那半.

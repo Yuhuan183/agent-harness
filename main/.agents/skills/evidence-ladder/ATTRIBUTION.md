@@ -2,7 +2,7 @@
 
 **Origin**: this repository. The user wrote this skill by hand, straight into
 `~/.claude/skills`, and it was adopted into the tree as written on 2026-08-19
-(`docs/plans/orchestration-history.md`, that date). It is the author's own
+(`docs/research/orchestration-history.md`, that date). It is the author's own
 text, which is why it carried no attribution file until the plan's Q10 asked
 every skill to say so explicitly.
 

@@ -1,7 +1,7 @@
 # Attribution — harness-review
 
 **Origin**: this repository. Written on 2026-07-22 as the method for the first
-dual-provider six-dimension review (`docs/plans/orchestration-history.md`,
+dual-provider six-dimension review (`docs/research/orchestration-history.md`,
 "review remediation"), generalised afterwards into the review contract,
 coverage ledger, admissible-evidence table and probe menu it holds now. The
 six dimensions are the ones the 2026-07-28 document audit used

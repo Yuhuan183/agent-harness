@@ -112,7 +112,7 @@ and compared sentences rather than coverage:
   `templates/claude-md.orchestration.md`
 - **Reviewed commit**: `7a7f71b327f079fecbf29fa91e444b9a6180c31c` (`v1.3.10`,
   2026-08-08). The adoption was 2026-07-22 against an earlier v1.3 release
-  (recorded in `docs/plans/orchestration-history.md` as "Pilotfish v1.3
+  (recorded in `docs/research/orchestration-history.md` as "Pilotfish v1.3
   batching and Plan anti-churn adopted"); this is the commit the wording was
   checked against.
 - **Licence**: MIT, Copyright (c) 2026 Nanako0129. The permission notice

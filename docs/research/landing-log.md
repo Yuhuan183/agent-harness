@@ -349,7 +349,7 @@ pilotfish (+19) 的 head 日期全都**早於**它們自己那列的查核日, �
 
 #### 2026-09-10 (晚) 專案層 P0 + P1: 三條釘子先紅, 然後一支 init
 
-路線在[專案層計畫](../plans/project-layer-plan.md). 這裡記數字與過程裡改了什麼.
+路線在[專案層計畫](../../main/project/README.md#已定的決定). 這裡記數字與過程裡改了什麼.
 
 **先紅**: `test_project_layer.py` 15 支在任何實作存在之前跑, 8 fail 9 error (含 subTest). 三條釘子: 兩份 manifest 不共用來源; 樣板不含權限詞彙 (19 個: 七個角色名, 三支派工 skill 名, 兩個紀錄標記, delegate / dispatch / subagent / sub-agent / workflow / explore / experience-ledger); 樣板固定文字有上限. **禁字表是釘子不是判定**: 它抓得到「verifier」抓不到「先問過那個檢查的人」, 計畫裡的推翻條件就是為這件事寫的.
 

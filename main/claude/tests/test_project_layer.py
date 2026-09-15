@@ -1,6 +1,6 @@
 """Project layer: a per-repository fact bundle rendered from one facts file.
 
-`docs/plans/project-layer-plan.md` P0 and P1. The global layer under HOME
+`main/project/README.md` (the plan it was written for retired 2026-09-15). The global layer under HOME
 carries authority - roles, dispatch, verification, gates - and travels with
 the person. The project layer carries facts about one repository - its test
 command, its truth sources, its traps, its fastest refuting check - and

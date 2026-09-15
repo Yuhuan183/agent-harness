@@ -5,7 +5,7 @@
 > 類別**同業**: 勘查為主. **2026-09-08 起有一條真的蒸餾了** (B15 → 計畫 Q1), 但落地的是概念改造而不是上游原句, 一個位元組都沒有複製, 出處記在
 > `test_deployment.HookEnvDocumentationTests` 的 docstring 裡 (點名 ECC, 檔名, 勘查日, MIT) ——
 > 與 `eli5` 那次同樣的處置, 因此仍然沒有獨立的 ATTRIBUTION 檔.
-> 逐條處置在下面的表, 落地排程獨立成 [ECC 升級計畫](../plans/upgrade-plan-ecc-2026-09.md).
+> 逐條處置在下面的表, 落地排程獨立成 [ECC 升級計畫](#升級計畫-結案表與重開條件).
 
 ## 這份文件回答什麼
 
@@ -228,3 +228,28 @@ ECC 寫 ``pin `<sha>``, eli5 寫 ``path 最後 commit 仍是 `<sha>`` —— 所
 - **本機 `denials.jsonl` 的最長連擊在 Q2 落地前掉到 3 以下** → Q2 的三個量測數失效, 要重量再決定.
 - **`zunoworks/gateguard` 查明 fact-forcing 是從別處來的** → 這條的血緣要再往上追一層, 計票不變
   (本輪就沒把它算成 ECC 的票).
+
+## 升級計畫: 結案表與重開條件
+
+2026-09-08 開的升級計畫已於 09-10 全部結案, 計畫頁 2026-09-15 退場 (全文由 Git 保存); 這一節接手它唯一還活著的內容 —— 重開條件與明確不做的清單. 十三項的處置與落地當天的數字在 [landing-log](landing-log.md#2026-09-08-ecc-計畫逐項結案-2026-09-10-自升級計畫搬入).
+
+已落地: Q1 (hook 環境開關文件化, 雙向), Q2 (拒絕訊息衰減, 只做 `managed-target-guard`), Q5 (`deployment-verification.tsv` 旁側檔, 90 天到期), Q8b (逐閘宣告「什麼條件下等於沒有」), Q9 (`upstream-pin-report` 讀同業 pin), Q9b, Q10 (每支 skill 一份 `ATTRIBUTION.md`). 量過不做: Q3, Q3b, Q4, Q6, Q7, Q8.
+
+### 重開條件
+
+- **Q3 / Q3b / Q8**: 各自寫在 [mechanism-evidence-map](mechanism-evidence-map.md) 該節.
+- **Q5**: 連續三個 90 天週期重新觀察都沒有任何一列的 client 停止讀取 → 到期改成 weekly-integrity 的 finding, 不再擋 commit.
+- **Q6**: skill 失敗率量到超過 3%, 或出現一次「載入了但失敗」. 量法: transcript 的 `tool_use` 對 `tool_result` 配對掃描.
+- **Q7**: 出現一次動了上限而 commit message 說不出理由.
+- **Q9**: ECC 的更新頻率讓 pin 比對失去意義時, 改用查核日而不是 SHA.
+- **Q10**: 任一支標「自有」的 skill 被查出一句蒸餾自他處 → 「自有」判準加一道對研究文的機械比對.
+
+### 明確不做的 (依據在上面的逐條處置表)
+
+- 四份常駐檔的拆法 (A1), prompt-defense baseline (A2), 80% 覆蓋率門檻 (A8): 加規則不加可失敗的檢查.
+- instinct 信心分數與 `/evolve` 叢集 (C1, C5): 模型自評沒有校準來源; 本專案的 skill 是蒸餾產物不是生成物.
+- `harness-audit` 式評分 rubric (D2): 分數上升會被讀成改善.
+- 安裝 profile (F2), 多語系鏡像 (F3): 把「現在是什麼狀態」變成要對帳的東西.
+- 擋 `--no-verify` (B7): 分歧, 見[兩個分歧](#兩個分歧).
+- hook profile 分級 (B8), 治理事件另開一條 (E5), process group kill 與心跳 (E3): 沒有對應的執行面.
+- MCP 斷路器 (B11), per-skill 健康度 (D1): 記為缺口不排, 沒有本機事故就不加閘.

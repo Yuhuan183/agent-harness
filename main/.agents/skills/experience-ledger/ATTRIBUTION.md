@@ -3,7 +3,7 @@
 **Origin**: this repository. Designed here on 2026-07-20 (the AR/CR/RB/FR/QS
 metrics and the explore-then-prefer rule), extended on 2026-07-22 (schema v3
 with request source and dispatch identity) and 2026-07-29 (route evidence from
-transcripts and rollouts), each recorded in `docs/plans/orchestration-history.md`.
+transcripts and rollouts), each recorded in `docs/research/orchestration-history.md`.
 Not distilled from any other project's skill, script or schema.
 
 **What it is corroborated by, which is not the same as where it came from.**

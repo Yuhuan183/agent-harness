@@ -65,7 +65,7 @@ eval        evals/replay/scenarios/ 47 + evals/traps/ 5      52
 | hook (11) + git hook (1) | 12, **其中 7 個是 fail-closed gate** | `docs/hook-system.md` (10/12 的主要出處, 也是 7 對 5 這個切分的擁有者), 少數在 `landing-log` | 單元測試 + 合成 pipe-test (三關驗證); `denials.jsonl` 記攔截 | **沒有任何一個 eval 情境是關於 hook 的** —— 見缺口一 |
 
 **git 側那一支蓋不到的殘餘**: `--no-verify` 與 `-c core.hooksPath=` 都繞得過去, 所以它涵蓋的是「文字推測不到的路徑」而不是「所有路徑」; 關得起來的那一層是 CI.
-| skill (10 部署 + 2 dev-only) | 12 | 各自的 `ATTRIBUTION.md` (去重後 6/12 支有, `leaf-dispatch` 於 2026-09-08 補上) 或研究分題文件; `baton-dispatch` 21 份文件提及, `test-first-change` 只有 4 份 | `test_contracts` / `test_ledger` 的片語斷言; `prompt-surface-census` 盯位元組 | 出處覆蓋率 6/12, 排 [ECC 計畫 Q10](../plans/upgrade-plan-ecc-2026-09.md) |
+| skill (10 部署 + 2 dev-only) | 12 | 各自的 `ATTRIBUTION.md` (去重後 6/12 支有, `leaf-dispatch` 於 2026-09-08 補上) 或研究分題文件; `baton-dispatch` 21 份文件提及, `test-first-change` 只有 4 份 | `test_contracts` / `test_ledger` 的片語斷言; `prompt-surface-census` 盯位元組 | 出處覆蓋率 6/12, 排 [ECC 計畫 Q10](ecc-survey.md#升級計畫-結案表與重開條件) |
 | repo script (21) | 21 | 10 支在檔內引用了它服務的文件; 11 支沒有 | 21/21 被套件引用; 抽查確認多數被 `load_module` 或 subprocess 跑過, 但**至少 `docs-size-report.py` 只出現在一行註解裡** | 「跑得動」不等於「有人讀」—— 見缺口二 |
 | 部署 script (11) | 11 | `dispatch-lifecycle.md`, `provider-routing`, `experience-ledger` 的 references | `weekly-integrity` 每週自動讀其中 3 支 (`delegation-report`, `prompt-bundle-report`, `experience-report`) + `model-routing` | 另外 7 支沒有排程讀者 |
 | role (7 × 2 provider) | 7 | `dispatch-lifecycle.md`, `architecture.md`; `verifier` 25 份文件提及, `security-reviewer` 6 份 | `test_roles.py` 斷言 no-write role 沒有任何 Bash 表面 | 依據厚, 這一格沒有缺口 |
@@ -92,7 +92,7 @@ eval        evals/replay/scenarios/ 47 + evals/traps/ 5      52
 缺的是「擋了之後結果比較好」, 而那正是[研究摘要驗證缺口](README.md#驗證缺口)第五條
 (「從來沒有量過規則觸發了有沒有比較好」) 在契約層講的同一件事, 只是沒有人在 gate 層講過.
 
-**這一格是本次盤點最值錢的發現**, 而且它剛好和 [ECC 計畫 Q3](../plans/upgrade-plan-ecc-2026-09.md)
+**這一格是本次盤點最值錢的發現**, 而且它剛好和 [ECC 計畫 Q3](ecc-survey.md#升級計畫-結案表與重開條件)
 撞在一起 —— fact-forcing 的第一階段 (只記錄不攔) 產生的就是 gate 層的第一批行為資料.
 
 ### 缺口二: 儀器跑得動, 但多數沒有排程讀者
@@ -129,7 +129,7 @@ eval        evals/replay/scenarios/ 47 + evals/traps/ 5      52
 而每一種都被一句對症的措辭關掉. `landing-readiness` 的發現五據此寫下「再往實質防線加規則,
 沒有證據支持」.
 
-[ECC 計畫 Q3](../plans/upgrade-plan-ecc-2026-09.md) 的 fact-forcing **正是往實質防線加規則**.
+[ECC 計畫 Q3](ecc-survey.md#升級計畫-結案表與重開條件) 的 fact-forcing **正是往實質防線加規則**.
 兩者放在一起, 正確的讀法不是「所以不要做」, 而是:
 
 ```text
@@ -143,7 +143,7 @@ eval        evals/replay/scenarios/ 47 + evals/traps/ 5      52
 (為新守衛鋪路). 兩件事的差別在於: 如果兩週的資料顯示那 7 個幾乎不攔, 那麼 fact-forcing
 連問題都沒有; 如果顯示常攔, 那麼**該修的是常攔的那幾支**, 而不是再加一支.
 
-**這改變了 [ECC 計畫](../plans/upgrade-plan-ecc-2026-09.md)的排序**: Q3 從「最有價值但風險最高,
+**這改變了 [ECC 計畫](ecc-survey.md#升級計畫-結案表與重開條件)的排序**: Q3 從「最有價值但風險最高,
 所以排最後」變成「依據被語料削弱, 併入 M1 之後才重新評估」.
 
 ### 二, 缺口二 (儀器沒有排程讀者) 的嚴重度下修, 因為尺度論證擋在前面
@@ -405,7 +405,7 @@ repo 沒有寫的內容** —— WebFetch, WebSearch, 瀏覽器工具, 或 Bash 
 
 | # | 項目 | 依據 | 先紅的檢查 | 完成條件 |
 |---|---|---|---|---|
-| M1 | gate 層的第一批行為資料: 「只記錄不攔」, **對象是現有的 7 個 fail-closed gate 而不是新 gate** —— 記下每 gate 在真實 session 裡本來會攔幾次. **與 [ECC 計畫 Q3](../plans/upgrade-plan-ecc-2026-09.md) 第一階段合併, 且主體是這一項** (理由見[重新結論一](#一-m1-不是fact-forcing-的前置-它就是主體--而-fact-forcing-本身該降級)) | 缺口一 + `trap-experiments` 的 37/37 | — (觀察期) | 兩週的每 gate 命中數. **幾乎不攔 → fact-forcing 連問題都沒有; 常攔 → 該修的是常攔的那幾支, 不是再加一支** | **已完成 2026-09-08, 而且它推翻了自己的決策規則**: 儀器早就在 (`denials.jsonl` 20 天 30 列), 所以這一項是讀一次而不是造一支. 基線, 正控制與逐條 licence 在[上一節](#m1-的基線-以及它推翻了自己的決策規則-2026-09-08). **與 Q3 第一階段的合併是錯的, 已拆回**: 現有七個閘沒有一個守 fact-forcing 要守的那個面, 所以它們的閒置推不出 fact-forcing 不必要.
+| M1 | gate 層的第一批行為資料: 「只記錄不攔」, **對象是現有的 7 個 fail-closed gate 而不是新 gate** —— 記下每 gate 在真實 session 裡本來會攔幾次. **與 [ECC 計畫 Q3](ecc-survey.md#升級計畫-結案表與重開條件) 第一階段合併, 且主體是這一項** (理由見[重新結論一](#一-m1-不是fact-forcing-的前置-它就是主體--而-fact-forcing-本身該降級)) | 缺口一 + `trap-experiments` 的 37/37 | — (觀察期) | 兩週的每 gate 命中數. **幾乎不攔 → fact-forcing 連問題都沒有; 常攔 → 該修的是常攔的那幾支, 不是再加一支** | **已完成 2026-09-08, 而且它推翻了自己的決策規則**: 儀器早就在 (`denials.jsonl` 20 天 30 列), 所以這一項是讀一次而不是造一支. 基線, 正控制與逐條 licence 在[上一節](#m1-的基線-以及它推翻了自己的決策規則-2026-09-08). **與 Q3 第一階段的合併是錯的, 已拆回**: 現有七個閘沒有一個守 fact-forcing 要守的那個面, 所以它們的閒置推不出 fact-forcing 不必要.
 | M2 | 每支報表宣告讀取節奏 (每次 commit / 每週 / 每次上游重查 / 只在調查時), 沒有答案的列為候刪 | 缺口二 | `test_mechanisms` 新測試: 每支 `scripts/*.py` 的 docstring 要有一行節奏宣告; 今日 21 支全紅 | **至少判定一支候刪** (完成條件 09-08 改過: 原本是「21 支都有宣告」, 但那會誘人把 17 支全排進 `weekly-integrity`, 製造一份沒人看完的長清單 —— 理由見[重新結論二](#二-缺口二-儀器沒有排程讀者-的嚴重度下修-因為尺度論證擋在前面)) | **已完成 2026-09-08, 但完成條件沒達成**: 21 支各帶一行 `Read:` 宣告**觸發事件**, 由 `test_reporters.ReportCadenceTests` 釘住. 完成條件寫的是「至少判定一支候刪」, 而**一支都沒有** —— 逐支寫的時候每一支都答得出一個真的會發生的事件. 那是結果, 不是沒做到: 這條規則買到的是 21 個本來不存在的宣告, 加上下一支腳本進來時必須回答同一個問題. `Read: never` 這條分支仍然武裝著 (宣告 never 而沒有被任何盤點列為候刪就紅), 三向突變驗過. 落地當天 review 又抓到兩件, 同一個根因: `Read:` 一開始放在 `.py` 的 docstring 裡 (於是 16 支腳本的 `--help` 都多印一段, 而 argparse 摺疊段落讓它和下一段黏成沒有句界的長文), 在 `.sh` 裡則落在最後一個註解區塊的尾巴 (`sync.sh` 是一段講 bash re-exec 的技術旁白後面). **一個沒有人會看到的宣告不是宣告** —— 那正是這條規則要防的事, 而它自己先犯了. 改成一律放 shebang 下一行, 測試也從「前 40 行有沒有」收緊成「前三行」, 另加一支守衛斷言 `Read:` 不在任何 `__doc__` 裡. 順帶修掉規則自己的一個缺陷: 原本把 `whenever` 整個列為空話, 但「whenever a budget number is about to be raised」是事件 —— 一個分不出兩者的代理指標會為了看起來嚴格而擋掉好的那些.
 | M3 | 反向索引: 每份研究文末列出「本文產生了哪些機制」, 或由腳本從程式碼的 docstring 反推生成 | 缺口三 | 先寫生成器 + 測試: 拿 `codename-gloss-report` 當校準案例 (它的 docstring 指向 `docs/README.md`, 反向索引要生得出這一條) | 生成的索引覆蓋 10/21 有引用的 script; 其餘 11 支要嘛補引用要嘛列為無依據 | **09-08 改形狀**: M4 的更正把它的地基抽掉了 —— 依據多半指向程式碼與事故日期, 不是 `docs/` 路徑, 所以「從 docstring 的 docs/ 引用反推索引」只生得出 10/21 而且漏掉的正是理由最厚的那幾支. 要嘛換成人工維護一張表 (那是本 repo 反覆拒絕的形狀), 要嘛接受索引只能覆蓋一部分並明說. **傾向後者, 但這一項改成先回答「反向索引要回答什麼問題」** —— 若問題是「這份研究被推翻時哪些機制受影響」, 那 docs/ 引用本來就是對的母體, 只是覆蓋率低要照實寫. **已完成 2026-09-08, 形狀改過**: 從 docs/ 引用反推的版本被 M4 的更正否決; 改成**反向讀語料** —— 掃 `docs/research` 與 `docs/plans`, 找機制名, 反轉. 機制清單從樹上推導, 新的 hook 或 script 落地當天入表. `scripts/mechanism-index.py`, 讀取節奏是「研究結論被推翻或更正時」—— 光今天就發生兩次. **它拒絕宣稱的事印在每次輸出上**: 指名不等於依賴, 所以那是一組**要查的起點**不是答案; 那句話有突變護著 (刪掉它就紅). 50 個機制, 2 個沒有研究文指名, 而報表直接說它們在哪被描述, 不把它們寫成孤兒. 突變另外抓到一行**沒有作用的程式加一段替它辯護的註解** (按長度排序防止名字互吞) —— 拿掉排序什麼都沒變, 因為每個名字是各自比對的.
 | M4 | 11 支沒有依據引用的 script 各補一行「為什麼存在」: `budget-drift-report`, `codex-prompt-census`, `denial-report`, `evidence-check`, `install-git-hooks`, `machine-state-check`, `merge-settings`, `merge-toml`, `prompt-surface-census`, `resident-pool-report`, `sync` | 缺口三 | 同 M3 的測試 | 每支一行, 指向真實存在的文件; 指不出來的那幾支要回答「那它憑什麼在」 | **已完成 2026-09-08, 而前提是錯的**: 打開那 11 支才發現 **10 支本來就解釋了自己為什麼存在** —— 只是引用的是姊妹腳本 (`prompt-surface-census.py` ↔ `resident-pool-report.py`), 測試檔, 與帶日期的事故 (2026-08-08 的證據引用失效, 2026-08-20 的 35,853 筆 fixture 汙染), 而不是 `docs/` 路徑. **我的探針量的是「有沒有引用 docs/ 路徑」, 那是「有沒有依據」的代理指標, 而且是個爛的.** 真正沒有理由的只有一支: `prompt-surface-census.py` 的 docstring 是一行空話. 已補上三段 (為什麼要確定性, 為什麼常駐桶比契約寬, 以及它刻意不量的另外六分之五).

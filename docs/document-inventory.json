@@ -20,7 +20,6 @@
     ".agents/skills/**/*.md"
   ],
   "evidence_not_current_guidance": [
-    "docs/plans/orchestration-history.md",
     "docs/research/*.md",
     "evals/**/*.md",
     "evals/**/*.json",
