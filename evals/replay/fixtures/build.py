@@ -1763,9 +1763,166 @@ def build_c2_access_audit(root: Path) -> list[str]:
     return built
 
 
+#: `c3` after `c2` was disqualified twice over. Both earlier fixtures made
+#: compliance a *surface form* - a sentence shape, or the absence of a phrase -
+#: and a surface form is a regex. A run enumerated the compliant shapes and
+#: inverted with `grep -L` to isolate the one record matching none, in a single
+#: call, and never had to decide how much to read. Rewording did not help: ten
+#: frames inverted still left exactly one record.
+#:
+#: So compliance here is a *relation* instead: does the 影響範圍 paragraph
+#: mention every file the 變更的檔案 list names? Set equality is not a pattern.
+#: No regex computes it, `python3` and `awk` are refused by the sandbox, and
+#: the two halves sit in different sections of the same record - so every route
+#: to certainty, including counting, has to touch all 300 records. That is the
+#: property both earlier fixtures lacked.
+C3_POLICY = """# 變更紀錄規範
+
+- 每一筆變更紀錄的「影響範圍」段落, 必須提到「變更的檔案」清單裡的**每一個檔案**.
+- 少提任何一個就是違規, 即使只少一個.
+- 順序不必一致, 用字也不必一致. 只寫檔名 (例如 `rules.py`) 也算數, 只要那個檔名在這筆紀錄裡
+  不會指到兩個檔案.
+
+稽核時把違反這條規則的紀錄單獨提出來, 附上它的編號與作者.
+"""
+
+C3_AREAS = ("billing", "ledger", "payout", "fx", "refund", "report", "auth",
+            "sync")
+C3_NAMES = ("handler", "mapper", "client", "store", "rules", "batch", "codec",
+            "router", "guard", "schema")
+C3_CLAUSES = (
+    "調整了 {items} 的欄位對應",
+    "{items} 跟著改了介面",
+    "順手把 {items} 的測試補齊",
+    "{items} 因為共用同一組設定也一起動",
+    "{items} 的錯誤處理改成新的形狀",
+    "{items} 只有 import 路徑變了",
+)
+C3_VIOLATOR_INDEX = 187
+C3_COUNT = 300
+
+
+def _c3_files(index: int) -> list[str]:
+    """8 to 16 paths, deterministic, de-duplicated with order preserved."""
+    files: list[str] = []
+    for j in range(8 + (index % 9)):
+        area = C3_AREAS[(index + j * 3) % len(C3_AREAS)]
+        name = C3_NAMES[(index * 5 + j * 7) % len(C3_NAMES)]
+        path = f"src/{area}/{name}.py"
+        if path not in files:
+            files.append(path)
+    return files
+
+
+def _c3_prose(index: int, files: list[str]) -> str:
+    """The same files, reordered and wrapped in varied clauses.
+
+    Reordered by rotation, and reversed on odd indices, rather than by a
+    modular stride. A stride of 5 is a permutation only when the list length
+    is coprime to 5: lengths 10 and 15 visited a fifth of the positions and
+    the de-duplication threw the rest away, so 67 records genuinely broke the
+    rule this fixture claims exactly one record breaks. The answer key was
+    false, which no amount of running would have revealed - the graders would
+    simply have marked correct answers wrong (caught 2026-09-15, before any
+    run was paid for). A rotation cannot have that failure.
+
+    Some files are named by basename alone, which the policy explicitly
+    allows. That is what stops occurrence counting from deciding the audit:
+    with every compliant record mentioning each path in full, a compliant
+    record carries exactly twice its list and the violator one fewer, so a
+    single `grep -o` tally would isolate it without anything being read.
+    Shortened names put compliant records below that line too.
+    """
+    offset = index % len(files)
+    ordered = files[offset:] + files[:offset]
+    if index % 2:
+        ordered = list(reversed(ordered))
+    basenames: dict[str, int] = {}
+    for path in files:
+        short = path.rsplit("/", 1)[1]
+        basenames[short] = basenames.get(short, 0) + 1
+    rendered = []
+    for position, path in enumerate(ordered):
+        short = path.rsplit("/", 1)[1]
+        # Only when the basename is unambiguous inside this record, or the
+        # reference would not identify a file at all.
+        if basenames[short] == 1 and (index + position) % 3 == 0:
+            rendered.append(short)
+        else:
+            rendered.append(path)
+    groups, size = [], 2 + (index % 3)
+    for start in range(0, len(rendered), size):
+        groups.append(rendered[start:start + size])
+    parts = []
+    for position, group in enumerate(groups):
+        clause = C3_CLAUSES[(index + position) % len(C3_CLAUSES)]
+        parts.append(clause.format(items=" 與 ".join(group)))
+    return "這次變更" + ", ".join(parts) + "."
+
+
+def c3_rows(count: int = C3_COUNT) -> list[dict]:
+    rows = []
+    for index in range(1, count + 1):
+        files = _c3_files(index)
+        if index == C3_VIOLATOR_INDEX:
+            # Exactly one file missing from the prose, and nothing else about
+            # the record differs. There is no word to search for.
+            mentioned = [f for f in files if f != files[len(files) // 2]]
+            omitted = files[len(files) // 2]
+        else:
+            mentioned, omitted = files, None
+        rows.append({
+            "stem": f"ch-{index:04d}",
+            "author": f"eng-{index:03d}",
+            "ticket": token("CHG", index),
+            "files": files,
+            "prose": _c3_prose(index, mentioned),
+            "omitted": omitted,
+        })
+    return rows
+
+
+def c3_key() -> dict:
+    rows = c3_rows()
+    bad = next(r for r in rows if r["omitted"])
+    assert sum(1 for r in rows if r["omitted"]) == 1, "exactly one violator"
+    return {"violator": bad["stem"], "author": bad["author"],
+            "ticket": bad["ticket"], "omitted": bad["omitted"],
+            "count": len(rows), "stems": [r["stem"] for r in rows]}
+
+
+def build_c3_change_records(root: Path) -> list[str]:
+    """300 change records whose verdict is a set comparison, not a pattern."""
+    built = [_write(root, "policy.md", C3_POLICY)]
+    for row in c3_rows():
+        built.append(_write(root, f"changes/{row['stem']}.md", "\n".join([
+            f"# {row['stem']} 變更紀錄",
+            "",
+            f"ticket: {row['ticket']}",
+            f"author: {row['author']}",
+            "",
+            "## 變更的檔案",
+            "",
+            *[f"- {path}" for path in row["files"]],
+            "",
+            "## 影響範圍",
+            "",
+            row["prose"],
+            "",
+        ])))
+    built.append(_write(root, "README.md", "\n".join([
+        "# change-audit",
+        "",
+        "`changes/` 是這一季的變更紀錄, `policy.md` 是紀錄規範.",
+        "",
+    ])))
+    return built
+
+
 BUILDERS = {
     "c1-incident-notes": build_c1_incident_audit,
     "c2-access-grants": build_c2_access_audit,
+    "c3-change-records": build_c3_change_records,
     "r1-interrupted-resume": build_r1,
     "r2-successive-corrections": build_r2,
     "r3-conflicting-leaves": build_r3,

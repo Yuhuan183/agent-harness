@@ -118,6 +118,7 @@ evals/replay/scenarios/y2-skill-carrier.md
 evals/replay/scenarios/y2x-file-carrier.md
 evals/replay/scenarios/c1-incident-audit.md
 evals/replay/scenarios/c2-access-audit.md
+evals/replay/scenarios/c3-change-audit.md
 scripts/project-init.py
 main/project/CLAUDE.project.md
 main/project/AGENTS.project.md

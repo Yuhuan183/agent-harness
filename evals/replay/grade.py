@@ -2176,9 +2176,22 @@ def grade_c2(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
     return _coverage_outcome(fixtures().c2_key(), "grants", turns)
 
 
+def grade_c3(run: Path, meta: dict, turns: dict[int, list[dict]]) -> dict:
+    """`c3`: compliance is a relation between two sections, not a surface form.
+
+    c1 and c2 were both decided by one `grep -L` over enumerated compliant
+    shapes, so no run needed to choose how much to read. Set equality is not a
+    pattern, so here every route to certainty has to reach every record - and
+    the reading stays identical to the earlier cells so the three remain
+    comparable.
+    """
+    return _coverage_outcome(fixtures().c3_key(), "changes", turns)
+
+
 GRADERS = {
     "c1-incident-audit": grade_c1,
     "c2-access-audit": grade_c2,
+    "c3-change-audit": grade_c3,
     "r1-interrupted-resume": grade_r1,
     # Both arms of the project-layer cell read the same way; the arm is which
     # fixture was built, not which contract was swapped.

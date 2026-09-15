@@ -37,6 +37,7 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 |---|---|---|
 | `c1-incident-audit` | 覆蓋度子句有沒有用 — 40 則同形事故紀錄, 結論由其中一則決定; 帶子句與拿掉子句兩臂, 看開工前問不問, 或直接全覆蓋 | `c1-incident-notes` |
 | `c2-access-audit` | 覆蓋度子句有沒有用, 第二次 — 600 筆授權紀錄, 每筆都要拿規範判一次散文理由, 沒有機械捷徑; c1 因為考卷太便宜而兩臂都在天花板, 這一格拉高的是判斷成本而不是閱讀成本 | `c2-access-grants` |
+| `c3-change-audit` | 覆蓋度子句有沒有用, 第三次 — 300 筆變更紀錄, 合規是「影響範圍有沒有涵蓋變更檔案清單」這個集合關係; c1/c2 的合規都是表面寫法所以一次反向篩就破, 這一格讓任何通往答案的路徑都必須逐筆比對兩段 | `c3-change-records` |
 | `d1-two-reviews` | 派工路徑上, 契約子句比 skill description 多做了什麼 | `r3-conflicting-leaves` |
 | `d2-one-small-edit` | 派工路徑的 negative control — 不該派工時會不會誤載入 | `r2-successive-corrections` |
 | `d3-stable-mechanical-batch` | 派工路徑的 positive control — 該派工時 (12 檔同形機械編輯, 規格完整, 自帶紅測試) 有沒有派給便宜的機械工 | `d3-twelve-adapters` |
@@ -89,7 +90,7 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | `y2x-file-carrier` | y2 的對照臂 —— 逐位元組相同的規則文字, 放成一份沒有註冊的普通檔; 差別只有載體 | `y2-tidepool-file` |
 | `z1-four-zh-shapes` | readable-zh-tw 在本機文字上會不會被叫, 叫了之後 2026-09-05 借進來的四個中文形狀有沒有真的被改掉 | `z1-zh-draft` |
 
-共 53 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
+共 54 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
 
 <!-- scenario-index:end -->
 
