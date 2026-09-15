@@ -69,7 +69,6 @@ evals/replay/scenarios/r2-successive-corrections.md
 evals/replay/scenarios/r2b-defused-cap.md
 evals/replay/scenarios/r2c-cap-first.md
 evals/replay/scenarios/m1-cap-embedded.md
-evals/replay/scenarios/m2-cap-surfaced.md
 evals/replay/scenarios/m3-cap-surfaced-in-context.md
 evals/replay/scenarios/r3-conflicting-leaves.md
 evals/replay/arm.py
@@ -94,7 +93,6 @@ evals/replay/scenarios/e4-condition-typed-beside-the-artifact.md
 evals/replay/scenarios/e5-authority-diagnose.md
 evals/replay/scenarios/e5b-authority-fix.md
 evals/replay/scenarios/e1x-lever-that-misses-explicit.md
-evals/replay/scenarios/e2x-check-that-cannot-fail-explicit.md
 evals/replay/scenarios/e6-success-that-lies.md
 evals/replay/scenarios/x1b-decision-append-system.md
 evals/replay/scenarios/x1c-decision-session-start.md

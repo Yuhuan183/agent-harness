@@ -141,21 +141,19 @@ git diff --check
 scripts/sync.sh
 ```
 
-十一支只報不擋的工具, 不在上面的驗收鏈裡, 因為它們回答的是「現在長什麼樣」而不是「這次改動對不對」:
+五支只報不擋的工具, 不在上面的驗收鏈裡, 因為它們回答的是「現在長什麼樣」而不是「這次改動對不對」:
 
 ```bash
 scripts/evidence-check.py         # SHA 引用是否還解得開; trap 結果列的量測面指紋是否還是出貨版本
-scripts/docs-size-report.py       # docs/ 體積, 分現行指引與紀錄兩層 (這層沒有字數預算, 見 docs/README.md 規則 8)
+scripts/docs-size-report.py       # docs/ 體積, 分現行指引與紀錄兩層
 scripts/resident-pool-report.py   # 這台機器實際的常駐 skill 描述量, 與預算蓋到的比例
-scripts/zh-tw-usage-report.py     # 本 repo 自己的中文有沒有用到它出貨在校正的中國用語
-scripts/codename-gloss-report.py  # 說明類文件有沒有直接丟出內部代號而不解釋
 scripts/denial-report.py          # 這些閘實際擋了多少次, 擋在什麼理由上
-scripts/context-inflow-report.py  # 真實工作階段裡, 窗口實際被什麼填滿 (常駐只佔約 15%)
-scripts/memory-freshness-report.py # CLI 記憶裡指涉的路徑與連結是否還解得開
-scripts/machine-state-check.py     # 跑套件 (或任一指令) 會不會改到 repo 以外的東西
-scripts/upstream-pin-report.py     # 蒸餾來源的上游有沒有動過我們記下的那個 pin
-scripts/budget-drift-report.py     # 字數天花板被調高過幾次, 調在哪幾份, 現在誰貼著上限
+scripts/upstream-pin-report.py    # 蒸餾來源的上游有沒有動過我們記下的那個 pin
 ```
+
+`machine-state-check.py` 也只報不擋, 但它是部署驗證的一步, 不是「現在長什麼樣」的儀器; 六支一次性的
+分析報告 (codename gloss, zh-tw usage, context inflow, memory freshness, budget drift, mechanism index)
+2026-09-15 退場, 讀數留在引用它們的研究文裡, 程式由 Git 保存.
 
 `scripts/contract-operator-delta.py` 刻意不在這張表: 它是契約精簡流程裡的佐證步驟, 不是
 「現在長什麼樣」的儀器.

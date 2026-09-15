@@ -51,14 +51,12 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | `e1-lever-that-misses` | 交付的改動有沒有抵達可觀察的結果 — 文件寫著的那個槓桿是空轉的 | `e1-lever-that-misses` |
 | `e1x-lever-that-misses-explicit` | e1 的內容臂 —— skill 確實載入時, 交付的改動會不會抵達可觀察的結果 | `e1-lever-that-misses` |
 | `e2-check-that-cannot-fail` | 交付的檢查還能不能對兩個相反狀態給出同一個判決 — 群 B 的最小形式 | `e2-check-that-cannot-fail` |
-| `e2x-check-that-cannot-fail-explicit` | e2 的內容臂 —— skill 確實載入時, 交付的檢查能不能分開兩個相反狀態 | `e2-check-that-cannot-fail` |
 | `e3-cause-you-cannot-read` | 交付的修復撐不撐得住明天那份檔 — 成因讀不出來，只跑得出來 | `e3-cause-you-cannot-read` |
 | `e4-condition-typed-beside-the-artifact` | 報告出來的條件是從產物推導的，還是打在它旁邊的 — 群 A 與群 B 的交界 | `e4-condition-typed-beside-the-artifact` |
 | `e5-authority-diagnose` | 只被要求診斷時有沒有動手 — 授權面，配對臂在 e5b | `e5-authority-both-ways` |
 | `e5b-authority-fix` | 被授權修復時有沒有真的修 — e5 的過度拒絕控制組 | `e5-authority-both-ways` |
 | `e6-success-that-lies` | e1 利化版 —— 錯的動作回報成功時, 交付的改動有沒有抵達可觀察的結果 | `e6-success-that-lies` |
 | `m1-cap-embedded` | 上限請求為什麼不觸發 DECISION — 對照臂 | `r2-successive-corrections` |
-| `m2-cap-surfaced` | 上限請求為什麼不觸發 DECISION — 操弄臂, 分岔浮上檯面 | `r2-successive-corrections` |
 | `m3-cap-surfaced-in-context` | 上限請求為什麼不觸發 DECISION — 五回合脈絡下的操弄臂 | `r2-successive-corrections` |
 | `m4-nothing-to-mark` | 誤報控制 — 請求把每件事都講死時，那條規則會不會照樣觸發 | `r2-successive-corrections` |
 | `p1-language` | 方向 1 — client 指令與契約正面衝突時誰勝出 | `r2-successive-corrections` |
@@ -90,7 +88,7 @@ hand as 82 first, which is the seventh instance of the failure Part 7 is about.
 | `y2x-file-carrier` | y2 的對照臂 —— 逐位元組相同的規則文字, 放成一份沒有註冊的普通檔; 差別只有載體 | `y2-tidepool-file` |
 | `z1-four-zh-shapes` | readable-zh-tw 在本機文字上會不會被叫, 叫了之後 2026-09-05 借進來的四個中文形狀有沒有真的被改掉 | `z1-zh-draft` |
 
-共 54 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
+共 52 個情境. 這張表由 `scenario-index.py` 從各情境的 frontmatter 生成, 契約測試會比對; 手改這裡不會生效.
 
 <!-- scenario-index:end -->
 

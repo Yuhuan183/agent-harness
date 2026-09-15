@@ -324,10 +324,10 @@ class MechanismTests(unittest.TestCase):
             module._TREE.clear()
 
     def test_every_copy_of_the_word_unit_counts_the_same(self) -> None:
-        """Three files spell the budget unit, and they must agree.
+        """Two files spell the budget unit, and they must agree.
 
-        `support.word_count` decides whether a change passes; the two reports
-        decide what a reader believes about the same files. A copy that drifts
+        `support.word_count` decides whether a change passes; the report
+        decides what a reader believes about the same files. A copy that drifts
         fails nothing - it produces a second, quieter set of numbers that look
         like the first, which is how a headroom figure ends up disagreeing with
         the ceiling that gates it. The escapes and the literal characters are
@@ -339,8 +339,7 @@ class MechanismTests(unittest.TestCase):
                   "https://example.invalid/a/b/c and \u6a19\u9ede, \u5168\u5f62\u3002\u6df7\u5728\u4e00\u8d77\n"
                   "\ttabs   and    runs\n")
         counters = {"support": word_count}
-        for script in ("scripts/resident-pool-report.py",
-                       "scripts/budget-drift-report.py"):
+        for script in ("scripts/resident-pool-report.py",):
             spec = importlib.util.spec_from_file_location(
                 script.replace("/", "_").replace("-", "_"), ROOT / script)
             module = importlib.util.module_from_spec(spec)

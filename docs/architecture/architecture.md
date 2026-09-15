@@ -391,7 +391,7 @@ git review 與部署 —— 也就是說這一層的授權是**經由部署間�
 
 | 層 | 付什麼 | 現有的儀器 |
 |---|---|---|
-| Context | 每一回合都付的常駐內容, 加上流進來的一切 | [`context-inflow-report.py`](../../scripts/context-inflow-report.py), 三支常駐量測 |
+| Context | 每一回合都付的常駐內容, 加上流進來的一切 | 三支常駐量測 (`prompt-surface-census`, `resident-pool-report`, `contract-operator-delta`) |
 | Harness | 閘要跑的時間 (commit gate 每次跑整套約 65 秒) | 無專屬儀器; 套件自己的耗時 |
 | Loop | 每一次重試都是一次完整往返 | 五次 pass 上限, ledger 的 `secs` 與 token 欄 |
 | Graph | 派工的 brief, 重建 context, 收集與 QC 全是純開銷 | Cost test (派工前), experience ledger (派工後) |

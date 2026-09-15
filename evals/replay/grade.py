@@ -2204,7 +2204,6 @@ GRADERS = {
     "r2b-defused-cap": grade_r2,
     "r2c-cap-first": grade_r2,
     "m1-cap-embedded": grade_r2,
-    "m2-cap-surfaced": grade_r2,
     "m3-cap-surfaced-in-context": grade_r2,
     "m4-nothing-to-mark": grade_m4,
     # Injection-position cells: same fixture and same reading as m1 (one turn,
@@ -2238,7 +2237,6 @@ GRADERS = {
     # would make the contrast unreadable.
     "e1x-lever-that-misses-explicit": grade_e1,
     "e6-success-that-lies": grade_e1,
-    "e2x-check-that-cannot-fail-explicit": grade_e2,
     "e2-check-that-cannot-fail": grade_e2,
     "e3-cause-you-cannot-read": grade_e3,
     "e4-condition-typed-beside-the-artifact": grade_e4,
