@@ -11,9 +11,9 @@ stop one move: shipping an assertion that could not have failed.
 Derived from Matt Pocock's [`tdd`](https://github.com/mattpocock/skills); see
 `ATTRIBUTION.md` for the reviewed commit, licence, and what was changed. This
 repo's verification surfaces, worked good and bad examples, authority rules and
-reporting shape are in `references/tuning.md`. For repo structure read
-`AGENTS.md` and `docs/architecture.md` — this skill never creates a new context
-document.
+reporting shape are in `references/tuning.md`. For repo structure read the
+project's instruction files (`CLAUDE.md`, `AGENTS.md`) and its architecture
+docs — this skill never creates a new context document.
 
 ## Seam, defined here
 

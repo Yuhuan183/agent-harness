@@ -77,7 +77,7 @@ scripts/sync.sh
 # 2. review dry-run 後才回寫全域配置
 scripts/sync.sh --apply
 
-# 3. 開新的 Claude Code / Codex session, 讓契約與 roles 重新載入
+# 3. 開新的 Claude Code session, 讓契約與 roles 重新載入
 ```
 
 不由 sync 管理的只有選用 Headroom
@@ -105,7 +105,7 @@ main/claude/scripts/model-routing resolve --priority quality-guarded --role veri
 | Routing validator/pin check | 阻止不完整 profile, 品質門檻以下 route 與 Claude pin 漂移 | `main/claude/scripts/model-routing` |
 | Alias generation check | `opus` 指向哪個世代由 CLI 決定; 以 leaf transcript 的真實 model id 驗證 config 的宣稱 | [model-routing.py](main/claude/scripts/model-routing.py) |
 | Runtime guard | 需要新版能力的 reviewer 在版本過舊或未知時停止 | [runtime-guard.py](main/claude/hooks/runtime-guard.py) |
-| Capability-aware verifier | Claude 的 no-write role 不提供 Bash; 需要執行命令的獨立驗證改派 Codex read-only sandbox | [provider-routing](main/claude/skills/provider-routing/SKILL.md) |
+| Capability-aware verifier | Claude 的 no-write role 不提供 Bash; 需要執行命令的驗證由 leaf 回報缺哪一項檢查, 改由 main 執行並當作中間證據 | [provider-routing](main/claude/skills/provider-routing/SKILL.md) |
 | Verifier 額度 | 同一個 prompt 內的第二個 Claude `verifier` 直接擋; 跨 prompt 不計, 那段仍屬判斷 | [verifier-quota.py](main/claude/hooks/verifier-quota.py), [dispatch-lifecycle](docs/dispatch-lifecycle.md) |
 | Delegation audit | 記錄 start/stop 並偵測 leaf 再派 leaf | [delegation-audit.py](main/claude/hooks/delegation-audit.py) |
 | Denial log | 每次攔截留一行 (gate, 短代碼 reason, session), 讓「多常擋人」數得出來; 只記錄不決策, 記錄失敗不影響攔截 | [denial_log.py](main/claude/hooks/denial_log.py), [hook 系統](docs/hook-system.md) |
