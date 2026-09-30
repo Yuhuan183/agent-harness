@@ -175,8 +175,8 @@
         },
         {
           "bytes": 137,
-          "file_bytes": 1083,
-          "file_sha256": "e680251ffa2896e88110f897e99291f941ba8cab652307db91253b7077f699d3",
+          "file_bytes": 1110,
+          "file_sha256": "6e302ec9a5df30797359a56759c2c363ee5d4eea67dd9d352cc63e32c3e79daa",
           "kind": "role-metadata",
           "path": "main/claude/agents/explore.md",
           "sha256": "6103e751f36212a27f905257a99a323ced14042109eda35dc59477d27e5f5cd4",
@@ -220,8 +220,8 @@
         },
         {
           "bytes": 146,
-          "file_bytes": 2041,
-          "file_sha256": "dd8fa757c630cc6936360924c4cf1a53698e8e388a19e7d528318edbe27af750",
+          "file_bytes": 1970,
+          "file_sha256": "6149fb2089aa765791dd62e20c06309732c9f736b4bd4219bc76ba78fbc7207a",
           "kind": "role-metadata",
           "path": "main/claude/agents/verifier.md",
           "sha256": "9a2c5e284480c714e4c71665476ea086e656ebaa1b19bb4457eee0173bff80a5",
@@ -239,12 +239,12 @@
       ],
       "roles": [
         {
-          "bytes": 867,
-          "file_bytes": 1083,
-          "file_sha256": "e680251ffa2896e88110f897e99291f941ba8cab652307db91253b7077f699d3",
+          "bytes": 894,
+          "file_bytes": 1110,
+          "file_sha256": "6e302ec9a5df30797359a56759c2c363ee5d4eea67dd9d352cc63e32c3e79daa",
           "path": "main/claude/agents/explore.md",
-          "sha256": "a777519551ae2b57275f56f7d9bdad92b2ac003218cc623ffb5662e8c323b045",
-          "words": 133
+          "sha256": "6dd524bc998b976696f6a9d4d7ea1ee697ae12a08af373814f6f695de7ebc7d8",
+          "words": 135
         },
         {
           "bytes": 1169,
@@ -279,12 +279,12 @@
           "words": 391
         },
         {
-          "bytes": 1796,
-          "file_bytes": 2041,
-          "file_sha256": "dd8fa757c630cc6936360924c4cf1a53698e8e388a19e7d528318edbe27af750",
+          "bytes": 1725,
+          "file_bytes": 1970,
+          "file_sha256": "6149fb2089aa765791dd62e20c06309732c9f736b4bd4219bc76ba78fbc7207a",
           "path": "main/claude/agents/verifier.md",
-          "sha256": "0ae96a68e52de50c48d550f12000efab09fb19e6ef401ab99b7b996dbd75ef32",
-          "words": 259
+          "sha256": "6b6d58283e0a835d8aa920d25985adbffb9df9e4ef87117a42d5a97c007b9dc3",
+          "words": 249
         },
         {
           "bytes": 2192,
@@ -311,9 +311,9 @@
         "words": 1621
       },
       "roles": {
-        "bytes": 10690,
-        "payload_sha256": "7f91fa9bee1981a5336887f769fbdd3c9448646bc973a1a43d29b6be7eff95f7",
-        "words": 1594
+        "bytes": 10646,
+        "payload_sha256": "ca6643f559ae0d502eadc0ceab03758b9c37bfb2ee4ff8acf8b373fa99dde2c0",
+        "words": 1586
       }
     }
   },
