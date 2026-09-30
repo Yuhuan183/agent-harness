@@ -4,6 +4,15 @@
     "claude": {
       "dispatch": [
         {
+          "bytes": 647,
+          "file_bytes": 950,
+          "file_sha256": "1bdfcd6b12b617aede22c07f25891726e026d34c892f3199abf7df8d30d78824",
+          "kind": "skill-metadata",
+          "path": "main/claude/skills/task-observer/SKILL.md",
+          "sha256": "7b76207ba01ebef06cac34b03c9c4c9a664a0903296cf539f29d17c3a23904b6",
+          "words": 102
+        },
+        {
           "bytes": 8433,
           "file_bytes": 8897,
           "file_sha256": "6344d80a4f7b1f2d368b9506b489f6d847fd34e70799641de06c567136997d28",
@@ -68,8 +77,8 @@
         },
         {
           "bytes": 243,
-          "file_bytes": 951,
-          "file_sha256": "9854d3c75210579ef3285289a0a6fb01347306465bc588519bfecbf663855bef",
+          "file_bytes": 950,
+          "file_sha256": "1bdfcd6b12b617aede22c07f25891726e026d34c892f3199abf7df8d30d78824",
           "kind": "skill-body",
           "path": "main/claude/skills/task-observer/SKILL.md",
           "sha256": "62f5af6d49332221cb96c107455fe30be116f014655cb0aca7c1771f2ad245bf",
@@ -154,15 +163,6 @@
           "path": "main/claude/skills/readable-zh-tw/SKILL.md",
           "sha256": "65234bafacfdf132ef5e65011e91cef89e9119a2c38a5f3c659c3645b5107a31",
           "words": 209
-        },
-        {
-          "bytes": 647,
-          "file_bytes": 951,
-          "file_sha256": "9854d3c75210579ef3285289a0a6fb01347306465bc588519bfecbf663855bef",
-          "kind": "skill-metadata",
-          "path": "main/claude/skills/task-observer/SKILL.md",
-          "sha256": "7b76207ba01ebef06cac34b03c9c4c9a664a0903296cf539f29d17c3a23904b6",
-          "words": 102
         },
         {
           "bytes": 511,
@@ -301,14 +301,14 @@
   "totals": {
     "claude": {
       "dispatch": {
-        "bytes": 42774,
-        "payload_sha256": "f3176e8236ab6af3c3737fd53b0de1d3961fe420bbb70b7ba5b7ed2e7348afbb",
-        "words": 7372
+        "bytes": 43421,
+        "payload_sha256": "abe11a66bf10eb74587d39c7f157833123ea38e051afda340eae81cae5ec8c55",
+        "words": 7474
       },
       "resident": {
-        "bytes": 9338,
-        "payload_sha256": "fe131a3b78588983cd618c727a634f28155addd96e8057a984d17a2c3e583b64",
-        "words": 1621
+        "bytes": 8691,
+        "payload_sha256": "77e2bde200359ded1aab66401080349058fd0efd6960656f208cdb9c7dcf050e",
+        "words": 1519
       },
       "roles": {
         "bytes": 10646,
@@ -320,7 +320,7 @@
   "unit": {
     "bytes": "UTF-8 bytes of the effective prompt text",
     "roles": "role body only; the always-loaded name and description are counted in resident as role-metadata",
-    "skills": "name and description are resident, body is dispatch-time",
+    "skills": "name and description are resident unless disable-model-invocation is true, body is dispatch-time",
     "words": "one CJK character or one non-space non-CJK run"
   }
 }

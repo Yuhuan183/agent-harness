@@ -55,6 +55,8 @@ A/B 的粒度.
   日誌. 修剪常駐是必要的, 但它不是這一層最大的槓桿.
 - **wrapper skill 付兩次.** `task-observer` 與 `headroom-protocol` 是薄 wrapper 加共用
   本體: wrapper 的描述常駐, 本體按需載入. 兩個檔都要有天花板, 只看一個會漏掉大的那半.
+  例外是帶 `disable-model-invocation: true` 的 wrapper: 描述也不常駐, 要到 `/name` 才載入.
+  `task-observer` 自 2026-09-30 就是這樣.
 
 **要動它得先拿出什麼.** 動常駐要換算預算, 而且是三項密度指標一起看. 拉取層沒有字數
 預算, 只有一道數量級鬆閘, 逼近它的正解是拆檔或搬回真正的 owner, 不是調高常數.

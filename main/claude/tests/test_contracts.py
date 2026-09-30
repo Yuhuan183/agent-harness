@@ -596,13 +596,18 @@ class DocumentationBudgetTests(unittest.TestCase):
                 f"{provider} skill descriptions must be fully counted",
             )
 
-        # Every Claude skill is injected, so all of its metadata is resident.
-        # On Codex `allow_implicit_invocation: false` means the skill is absent
-        # until `$skill` pulls it in, so its metadata is a dispatch cost - and a
-        # budget counting it as resident charges a ceiling for words no turn
-        # pays. Read straight from the yaml here rather than through the census
-        # helper, or this would only assert that the census agrees with itself.
+        # A Claude skill is injected unless its frontmatter sets
+        # `disable-model-invocation: true`; then it is absent until `/name`
+        # pulls it in, so its metadata is a dispatch cost - and a budget
+        # counting it as resident charges a ceiling for words no turn pays.
+        # Observed on 2.1.285 (2026-09-30): a probe skill with the flag was
+        # missing from the model's context while its twin without it was
+        # present. The same rule once covered Codex's
+        # `allow_implicit_invocation: false`. Read straight from the file
+        # rather than through the census helper, or this would only assert
+        # that the census agrees with itself.
         flag = re.compile(r"^\s*allow_implicit_invocation\s*:\s*(\S+)", re.M)
+        manual = re.compile(r"^disable-model-invocation:\s*true\s*$", re.M)
         for provider, skills_dir in (
             ("claude", "main/claude/skills"),
         ):
@@ -616,8 +621,9 @@ class DocumentationBudgetTests(unittest.TestCase):
                 config = path.parent / "agents" / "openai.yaml"
                 found = (flag.search(config.read_text(encoding="utf-8"))
                          if config.is_file() else None)
-                injected = provider == "claude" or found is None or (
-                    found.group(1).strip("\"'") != "false")
+                injected = not manual.search(frontmatter(relative)) and (
+                    provider == "claude" or found is None
+                    or found.group(1).strip("\"'") != "false")
                 self.assertEqual(
                     injected, relative in resident,
                     f"{relative}: injected={injected} but resident="

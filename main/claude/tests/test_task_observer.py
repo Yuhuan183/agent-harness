@@ -44,8 +44,13 @@ class TaskObserverTests(unittest.TestCase):
         codex = ROOT / "main/codex/skills/task-observer"
         self.assertTrue(claude.is_dir())
         self.assertFalse(claude.is_symlink())
+        # Manual only since 2026-09-30: in 44 days of sessions its trigger
+        # never fired after an explicit complaint, and corrections were being
+        # kept through memory and fixed in place instead. `/task-observer`
+        # still records and reviews on request; the description stops being a
+        # per-session cost.
         self.assertIn(
-            "disable-model-invocation: false",
+            "disable-model-invocation: true",
             (claude / "SKILL.md").read_text(encoding="utf-8"),
         )
         claude_meta = frontmatter("main/claude/skills/task-observer/SKILL.md")

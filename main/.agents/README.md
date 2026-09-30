@@ -20,7 +20,7 @@
 | `skills/headroom-protocol/` | 共用 skill 本體; `.claude/skills` 以 symlink 引用 |
 | `skills/experience-ledger/` | 共用 skill 本體: 派工經驗記帳與指標分析 (含 `scripts/`); 帳本在 `~/.agents/telemetry/` (machine-local 不入庫) |
 | `skills/readable-zh-tw/` | 共用 skill 本體: 繁中可讀性, 兩個模式 —— 直出 (寫給人看的回應, 半形標點) 與改稿 (交進來的稿件, 全形標點); 蒸餾自上游, 見其 `ATTRIBUTION.md`; 同以 symlink 雙端引用 |
-| `skills/task-observer/` | skill 使用受挫時主動詢問, 明確同意後才記錄改善觀察; append-only JSONL 帳本在 `~/.agents/telemetry/`, 不會自動修改 skill |
+| `skills/task-observer/` | 記錄與回顧 skill 改善觀察, 明確同意後才寫入; Claude 端自 2026-09-30 只能用 `/task-observer` 手動叫. append-only JSONL 帳本在 `~/.agents/telemetry/`, 不會自動修改 skill |
 | `skills/evidence-debugging/` | 共用 skill 本體: 以已跑過的重現做診斷, 診斷與修復是兩種授權 (蒸餾自上游, 見其 `ATTRIBUTION.md`); 同以 symlink 雙端引用 |
 | `skills/test-first-change/` | 共用 skill 本體: 先寫會紅的檢查再改行為, seam 必須抵達可觀察結果 (蒸餾自上游, 見其 `ATTRIBUTION.md`); 同以 symlink 雙端引用 |
 | `skills/evidence-ladder/` | 共用 skill 本體: 為一個主張挑最便宜而足夠的證據層級, 並擋掉循環論證, 未校準的儀器與換了環境的數字 (使用者自撰, `ATTRIBUTION.md` 記為自有); 同以 symlink 雙端引用 |

@@ -150,7 +150,13 @@ def skill_frontmatter_fields(frontmatter: str) -> dict[str, str]:
     return fields
 
 
-def skill_parts(relative: str) -> tuple[dict, dict]:
+# `disable-model-invocation: true` keeps a Claude skill out of the model's
+# context until `/name` loads it: its metadata is then a dispatch cost, not a
+# resident one (observed on 2.1.285, 2026-09-30).
+MANUAL_ONLY = re.compile(r"^disable-model-invocation:\s*true\s*$", re.M)
+
+
+def skill_parts(relative: str) -> tuple[dict, dict, bool]:
     frontmatter, body = split_frontmatter(relative)
     fields = skill_frontmatter_fields(frontmatter)
     if set(fields) != {"name", "description"}:
@@ -159,6 +165,7 @@ def skill_parts(relative: str) -> tuple[dict, dict]:
     return (
         text_record(relative, metadata, kind="skill-metadata"),
         text_record(relative, body, kind="skill-body"),
+        bool(MANUAL_ONLY.search(frontmatter)),
     )
 
 
@@ -185,12 +192,13 @@ def build_census() -> dict:
         "claude": {
             "resident": [
                 text_record("main/claude/CLAUDE.contract.md"),
-                *(metadata for metadata, _ in claude_skills),
+                *(metadata for metadata, _, manual in claude_skills if not manual),
                 *(claude_role_metadata(f"main/claude/agents/{role}.md")
                   for role in ROLES),
             ],
             "dispatch": [
-                *(body for _, body in claude_skills),
+                *(metadata for metadata, _, manual in claude_skills if manual),
+                *(body for _, body, _ in claude_skills),
             ],
             "roles": [
                 claude_role(f"main/claude/agents/{role}.md") for role in ROLES
@@ -208,7 +216,7 @@ def build_census() -> dict:
         "schema": 1,
         "generated_by": "scripts/prompt-surface-census.py",
         "unit": {
-            "skills": "name and description are resident, body is dispatch-time",
+            "skills": "name and description are resident unless disable-model-invocation is true, body is dispatch-time",
             "bytes": "UTF-8 bytes of the effective prompt text",
             "words": "one CJK character or one non-space non-CJK run",
             "roles": "role body only; the always-loaded name and description are counted in resident as role-metadata",

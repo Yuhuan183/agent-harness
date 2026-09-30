@@ -31,9 +31,9 @@
 |---|---|---|
 | 本端自有 | `baton-dispatch`, `provider-routing` | 只有 Claude 端用得到 |
 | 整個目錄 symlink 到 `../.agents/skills/` | `readable-zh-tw`, `experience-ledger`, `evidence-debugging`, `test-first-change`, `evidence-ladder` | 兩端共用同一份本體 |
-| 本端薄目錄 | `headroom-protocol`, `task-observer` | 自有 `SKILL.md` 帶 `disable-model-invocation: false`, 共用本體以 `shared-instructions.md` symlink 引用 —— 共用 body 帶不了那一行 |
+| 本端薄目錄 | `headroom-protocol`, `task-observer` | 自有 `SKILL.md` 帶 `disable-model-invocation` (`headroom-protocol` 為 `false`; `task-observer` 自 2026-09-30 為 `true`, 只能用 `/task-observer` 叫, 說明不再常駐), 共用本體以 `shared-instructions.md` symlink 引用 —— 共用 body 帶不了那一行 |
 
-兩件附註: `task-observer` 可在 skill 使用受挫後主動詢問要不要記錄改善觀察; 每個 skill 目錄都有
+兩件附註: `task-observer` 自 2026-09-30 只在你用 `/task-observer` 叫它時記錄或回顧改善觀察; 每個 skill 目錄都有
 `ATTRIBUTION.md` —— 蒸餾來的寫來源, pin 與授權, 自有的寫 `**Origin**: this repository`
 (`evidence-ladder` 是使用者自撰, 屬後者).
 
