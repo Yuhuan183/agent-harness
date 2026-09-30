@@ -55,6 +55,13 @@ EXPERIENCE_LOG = os.environ.get(
 # pre-emption is "never your own session"; this is the second guard, not the
 # first.
 SWEEP_MIN_AGE_SECS = 3600
+# Where a refused sweep leaves experience-log's reason. The refusal is the one
+# outcome the sweep cannot record in the ledger, and weekly-integrity reads it
+# back beside the stub it failed to close.
+SWEEP_REFUSALS = os.environ.get(
+    "AGENT_EXPERIENCE_SWEEP_REFUSALS",
+    os.path.expanduser("~/.agents/telemetry/experience-sweep-refusals.jsonl"),
+)
 
 try:
     import fcntl
@@ -328,6 +335,18 @@ def sweep_unjudged(current_session, now):
             capture_output=True, text=True, timeout=30)
         if done.returncode == 0:
             swept.append(key)
+            continue
+        # argparse prints usage first and the reason last; keep the reason.
+        lines = [line for line in (done.stderr or "").splitlines() if line.strip()]
+        try:
+            with open(SWEEP_REFUSALS, "a", encoding="utf-8") as stream:
+                stream.write(json.dumps({
+                    "ts": now.isoformat(timespec="seconds"),
+                    "dispatch_id": key,
+                    "reason": (lines[-1] if lines else f"exit {done.returncode}")[:300],
+                }) + "\n")
+        except OSError:
+            pass
     return swept
 
 try:

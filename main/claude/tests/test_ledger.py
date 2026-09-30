@@ -289,6 +289,48 @@ class SharedSkillTests(unittest.TestCase):
             self.assertTrue(any("afresh" in key for key in left),
                             "an age floor guards concurrent sessions")
 
+    def test_a_sweep_the_logger_refuses_leaves_its_reason(self) -> None:
+        """A refused sweep used to vanish: exit 0, nothing filed, the stub left
+        in place, and experience-log's reason discarded with its stderr. The
+        stub then surfaced a week later as un-reconciled with no way left to
+        say why (reproduced 2026-09-30 on a real explore stub)."""
+        import datetime
+
+        hook = ROOT / "main/claude/hooks/experience-pending.py"
+        old = (datetime.datetime.now(datetime.timezone.utc)
+               - datetime.timedelta(hours=3)).isoformat(timespec="seconds")
+        with tempfile.TemporaryDirectory() as temp:
+            pending = Path(temp) / "pending.jsonl"
+            pending.write_text("".join(
+                json.dumps(r) + "\n" for r in self._stub_pair(
+                    "11111111-1111-1111-1111-111111111111", "arefused", old)),
+                encoding="utf-8")
+            refusing = Path(temp) / "experience-log"
+            refusing.write_text(
+                "import sys\n"
+                "sys.stderr.write('usage: experience-log ...\\n'\n"
+                "                 \"experience-log: error: --model 'claude-sonnet-5' \"\n"
+                "                 'contradicts the provider-recorded route\\n')\n"
+                "sys.exit(2)\n", encoding="utf-8")
+            refusals = Path(temp) / "refusals.jsonl"
+            env = {**os.environ,
+                   "AGENT_EXPERIENCE_PENDING": str(pending),
+                   "AGENT_EXPERIENCE_LEDGER": str(Path(temp) / "ledger.jsonl"),
+                   "AGENT_EXPERIENCE_LOG_BIN": str(refusing),
+                   "AGENT_EXPERIENCE_SWEEP_REFUSALS": str(refusals)}
+            done = subprocess.run(
+                [sys.executable, str(hook)],
+                input=json.dumps({"hook_event_name": "Stop", "session_id": "other"}),
+                env=env, capture_output=True, text=True)
+            self.assertEqual(0, done.returncode, "the hook must fail open")
+            self.assertTrue(refusals.exists(), "the refusal left no trace")
+            rows = [json.loads(line) for line in
+                    refusals.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(1, len(rows))
+            self.assertIn("arefused", rows[0]["dispatch_id"])
+            self.assertIn("contradicts the provider-recorded route", rows[0]["reason"])
+            self.assertNotIn("usage:", rows[0]["reason"])
+
     def test_unjudged_records_never_enter_a_routing_cohort(self) -> None:
         """The whole reason the sweep is safe. `decision_eligible` requires one
         of the four judged outcomes and skips otherwise, so an unjudged record

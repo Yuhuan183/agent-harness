@@ -179,6 +179,7 @@ unrelated tool calls」—— 但後果是: **client 改一次 payload 形狀, �
 | `AGENT_EXPERIENCE_PENDING` | [experience-pending](../main/claude/hooks/experience-pending.py) | 暫存檔位置 | `~/.agents/telemetry/experience-pending.jsonl` |
 | `AGENT_EXPERIENCE_LEDGER` | 同上 | ledger 位置 | `~/.agents/telemetry/experience.jsonl` |
 | `AGENT_EXPERIENCE_LOG_BIN` | 同上 | 寫入 ledger 的程式 | `~/.agents/skills/experience-ledger/scripts/experience-log` |
+| `AGENT_EXPERIENCE_SWEEP_REFUSALS` | 同上, 也被 [weekly-integrity](../main/claude/hooks/weekly-integrity.py) 讀 | session 結束補記被拒時的原因 | `~/.agents/telemetry/experience-sweep-refusals.jsonl` |
 
 後四個主要給套件與 replay 用, 但它們**照樣列在這裡**: 一個只在測試裡出現的覆寫仍然是這台
 機器上真的會被讀的東西, 而「它只有測試在用」是註解該說的話, 不是省略它的理由.

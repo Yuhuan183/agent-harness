@@ -483,6 +483,28 @@ class MechanismTests(unittest.TestCase):
                 self.assertNotIn("leaf-redispatch carrier", quiet.stdout,
                                  f"a {label} runtime must not ask for re-validation")
 
+    def test_an_unreadable_carrier_pin_is_a_finding_not_a_silence(self) -> None:
+        # The carrier finding exists because a dead gate and a quiet fleet look
+        # the same. A pin the check can no longer parse made the finding itself
+        # go quiet in exactly that way: `validated` came back None and nothing
+        # was said (2026-09-30 review).
+        with tempfile.TemporaryDirectory() as temp:
+            hooks = Path(temp) / "hooks"
+            hooks.mkdir()
+            shutil.copy(ROOT / "main/claude/hooks/weekly-integrity.py", hooks)
+            (hooks / "leaf-redispatch.py").write_text(
+                "# the stamp was renamed and nothing noticed\n"
+                "CARRIER_SEEN_ON = (2, 1, 285)\n", encoding="utf-8")
+            home = Path(temp) / "home"
+            home.mkdir()
+            result = subprocess.run(
+                [sys.executable, str(hooks / "weekly-integrity.py")],
+                env={**os.environ, "HOME": str(home),
+                     "AGENT_HARNESS_REPO": str(Path(temp) / "repo"),
+                     "AGENT_RUNTIME_VERSION": "2.1.285 (Claude Code)"},
+                capture_output=True, text=True, timeout=120)
+        self.assertIn("leaf-redispatch carrier pin unreadable", result.stdout)
+
     def test_weekly_integrity_stamps_only_after_completed_checks(self) -> None:
         hook = ROOT / "main/claude/hooks/weekly-integrity.py"
         with tempfile.TemporaryDirectory() as temp_home:
@@ -660,51 +682,26 @@ class MechanismTests(unittest.TestCase):
                 [sys.executable, str(ROOT / "main/claude/hooks/weekly-integrity.py")],
                 env=env, capture_output=True, text=True).stdout
 
-    def test_a_bridge_verifier_the_quota_cannot_see_is_counted_afterwards(self) -> None:
-        """The disclosed half of `verifier-quota`, measured instead of assumed.
+    def test_a_retired_bridge_verifier_row_is_not_counted(self) -> None:
+        """The after-the-fact bridge count retired with the bridge (2026-09-30).
 
-        That gate keys on `subagent_type`; a Codex verifier reached through the
-        bridge arrives under the bridge's name, which covers every Codex role,
-        so listing it would refuse a second *implementation* dispatch in the
-        same prompt. The gate says so about itself and stops there. Nothing
-        then told anyone whether the disclosed gap was ever exercised - and
-        checking the ledger on 2026-08-21 said it had not been, across 112
-        dispatches the hook could see. A gap nobody can count is indistinguishable
-        from one that does not matter.
-
-        Detection, not prevention: the ledger carries the role because QC wrote
-        it there, which is the field the payload never had. Reported as a count
-        and a question rather than a violation, because the quota is per prompt
-        and the ledger has no prompt id - a long session legitimately spends one
-        verifier per task.
+        `verifier-quota` could not see a Codex verifier reached through the
+        bridge, so weekly-integrity counted those from the ledger instead. The
+        bridge was removed on 2026-09-14 and no route writes that request
+        source any more, so the count could only ever re-read old rows; it was
+        removed rather than left as a check that cannot fire on new work.
         """
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         base = {"ts": now, "schema": 3, "task_class": "verify",
                 "outcome": "accepted", "profile": "default", "model": "gpt-5.4",
                 "effort": "high", "route_source": "explicit"}
-        recon = {**base, "role": "explore", "provider": "claude",
-                 "request_source": "claude-code", "session": "sess-B"}
         bridge = {**base, "role": "verifier", "provider": "codex",
                   "request_source": "claude-code-plugin-codex", "session": "sess-A"}
         native = {**base, "role": "verifier", "provider": "claude",
                   "request_source": "claude-code", "session": "sess-A"}
-
-        # Booleans before assertions: this hook prints every finding it has, and
-        # `assertIn` against that puts a screenful of unrelated deployment drift
-        # into the failure message of a test about one line.
-        quiet = self._integrity_stdout([recon])
-        self.assertFalse("Codex bridge" in quiet,
-                         "a week with no bridge verifier must say nothing")
-
-        alone = self._integrity_stdout([recon, bridge])
-        self.assertTrue("ran through the Codex bridge" in alone,
-                        "a bridge verifier went uncounted")
-        self.assertTrue("None shared a session with a native verifier" in alone,
-                        "one bridge verifier alone is not evidence of a double spend")
-
-        both = self._integrity_stdout([recon, bridge, native])
-        self.assertTrue("1 of them shared a session with a native verifier" in both,
-                        "a bridge verifier beside a native one is the case to look at")
+        output = self._integrity_stdout([bridge, native])
+        self.assertFalse("Codex bridge" in output,
+                         "a retired route is still being counted")
 
     def test_weekly_integrity_says_nothing_about_a_correctly_deployed_system(self) -> None:
         """A freshly synced HOME must produce no findings at all.
@@ -937,6 +934,37 @@ class MechanismTests(unittest.TestCase):
         routes_none = result.stdout.split("routes no role for")[-1]
         self.assertIn("sess:unrouted-role", routes_none)
         self.assertNotIn("sess:never-logged", routes_none)
+
+    def test_an_un_reconciled_stub_the_sweep_was_refused_on_says_why(self) -> None:
+        # The session-end sweep records experience-log's refusal (2026-09-30);
+        # the weekly finding is where an operator first meets the stub, so the
+        # reason has to arrive with it rather than stay in a file nobody opens.
+        hook = ROOT / "main/claude/hooks/weekly-integrity.py"
+        old = "2020-01-01T00:00:00+00:00"
+        with tempfile.TemporaryDirectory() as temp_home:
+            telemetry = Path(temp_home) / ".agents/telemetry"
+            telemetry.mkdir(parents=True)
+            (telemetry / "experience-pending.jsonl").write_text("\n".join(
+                json.dumps({"event": "SubagentStop", "agent_type": "explore",
+                            "ts": old, "dispatch_id": key})
+                for key in ("sess:refused", "sess:quiet")) + "\n", encoding="utf-8")
+            (telemetry / "experience.jsonl").write_text("", encoding="utf-8")
+            (telemetry / "experience-sweep-refusals.jsonl").write_text(json.dumps({
+                "ts": old, "dispatch_id": "sess:refused",
+                "reason": "experience-log: error: --model 'claude-sonnet-5' "
+                          "contradicts the provider-recorded route"}) + "\n",
+                encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(hook)],
+                env={**os.environ, "HOME": temp_home,
+                     "AGENT_HARNESS_REPO": str(Path(temp_home) / "repo")},
+                check=True, capture_output=True, text=True)
+        refused = next(line for line in result.stdout.splitlines()
+                       if line.startswith("sess:refused"))
+        self.assertIn("contradicts the provider-recorded route", refused)
+        quiet = next(line for line in result.stdout.splitlines()
+                     if line.startswith("sess:quiet"))
+        self.assertEqual("sess:quiet", quiet.strip())
 
     def test_a_staged_native_codex_launch_is_reconciled_too(self) -> None:
         """Native Codex has no completion hook, so the launch is the carrier.
@@ -3401,6 +3429,21 @@ class ManagedTargetGuardTests(unittest.TestCase):
         # Naming the source is the whole value: the reader is one step from the
         # right file, instead of knowing only that this one was wrong.
         self.assertIn("main/claude/CLAUDE.contract.md", result.stderr)
+
+    def test_a_notebook_edit_names_its_target_in_its_own_field(self) -> None:
+        # NotebookEdit carries `notebook_path`, not `file_path`; every other case
+        # here sends `file_path`, so the branch that reads the notebook field
+        # had never run (2026-09-30 review).
+        with tempfile.TemporaryDirectory() as home:
+            target = Path(home) / ".claude/hooks/analysis.ipynb"
+            payload = {"tool_name": "NotebookEdit",
+                       "tool_input": {"notebook_path": str(target)}}
+            result = subprocess.run(
+                [sys.executable, str(self.HOOK)], input=json.dumps(payload),
+                capture_output=True, text=True, timeout=60,
+                env={**os.environ, "HOME": home, "AGENT_HARNESS_REPO": str(ROOT)})
+        self.assertEqual(2, result.returncode, result.stderr)
+        self.assertIn("main/claude/hooks", result.stderr)
 
     def test_it_resolves_a_link_that_reaches_managed_bytes(self) -> None:
         """A path the manifest never lists can still land on managed bytes.

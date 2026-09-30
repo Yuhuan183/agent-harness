@@ -303,6 +303,31 @@ class MachineStateHygieneTests(unittest.TestCase):
             "the margin must cover interpreter probing, not just the suite")
         self.assertIn("timeout=SUITE_TIMEOUT", source)
 
+    def test_a_hung_suite_blocks_the_commit_with_its_own_reason(self) -> None:
+        # The ordering above is asserted on the source; this runs the branch.
+        # A hang must end as exit 2 with the timeout named, not as a green or
+        # as a red that sends someone looking for a failing test.
+        import contextlib
+        import io
+
+        gate = load_module("commit_gate_timeout",
+                           ROOT / "main/claude/hooks/commit-test-gate.py")
+        gate.SUITE_TIMEOUT = 1
+        with tempfile.TemporaryDirectory() as temp:
+            tests_dir = Path(temp) / "tests"
+            tests_dir.mkdir()
+            (tests_dir / "test_hang.py").write_text(
+                "import time, unittest\n"
+                "class Hang(unittest.TestCase):\n"
+                "    def test_hang(self):\n"
+                "        time.sleep(30)\n", encoding="utf-8")
+            stderr = io.StringIO()
+            with contextlib.redirect_stderr(stderr):
+                status = gate.run_suites([(Path(temp), tests_dir)], "commit-test-gate")
+        self.assertEqual(status, 2)
+        self.assertIn("exceeded 1s", stderr.getvalue())
+        self.assertNotIn("is RED", stderr.getvalue())
+
     def test_the_docs_count_the_commit_gate_copies_the_hook_compares(self) -> None:
         """The same drift the layer and gate counts already guard, one file over.
 

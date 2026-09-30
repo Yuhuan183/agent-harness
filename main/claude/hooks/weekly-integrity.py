@@ -225,9 +225,15 @@ def carrier_validated_on():
 STALE_DISPATCH_SAMPLE = 10
 
 
-def summarise_stale_dispatches(stale) -> str:
-    """The un-reconciled dispatch finding, with its listing bounded."""
-    ids = sorted(stale)
+def summarise_stale_dispatches(stale, reasons=None) -> str:
+    """The un-reconciled dispatch finding, with its listing bounded.
+
+    `reasons` maps an id to experience-log's refusal of the session-end sweep,
+    so a stub the sweep could not close says why beside its id.
+    """
+    reasons = reasons or {}
+    ids = [f"{key} — sweep refused: {reasons[key]}" if key in reasons else key
+           for key in sorted(stale)]
     head = (
         "un-reconciled dispatches (launched or completed but never "
         "logged to the experience ledger; log with experience-log "
@@ -689,15 +695,6 @@ try:
         )
         reconciled = set()
         untied: list[str] = []
-        # The one thing `verifier-quota` is documented as unable to count. It
-        # keys on `subagent_type`, and a Codex verifier reached through the
-        # bridge arrives under the bridge's name, which covers every Codex role
-        # - so listing it would refuse a second *implementation* dispatch. The
-        # gap is disclosed there rather than half-enforced; this is the other
-        # half, after the fact, where the role is known because QC wrote it.
-        # Detection, not prevention: the ledger has the field the payload lacks.
-        unseen_verifiers: list[str] = []
-        native_verifier_sessions: set[str] = set()
         week_ago = datetime.now(timezone.utc) - timedelta(days=7)
         try:
             # errors="replace": decoding precedes json.loads, so a half-written
@@ -718,18 +715,6 @@ try:
                     # check (2026-07-31 re-review, second pass).
                     if not isinstance(logged, dict):
                         continue
-                    if logged.get("role") == "verifier":
-                        try:
-                            seen = datetime.fromisoformat(logged.get("ts", ""))
-                        except (TypeError, ValueError):
-                            seen = None
-                        if seen is not None and seen > week_ago:
-                            source = logged.get("request_source")
-                            session = str(logged.get("session") or "")
-                            if source == "claude-code-plugin-codex":
-                                unseen_verifiers.append(session or "(no session)")
-                            elif source == "claude-code" and session:
-                                native_verifier_sessions.add(session)
                     if logged.get("dispatch_id"):
                         reconciled.add(logged["dispatch_id"])
                         # The other half of the same question. A stub the
@@ -810,7 +795,23 @@ try:
                         unroutable.add(dispatch_id)
         if stale:
             unroutable = sorted(unroutable & set(stale))
-            findings.append(summarise_stale_dispatches(stale))
+            refusals = {}
+            try:
+                with open(os.environ.get(
+                        "AGENT_EXPERIENCE_SWEEP_REFUSALS",
+                        os.path.expanduser(
+                            "~/.agents/telemetry/experience-sweep-refusals.jsonl")),
+                        encoding="utf-8", errors="replace") as stream:
+                    for raw in stream:
+                        try:
+                            row = json.loads(raw)
+                        except json.JSONDecodeError:
+                            continue
+                        if isinstance(row, dict) and row.get("dispatch_id") in stale:
+                            refusals[row["dispatch_id"]] = str(row.get("reason", ""))
+            except OSError:
+                pass
+            findings.append(summarise_stale_dispatches(stale, refusals))
             if unroutable:
                 # experience-log refuses a role it does not route, so naming
                 # these without naming the command that does work would leave
@@ -836,25 +837,6 @@ try:
                 + ("..." if len(set(untied)) > 3 else "")
                 + ". Expected for a dispatch that was never staged (another "
                 "provider, hooks off); a typo or an invented id otherwise"
-            )
-        if unseen_verifiers:
-            # Counted, not judged. The quota is per prompt and the ledger has no
-            # prompt id, so a bridge verifier beside a native one in the same
-            # session is a question rather than a violation - a long session
-            # legitimately spends one per task. What is certain is that the gate
-            # never saw these, which is exactly what it says about itself.
-            both = sorted(set(unseen_verifiers) & native_verifier_sessions)
-            findings.append(
-                f"{len(unseen_verifiers)} outcome verifier(s) in the last 7 days "
-                "ran through the Codex bridge, where the one-verifier quota "
-                "cannot see them (main/claude/hooks/verifier-quota.py documents "
-                "why it cannot). "
-                + (f"{len(both)} of them shared a session with a native "
-                   "verifier, so check whether one prompt spent two: "
-                   + ", ".join(s[:8] for s in both[:3])
-                   if both else
-                   "None shared a session with a native verifier, so nothing "
-                   "here suggests a double spend")
             )
     except (OSError, ValueError):
         pass
@@ -887,7 +869,15 @@ try:
     try:
         validated = carrier_validated_on()
         live = live_runtime_version()
-        if validated and live and live > validated:
+        if validated is None:
+            # The one way this check could go quiet on its own: a stamp it can
+            # no longer parse reads the same as a gate that was never asked.
+            findings.append(
+                "leaf-redispatch carrier pin unreadable: CARRIER_VALIDATED_ON "
+                "was not found as `CARRIER_VALIDATED_ON = (x, y, z)` in "
+                "main/claude/hooks/leaf-redispatch.py, so this runtime's carrier "
+                "was not checked")
+        elif live and live > validated:
             findings.append(
                 "leaf-redispatch carrier unvalidated on this runtime: the gate "
                 f"reads `agent_type`, last observed on Claude Code "
