@@ -1,5 +1,7 @@
 # 同業 agent harness 拆解
 
+> 2026-09-30 狀態: 「本專案現況」欄裡的 Claude/Codex 雙側與 pilotfish-codex 一節隨 2026-09-14 Codex 退場成為紀錄; 「命令 verdict 轉 Codex read-only sandbox」已改成 leaf 指名缺哪項檢查, 由主 session 執行. Pilotfish 的最新讀數在[研究總結](README.md)的時效表.
+
 > 對齊日期: Pilotfish 段 2026-08-21 (仍是 v1.3.10); pilotfish-codex 段 2026-08-21 (1.7.1); Deep Agents 段 2026-08-20 (0.7.7). 只保留會影響本專案設計的存續結論.
 
 > **2026-08-28 依主題拆過一次.** 「跨上游整合」的三輪 (2026-08-21 第一輪, 08-28 第二與第三輪)

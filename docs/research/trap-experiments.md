@@ -1,5 +1,7 @@
 # Trap 實驗紀錄
 
+> 2026-09-30 狀態: 「Codex 鏡射」與 bridge 臂所述的路由隨 2026-09-14 Codex 退場, 那些讀數只是歷史; Claude 側結論與 `qc-gate-lines` 仍有效.
+
 [← 回研究摘要入口](README.md)
 
 ## 全部輪次一覽

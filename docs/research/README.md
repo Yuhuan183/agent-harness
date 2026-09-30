@@ -1,6 +1,6 @@
 # Harness engineering 研究總結
 
-> 對齊日期: 2026-09-08 (第一次勘查聚合型同業 ECC, 同日重跑[全語料盤點](landing-readiness.md#2026-09-08-重跑-21-份-而落地順序沒有改變)並補做[機制側盤點](mechanism-evidence-map.md)). 這是專案採用決策的入口: 本文只留結論, 指標與缺口; 每個來源的取證在分題文件, 每一次查核的原始紀錄在 [landing-log](landing-log.md).
+> 對齊日期: 2026-09-30 (上游全部重查; 現行結論第 6, 7 條與文件索引狀態依 Codex 退場與家族路由更新). 前一次 2026-09-08 (第一次勘查聚合型同業 ECC, 同日重跑[全語料盤點](landing-readiness.md#2026-09-08-重跑-21-份-而落地順序沒有改變)並補做[機制側盤點](mechanism-evidence-map.md)). 這是專案採用決策的入口: 本文只留結論, 指標與缺口; 每個來源的取證在分題文件, 每一次查核的原始紀錄在 [landing-log](landing-log.md).
 
 ## 這份文件回答什麼
 
@@ -20,7 +20,7 @@ flowchart LR
 
 ## 九個現行結論
 
-harness 應該縮到「模型無法可靠自行維持, 且能被驗證」的邊界. 邊界內: 權限, 派工深度, 可寫 artifact 所有權, Plan 收斂, provider route, 獨立驗證條件, 可追溯結果, 部署邊界. 邊界外: 風格偏好, 一般工程常識, 重複提醒 —— 寫進常駐 prompt 只會稀釋其他規則.
+harness 應該縮到「模型無法可靠自行維持, 且能被驗證」的邊界. 邊界內: 權限, 派工深度, 可寫 artifact 所有權, Plan 收斂, model/effort route, 獨立驗證條件, 可追溯結果, 部署邊界. 邊界外: 風格偏好, 一般工程常識, 重複提醒 —— 寫進常駐 prompt 只會稀釋其他規則.
 
 | # | 本專案採用 | 拒絕掉的替代做法 |
 |---|---|---|
@@ -29,8 +29,8 @@ harness 應該縮到「模型無法可靠自行維持, 且能被驗證」的邊�
 | 3 | 以任務形狀 batching | 以檔案數或 request bullets batching |
 | 4 | Plan 最多兩次自動實質修訂, 之後交還使用者 | 讓 verifier 無限要求修正 |
 | 5 | outcome verifier 最多一個, 放在最小完整驗收邊界 | 每個失敗面各放一個 verifier |
-| 6 | Claude no-write roles 不給 Bash; 要跑命令的獨立 verdict 交給 Codex read-only sandbox | 用 shell allowlist 擋掉危險命令 |
-| 7 | provider/model 決策只用同 role, 同 task class, 同 route cell 的本機結果, 樣本不足就探索 | 直接照外部排行榜選 provider |
+| 6 | Claude no-write roles 不給 Bash; 需要跑命令的檢查由 leaf 指名缺哪一項, 由主 session 執行並當作中間證據 | 用 shell allowlist 擋掉危險命令 |
+| 7 | model/effort 決策只用同 role, 同 task class, 同 route cell 的本機結果, 樣本不足就探索 | 直接照外部排行榜選 model |
 | 8 | Git 是可攜真相源; installer lock, 憑證, session, 服務狀態留 machine-local | 把整個 HOME 都納管 |
 | 9 | 下一批證據花在**沒有被量過的那一層** —— 現在是 gate 層 (7 個 fail-closed 閘, 52 個 eval 情境無一瞄準) | 繼續加固實質防線 (37/37 零中招, 下界 0.922), 或用「加一道新閘」代替「量現有的閘」 |
 
@@ -45,10 +45,10 @@ harness 應該縮到「模型無法可靠自行維持, 且能被驗證」的邊�
 | 主動派工 | Pilotfish 鼓勵在合適形狀下主動 dispatch; 精簡 resident prompt 傾向少規則 | 保留三項成本測試, 未通過就 direct | 取得平行效益, 同時避免 delegation tax |
 | Batching | 上游範例偏向同形任務批次; 一般 checklist 容易按 request bullet 拆分 | 依 shared context, artifact, dependency, verification surface 分組 | 降低重建 context 與整合成本 |
 | Plan 迭代 | verifier 可持續要求修正; 不中止會形成 churn | 同 readiness-unit 最多兩次自動實質修訂 | 把真正的選項交回使用者, 不假裝無限收斂 |
-| Bash 唯讀 | shell allowlist 想保留可執行重現; security review 證明 parser 可被 callbacks, 環境與 expansion 繞過 | Claude no-write roles 完全移除 Bash; 命令驗證轉 Codex read-only sandbox | 能力邊界比「解析任意 shell」可證明 |
+| Bash 唯讀 | shell allowlist 想保留可執行重現; security review 證明 parser 可被 callbacks, 環境與 expansion 繞過 | Claude no-write roles 完全移除 Bash; 需要跑命令的驗證由主 session 執行, 當作中間證據 (2026-09-14 之前轉 Codex read-only sandbox) | 能力邊界比「解析任意 shell」可證明 |
 | Prompt 壓縮 | Pilotfish benchmark 支持壓縮; vendor guidance 仍要求清楚結構與關鍵約束 | 移除重複與過時敘述, 不刪除 authority, stop, QC 與安全邊界 | 壓縮是降低 resident tax, 不是追求最短 |
 | 壓縮的驗證方式 | 上游 v1.3.7 的 255 條短語斷言全數通過, 仍放進十二個語意缺陷; 本專案測試同樣以短語為主 | 壓縮常駐契約時另做逐句對照, 重點檢查連接詞, 範圍限定詞, 否定詞 | 這三類改動不會動到任何被斷言的短語, 測試綠燈不構成證據 |
-| Provider 選擇 | 外部排行榜給先驗; 本機成本與失敗形態可能相反 | 外部資料只做先驗, 本機 ledger 達樣本門檻後覆蓋 | 對實際工作流的可接受結果成本最重要 |
+| Model 選擇 | 外部排行榜給先驗; 本機成本與失敗形態可能相反 | 外部資料只做先驗, 本機 ledger 達樣本門檻後覆蓋 | 對實際工作流的可接受結果成本最重要 |
 | Headroom 版本 | PyPI package 與 GitHub release tag 可能不同步 | 分別報告 package, release tag, PR 與 live service state | 避免把不同層級合成「目前版本」 |
 
 ## Pilotfish 蒸餾結果
@@ -126,7 +126,7 @@ v1.3.5 到 v1.3.10 的增量:
 | ④ 反證: 會不會過度觸發 | s10 (量 skill 觸發詞的召回) | gate 層沒有「本來就不該觸發」的對照組 | s8 arm B 負對照每臂 30 次; s7 grader 改必填 `--expect`; 派工煞車的正控制 09-06 量了 (replay `d3`–`d6`, 沒判錯過) |
 | ⑤ 退場: 擋下來之後呢 | 七個有界 gate | 沒寫下擋下來要回什麼, 也沒在量連續拒絕 | denial log (只記錄, 不設門檻); 每個閘的推翻條件與「什麼條件下等於沒有」寫進 [hook-system](../hook-system.md) |
 
-五個階段講的是一條常駐規則的一生. 2026-08-21 另落地一條講**派工迴路**的規則 —— 驗證者沒有回來時該怎麼辦 —— 兩個獨立上游 (pilotfish-codex 的 circuit breaker, cablate/baton 的「持續失敗就退回直接執行」) 指向同一處, 直接寫進兩支 dispatch skill; **效果沒有證據**, ledger 裡沒有任何一次「派工後拿不到結果」的真實樣本.
+五個階段講的是一條常駐規則的一生. 2026-08-21 另落地一條講**派工迴路**的規則 —— 驗證者沒有回來時該怎麼辦 —— 兩個獨立上游 (pilotfish-codex 的 circuit breaker, cablate/baton 的「持續失敗就退回直接執行」) 指向同一處, 直接寫進 dispatch skill (當時兩支, 2026-09-14 起只剩 `baton-dispatch`); **效果沒有證據**, ledger 裡沒有任何一次「派工後拿不到結果」的真實樣本.
 
 跨上游整合已跑四輪 (08-21, 08-28 ×2, 09-06), 逐條裁決, 處置與沒讀清單在 [cross-upstream-synthesis](cross-upstream-synthesis.md). 撐得住的一句: **一條常駐規則生不生效由它怎麼寫決定 (15%→48%, p=0.0000014), 不由旁邊有幾條決定 (拿掉 83% 仍 p=0.68)**; 而二元遵循量測可以證實大效應, 無法為殘餘設下界 —— 任何一家用二元遵循報出的滿分都不得讀成「規則現在生效」.
 
@@ -154,30 +154,30 @@ v1.3.5 到 v1.3.10 的增量:
 
 | 文件 | 狀態 | 一句結論 | 落地 |
 |---|---|---|---|
-| [context-and-vendors.md](context-and-vendors.md) | 開著 (供應商指引會變) | 常駐內容是注意力稅; 兩家官方文件都說契約要短 | 字數與密度預算 (`support.py`, [contract-slimming](../contract-slimming.md)) |
-| [resident-context-options.md](resident-context-options.md) | 快照 (2026-09-10) | 常駐池裡本 repo 只管約六分之一, 其餘是機器上別的 skill | `resident-pool-report.py` 只報不擋 |
+| [context-and-vendors.md](context-and-vendors.md) | 開著 (供應商指引會變; OpenAI/Codex 半邊自 2026-09-14 是紀錄) | 常駐內容是注意力稅; 兩家官方文件都說契約要短 | 字數與密度預算 (`support.py`, [contract-slimming](../contract-slimming.md)) |
+| [resident-context-options.md](resident-context-options.md) | 快照 (2026-09-10; Codex 側的 L2/L4 已失效) | 常駐池裡本 repo 只管約六分之一, 其餘是機器上別的 skill | `resident-pool-report.py` 只報不擋 |
 
 ### 模型, routing 與同業 — Graph 層
 
 | 文件 | 狀態 | 一句結論 | 落地 |
 |---|---|---|---|
-| [model-evidence.md](model-evidence.md) | 開著 (先驗 90 天重查) | benchmark 只是先驗; 本機 ledger 達 n≥10 才動路由; 2026-08-31 撤回一條不能重現的窗口占用數 | `model-routing.toml` 的先驗與 `revision_policy` |
+| [model-evidence.md](model-evidence.md) | 開著 (先驗 90 天重查; 數字對應 `-5` 一代) | benchmark 只是先驗; 本機 ledger 達 n≥10 才動路由; 2026-08-31 撤回一條不能重現的窗口占用數 | `model-routing.toml` 的先驗與 `revision_policy` |
 | [fable-5-fallback.md](fable-5-fallback.md) | 結案 | Fable 在具名角色會被切到 Opus, 所以只在主 session 用 | `provider-routing` skill, routing 的 `judgment_fable` 註記 |
-| [peer-harnesses.md](peer-harnesses.md) | 快照 (各上游版本) | 四家同業各自是什麼 | 紀錄; 蒸餾去向在 upstream-distillation-ledger |
-| [cross-upstream-synthesis.md](cross-upstream-synthesis.md) | 結案 (五輪) | 規則生不生效由它怎麼寫決定 (15%→48%), 不由旁邊有幾條決定 (拿掉 83% 仍 p=0.68); 領頭假說被自己的推翻條件打掉 | 契約 `DECISION` 子句的措辭; 內容指紋戳章 (`trap-surface.py`) |
+| [peer-harnesses.md](peer-harnesses.md) | 快照 (各上游版本; Codex 相關欄 2026-09-14 起是紀錄) | 四家同業各自是什麼 | 紀錄; 蒸餾去向在 upstream-distillation-ledger |
+| [cross-upstream-synthesis.md](cross-upstream-synthesis.md) | 結案 (五輪; 發現三/四隨 Codex 退場成歷史) | 規則生不生效由它怎麼寫決定 (15%→48%), 不由旁邊有幾條決定 (拿掉 83% 仍 p=0.68); 領頭假說被自己的推翻條件打掉 | 契約 `DECISION` 子句的措辭; 內容指紋戳章 (`trap-surface.py`) |
 
 ### 本機實驗 — 橫跨四層的證據面
 
 | 文件 | 狀態 | 一句結論 | 落地 |
 |---|---|---|---|
-| [trap-experiments.md](trap-experiments.md) | 結案 (s7–s11) | 假完成是最常見的失敗; 報告是主張不是證據 | QC 詐欺清單 (`baton-dispatch`), `qc-gate-lines`, INTENT/TWINS/AUTH 三行 |
+| [trap-experiments.md](trap-experiments.md) | 結案 (s7–s11; bridge 臂是歷史) | 假完成是最常見的失敗; 報告是主張不是證據 | QC 詐欺清單 (`baton-dispatch`), `qc-gate-lines`, INTENT/TWINS/AUTH 三行 |
 | [lifecycle-replay.md](lifecycle-replay.md) | 開著 (登記簿) | replay 的四項存活判準; 稀釋假說推翻, 措辭效應定案; 覆蓋度子句三格都量不到 (2026-09-15 收線) | 判準 3 由 `weekly-integrity` 執行; 措辭進契約 |
 | [injection-position.md](injection-position.md) | 結案 (2026-09-06) | 對比是二元的, 注入位置量不出 | 紀錄; 契約只保留「以 user context 進場」這個事實 |
 | [clause-pricing.md](clause-pricing.md) | 結案 (2026-08-17) | 派工類子句原理上無法用產出定價; 驗證類可以, 但 40 run 是天花板 | 驗證子句保留在契約 |
 | [carrier-evidence.md](carrier-evidence.md) | 結案 (2026-09-11) | 專案事實區塊會自己到, 行為效應量不到; skill 對檔案沒差 | `main/project/` 只主張事實有固定的家, 不主張行為 |
 | [wording-effect-scale.md](wording-effect-scale.md) | 結案 (2026-09-05) | INTENT 連續尺造好了; 措辭效應能不能外推仍未答 | `gate_lines.py` 的尺 |
-| [landing-readiness.md](landing-readiness.md) | 快照 (2026-08-31) | 四項建議全部結案, 兩項自己撤回 | 紀錄 |
-| [mechanism-evidence-map.md](mechanism-evidence-map.md) | 快照 (2026-09-08) | 115 個機制各站在什麼證據上; 最大缺口是 eval 沒有一格瞄準 gate 層 | ECC Q3/Q3b/Q8 不做的依據 |
+| [landing-readiness.md](landing-readiness.md) | 快照 (2026-08-31, 09-08 重跑) | 四項建議全部結案, 兩項自己撤回 | 紀錄 |
+| [mechanism-evidence-map.md](mechanism-evidence-map.md) | 快照 (2026-09-08; 總數含已退場的 Codex 面與報表腳本) | 115 個機制各站在什麼證據上; 最大缺口是 eval 沒有一格瞄準 gate 層 | ECC Q3/Q3b/Q8 不做的依據 |
 | [local-experiments.md](local-experiments.md) | 結案 (2026-07-22) | review 深度檔位 | 已吸收進角色 effort |
 | [community-skills-survey.md](community-skills-survey.md) | 結案 (2026-09-14) | 第三方 skill 逐條裁決 | 紀錄 |
 | [landing-log.md](landing-log.md) · [-2026-08](landing-log-2026-08.md) · [-earlier](landing-log-earlier.md) | 日誌 | 每一次查核的原始紀錄; 2026-09 / 08-20–31 / 08-04–14 | — |
@@ -206,7 +206,7 @@ v1.3.5 到 v1.3.10 的增量:
 | 契約提及一支 skill 會不會提高載入率 | s11 90 run 加 replay 21 run 全是零結果; 反向對照 (拿掉語言子句, 中文 5/5 → 0/5) 證明尺不是瞎的, 但**最小可偵測效應仍然未知** | [lifecycle-replay](lifecycle-replay.md) |
 | 規則觸發了有沒有比較好 | 減法子句: 產出正確性原理上無法為派工類子句定價 (隔離只會減少資訊). 加法子句 (驗證類) 可判, 但 40 run 是天花板, 因為陷阱在閱讀距離之內; 要定價, 事實必須在閱讀距離之外 | [clause-pricing](clause-pricing.md) |
 | 措辭效應能不能外推 | 靈敏度是 (規則, 結果變數) 這一對的性質; 四條受測規則只有語言子句有連續尺. 二元遵循量測可證實大效應, 無法為殘餘設下界 | [wording-effect-scale](wording-effect-scale.md) |
-| provider route cells 的樣本 | 18 格中 6 格達門檻 (`min_samples = 10`, 逐 role × task-class × provider); 三分之二在探索階段 | [experience-ledger metrics](../../main/.agents/skills/experience-ledger/references/metrics.md) |
+| model/effort 檔位的樣本 | 2026-09-30: 帳本 181 筆, 能進決策的 14 筆; 5 個 role × task-class cohort 裡沒有一格有兩個檔位達門檻 (`min_samples = 10`), 只有 explore/review 的 `claude-sonnet/low` 單獨達標 —— 全部仍在探索. 09-14 之前這一列按 provider 分格, 讀數不可比 | [experience-ledger metrics](../../main/.agents/skills/experience-ledger/references/metrics.md) |
 | 成本讀數的可信範圍 | 2026-08-31 11:04 之前的 cache 欄位經過有 bug 的 proxy (Headroom 0.36.5, `#2085`), 而帳本分不出哪筆受影響; `context_proxy` 欄位起才可信. `review_secs`/`rework_secs` 幾乎全空, 逐批成本歸因卡在 proxy log 沒有同時帶 session id 與數字的行 | [pending-evidence](../plans/pending-evidence.md#三之六-成本儀器剩下的接線-卡在歸因-不是計算-2026-08-31) |
 | 前後 lifecycle benchmark | **不可重建**: 「之前」那一側是 2026-07-28 的整個環境, client, 指數, proxy, 模型四軸全動. 留下的是規則: 效率宣稱的量測要在改動落地**之前**設計 | [playbook 第 5 節](../engineering-playbook.md#5-驗證迴路) |
 | 單機單人樣本 | 第 3, 6 條的推翻條件查過 ledger (131 筆, verifier 9 筆); 「沒觀察到」在這個量級上是弱證據 | 本文第 3, 6 條 |

@@ -1,5 +1,7 @@
 # 模型與 routing 證據
 
+> 2026-09-30 狀態: 先驗數字量的是 `claude-opus-5` / `claude-sonnet-5` 這一代, CLI 現在跑 `-5-5`; 路由自 2026-09-30 只寫家族 (`claude-opus`), `check-aliases` 只回報不判漂移, opus-4-8 那列移到 `benchmark_archive`; Codex 段 (Sol/Terra/Luna, plugin 來源) 是 2026-09-14 退場前的紀錄.
+
 [← 回研究摘要入口](README.md)
 
 ## 怎麼讀這份文件

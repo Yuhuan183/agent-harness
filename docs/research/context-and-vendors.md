@@ -1,5 +1,7 @@
 # 常駐指令與供應商指引
 
+> 2026-09-30 狀態: OpenAI/Codex 那一半 (含 `codex-usage` 指令與 `main/codex/model-routing.toml`) 隨 2026-09-14 Codex 退場成為紀錄; `heron_brook` 注入段自 2.1.261 起不在, 2.1.285 仍不在. 現況看[研究總結](README.md)的時效表.
+
 [← 回研究摘要入口](README.md)
 
 ## 這份文件回答什麼
