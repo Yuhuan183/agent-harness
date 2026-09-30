@@ -15,7 +15,7 @@
 | 專案 | [Raymondhou0917/speak-human-tw](https://github.com/Raymondhou0917/speak-human-tw) |
 | 作者 | Raymond Hou (雷蒙三十) |
 | 授權 | MIT |
-| 我方 pin | `6ccc24a76c6bb7ff516bb27d3044c8a330ca62d6` (2026-09-11 的 master, 2026-09-11 查; 前一個 fa09500c 是 2026-09-05 的 master) |
+| 我方 pin | `3f5d595debc8ce9d208c61e4b8bfae421de30f76` (2026-09-30 的 master, 2026-09-30 查; 前一個 6ccc24a7 是 2026-09-11 的 master) |
 | 重查 | `scripts/readable-zh-tw-recheck.sh [sha]` |
 
 **2026-08-19 補上 SHA 之前, ATTRIBUTION 只寫版本號.** 那讓它成為
@@ -223,3 +223,16 @@ pin-site 斷言當場抓出另外兩處 —— 那個守衛是 08-28 為這件�
 
 同輪的 sepia 讀數 (那 36 個 commit 沒有動到 `references/languages/zh.md`, 以及新的編輯指紋材料為何
 今日不採用) 在 [ledger 的 2026-09-11 節](upstream-distillation-ledger.md#2026-09-11-重查-九個-pin-七個報動-但其中三個是報告在重報已分類過的事).
+
+## 2026-09-30 重查: 十七個 commit, 第七輪
+
+`6ccc24a76c6bb7ff516bb27d3044c8a330ca62d6` -> `3f5d595debc8ce9d208c61e4b8bfae421de30f76`,
+十七個 commit, 2026-09-13 到 09-30, 仍然全是機器人更新星數圖, 動到的檔案只有
+`assets/readme/star-history-real.svg` (+9/-9).
+
+**查了什麼.** pin 到 head 的 `diff --stat` 只列那一個檔; `readable-zh-tw-recheck.sh 3f5d595d` 六個來源檔
+**全部 matches**. 推翻條件第七次不成立, 照舊四處一起推進: ATTRIBUTION, 重查腳本的預設 SHA, research
+README 那一列, 本節.
+
+同輪 sepia 的 `zh.md` 大改, 刪除測試與還原測試落進 `rewrite-mode.md` 第 6 步, 逐條在
+[ledger 的 2026-09-30 節](upstream-distillation-ledger.md#2026-09-30-重查-七個動-沒有一條規則要改).

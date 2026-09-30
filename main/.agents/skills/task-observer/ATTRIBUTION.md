@@ -8,8 +8,22 @@ https://github.com/rebelytics/one-skill-to-rule-them-all
 
 Reviewed upstream revision:
 
-- Version: `v3.1.0`
-- Commit: [`f4a95a180404bd4de35365da66849a243e3d07be`](https://github.com/rebelytics/one-skill-to-rule-them-all/commit/f4a95a180404bd4de35365da66849a243e3d07be)
+- Version: `v3.4.0`
+- Commit: [`c479475c551ad84d3bfa572245d053ef3ec6e112`](https://github.com/rebelytics/one-skill-to-rule-them-all/commit/c479475c551ad84d3bfa572245d053ef3ec6e112)
+
+Advanced from `v3.1.0` (`f4a95a180404bd4de35365da66849a243e3d07be`) on
+2026-09-30. The tag is again the default-branch head. Upstream moved 66
+commits (3.2.0 through 3.4.0, mostly 2026-09-25) and split its core into
+references; `SKILL.md` was read in full at the tag and twelve rule changes were
+classified in `docs/research/task-observer-upstream.md` (2026-09-30 section).
+None is adopted; the strongest item is corroboration for the 2026-09-30
+manual-only change (upstream records that a prose backstop fails together with
+the rule it guards). **Not classified**, and named so the advance does not hide
+it: `references/starter-principles.md` and `references/observation-log.md`
+beyond their headings, `references/weekly-review.md` outside lines 1060-1150,
+and about twenty commits judged by title only (compaction, symlink staging, zsh
+lists, frontmatter quoting, backfill, migration, scheduler, content-classifier
+denial, community files).
 
 Advanced from `v3.0.0` (`9d1491b895c4f8f04f04977f74faad0f342c8b0c`) on 2026-09-05,
 after every rule in the 3.1 changes was classified and each disposition checked

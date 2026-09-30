@@ -7,8 +7,19 @@ repository's own work; the part that is not is named clause by clause below.
 - **Upstream file**: `templates/claude-md.orchestration.md`, the resident
   orchestration policy (58 lines at the pin), which is where the verifier
   placement rules live.
-- **Reviewed release**: `v1.3.10` (2026-08-08)
-- **Reviewed commit**: `7a7f71b327f079fecbf29fa91e444b9a6180c31c` (2026-08-08,
+- **Reviewed commit**: `aa595daa1dc45c996ce53640e9446a3fb8ba680d` (2026-09-26,
+  default-branch head, `v1.4.2` in the template's version comment). Rechecked on
+  2026-09-30: 46 commits past the pin below, and the upstream file changed only
+  its version comment (`v1.3.10` to `v1.4.2`), so the borrowed clauses are
+  byte-identical. The same round found the role templates repackaged as a
+  plugin with rules identical to the pinned templates apart from a
+  `pilotfish:` namespace; two maintainer decisions in it were not adopted here
+  (security-executor effort lowered to medium, no measurement behind it) or
+  were already true (reconnaissance on Sonnet rather than Haiku). Per-item
+  dispositions in `docs/research/upstream-distillation-ledger.md`
+  (2026-09-30 section).
+- **Previous pin**: release `v1.3.10`, commit
+  `7a7f71b327f079fecbf29fa91e444b9a6180c31c` (2026-08-08,
   the tag commit). The borrowing happened on 2026-07-22 against an earlier
   v1.3 release; this is the commit whose text the clause table was checked
   against, and the pin `docs/research/peer-harnesses.md` already carries.

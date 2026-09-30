@@ -7,9 +7,9 @@
 
 | 上游 | pin | 逐節處置在哪 |
 |---|---|---|
-| [mattpocock/skills](https://github.com/mattpocock/skills) | `6654f6b60cd9d5be8b54c6fafe44346dabeb3b76` (marketplace pin, 2026-09-05 解析; 前一個 `885e2ca4` 用了 08-17 到 09-05) | 本檔主體 (下方各 mattpocock 節) |
-| [rebelytics/one-skill-to-rule-them-all](https://github.com/rebelytics/one-skill-to-rule-them-all) | `f4a95a180404bd4de35365da66849a243e3d07be` (`v3.1.0`, 2026-09-05 推進; 歷任 `281f1346` v2.0.0 → `9d1491b8` v3.0.0) | [08-28 v2.0.0 逐條](task-observer-upstream.md#rebelyticsone-skill-to-rule-them-all-逐條處置-2026-08-28), [08-31 3.0 逐條](task-observer-upstream.md#rebelytics-30-改版逐條-2026-08-31-上游朝我方的形狀走了過來), [09-05 3.1 逐條](task-observer-upstream.md#rebelytics-31-改版逐條-2026-09-05-上游在補儀器的守則-我方多半已有) |
-| [Nanako0129/sepia](https://github.com/Nanako0129/sepia) | `0162048ac8123e675fb40028298d72245eff2acb` (head, 2026-09-05; 前一個 `4c8d782f` 2026-08-30; 沒有 ATTRIBUTION, 因為還沒有內容落進 `main/`) | [08-31 逐條](#nanako0129sepia-與其上游論文-storyscope-逐條處置-2026-08-31), [09-05 v0.7.0 重查](#sepia-v070-重查-2026-09-05-中文校準檔直接對上-readable-zh-tw) |
+| [mattpocock/skills](https://github.com/mattpocock/skills) | `c55ee46073ed923f86ce59a5eb3b6d895095d1b7` (marketplace pin, 2026-09-30 解析; 前一個 `6654f6b6` 用了 09-05 到 09-30, 再前一個 `885e2ca4` 用了 08-17 到 09-05) | 本檔主體 (下方各 mattpocock 節) |
+| [rebelytics/one-skill-to-rule-them-all](https://github.com/rebelytics/one-skill-to-rule-them-all) | `c479475c551ad84d3bfa572245d053ef3ec6e112` (`v3.4.0`, 2026-09-30 推進; 歷任 `281f1346` v2.0.0 → `9d1491b8` v3.0.0 → `f4a95a18` v3.1.0) | [08-28 v2.0.0 逐條](task-observer-upstream.md#rebelyticsone-skill-to-rule-them-all-逐條處置-2026-08-28), [08-31 3.0 逐條](task-observer-upstream.md#rebelytics-30-改版逐條-2026-08-31-上游朝我方的形狀走了過來), [09-05 3.1 逐條](task-observer-upstream.md#rebelytics-31-改版逐條-2026-09-05-上游在補儀器的守則-我方多半已有) |
+| [Nanako0129/sepia](https://github.com/Nanako0129/sepia) | `06a5233395299ff78558b15568679c2c5c0fe942` (head, 2026-09-30 推進; 前一個 `0162048a` 2026-09-05, 再前一個 `4c8d782f` 2026-08-30; 借來的形狀記在 `readable-zh-tw` 的 ATTRIBUTION) | [08-31 逐條](#nanako0129sepia-與其上游論文-storyscope-逐條處置-2026-08-31), [09-05 v0.7.0 重查](#sepia-v070-重查-2026-09-05-中文校準檔直接對上-readable-zh-tw) |
 
 **沒標上游名的節講的都是 mattpocock/skills; sepia 有自己標了名的節; rebelytics 的逐條自 2026-09-05 起在 [task-observer-upstream](task-observer-upstream.md), 本檔只留每輪全掃的讀數表.**
 
@@ -696,3 +696,59 @@ client 的措辭. 同一個現實 (`CLAUDE.md` 常常是符號連結) 兩種正�
 `pilotfish` 那 14 個 benchmark 綁定 commit 的內容 (該列登記的「先讀 spontaneous-dispatch 的 cue-free
 資料」仍未讀); `ecc` 的逐節重查; `sepia` 那兩個檢查 (刪除測試, 還原測試) 要不要進 `readable-zh-tw` ——
 那會動到常駐面, 值得自己一趟, 不在這一輪硬塞.
+
+## 2026-09-30 重查: 七個動, 沒有一條規則要改
+
+使用者要求在整理研究報告之前先把上游對齊. `upstream-pin-report.py` 報九個 pin 裡七個動
+(fable-method 與 cablate/baton 未動, 最後 commit 仍是 pin). 七個上游以 blobless clone 取回, 各自產生
+pin 到 head 的 diff. mattpocock 與 speak-human-tw 由本 session 直接讀; rebelytics, pilotfish + sepia,
+ecc + Trellis 分給三個唯讀 agent, 回報經本 session 抽查 (pilotfish 的兩個 role 檔由本 session 補做逐行 diff).
+
+| 來源 | 動了多少 | 處置 | 檢查了什麼 |
+|---|---|---|---|
+| mattpocock/skills | marketplace pin `6654f6b6` → `c55ee46073ed923f86ce59a5eb3b6d895095d1b7` (catalog commit `2a8ad9f74633d10e3d9bb0660a03bfc6e50584b1`, 09-29), +15; 預設分支 head `d81f3a183412e71a5b1e84ca21bc1a35eea03a60` 再 +21, 尚未送出 | **推進 pin**, 不重新分類 | catalog raw 檔 `mattpocock-skills` 條目的 `source.sha`; `scripts/upstream-recheck.sh c55ee460…` 四檔全部 matches. head 上動到來源檔的只有開場那句的 `CONTEXT.md` → `GLOSSARY.md`, 而那句兩份 ATTRIBUTION 都記為不採用 |
+| speak-human-tw | +17 | **推進 pin** `3f5d595debc8ce9d208c61e4b8bfae421de30f76`, 記帳 | 第七輪, 仍只有 `assets/readme/star-history-real.svg`; `scripts/readable-zh-tw-recheck.sh` 六檔全部 matches |
+| rebelytics | `v3.1.0` → `v3.4.0` (`c479475c551ad84d3bfa572245d053ef3ec6e112`), +66 | **推進 pin**; 十二條逐條, 無採用 | 逐條在 [task-observer-upstream 的 09-30 節](task-observer-upstream.md#2026-09-30-重查-v340-上游自己證實文字觸發會失效) |
+| pilotfish | +46, head `aa595daa1dc45c996ce53640e9446a3fb8ba680d` (template 版本註解 `v1.4.2`) | **推進 pin**; 無採用 | 703 行 diff (plugin/, docs/, templates/, README) 全讀; 我方借句的 `templates/claude-md.orchestration.md` 只改版本註解; plugin 版 `verifier.md` 與 `plan-verifier.md` 對 pin 時的 template 逐行 diff, 只差 `pilotfish:` 命名空間 |
+| sepia | +183, head `06a5233395299ff78558b15568679c2c5c0fe942` | **推進 pin**; 一條改造後採用 | `skills/sepia/references/languages/zh.md` 與 `skills/sepia/SKILL.md` 的 hunk 全讀; style-pass, rubric, journalism 的 hunk 讀過 |
+| ecc | +373, head `c70874fae9eb0e5ad0365beb7e2955899fd1d30f` (`VERSION` 2.2.2) | **pin 不動**; 勘查結論逐條對 head 查過, 仍成立 | 只讀 commit 標題, 加上結論依賴的檔案 (`gateguard-fact-force.js`, `SOUL.md`, `AGENTS.md`, `session-start.js`, `mcp-health-check.js`); 逐節重查仍沒做 |
+| Trellis | +10, head `f089cb3286071199e84118dee86b6d76aab032f1` (0.6.17) | **pin 不動**; 不影響勘查 | 只讀 log 與 stat, 沒讀 hunk |
+
+ecc 與 Trellis 的 pin 刻意不推: 推了之後 `upstream-pin-report.py` 下一輪會報 `current`, 那 383 個沒逐條讀的
+commit 就從報告裡消失了. 讀到哪裡寫在研究總結的時效表那兩列.
+
+### pilotfish 逐條
+
+- **已落地 / 佐證**: 偵察角色從 Haiku 改 Sonnet, 理由是 Haiku 在偵察上幻覺太多 (`design.md`) —— 我方 `explore`
+  本來就是 sonnet/low; 最終訊息從「約 20 行」改成「只答被問的」—— 我方 `explore.md` 已是這個寫法;
+  拿掉「安全任務避開 frontier 模型以免被安全分類器中途拒絕」的理由 —— 我方從沒寫過這個理由; 長工作不可
+  detach, 超過 10 分鐘回報指令/目錄/環境/輸入 —— 我方三個可寫角色都有.
+- **不採用**: security-executor 的 effort 從 high 降 medium. 上游理由是「實作不需要 high, 嚴謹度屬於
+  review」, 沒有附量測; 我方 security 實作維持 high 是刻意設的下限 (使用者 2026-09-30 同意不跟).
+  主 session effort 預設降 medium (我方主 session 由使用者自己選, 沒有可改的東西); AUTO/ASK 自主模式
+  (加一層使用者互動契約); plugin 交付與 SessionStart 注入 (交付形狀不同, 見 [peer-harnesses](peer-harnesses.md)).
+- **不是新規則**: plugin 版 `verifier.md` 的 P0-P4 判準與 `REFUTED` 優先序, `plan-verifier.md` 的 blocker 規則,
+  都與 pin 時的 `templates/agents/` 相同, 處置早在 v1.3.x 的逐條表裡.
+
+### sepia 逐條
+
+- **改造後採用**: 刪除測試與還原測試 (改稿者的指紋是它倒進去的填充詞). 落在
+  `readable-zh-tw/references/rewrite-mode.md` 第 6 步, 改寫時才載入, 不在常駐面. 上游「改完不能比原文長」
+  放寬成「變長時要說得出多出來的字各補了什麼」, 因為拆開嵌套修飾本來就可能變長. 這是指引不是閘:
+  它規範的是模型改寫時的自我檢查, 落地前沒有測試能先紅.
+- **已落地**: `zh.md` §0 的台灣標點慣例 (「」與『』, 《》〈〉, 「……」) 我方 `taiwan-localization.md` 已有;
+  §3 「不因人類語料有而還原歸因」我方本來就不還原.
+- **佐證**: §1b/§1c 的人類新聞與機器語料對照 (單次「不是…而是」在人類文章 30% 出現, 機器 2.9-7.5 倍;
+  兩格破折號人類 61%) 支持我方「最多一次, 不是零」與「破折號是標點」; §5 新增的「不是訊號」清單與我方誤殺
+  防護一致. 數字一律不借, 那是私有語料.
+- **不採用**: 新聞版面專用的數字與間隔號規則, 「X地」加說話動詞, 歸因動詞列, 長篇新聞路由, 呼叫端宣告的
+  保護行範圍與無人值守模式 —— 本 skill 的對象是 AI 回覆與技術文件, 不是新聞稿, 也沒有 agent 對 agent
+  的呼叫面.
+
+### 沒有檢查的
+
+rebelytics 見它自己那節. pilotfish: `install/*.md`, CHANGELOG, benchmark 綁定 commit 的內容 (cue-free 資料
+仍未讀), 以及上游對 Claude Code 2.1.280 與 cyber classifier 的宣稱. sepia: `model-fingerprints`, personas,
+voices, detectors, sources, zh-news-corpus 的 hunk, 以及任何私有語料數字或論文引用. ecc: 373 個 commit
+的 diff 本文, 新增 skill 的內容, `WORKING-CONTEXT.md` 是刪除還是搬移. Trellis: 全部 hunk, `v0.7.0-beta` 線,
+授權檔是否變動.

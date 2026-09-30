@@ -5,7 +5,18 @@ Derived from Matt Pocock's agent skills.
 - **Source**: <https://github.com/mattpocock/skills>
 - **Upstream skill**: `skills/engineering/diagnosing-bugs/SKILL.md`
 - **Reviewed release**: `v1.2.3` (2026-08-06)
-- **Reviewed commit**: `6654f6b60cd9d5be8b54c6fafe44346dabeb3b76` — the Claude
+- **Reviewed commit**: `c55ee46073ed923f86ce59a5eb3b6d895095d1b7` — the Claude
+  marketplace pin, re-resolved on 2026-09-30 from the public catalog
+  (`anthropics/claude-plugins-official`, `.claude-plugin/marketplace.json` at
+  catalog commit `2a8ad9f74633d10e3d9bb0660a03bfc6e50584b1`). Fifteen commits
+  past the pin below; `scripts/upstream-recheck.sh` reports all four source
+  files byte-identical to the ledger at this SHA, so nothing was re-classified.
+- **Default branch checked on 2026-09-30**: `d81f3a183412e71a5b1e84ca21bc1a35eea03a60`,
+  21 commits past the marketplace pin and not yet served. Its only change to the
+  source file renames the `CONTEXT.md` in the opening instruction to
+  `GLOSSARY.md`; that instruction is listed under what was not taken, so the
+  rename changes nothing here.
+- **Previous pin**: `6654f6b60cd9d5be8b54c6fafe44346dabeb3b76` — the Claude
   marketplace pin, re-resolved on 2026-09-05 from the public catalog
   (`anthropics/claude-plugins-official`, `.claude-plugin/marketplace.json` at
   catalog commit `46260264499ce2e3c3b24f31c623c798989257e1`). The previous pin
@@ -13,7 +24,7 @@ Derived from Matt Pocock's agent skills.
   behind it and the file this skill derives from has the same blob at both; the
   release tag `v1.2.3` and the version string did not move across either step,
   so the SHA is the only thing that identifies what was read.
-- **Default branch checked**: `3cca18b368ae95cdbdebbff572ccafa662551015` on 2026-09-05. Two commits ahead of the
+- **Default branch checked on 2026-09-05**: `3cca18b368ae95cdbdebbff572ccafa662551015`. Two commits ahead of the
   pin, both to `scripts/link-skills.sh`; the source file is byte-identical at
   the old pin, the new pin and the head, so nothing was re-classified. The eight
   commits between the two pins (a `grilling` layout change, the `implement-spec`
