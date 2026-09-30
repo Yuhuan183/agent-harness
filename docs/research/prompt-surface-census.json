@@ -14,8 +14,8 @@
         },
         {
           "bytes": 5917,
-          "file_bytes": 6435,
-          "file_sha256": "d1b91501aebd7305b50beb6e5e8ba21b745b56e2c936203bf1f91624491d72df",
+          "file_bytes": 6437,
+          "file_sha256": "e3aa1d94949cab3c66fdb0ea92a605753fed572f09825ee1b776a94cfc70c4d5",
           "kind": "skill-body",
           "path": "main/claude/skills/evidence-debugging/SKILL.md",
           "sha256": "6a1ad24f4ce1ddaabb76260cd0607670a95592c7a62dda10b82f168d04a2ae71",
@@ -77,8 +77,8 @@
         },
         {
           "bytes": 5198,
-          "file_bytes": 5738,
-          "file_sha256": "af7f442d78b8a102cce12255e72457546b5f107e595448eec291d3515a178d36",
+          "file_bytes": 5740,
+          "file_sha256": "708ca2c753da0c032b09a82909ad14dee24642e12033a982b0244268111eb045",
           "kind": "skill-body",
           "path": "main/claude/skills/test-first-change/SKILL.md",
           "sha256": "86bb70e4c653c83943098d60f695337152e9f940efbfd48aec56c935208bb679",
@@ -103,8 +103,8 @@
         },
         {
           "bytes": 489,
-          "file_bytes": 6435,
-          "file_sha256": "d1b91501aebd7305b50beb6e5e8ba21b745b56e2c936203bf1f91624491d72df",
+          "file_bytes": 6437,
+          "file_sha256": "e3aa1d94949cab3c66fdb0ea92a605753fed572f09825ee1b776a94cfc70c4d5",
           "kind": "skill-metadata",
           "path": "main/claude/skills/evidence-debugging/SKILL.md",
           "sha256": "2f61fcb3840a81d300eb209d924112e1c47a93a812708bf29442bcf17ab1ea69",
@@ -166,8 +166,8 @@
         },
         {
           "bytes": 511,
-          "file_bytes": 5738,
-          "file_sha256": "af7f442d78b8a102cce12255e72457546b5f107e595448eec291d3515a178d36",
+          "file_bytes": 5740,
+          "file_sha256": "708ca2c753da0c032b09a82909ad14dee24642e12033a982b0244268111eb045",
           "kind": "skill-metadata",
           "path": "main/claude/skills/test-first-change/SKILL.md",
           "sha256": "0f40c1dac801b6ec136dd84e53f690bd19ff05e012ac7feb18875d4e55e4459f",
