@@ -3592,6 +3592,19 @@ class PushConsentGateTests(unittest.TestCase):
                     done = self._run(command, home)
                     self.assertEqual(done.returncode, 2, done.stderr)
 
+    def test_the_depth_cap_blocks_only_what_could_still_be_a_push(self) -> None:
+        # Past the recursion cap the scanner stops reading, and it used to call
+        # anything there a runtime push - a harmless six-deep substitution was
+        # refused with a push reason (2026-09-30 review). Text at the cap that
+        # names no push and holds no expansion cannot become one.
+        deep = "echo $(echo $(echo $(echo $(echo $(echo $({}))))))"
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            self.assertEqual(self._run(deep.format("date"), home).returncode, 0)
+            for inner in ("git push", "git $C", "g''it pu''sh"):
+                with self.subTest(inner=inner):
+                    self.assertEqual(self._run(deep.format(inner), home).returncode, 2)
+
     def test_a_push_named_only_inside_data_still_passes(self) -> None:
         # The other direction of the same change: text that mentions a push but
         # does not run one must not start costing a consent prompt.

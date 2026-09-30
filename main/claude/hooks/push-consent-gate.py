@@ -169,7 +169,11 @@ def git_push_kind(command: str, depth: int = 0) -> str | None:
     allowed what it could not read would be the bypass (2026-09-30 review).
     """
     if depth > MAX_DEPTH:
-        return "runtime"
+        # Unread from here on. Only text that could still become a push is
+        # refused: one that names it once quotes and escapes are gone, or that
+        # holds an expansion the shell may turn into one.
+        flat = re.sub(r"[\"'\\\\]", "", command)
+        return "runtime" if "push" in flat or "$" in flat or "`" in flat else None
     tokens, bodies = _scan(command.replace("\\\n", ""))
     for body in bodies:
         kind = git_push_kind(body, depth + 1)
