@@ -16,6 +16,6 @@ Independence is the point of the role, so a `verifier` never grades the context 
 
 A fresh context on the same model removes the producer's working state, not its model family's blind spots. Treat a verdict as evidence that the claim survives re-derivation, and no more.
 
-A same-provider verdict never satisfies a security trigger on its own.
+A verifier verdict never satisfies a security trigger on its own: pair it with the `security-reviewer` findings and their dispositions, and with the executable checks the main session ran.
 
 Place the verifier at the smallest coherent integration boundary where the complete acceptance claim can be independently refuted. Focused tests, builds, and static checks remain intermediate evidence during iteration. Verify earlier for security, cross-language or FFI, serialization or pre-aggregation, irreversible-operation, and integration-blocking boundaries; this changes timing, not the one-verifier limit.

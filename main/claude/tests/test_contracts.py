@@ -320,6 +320,12 @@ class ClaudeContractTests(unittest.TestCase):
             self.assertIn("intermediate evidence", text)
         self.assertIn("cross-language or FFI", triggers)
         self.assertIn("serialization or pre-aggregation", triggers)
+        # With one provider every verdict is same-provider, so the security
+        # rule has to name what completes the evidence or no route satisfies it.
+        security = " ".join(triggers.split())
+        self.assertIn("never satisfies a security trigger on its own", security)
+        self.assertIn("`security-reviewer` findings", security)
+        self.assertIn("executable checks the main session ran", security)
         # Plan anti-churn moved from the resident Claude contract into the
         # mandatory-pre-dispatch baton skill, so the assertion is on the union.
         claude_policy = claude + "\n" + skill
@@ -384,14 +390,19 @@ class ClaudeContractTests(unittest.TestCase):
         # units — one per "top-level task", five per "target", and the gate
         # counting per prompt — and a reader can only guess whether five passes
         # are permission to spend the quota five times (2026-08-04 review).
+        # The skill states the quota in the contract's unit, top-level task, so
+        # the five passes spread across tasks rather than redefining the quota.
+        contract = " ".join(read(".claude/CLAUDE.contract.md").split())
+        self.assertIn("one outcome `verifier` per top-level task", contract)
         for path in (".claude/skills/baton-dispatch/SKILL.md",):
             text = " ".join(read(path).split())
             self.assertIn("five verification passes", text, path)
             self.assertIn("names what changed since the previous one", text, path)
             self.assertIn("an unchanged candidate is not re-verified", text, path)
             self.assertIn("does not widen the one-verifier quota", text, path)
-            self.assertIn("one outcome verifier per acceptance claim", text, path)
-            self.assertIn("only a changed candidate is a new claim", text, path)
+            self.assertIn("one outcome verifier per top-level task", text, path)
+            self.assertIn("counted across top-level tasks", text, path)
+            self.assertNotIn("per acceptance claim", text, path)
 
     def test_provider_routing_owns_model_and_role_policy(self) -> None:
         skill = read(".claude/skills/provider-routing/SKILL.md")

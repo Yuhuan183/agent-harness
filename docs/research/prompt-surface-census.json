@@ -4,13 +4,13 @@
     "claude": {
       "dispatch": [
         {
-          "bytes": 8405,
-          "file_bytes": 8869,
-          "file_sha256": "6c644103086c21e69fe2b24920e34b630db24118593cf4c1219cdca3f743a5b7",
+          "bytes": 8433,
+          "file_bytes": 8897,
+          "file_sha256": "6344d80a4f7b1f2d368b9506b489f6d847fd34e70799641de06c567136997d28",
           "kind": "skill-body",
           "path": "main/claude/skills/baton-dispatch/SKILL.md",
-          "sha256": "979461252b170934ffd701b1d428c553416dbaa46a31780444d0aeb8d84d1446",
-          "words": 1184
+          "sha256": "140e6215e6a1a5d0f04e49043aa0cc288591a3969270f324afc53421ab80dd9f",
+          "words": 1189
         },
         {
           "bytes": 5917,
@@ -94,8 +94,8 @@
         },
         {
           "bytes": 427,
-          "file_bytes": 8869,
-          "file_sha256": "6c644103086c21e69fe2b24920e34b630db24118593cf4c1219cdca3f743a5b7",
+          "file_bytes": 8897,
+          "file_sha256": "6344d80a4f7b1f2d368b9506b489f6d847fd34e70799641de06c567136997d28",
           "kind": "skill-metadata",
           "path": "main/claude/skills/baton-dispatch/SKILL.md",
           "sha256": "744404031597ca6b46e6fff61aac5979c31580ae5522fd0df5b58e79069de6b9",
@@ -301,9 +301,9 @@
   "totals": {
     "claude": {
       "dispatch": {
-        "bytes": 42746,
-        "payload_sha256": "af548d320028d1756e01c7f0b5da9d8ee7f9df59a3914e2ec4db7fdb1f75d9a0",
-        "words": 7367
+        "bytes": 42774,
+        "payload_sha256": "f3176e8236ab6af3c3737fd53b0de1d3961fe420bbb70b7ba5b7ed2e7348afbb",
+        "words": 7372
       },
       "resident": {
         "bytes": 9338,
