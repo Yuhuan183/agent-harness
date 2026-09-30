@@ -40,13 +40,13 @@
           "words": 1176
         },
         {
-          "bytes": 4811,
-          "file_bytes": 5284,
-          "file_sha256": "a6d15b889dad461c4e3cd9239f065f359ae7966112a5173f2a808a22b7474f34",
+          "bytes": 4810,
+          "file_bytes": 5283,
+          "file_sha256": "a6b2434cc2b762bcd90b15484d77739c6805a65a5255dd0b81e2fb4acddeb0b9",
           "kind": "skill-body",
           "path": "main/claude/skills/experience-ledger/SKILL.md",
-          "sha256": "e44078b11d8c4ca4f31fa753ce6e76ae3eeb59109b044cf59453ee3d422197f3",
-          "words": 645
+          "sha256": "bc78afeaeb2232dd2d75b40110c7a7b5feefc8d68a0a6620bda6c78a273d6c64",
+          "words": 646
         },
         {
           "bytes": 247,
@@ -130,8 +130,8 @@
         },
         {
           "bytes": 436,
-          "file_bytes": 5284,
-          "file_sha256": "a6d15b889dad461c4e3cd9239f065f359ae7966112a5173f2a808a22b7474f34",
+          "file_bytes": 5283,
+          "file_sha256": "a6b2434cc2b762bcd90b15484d77739c6805a65a5255dd0b81e2fb4acddeb0b9",
           "kind": "skill-metadata",
           "path": "main/claude/skills/experience-ledger/SKILL.md",
           "sha256": "0c553dcc850dad2e0a3cdbe726aac72c5e9e3ec047410748ec4e9cd0d4938ea5",
@@ -192,13 +192,13 @@
           "words": 17
         },
         {
-          "bytes": 171,
-          "file_bytes": 934,
-          "file_sha256": "60005eee282863fb2a72fbe3feb92f4b6618b6000267c7e938e84cd332626451",
+          "bytes": 129,
+          "file_bytes": 892,
+          "file_sha256": "e985b1ecdf53d21e7e27ba71a7816f4d14bc1729d93a0d1082959f04ef256cbb",
           "kind": "role-metadata",
           "path": "main/claude/agents/security-reviewer.md",
-          "sha256": "21cae706623de4542f43988264571d33de6d5800a9b6f8f94be766d0a3ecd0a9",
-          "words": 21
+          "sha256": "5bb2a0134df4d9eba14495040c7098cb84f3b862a36e68397f4b04ab8c49f941",
+          "words": 15
         },
         {
           "bytes": 158,
@@ -228,13 +228,13 @@
           "words": 18
         },
         {
-          "bytes": 155,
-          "file_bytes": 2434,
-          "file_sha256": "4e70af9b0d01fbade4dcd8b1e0ae8c15f798944d81de074f68665a1f026ae5e4",
+          "bytes": 111,
+          "file_bytes": 2390,
+          "file_sha256": "46dd5f6be58caac1305d8469a5acc83e54c569b30ec75d151e56a4794b2e2a75",
           "kind": "role-metadata",
           "path": "main/claude/agents/security-executor.md",
-          "sha256": "360e02068909fbdf4cc1e81b7d6fa4ca22cbbfd28dedbf0cada3876003d42b7f",
-          "words": 18
+          "sha256": "2f0d3f9e045e28d17b0e205c3efe39abb2eba4405429545139f1b3cd7aa41a76",
+          "words": 11
         }
       ],
       "roles": [
@@ -256,8 +256,8 @@
         },
         {
           "bytes": 664,
-          "file_bytes": 934,
-          "file_sha256": "60005eee282863fb2a72fbe3feb92f4b6618b6000267c7e938e84cd332626451",
+          "file_bytes": 892,
+          "file_sha256": "e985b1ecdf53d21e7e27ba71a7816f4d14bc1729d93a0d1082959f04ef256cbb",
           "path": "main/claude/agents/security-reviewer.md",
           "sha256": "e0266ed92096aebcc421e1d333766dc95a6d7cdcd86bc89848fd49a5c655ac8f",
           "words": 85
@@ -288,8 +288,8 @@
         },
         {
           "bytes": 2192,
-          "file_bytes": 2434,
-          "file_sha256": "4e70af9b0d01fbade4dcd8b1e0ae8c15f798944d81de074f68665a1f026ae5e4",
+          "file_bytes": 2390,
+          "file_sha256": "46dd5f6be58caac1305d8469a5acc83e54c569b30ec75d151e56a4794b2e2a75",
           "path": "main/claude/agents/security-executor.md",
           "sha256": "eaadf1937674949df1568242823748cb69e63702bce7cc0d1fb463e887d26d42",
           "words": 332
@@ -301,14 +301,14 @@
   "totals": {
     "claude": {
       "dispatch": {
-        "bytes": 43421,
-        "payload_sha256": "abe11a66bf10eb74587d39c7f157833123ea38e051afda340eae81cae5ec8c55",
-        "words": 7474
+        "bytes": 43420,
+        "payload_sha256": "7fc54c5b2bd5228fe5377cc30467991af93826b8ecb947e822879ce32a750ede",
+        "words": 7475
       },
       "resident": {
-        "bytes": 8691,
-        "payload_sha256": "77e2bde200359ded1aab66401080349058fd0efd6960656f208cdb9c7dcf050e",
-        "words": 1519
+        "bytes": 8605,
+        "payload_sha256": "b8c57306f2be7a0a4dcf8f02f0eb3326dd66975f32df3779ef2fd33b7d383e02",
+        "words": 1506
       },
       "roles": {
         "bytes": 10646,

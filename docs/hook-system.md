@@ -173,13 +173,13 @@ unrelated tool calls」—— 但後果是: **client 改一次 payload 形狀, �
 | `AGENT_SKIP_TEST_GATE=1` | [commit-test-gate](../main/claude/hooks/commit-test-gate.py), [githooks/pre-commit](../main/claude/githooks/pre-commit) | 放行一次刻意的紅狀態提交. **不是環境讀取**: 它是指令前綴, gate 對指令字面比對, 所以正規化不會讓它更容易被解除 | 無 |
 | `AGENT_ALLOW_SECOND_VERIFIER=1` | [verifier-quota](../main/claude/hooks/verifier-quota.py) | 同一 prompt 內放行第二個 outcome verifier | 無 |
 | `AGENT_HARNESS_PYTHON` | [commit-test-gate](../main/claude/hooks/commit-test-gate.py) | 指定跑套件用的直譯器, 跳過搜尋. **攔截訊息會指名它**, 所以它必須在這裡查得到 | 依序試 `sys.executable` 與內建清單 |
-| `AGENT_HARNESS_REPO` | [managed-target-guard](../main/claude/hooks/managed-target-guard.py) | 指定來源 checkout 的位置, 亦即這個閘拿哪一份 manifest 判斷「託管」 | 讀 `~/.agents/skills/.agent-harness-source` 標記 |
+| `AGENT_HARNESS_REPO` | [managed-target-guard](../main/claude/hooks/managed-target-guard.py), [weekly-integrity](../main/claude/hooks/weekly-integrity.py) | 指定來源 checkout 的位置: 閘拿哪一份 manifest 判斷「託管」, 週檢拿哪一份比對部署漂移 | 讀 `~/.agents/skills/.agent-harness-source` 標記 |
 | `AGENT_RUNTIME_VERSION` | [weekly-integrity](../main/claude/hooks/weekly-integrity.py) | 直接指定 runtime 版本, 不跑子行程去問. **設了它, 版本漂移就報不出來** | 實際探測 |
 | `AGENT_DENIAL_LOG` | [denial_log](../main/claude/hooks/denial_log.py) | 拒絕紀錄要寫去哪. 套件用它避免寫進開發者本機那一份 | `~/.claude/telemetry/denials.jsonl` |
-| `AGENT_EXPERIENCE_PENDING` | [experience-pending](../main/claude/hooks/experience-pending.py) | 暫存檔位置 | `~/.agents/telemetry/experience-pending.jsonl` |
-| `AGENT_EXPERIENCE_LEDGER` | 同上 | ledger 位置 | `~/.agents/telemetry/experience.jsonl` |
-| `AGENT_EXPERIENCE_LOG_BIN` | 同上 | 寫入 ledger 的程式 | `~/.agents/skills/experience-ledger/scripts/experience-log` |
-| `AGENT_EXPERIENCE_SWEEP_REFUSALS` | 同上, 也被 [weekly-integrity](../main/claude/hooks/weekly-integrity.py) 讀 | session 結束補記被拒時的原因 | `~/.agents/telemetry/experience-sweep-refusals.jsonl` |
+| `AGENT_EXPERIENCE_PENDING` | [experience-pending](../main/claude/hooks/experience-pending.py), [weekly-integrity](../main/claude/hooks/weekly-integrity.py) | 暫存檔位置 | `~/.agents/telemetry/experience-pending.jsonl` |
+| `AGENT_EXPERIENCE_LEDGER` | experience-pending, [weekly-integrity](../main/claude/hooks/weekly-integrity.py) | ledger 位置 | `~/.agents/telemetry/experience.jsonl` |
+| `AGENT_EXPERIENCE_LOG_BIN` | experience-pending | 寫入 ledger 的程式 | `~/.agents/skills/experience-ledger/scripts/experience-log` |
+| `AGENT_EXPERIENCE_SWEEP_REFUSALS` | experience-pending, [weekly-integrity](../main/claude/hooks/weekly-integrity.py) | session 結束補記被拒時的原因 | `~/.agents/telemetry/experience-sweep-refusals.jsonl` |
 
 後四個主要給套件與 replay 用, 但它們**照樣列在這裡**: 一個只在測試裡出現的覆寫仍然是這台
 機器上真的會被讀的東西, 而「它只有測試在用」是註解該說的話, 不是省略它的理由.

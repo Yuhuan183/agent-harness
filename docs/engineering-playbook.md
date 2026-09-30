@@ -116,7 +116,7 @@ answer sheet. 每個 trap 對準一種失敗形態 (假完成, 越權裁決, 把
 - **長任務**: 在收斂點 `/compact` (先落地目標/決策/未決); 複雜工作用
   research → plan → implement 分段新 context; 不要把任何固定 context 百分比當成通用失效線.
 - **記憶是快照**: 引用前重新驗證; 行為合約以版控文件為準.
-- 用 `scripts/usage-report --days 7` 看診斷訊號, 不冒充供應商配額公式.
+- 用 `~/.claude/scripts/usage-report --days 7` (來源在 `main/claude/scripts/`) 看診斷訊號, 不冒充供應商配額公式.
 
 ### 模型與 provider 的成本效益
 

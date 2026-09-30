@@ -60,7 +60,7 @@ and session automatically; a native Claude dispatch then only needs its outcome:
   merge the two cohorts just because both ran on `explore`.
 - Deviating from a report hint requires a `--note` with the reason.
 
-## Reporting (when provider choice is uncertain; weekly routine)
+## Reporting (when a route choice is uncertain; weekly routine)
 
 ```bash
 ~/.agents/skills/experience-ledger/scripts/experience-report            # selection.default

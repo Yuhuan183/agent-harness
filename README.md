@@ -103,7 +103,7 @@ main/claude/scripts/model-routing resolve --priority quality-guarded --role veri
 | 機制 | 解決的問題 | 真相源 |
 |---|---|---|
 | Routing validator/pin check | 阻止不完整 profile, 品質門檻以下 route 與 Claude pin 漂移 | `main/claude/scripts/model-routing` |
-| Alias generation check | `opus` 指向哪個世代由 CLI 決定; 以 leaf transcript 的真實 model id 驗證 config 的宣稱 | [model-routing.py](main/claude/scripts/model-routing.py) |
+| Alias generation report | 路由只寫家族, `opus` 指向哪個世代由 CLI 決定; `check-aliases` 以 leaf transcript 的真實 model id 回報各家族跑了哪一代, 與基準數據量測的世代不同時標出來. 只回報, 不會失敗 | [model-routing.py](main/claude/scripts/model-routing.py) |
 | Runtime guard | 需要新版能力的 reviewer 在版本過舊或未知時停止 | [runtime-guard.py](main/claude/hooks/runtime-guard.py) |
 | Capability-aware verifier | Claude 的 no-write role 不提供 Bash; 需要執行命令的驗證由 leaf 回報缺哪一項檢查, 改由 main 執行並當作中間證據 | [provider-routing](main/claude/skills/provider-routing/SKILL.md) |
 | Verifier 額度 | 同一個 prompt 內的第二個 Claude `verifier` 直接擋; 跨 prompt 不計, 那段仍屬判斷 | [verifier-quota.py](main/claude/hooks/verifier-quota.py), [dispatch-lifecycle](docs/dispatch-lifecycle.md) |
@@ -123,11 +123,10 @@ main/claude/scripts/model-routing resolve --priority quality-guarded --role veri
 
 - credentials, auth, sessions, history, cache 與 telemetry ledger
 - `~/.claude.json` MCP entries
-- `~/.codex/config.toml` 中的 provider, proxy, 信任, 登入與其他機器狀態
 - manifest 外的其他全域 skills
 
-可攜片段只提供 merge 來源:
-
+可攜片段只提供手動 merge 來源: [`main/claude/examples/headroom-mcp.legacy.json`](main/claude/examples/headroom-mcp.legacy.json)
+是 Headroom MCP entry 的參考寫法, 不會自動部署; 目前以 `headroom mcp install` 安裝.
 
 ## 驗證
 
@@ -135,8 +134,7 @@ main/claude/scripts/model-routing resolve --priority quality-guarded --role veri
 main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests -v
 main/claude/scripts/model-routing validate
 main/claude/scripts/model-routing check-pins
-main/claude/scripts/model-routing check-aliases
-main/claude/scripts/model-routing validate
+main/claude/scripts/model-routing check-aliases   # 只回報, 不會失敗
 git diff --check
 scripts/sync.sh
 ```
@@ -151,7 +149,7 @@ scripts/denial-report.py          # 這些閘實際擋了多少次, 擋在什麼
 scripts/upstream-pin-report.py    # 蒸餾來源的上游有沒有動過我們記下的那個 pin
 ```
 
-`machine-state-check.py` 也只報不擋, 但它是部署驗證的一步, 不是「現在長什麼樣」的儀器; 六支一次性的
+`machine-state-check.py` 也只報不擋, 答的是「跑完這個指令, repo 以外變了什麼」, 要手動執行, 沒有流程會自動跑它; 六支一次性的
 分析報告 (codename gloss, zh-tw usage, context inflow, memory freshness, budget drift, mechanism index)
 2026-09-15 退場, 讀數留在引用它們的研究文裡, 程式由 Git 保存.
 

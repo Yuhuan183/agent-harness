@@ -58,10 +58,12 @@ source 漂移). 路由只寫模型家族 (`claude-opus`), 世代由 CLI 的別�
 
 ## 驗證
 
+從 repo 根目錄執行:
+
 ```bash
 main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests -v
-scripts/usage-report --days 7
-scripts/usage-report --days 7 --by-session --top 20
-jq empty settings.json examples/headroom-mcp.legacy.json
-sh -n sh/statusline.sh && git diff --check
+main/claude/scripts/usage-report --days 7
+main/claude/scripts/usage-report --days 7 --by-session --top 20
+jq empty main/claude/settings.json main/claude/examples/headroom-mcp.legacy.json
+sh -n main/claude/sh/statusline.sh && git diff --check
 ```

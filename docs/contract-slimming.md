@@ -1,4 +1,4 @@
-# 常駐契約瘦身規範 (CLAUDE.md + AGENTS.md)
+# 常駐契約瘦身規範 (CLAUDE.md)
 
 適用對象: `main/claude/CLAUDE.contract.md` (部署為 `~/.claude/CLAUDE.md`). 2026-09-14
 之前還包含 Codex 那份, 隨該 bundle 一併退場. 這是規範而非歷程;
@@ -35,13 +35,13 @@
 |---|---|
 | 語言, 報告形狀等個人偏好 | 常駐保留 (緊湊, 一句一義) |
 | 派工剎車與 Workflow 授權底線 | 常駐保留一兩句; 細節進 `baton-dispatch` |
-| Provider/model routing, fallback, verifier 觸發 | skill (`provider-routing`/`leaf-dispatch`), 常駐只留觸發行 |
+| Model/role routing, verifier 觸發 | skill (`provider-routing`), 常駐只留觸發行 |
 | Role 能力, 工具, 停止邊界 | 各 role 契約**本文**; 主契約不重複. frontmatter 的 `description` 不是移出去向 — 它每個 session 都列出來, 跟 skill description 同樣常駐, 也同樣有預算 |
 | 可機械檢查的紀律 (紅測試不 commit, pin 漂移, owed lines) | hooks/validators/graders, 文件只留一行指向 |
 | 跨 session 要記得的個人事實與專案約束 | CLI 自動記憶層; 常駐契約不再承擔「怕忘記」 |
 | 工具用法與邊界 | 該工具的描述; 無法改描述時 (本 repo 的 RTK/Headroom) 常駐只留一行觸發句 |
 | 供應商 system prompt 已保證的行為 | 預設刪除 — 重述是稅, 牴觸是 bug; 僅「失效不可回復的安全條款」可具名例外保留 (原則 2b(b)) |
-| 改變整段回覆語域的**模式** (相對於可載入的**程序**) | Claude 端的 output style. 它未選用時不載入, 常駐成本為零, 而選用時渲染進 system prompt — 位階比以 user context 進場的常駐契約高. skill 是程序的家: 它的 description 每個 session 都列出, 跟契約一樣佔預算. Codex 端沒有對應面, 只能走 profile prompt |
+| 改變整段回覆語域的**模式** (相對於可載入的**程序**) | Claude 端的 output style. 它未選用時不載入, 常駐成本為零, 而選用時渲染進 system prompt — 位階比以 user context 進場的常駐契約高. skill 是程序的家: 它的 description 每個 session 都列出, 跟契約一樣佔預算. |
 | 歷史決策, 實驗數據, 方法論 | Git, history, docs; 永不常駐 |
 
 ## 預算與強制
@@ -53,7 +53,7 @@
   ([2607.27250](research/context-and-vendors.md)) 測的是最後那一格, 拿它的結論去砍
   前兩格是誤用.
 - **預算只綁在出貨層** (2026-08-08 起): 判準是 `scripts/deployment-manifest.tsv`
-  有沒有部署它, 不是路徑長什麼樣. 理由是字數上限量的是 push 成本 — 每回合 (兩份
+  有沒有部署它, 不是路徑長什麼樣. 理由是字數上限量的是 push 成本 — 每回合 (常駐
   契約) 或每次派工 (skills) 都要付的位元組. 不部署的檔案沒有 session 在付,
   `docs/**` 因此改由「只報不擋的體積報告 + 數量級鬆閘」看住, 見
   [文件導覽規則 8](README.md#維護規則).

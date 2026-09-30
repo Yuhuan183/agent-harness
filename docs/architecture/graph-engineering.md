@@ -60,9 +60,8 @@ flowchart TD
     main --> brake{"Dispatch payoff<br/>clearly exceeds overhead?"}
     brake -- "No" --> direct["Main executes directly"]
     brake -- "Yes" --> shape["Resolve role + task class + scenario/lens"]
-    shape --> chooseProvider["Provider choice (CP-first:<br/>ledger hints + priors + quota)"]
-    chooseProvider --> chooseProfile["Profile selection<br/>(balanced / fast / quality_guarded)"]
-    chooseProfile --> resolve["Provider resolver<br/>model + effort for the role"]
+    shape --> chooseProfile["Deployment preset<br/>(balanced / fast / quality_guarded)"]
+    chooseProfile --> resolve["Role frontmatter pin<br/>model family + effort"]
     resolve --> leaf["Bounded leaf execution"]
     leaf --> qc["Main-owned QC"]
     qc --> result["LEAF_RESULT"]
@@ -94,7 +93,7 @@ flowchart TD
 | Main session | 使用者在 task/session 開始前選擇; 專案不會在執行中偷換模型 |
 | Claude named roles | deployment preset; 一次原子更新全部 frontmatter pins, 重新部署並開新 session |
 
-實際的 pin, effort 與 availability 證據在兩份 `model-routing.toml`; 選擇理由與數據口徑在
+實際的 pin, effort 與 availability 證據在 `main/claude/model-routing.toml`; 選擇理由與數據口徑在
 [研究摘要](../research/README.md).
 
 ## 派工紀錄長什麼樣

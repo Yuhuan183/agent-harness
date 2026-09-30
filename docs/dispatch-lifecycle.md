@@ -80,8 +80,9 @@ rollout, 那才是 provider 記錄的證據: 機器可驗的遙測, 不是 agent
 
 Claude 側跑同一條規則, 用自己的證據 (2026-07-29): subagent transcript 每個 assistant
 turn 都帶 `message.model`, pending hook 在算 token 的同一趟讀出來, `experience-log` 拿它
-對照 resolver 解出的 pin, 相符才記 `transcript-verified` (日期版算同一世代; 對不上就是
-alias 在 pin 底下移動過, 照樣拒絕). 一份 transcript 出現兩個 model 就什麼都不背書.
+對照 resolver 解出的 pin, 同一家族才記 `transcript-verified`: route 只寫家族 (`claude-sonnet`),
+哪一代由 CLI 決定, 實際跑的 id 另記在 `observed_model` (2026-09-30 起). 家族對不上就是路由
+違規, 照樣拒絕. 一份 transcript 出現兩個 model 就什麼都不背書.
 effort 在 Claude 沒有 provider 記錄, 由 `check-pins` 顧.
 
 ## 兩條所有權規則, 一條擋得住, 一條擋不住

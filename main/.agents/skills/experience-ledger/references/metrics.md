@@ -27,7 +27,7 @@
 | `api_cost_usd` | optional | float | Provider-verifiable actual API cost for this dispatch; leave blank for subscription plans |
 | `note` | | short sentence | Noteworthy surprises worth remembering |
 
-Outcome definitions: `accepted` = passed on the first try, integrated as-is; `corrected` = main session fixed it before integrating; `rebriefed` = needed a redispatch; `failed` = output discarded or triggered a provider fallback.
+Outcome definitions: `accepted` = passed on the first try, integrated as-is; `corrected` = main session fixed it before integrating; `rebriefed` = needed a redispatch; `failed` = output discarded (rows from before 2026-09-14 also used it for a provider fallback).
 
 ## Metrics (report output, grouped by role x task class x provider)
 
@@ -35,7 +35,7 @@ Outcome definitions: `accepted` = passed on the first try, integrated as-is; `co
 |---|---|---|
 | `n` | comparable sample size | n < 10 is always treated as insufficient evidence |
 | `AR` | accepted / n | Primary metric: first-pass success rate |
-| `CR` / `RB` / `FR` | share of corrected / rebriefed / failed | High RB = poor brief quality or wrong role choice; high FR = provider not fit for the task |
+| `CR` / `RB` / `FR` | share of corrected / rebriefed / failed | High RB = poor brief quality or wrong role choice; high FR = the route (model/effort) is not fit for the task |
 | `QS` | average quality | Supplementary, subjective score |
 | `avg_tokens_out` | mean output tokens | Compute-cost proxy; cannot be converted to USD without input/cache tokens and unit price |
 | `avg_total_tokens` | mean of all four token categories combined | Only included when all four categories are present |
@@ -47,12 +47,12 @@ Coverage and averages ignore malformed legacy telemetry, including negative valu
 
 One exception: a row the reader cannot turn into a record at all — unparseable JSON, a non-object line, a wrongly typed keyed field, a timezone-naive `ts` — has no cohort to be visible in, so `observed_n` cannot hold it. Those rows are counted instead: `experience-report` and `experience-revise` both emit `unusable_rows` in JSON and a `warning:` line in text output. A non-zero count means the ledger has damage, not that the window was quiet.
 
-## Decision rules (standardized model for provider selection)
+## Decision rules (ranking model/effort tiers)
 
-1. **Time decay**: each record is weighted `0.5^(age_days / half_life)` (current half-life: 45 days); AR/CR/RB/FR/QS/averages are all weighted values, so old evidence naturally fades as providers are upgraded. Window, sample size, half-life, and preference probability are read only from a `revision_policy` identical on both sides; a missing field or mismatched value halts the process.
-2. Only schema-v3 production records with a valid `request_source`, `profile`, `model`, and `effort` count toward decisions; legacy or incomplete records remain in `observed_n` and source coverage for diagnostics only. `smoke`/`other` must never produce a provider or route hint.
-3. A provider hint compares only the current route cell of `selection.default` on both sides; if either provider's raw sample for that role/task-class cell has `n < min_samples` (currently set to 10), the result is **explore** — samples from other profiles/models/efforts must not be pooled to reach the threshold.
-4. Only when both sides have sufficient samples does a Beta-posterior `P(win)` reaching the configured threshold (currently 0.90) yield **prefer**; otherwise **either**. Cost tie-breaks are compared only when both sides meet the sample threshold on the same field, and total/output tokens must never be mixed.
+1. **Time decay**: each record is weighted `0.5^(age_days / half_life)` (current half-life: 45 days); AR/CR/RB/FR/QS/averages are all weighted values, so old evidence naturally fades as models are upgraded. Window, sample size, half-life, and preference probability are read only from the routing file's `revision_policy`; a missing or invalid field halts the process.
+2. Only schema-v3 production records with a valid `request_source`, `profile`, `model`, and `effort` count toward decisions; legacy or incomplete records remain in `observed_n` and source coverage for diagnostics only. `smoke`/`other` must never produce a hint.
+3. A hint ranks `model/effort` tiers inside one role × task-class cohort (with `--profile`, only that profile's rows). A tier takes part only when its own raw sample reaches `min_samples` (currently 10) and its route clears the profile's quality floor; samples from other profiles, models or efforts are never pooled to reach the threshold. With fewer than two such tiers the result is **explore a second tier**.
+4. With two or more, the top two by AR are compared: a Beta-posterior `P(win)` reaching the configured threshold (currently 0.90) yields **prefer**; otherwise **either**. Cost tie-breaks are compared only when both tiers meet the sample threshold on the same field, and total/output tokens must never be mixed.
 5. Rules produce a **hint, not a verdict**; when deviating from the hint, record the reason in `note`.
 
 ## Honesty boundaries
@@ -80,9 +80,10 @@ Context pressure and account quota are separate signals:
 - Claude `usage-report` sums uncached input, cache creation, and cache read for
   each assistant turn, then reports P50/P95 by source/model and optionally by
   session. It does not add output tokens to the prompt-context proxy.
-- Claude 5 and Opus 4.8 windows are mapped from the current official model
-  table. Unknown or older model ids use a conservative 200k fallback; pass
-  `--context-window` when the runtime's actual limit is known.
+- Windows are mapped by model family (opus, sonnet and fable at 1M), so a new
+  generation keeps its family's window. Haiku and unknown ids use a
+  conservative 200k fallback; pass `--context-window` when the runtime's actual
+  limit is known.
 
 Both commands expose the same repository operations policy: `<30%` low,
 `30–<50%` watch, `50–<65%` checkpoint, and `>=65%` compact or start a new
@@ -135,4 +136,4 @@ edited by hand because this path did not exist yet.
 
 ## Evolution cadence
 
-Run `experience-report` weekly (can pair with the existing weekly-integrity cadence) and compare against `delegation-report`: when a hint changes, update the preference note in `provider-routing`; for roles with persistently high RB, revisit the brief template or cost-test criteria. `experience-revise` also uses only the route cells within the current deployment profile, to avoid mixing the different risk distributions of fast and quality-guarded routes. Policy adjustments change only the identical `revision_policy` on both sides, never an ad hoc CLI override.
+Run `experience-report` weekly (can pair with the existing weekly-integrity cadence) and compare against `delegation-report`: when a hint changes, update the preference note in `provider-routing`; for roles with persistently high RB, revisit the brief template or cost-test criteria. `experience-revise` also uses only the route cells within the current deployment profile, to avoid mixing the different risk distributions of fast and quality-guarded routes. Policy adjustments change only the routing file's `revision_policy`, never an ad hoc CLI override.
