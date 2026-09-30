@@ -90,7 +90,7 @@ def build_argv(args, frontmatter: dict, body: str) -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--role", required=True, help="agent contract under main/claude/agents")
-    parser.add_argument("--model", required=True, help="concrete id or alias, e.g. claude-opus-5")
+    parser.add_argument("--model", required=True, help="family alias or concrete id, e.g. opus")
     parser.add_argument("--effort", required=True,
                         choices=["low", "medium", "high", "xhigh", "max"])
     parser.add_argument("--prompt", help="brief text; use --prompt-file to read it")

@@ -149,7 +149,7 @@ def load_cells(path: str, since: datetime, now: datetime, half_life: float,
             record.get("role", "?").lower(),
             task_class,
             record["profile"],
-            record["model"],
+            core.model_family(record["model"]),  # routes name families
             record["effort"],
         )
         cell = cells[key]

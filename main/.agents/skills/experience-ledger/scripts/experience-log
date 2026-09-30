@@ -90,17 +90,24 @@ DEFAULT_CLASSES = {
 }
 CLAUDE_RESOLVER = os.environ.get(
     "AGENT_CLAUDE_RESOLVER", os.path.expanduser("~/.claude/scripts/model-routing"))
-# A transcript reports `claude-haiku-4-5-20251001` where the routing config
-# declares the undated `claude-haiku-4-5`. That is one model, so it attests the
-# route; a different generation does not, and neither does a point release,
-# which is why only a trailing 8-digit date is absorbed. Same rule as
-# `model-routing check-aliases` (is_same_generation), which is what turns a
-# genuine mismatch here into a standing weekly finding rather than a surprise.
-DATED_SNAPSHOT = re.compile(r"-\d{8}\Z")
+# Claude routes name a family (`claude-sonnet`) and the CLI picks the
+# generation, so a transcript's `claude-sonnet-5-5` or dated
+# `claude-sonnet-5-20260601` attests a sonnet route, while an opus id does not
+# (2026-09-30). The record keeps the family as its cohort key and the concrete
+# id as `observed_model`. Non-Claude ids have no family and compare exactly.
+# A copy of routing_core.model_family rather than an import: routing_core needs
+# tomllib (3.11+) and this script also runs under older interpreters; the two
+# are held equal by test_ledger.
+FAMILY_PATTERN = re.compile(r"\A(?:claude-)?(opus|sonnet|haiku|fable)(?=[-\[]|\Z)")
 
 
-def same_generation(declared: str, observed: str) -> bool:
-    return observed == declared or DATED_SNAPSHOT.sub("", observed) == declared
+def model_family(model: str) -> str:
+    match = FAMILY_PATTERN.match(model or "")
+    return f"claude-{match.group(1)}" if match else model
+
+
+def same_family(declared: str, observed: str) -> bool:
+    return model_family(observed) == model_family(declared)
 
 PENDING_PATH = os.environ.get(
     "AGENT_EXPERIENCE_PENDING",
@@ -499,8 +506,8 @@ def main() -> int:
         # in from the resolver to keep the record readable. This runs *before*
         # the comparison below so the transcript is checked against the route
         # the config says should have run — that comparison is the whole point
-        # of having transcript evidence — and so the ledger keeps the config's
-        # undated model id as its cohort key rather than a dated snapshot.
+        # of having transcript evidence — and so the ledger keeps the route's
+        # family as its cohort key rather than whichever generation ran.
         # Fail-open: an unavailable resolver just leaves the record untagged.
         try:
             resolved = subprocess.run(
@@ -516,7 +523,7 @@ def main() -> int:
                 json.JSONDecodeError, KeyError):
             pass
     if args.observed_model:
-        checks = [("model", args.model, args.observed_model, same_generation)]
+        checks = [("model", args.model, args.observed_model, same_family)]
         if args.observed_effort:
             checks.append(("effort", args.effort, args.observed_effort,
                            lambda claimed, observed: claimed == observed))
@@ -541,6 +548,8 @@ def main() -> int:
                 )
         args.model = args.model or args.observed_model
         args.effort = args.effort or args.observed_effort
+    if args.provider == "claude" and args.model:
+        args.model = model_family(args.model)
     # Route provenance, strongest evidence first. Only the tiers the provider
     # itself attested may move a route (core.DECISION_ROUTE_SOURCES); the rest
     # are still logged and still counted, but never drive a route change.
@@ -593,7 +602,7 @@ def main() -> int:
         record["token_scope"] = "output_only"
     elif any(isinstance(value, int) for value in token_values):
         record["token_scope"] = "partial"
-    for key in ("dispatch_id", "profile", "model", "effort", "tier",
+    for key in ("dispatch_id", "profile", "model", "observed_model", "effort", "tier",
                 "route_source", "origin_provider", "parent_dispatch_id",
                 "fallback_hops", "task_class", "task", "quality",
                 "tokens_in", "tokens_out", "cache_write_tokens",

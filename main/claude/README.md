@@ -44,7 +44,8 @@
 在 source checkout 用 `scripts/model-routing activate-profile --profile <name>` 一次更新全部
 frontmatter pins, review 後透過根目錄 `scripts/sync.sh --apply` 部署, 再開新 session. 該工具另
 提供 `validate`/`resolve`/`check-pins`/`check-aliases` (每週 integrity 會自動比對部署與
-source 漂移, 並以 leaf transcript 的真實 model id 驗證 `opus` 這類別名指向哪個世代);
+source 漂移). 路由只寫模型家族 (`claude-opus`), 世代由 CLI 的別名決定; `check-aliases`
+只回報 leaf transcript 實際跑了哪個世代, 不把世代更替當成漂移;
 資料來源只有一份.
 
 ## 初始設定

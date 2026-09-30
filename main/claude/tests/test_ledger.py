@@ -612,7 +612,7 @@ class SharedSkillTests(unittest.TestCase):
         # One Claude tier is fully sampled and still uncomparable: ranking needs
         # a second candidate, and the Codex rows are history rather than a live
         # route to rank against (bridge retired 2026-09-14).
-        self.assertIn("only claude-opus-5/medium reaches n>=10",
+        self.assertIn("only claude-opus/medium reaches n>=10",
                       report["hints"]["executor/impl"])
 
     def test_fallback_lineage_requires_all_three_fields(self) -> None:
@@ -1016,7 +1016,7 @@ class SharedSkillTests(unittest.TestCase):
         )
         self.assertEqual(
             report["by_route_cohort_provider"]
-            ["executor/impl/claude/balanced/claude-sonnet-5/high"]["n"], 5
+            ["executor/impl/claude/balanced/claude-sonnet/high"]["n"], 5
         )
         self.assertEqual(
             report["by_route_cohort_provider"]
@@ -1028,8 +1028,8 @@ class SharedSkillTests(unittest.TestCase):
         # comparison instead.
         hint = report["hints"]["executor/impl"]
         self.assertIn("no tier reaches n>=10", hint)
-        self.assertIn("claude-opus-5/low", hint)
-        self.assertIn("claude-sonnet-5/high", hint)
+        self.assertIn("claude-opus/low", hint)
+        self.assertIn("claude-sonnet/high", hint)
 
     def test_experience_report_excludes_smoke_and_other_from_decision_counts(self) -> None:
         report_script = ROOT / "main/.agents/skills/experience-ledger/scripts/experience-report"
@@ -1405,8 +1405,10 @@ class ClaudeRouteEvidenceTests(unittest.TestCase):
             result = self._log()
             self.assertEqual(result.returncode, 0, result.stderr)
             record = self._record(temp)
-            # Model from the transcript, the rest from the resolved pin.
-            self.assertEqual(record["model"], "claude-sonnet-5")
+            # The route names the family the pin buys; the transcript says which
+            # generation of it ran, and the record keeps both.
+            self.assertEqual(record["model"], "claude-sonnet")
+            self.assertEqual(record["observed_model"], "claude-sonnet-5")
             self.assertEqual(record["route_source"], "transcript-verified")
             self.assertIn(record["route_source"], DECISION_ROUTE_SOURCES)
 
@@ -1420,13 +1422,11 @@ class ClaudeRouteEvidenceTests(unittest.TestCase):
             self.assertIn("contradicts the provider-recorded route",
                           result.stderr)
 
-    def test_a_dated_snapshot_attests_the_generation_it_belongs_to(self) -> None:
-        """`claude-sonnet-5-20260601` is the pinned model, not a mismatch.
+    def test_a_dated_snapshot_attests_the_family_it_belongs_to(self) -> None:
+        """`claude-sonnet-5-20260601` is a sonnet, so it attests a sonnet route.
 
-        The CLI reports dated ids where the routing config declares undated
-        ones. Reading that as a contradiction would refuse every dispatch of
-        an affected tier; recording the dated id instead would split its
-        cohort away from the config's own name for the same model.
+        Recording the dated id as the model would split its cohort away from
+        the config's name for the same route.
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)
@@ -1434,16 +1434,56 @@ class ClaudeRouteEvidenceTests(unittest.TestCase):
             result = self._log()
             self.assertEqual(result.returncode, 0, result.stderr)
             record = self._record(temp)
-            self.assertEqual(record["model"], "claude-sonnet-5")
+            self.assertEqual(record["model"], "claude-sonnet")
             self.assertEqual(record["route_source"], "transcript-verified")
 
-    def test_a_generation_move_is_refused_rather_than_logged(self) -> None:
-        # The alias moved under the pin: the resolver still says sonnet-5, the
-        # transcript says otherwise. `check-aliases` reports this weekly; the
-        # logger must not quietly file the dispatch under a model that did not
-        # run, which is what made the alias assertion worth testing at all.
+    def test_a_generation_move_is_logged_under_the_family(self) -> None:
+        # The CLI moved `sonnet` to a newer generation under an unchanged pin.
+        # Routes name families and the generation is the CLI's choice
+        # (2026-09-30), so this is an ordinary sonnet dispatch: refusing it
+        # stopped every explore log the day the alias moved, and filing it
+        # under the old generation would name a model that did not run.
         with tempfile.TemporaryDirectory() as temp_dir:
-            self._stage(Path(temp_dir), ["claude-sonnet-6"])
+            temp = Path(temp_dir)
+            self._stage(temp, ["claude-sonnet-6"])
+            result = self._log()
+            self.assertEqual(result.returncode, 0, result.stderr)
+            record = self._record(temp)
+            self.assertEqual(record["model"], "claude-sonnet")
+            self.assertEqual(record["observed_model"], "claude-sonnet-6")
+
+    def test_the_logger_and_the_reports_read_one_family(self) -> None:
+        # experience-log carries its own copy of model_family because it runs
+        # under interpreters routing_core cannot load in; the reports key
+        # cohorts through routing_core. A spelling the two read differently
+        # would file a record into a cohort the reports never look at.
+        import importlib.machinery
+        import importlib.util
+        loader = importlib.machinery.SourceFileLoader(
+            "experience_log_family", str(self.LOG))
+        spec = importlib.util.spec_from_loader("experience_log_family", loader)
+        logger = importlib.util.module_from_spec(spec)
+        loader.exec_module(logger)
+        core = load_module("routing_core_family",
+                           ROOT / "main/.agents/scripts/routing_core.py")
+        spellings = ("claude-sonnet-5", "claude-sonnet-5-5", "claude-sonnet",
+                     "claude-sonnet-5-20260601", "sonnet", "opus-5",
+                     "claude-opus-4-8", "claude-opus-5[1m]", "claude-haiku-4-5",
+                     "claude-fable-5", "claude-opusx", "gpt-5.6-sol", "")
+        for spelling in spellings:
+            with self.subTest(spelling=spelling):
+                self.assertEqual(logger.model_family(spelling),
+                                 core.model_family(spelling))
+        self.assertEqual(core.model_family("claude-sonnet-5-5"), "claude-sonnet")
+        self.assertEqual(core.model_family("opus-5"), "claude-opus")
+        self.assertEqual(core.model_family("claude-opusx"), "claude-opusx")
+        self.assertEqual(core.model_family("gpt-5.6-sol"), "gpt-5.6-sol")
+
+    def test_a_different_family_is_still_refused(self) -> None:
+        # The contradiction check survives at the level the route now names:
+        # a sonnet route that ran on opus is a routing violation.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self._stage(Path(temp_dir), ["claude-opus-6"])
             result = self._log()
             self.assertEqual(result.returncode, 2, result.stdout)
             self.assertIn("contradicts the provider-recorded route",

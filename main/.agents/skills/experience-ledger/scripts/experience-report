@@ -220,8 +220,11 @@ def summarize(records: list[dict], now: datetime, half_life: float,
             record.get("provider", "?"),
         )
         if by_route:
+            # By family: routes name one, and older records name a generation
+            # of it (core.model_family).
             key += (
-                record.get("profile", "-"), record.get("model", "-"),
+                record.get("profile", "-"),
+                core.model_family(record.get("model") or "-"),
                 record.get("effort", "-"),
             )
         group = groups[key]

@@ -539,34 +539,9 @@ try:
         checks_completed = False
         findings.append(f"model-routing check failed: {exc}")
 
-    # A frontmatter pin buys whatever the CLI currently calls `opus`; the config
-    # only asserts which generation that is. experience-log seeds the ledger's
-    # model field from the route, so an unnoticed generation move files every
-    # dispatch under a model that never ran. Nothing else catches that.
-    try:
-        # A missing resolver is already a finding from the pin-drift block
-        # above, which also withheld the stamp; do not report it twice.
-        if os.access(routing_script, os.X_OK):
-            aliases = subprocess.run(
-                [routing_script, "check-aliases"],
-                capture_output=True,
-                text=True,
-                timeout=budget(10),
-            )
-            if aliases.returncode == 1:
-                findings.append(
-                    "model-routing alias drift:\n"
-                    + (aliases.stderr or aliases.stdout).rstrip()
-                )
-            elif aliases.returncode != 0:
-                checks_completed = False
-                detail = (aliases.stderr or aliases.stdout).rstrip()
-                findings.append(
-                    f"model-routing alias check failed (exit {aliases.returncode}):\n{detail}"
-                )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        checks_completed = False
-        findings.append(f"model-routing alias check failed: {exc}")
+    # No generation check here. Routes name families since 2026-09-30, so the
+    # CLI moving `opus` to a newer generation leaves routing and the ledger
+    # correct, and `model-routing check-aliases` reports it on request.
 
     # A second resolver was validated here until 2026-09-14, when the Codex
     # bundle stopped shipping. Nothing replaced it: the Claude resolver above is

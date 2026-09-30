@@ -810,10 +810,12 @@ class MechanismTests(unittest.TestCase):
             self.assertIn(".agents/skills/ghost-skill/SKILL.md", result.stdout)
             self.assertIn(".claude/ghost-tool/legacy.py", result.stdout)
 
-    def test_weekly_integrity_surfaces_model_alias_drift(self) -> None:
-        # The alias->generation assertion is only worth making if something
-        # runs it unprompted: a CLI generation move is silent, and every
-        # dispatch logged in the meantime names a model that never ran.
+    def test_weekly_integrity_does_not_report_a_generation_move(self) -> None:
+        # Routes name families since 2026-09-30, so the CLI moving `opus` to a
+        # newer generation leaves routing and the ledger correct. It used to be
+        # a weekly finding, and a finding that asks for a config edit every
+        # time a model ships is the version pinning that change removed. Even a
+        # resolver that still says DRIFT is not relayed.
         hook = ROOT / "main/claude/hooks/weekly-integrity.py"
         with tempfile.TemporaryDirectory() as temp_home:
             scripts_dir = Path(temp_home) / ".claude" / "scripts"
@@ -832,9 +834,8 @@ class MechanismTests(unittest.TestCase):
                    "AGENT_HARNESS_REPO": str(Path(temp_home) / "repo")}
             result = subprocess.run([sys.executable, str(hook)], env=env,
                                     check=True, capture_output=True, text=True)
-        self.assertIn("model-routing alias drift", result.stdout)
-        self.assertIn("alias moved generation", result.stdout)
-        # Drift is a finding to relay, not a resolver failure.
+        self.assertNotIn("alias drift", result.stdout)
+        self.assertNotIn("alias moved generation", result.stdout)
         self.assertNotIn("alias check failed", result.stdout)
 
     def test_weekly_integrity_surfaces_overdue_benchmark_priors(self) -> None:
@@ -1787,6 +1788,28 @@ class MechanismTests(unittest.TestCase):
         self.assertEqual(rows[0]["turns"], 2)
         self.assertEqual(rows[0]["cache_read_input_tokens"], 1000)
         self.assertLess(rows[1]["cache_read_input_tokens"], rows[0]["cache_read_input_tokens"])
+
+    def test_usage_report_sizes_a_new_generation_by_its_family(self) -> None:
+        # The window table named generations, so the day `sonnet` moved to a
+        # new one every sonnet turn was measured against the 200k default and
+        # read five times fuller than it was. Families carry the window now.
+        import importlib.machinery
+        import importlib.util
+        loader = importlib.machinery.SourceFileLoader(
+            "usage_report_windows", str(ROOT / "main/claude/scripts/usage-report"))
+        spec = importlib.util.spec_from_loader("usage_report_windows", loader)
+        usage = importlib.util.module_from_spec(spec)
+        sys.modules["usage_report_windows"] = usage  # @dataclass looks itself up
+        try:
+            loader.exec_module(usage)
+        finally:
+            sys.modules.pop("usage_report_windows", None)
+        for model in ("claude-sonnet-5-5", "claude-opus-6", "claude-fable-5",
+                      "claude-opus-5-20260601"):
+            with self.subTest(model=model):
+                self.assertEqual(usage.context_window(model), 1_000_000)
+        self.assertEqual(usage.context_window("claude-haiku-4-5-20251001"), 200_000)
+        self.assertEqual(usage.context_window("claude-sonnet-5-5", 1000), 1000)
 
     def test_usage_report_exposes_attention_percentiles_and_policy(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

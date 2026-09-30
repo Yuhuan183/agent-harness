@@ -171,12 +171,12 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         route = json.loads(result.stdout)
         self.assertEqual(route["profile"], "balanced")
         self.assertEqual(route["application"], "frontmatter_pin")
-        self.assertEqual(route["model"], "claude-opus-5")
+        self.assertEqual(route["model"], "claude-opus")
         self.assertEqual(route["effort"], "medium")
         self.assertEqual(route["invocation"]["effort_delivery"], "frontmatter_pin")
 
         verifier = json.loads(run("resolve", "--role", "verifier").stdout)
-        self.assertEqual(verifier["model"], "claude-opus-5")
+        self.assertEqual(verifier["model"], "claude-opus")
         self.assertEqual(verifier["effort"], "high")
         self.assertEqual(verifier["invocation"]["effort_delivery"], "frontmatter_pin")
         fast_verifier = json.loads(
@@ -214,7 +214,7 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
             )
             result = run("check-pins", "--agents-dir", str(drifted))
             self.assertEqual(result.returncode, 1)
-            self.assertIn("executor: frontmatter pins claude-haiku-4-5", result.stderr)
+            self.assertIn("executor: frontmatter pins claude-haiku but", result.stderr)
             self.assertIn("verifier: frontmatter effort 'low'", result.stderr)
 
     def test_activate_profile_is_atomic_and_does_not_touch_source_fixture(self) -> None:
@@ -281,24 +281,13 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         )
         return temp_dir
 
-    def test_check_aliases_catches_a_cli_generation_move(self) -> None:
-        # A frontmatter pin buys whatever the CLI calls `opus` today; the config
-        # only asserts which generation that is, and `experience-log` copies
-        # that assertion into the ledger. Behavioral proof with a planted stale
-        # generation — an unfalsifiable assertion is not a check.
-        # Relative to today, never a fixed date. This line read
-        # "2026-08-14T00:00:00Z" until 2026-09-14, when the suite went red with
-        # nothing in the repository changed: `check-aliases` caps its scan at
-        # `--max-days` (default 30), so a transcript stamped at `as_of` drops
-        # out of the window the day `as_of` turns thirty-one days old, and the
-        # planted drift stops being visible at all. The assertion was measuring
-        # the calendar rather than the checker - the shape this test's own
-        # comment calls an unfalsifiable assertion, arrived at by ageing.
-        #
-        # Confirmed rather than reasoned: the checker was run twice on
-        # transcripts identical except for the timestamp. The 2026-08-14 stamp
-        # exited 0 with "no leaf transcripts since as_of"; a fresh stamp exited
-        # 1 with the drift message. The checker was never wrong.
+    def test_check_aliases_reports_a_generation_move_without_calling_it_drift(self) -> None:
+        # Routes name families and the CLI picks the generation (2026-09-30).
+        # A move is still worth seeing - the benchmark rows describe the
+        # generation they were measured on - but it is information, not drift:
+        # nothing in routing or the ledger is wrong when it happens.
+        # Relative to today, never a fixed date: the scan is capped at
+        # `--max-days`, so a fixed stamp ages out of the window (2026-09-14).
         after = f"{date.today() - timedelta(days=1)}T00:00:00Z"
 
         def check(model: str, timestamp: str = after) -> subprocess.CompletedProcess:
@@ -306,27 +295,17 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
                 root = self._transcript_root(temp_dir, model, timestamp)
                 return run("check-aliases", "--root", root)
 
-        drifted = check("claude-opus-4-8")
-        self.assertEqual(drifted.returncode, 1)
-        self.assertIn("alias moved generation", drifted.stderr)
-        self.assertIn("claude-opus-4-8", drifted.stderr)
+        moved = check("claude-opus-6")
+        self.assertEqual(moved.returncode, 0, moved.stderr)
+        self.assertIn("claude-opus ran claude-opus-6", moved.stdout)
+        self.assertIn("evidence measured on claude-opus-5", moved.stdout)
 
-        # A point release is a different model, not a snapshot of the declared one.
-        point_release = check("claude-opus-5-1")
-        self.assertEqual(point_release.returncode, 1)
-
-        # The declared generation, and its dated snapshot form, both pass: the
-        # CLI reports `claude-haiku-4-5-20251001` where configs say `claude-haiku-4-5`.
-        current = check("claude-opus-5")
+        # The generation the evidence describes, dated or not, reads as current.
+        current = check("claude-sonnet-5-20260101")
         self.assertEqual(current.returncode, 0, current.stderr)
-        self.assertIn("opus=claude-opus-5", current.stdout)
-        self.assertEqual(check("claude-sonnet-5-20260101").returncode, 0)
+        self.assertNotIn("evidence measured on", current.stdout)
 
-        # Runs predating as_of are history, so the check clears itself once a
-        # superseded generation ages out instead of alarming forever.
-        self.assertEqual(check("claude-opus-4-8", "2026-07-01T00:00:00Z").returncode, 0)
-
-        # An unrouted tier is not this config's claim to make.
+        # An unrouted family is not this config's claim to make.
         self.assertEqual(check("claude-haiku-4-5-20251001").returncode, 0)
 
     def test_check_aliases_ignores_main_session_transcripts(self) -> None:
@@ -345,7 +324,7 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
             )
             result = run("check-aliases", "--root", temp_dir)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("unverified", result.stdout)
+        self.assertIn("await first observation", result.stdout)
 
     def test_validate_reports_floor_score_coverage(self) -> None:
         # quality_floor reads like a numeric threshold but is a curated list:
@@ -363,7 +342,7 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         self.assertIn("valid:", result.stdout)
         self.assertIn("no per-rung score", result.stdout)
         # Sonnet is the known unmeasured cell: AA publishes max effort only.
-        self.assertIn("claude-sonnet-5/medium", result.stdout)
+        self.assertIn("claude-sonnet/medium", result.stdout)
         self.assertIn("NOTE (acknowledged):", result.stdout)
         # Nothing is left shouting. Three permanent alarms on a command that
         # runs every sync is what teaches the reader to skip the line a new
@@ -561,8 +540,8 @@ class ExperienceReviseTests(unittest.TestCase):
             executor_line = next(l for l in result.stdout.splitlines()
                                  if l.startswith("claude executor"))
             self.assertIn("consider", executor_line)
-            self.assertIn("claude-opus-5/high", executor_line)
-            self.assertNotIn("claude-sonnet-5/low", executor_line)
+            self.assertIn("claude-opus/high", executor_line)
+            self.assertNotIn("claude-sonnet/low", executor_line)
             self.assertIn("suggestions are cohort-local", result.stdout)
 
     # `test_rejects_mismatched_provider_revision_policies` stood here until

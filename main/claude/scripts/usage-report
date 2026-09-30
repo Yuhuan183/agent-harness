@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from collections import Counter, defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -17,13 +18,15 @@ FIELDS = (
     "cache_read_input_tokens",
 )
 ATTENTION_THRESHOLDS = (30.0, 50.0, 65.0)
+# By family, not generation: a table of generation ids sent every turn of a
+# newly shipped one to the 200k default (2026-09-30). Haiku stays on the default.
 CURRENT_CONTEXT_WINDOWS = {
-    "claude-fable-5": 1_000_000,
-    "claude-opus-5": 1_000_000,
-    "claude-opus-4-8": 1_000_000,
-    "claude-sonnet-5": 1_000_000,
+    "claude-fable": 1_000_000,
+    "claude-opus": 1_000_000,
+    "claude-sonnet": 1_000_000,
 }
 DEFAULT_CONTEXT_WINDOW = 200_000
+FAMILY_PATTERN = re.compile(r"\A(?:claude-)?(opus|sonnet|haiku|fable)(?=[-\[]|\Z)")
 
 
 @dataclass(frozen=True)
@@ -130,7 +133,9 @@ def attention_band(percent: float) -> tuple[str, str]:
 def context_window(model: str, override: int | None = None) -> int:
     if override:
         return override
-    return CURRENT_CONTEXT_WINDOWS.get(model, DEFAULT_CONTEXT_WINDOW)
+    match = FAMILY_PATTERN.match(model or "")
+    family = f"claude-{match.group(1)}" if match else model
+    return CURRENT_CONTEXT_WINDOWS.get(family, DEFAULT_CONTEXT_WINDOW)
 
 
 def attention_summary(

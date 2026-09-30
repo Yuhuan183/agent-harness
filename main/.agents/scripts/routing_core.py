@@ -13,10 +13,25 @@ validate reporter.
 from __future__ import annotations
 
 import math
+import re
 import sys
 import tomllib
 from datetime import date
 from pathlib import Path
+
+# Routes name a model family, never a generation (2026-09-30). A frontmatter pin
+# buys whatever the CLI currently calls `opus`, so the generation is the CLI's
+# choice and routing does not restate it; a generation preference, if one is
+# ever wanted, is a user setting rather than a route. The ledger still records
+# the concrete id a transcript names, and every older spelling - a generation
+# id, a dated snapshot, a bare alias - reads back as the family it belongs to.
+FAMILY_PATTERN = re.compile(r"\A(?:claude-)?(opus|sonnet|haiku|fable)(?=[-\[]|\Z)")
+
+
+def model_family(model: str) -> str:
+    """`claude-<family>` for any Claude model spelling; other ids unchanged."""
+    match = FAMILY_PATTERN.match(model or "")
+    return f"claude-{match.group(1)}" if match else model
 
 # Route provenance strong enough to move a route: the provider's own account
 # of what it ran, on both sides. `rollout-verified` is Codex's applied thread
@@ -348,7 +363,7 @@ def acknowledged_coverage(config: dict) -> tuple[dict[str, str], list[str]]:
     A warning nobody can act on is worse than no warning. All three findings
     this file emits today are permanent and already argued out in
     `quality_floor.notes` - the tiers coincide at the bottom because both list
-    `claude-opus-5/low`, and the unscored rungs are unscored because AA
+    `claude-opus/low`, and the unscored rungs are unscored because AA
     publishes no per-rung index for Sonnet or Fable. `validate` runs on every
     sync and in the weekly check, so leaving three standing alarms trains the
     reader to skip exactly the line a new finding would arrive on.

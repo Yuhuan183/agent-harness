@@ -32,19 +32,20 @@ verifier = "frontmatter_pin"
 security-reviewer = "frontmatter_pin"
 security-executor = "frontmatter_pin"
 
-[models."claude-fable-5"]
+[models."claude-fable"]
 source = "https://artificialanalysis.ai/models/claude-fable-5"
+measured_generation = "claude-fable-5"
 
-[models."claude-fable-5".availability]
+[models."claude-fable".availability]
 subscription = "documented"
 main_selector = "configured"
 role_frontmatter_override = "not_routed"
 
-[models."claude-fable-5".evidence]
+[models."claude-fable".evidence]
 main_selector = "in use as this session's main model"
 role_frontmatter = "contract forbids Fable in named roles; fallback from GPT lands on Opus, never Fable"
 
-[models."claude-fable-5".aggregate]
+[models."claude-fable".aggregate]
 score_max_effort = 62.07
 cost_usd_per_index_task = 3.140
 briefcase_elo = 1573.78
@@ -56,19 +57,20 @@ answer_tokens_per_index_task = 8898.7
 output_tokens_per_index_task = 35565.3
 score_note = "AA labels the row 'with fallback' - it includes a claude-opus-4-8 fallback, so it is not a standalone Fable measurement. Even so claude-opus-5/max dominates it on three of the four published axes: index 63.05 vs 62.07, cost per task 2.337 vs 3.140, Briefcase Elo 1714.59 vs 1573.78. On output tokens the comparable rung is opus/xhigh, 31184.9 vs 35565.3; opus/max itself emits more, 40249.5."
 
-[models."claude-opus-5"]
+[models."claude-opus"]
 source = "https://artificialanalysis.ai/models/claude-opus-5"
+measured_generation = "claude-opus-5"
 
-[models."claude-opus-5".availability]
+[models."claude-opus".availability]
 subscription = "documented"
 main_selector = "configured"
 role_frontmatter_override = "configured"
 
-[models."claude-opus-5".evidence]
+[models."claude-opus".evidence]
 role_frontmatter = "the opus alias resolves here from 2026-07-25; active pins are defined by selection.default and verified by check-pins. Smoke-test history (plan-verifier/verifier/security-*/executor) was accumulated on the predecessor claude-opus-4-8 and does not transfer as evidence about this generation."
 aggregate_status = "Retrieved from AA 2026-07-26. Per-effort index scores are now published for every rung, low through max. Pricing 5.00/25.00 USD per M input/output, 0.50 cache hit - identical to claude-opus-4-8, so the whole generational gain is capability per token, not price."
 
-[models."claude-opus-5".aggregate]
+[models."claude-opus".aggregate]
 score_max_effort = 63.05
 cost_usd_per_index_task = 2.337
 briefcase_elo = 1714.59
@@ -79,7 +81,7 @@ context_window_tokens = 1000000
 
 # Per-effort economics, same schema as the Codex resolver's models.*.efforts so
 # both providers' routes can be justified against comparable measured rungs.
-[models."claude-opus-5".efforts.low]
+[models."claude-opus".efforts.low]
 score = 52.46
 cost_usd_per_index_task = 0.425
 decode_minutes_per_index_task = 1.28
@@ -89,7 +91,7 @@ output_tokens_per_index_task = 6572.5
 briefcase_elo = 1224.71
 omniscience_index = 28.55
 
-[models."claude-opus-5".efforts.medium]
+[models."claude-opus".efforts.medium]
 score = 58.64
 cost_usd_per_index_task = 0.724
 decode_minutes_per_index_task = 2.46
@@ -99,7 +101,7 @@ output_tokens_per_index_task = 12459.4
 briefcase_elo = 1468.81
 omniscience_index = 31.02
 
-[models."claude-opus-5".efforts.high]
+[models."claude-opus".efforts.high]
 score = 61.48
 cost_usd_per_index_task = 1.227
 decode_minutes_per_index_task = 4.14
@@ -109,7 +111,7 @@ output_tokens_per_index_task = 21352.8
 briefcase_elo = 1605.66
 omniscience_index = 33.72
 
-[models."claude-opus-5".efforts.xhigh]
+[models."claude-opus".efforts.xhigh]
 score = 62.52
 cost_usd_per_index_task = 1.801
 reasoning_tokens_per_index_task = 19159.7
@@ -118,7 +120,7 @@ output_tokens_per_index_task = 31184.9
 briefcase_elo = 1689.57
 omniscience_index = 35.38
 
-[models."claude-opus-5".efforts.max]
+[models."claude-opus".efforts.max]
 score = 63.05
 cost_usd_per_index_task = 2.337
 decode_minutes_per_index_task = 7.94
@@ -128,19 +130,19 @@ output_tokens_per_index_task = 40249.5
 briefcase_elo = 1714.59
 omniscience_index = 37.07
 
-[models."claude-opus-4-8"]
+[benchmark_archive."claude-opus-4-8"]
 source = "https://artificialanalysis.ai/models/claude-opus-4-8"
 
-[models."claude-opus-4-8".availability]
+[benchmark_archive."claude-opus-4-8".availability]
 subscription = "documented"
 main_selector = "configured"
 role_frontmatter_override = "not_routed"
 
-[models."claude-opus-4-8".evidence]
+[benchmark_archive."claude-opus-4-8".evidence]
 main_selector = "still selectable and in recent use as a main-session model; superseding it for leaf pins does not withdraw it from the session selector"
 role_frontmatter = "superseded by claude-opus-5 on 2026-07-25: no profile routes it to a leaf role. Retained as the benchmark row the effort_curve_prior and the 2026-07-23 executor calibration were actually measured on"
 
-[models."claude-opus-4-8".aggregate]
+[benchmark_archive."claude-opus-4-8".aggregate]
 score_max_effort = 57.33
 cost_usd_per_index_task = 2.032
 briefcase_elo = 1340.38
@@ -148,18 +150,19 @@ omniscience_index = 28.75
 total_eval_cost_usd = 3752.55
 output_tokens_per_index_task = 41000
 
-[models."claude-sonnet-5"]
+[models."claude-sonnet"]
 source = "https://artificialanalysis.ai/models/claude-sonnet-5"
+measured_generation = "claude-sonnet-5"
 
-[models."claude-sonnet-5".availability]
+[models."claude-sonnet".availability]
 subscription = "documented"
 main_selector = "configured"
 role_frontmatter_override = "configured"
 
-[models."claude-sonnet-5".evidence]
+[models."claude-sonnet".evidence]
 role_frontmatter = "smoke-tested in named roles: Explore/mech-executor/executor used the sonnet alias; active pins are defined by selection.default and verified by check-pins"
 
-[models."claude-sonnet-5".aggregate]
+[models."claude-sonnet".aggregate]
 score_max_effort = 55.26
 cost_usd_per_index_task = 1.717
 briefcase_elo = 1382.60
@@ -171,33 +174,34 @@ effort_coverage = "The text index is still published at max effort only as of 20
 
 # Per-rung Briefcase Elo only. Deliberately no `score` key on any rung: the
 # resolver would read one as a measured text-index score, and AA publishes none.
-[models."claude-sonnet-5".efforts.low]
+[models."claude-sonnet".efforts.low]
 briefcase_elo = 930.72
 
-[models."claude-sonnet-5".efforts.medium]
+[models."claude-sonnet".efforts.medium]
 briefcase_elo = 1056.60
 
-[models."claude-sonnet-5".efforts.high]
+[models."claude-sonnet".efforts.high]
 briefcase_elo = 1192.93
 
-[models."claude-sonnet-5".efforts.xhigh]
+[models."claude-sonnet".efforts.xhigh]
 briefcase_elo = 1292.08
 
-[models."claude-sonnet-5".efforts.max]
+[models."claude-sonnet".efforts.max]
 briefcase_elo = 1382.60
 
-[models."claude-haiku-4-5"]
+[models."claude-haiku"]
 source = "https://artificialanalysis.ai/models/claude-4-5-haiku"
+measured_generation = "claude-haiku-4-5"
 
-[models."claude-haiku-4-5".availability]
+[models."claude-haiku".availability]
 subscription = "documented"
 main_selector = "configured"
 role_frontmatter_override = "configured"
 
-[models."claude-haiku-4-5".evidence]
+[models."claude-haiku".evidence]
 role_frontmatter = "benchmark comparison row; no current profile routes Haiku (user-directed 2026-07-22: Sonnet floor for Explore)"
 
-[models."claude-haiku-4-5".aggregate]
+[models."claude-haiku".aggregate]
 score_non_reasoning = 24.14
 briefcase_elo = 611.50
 omniscience_index = -7.57
@@ -219,16 +223,16 @@ security-reviewer = "critical"
 security-executor = "critical"
 
 [quality_floor.approved_routes]
-support = ["claude-sonnet-5/low", "claude-sonnet-5/medium", "claude-opus-5/low"]
-judgment = ["claude-sonnet-5/medium", "claude-opus-5/low", "claude-opus-5/medium", "claude-opus-5/high", "claude-fable-5/medium", "claude-fable-5/high", "claude-fable-5/xhigh"]
-critical = ["claude-opus-5/medium", "claude-opus-5/high"]
+support = ["claude-sonnet/low", "claude-sonnet/medium", "claude-opus/low"]
+judgment = ["claude-sonnet/medium", "claude-opus/low", "claude-opus/medium", "claude-opus/high", "claude-fable/medium", "claude-fable/high", "claude-fable/xhigh"]
+critical = ["claude-opus/medium", "claude-opus/high"]
 
 [quality_floor.notes]
-judgment_fable = "Fable routes in the judgment tier apply to the main session only (H/X profiles); named roles stay on Opus. Fable stays allowed because it clears the judgment floor comfortably (62.07, second highest published), but as of 2026-08-14 it is dominated by claude-opus-5/max on index, cost, Briefcase Elo, and output tokens at once, so H/X now names Opus first. Read the domination claim with its caveat: AA's Fable row includes opus-4-8 fallback and no standalone Fable score is published."
+judgment_fable = "Fable routes in the judgment tier apply to the main session only (H/X profiles); named roles stay on Opus. Fable stays allowed because it clears the judgment floor comfortably (62.07, second highest published), but as of 2026-08-14 it is dominated by claude-opus/max on index, cost, Briefcase Elo, and output tokens at once, so H/X now names Opus first. Read the domination claim with its caveat: AA's Fable row includes opus-4-8 fallback and no standalone Fable score is published."
 xhigh = "xhigh is main-session-only under profile X; no named role or bridge call uses it."
 critical_medium = "opus/medium is allowed so verifier can trade depth for speed under fast; security-* stay at opus/high in every profile."
 effort_source = "All named roles pin effort from the active deployment preset (user-directed 2026-07-22); no role follows the main-session effort."
-tier_separation = "`validate` reports that support and judgment share a measured minimum of 52.46 as of 2026-08-14. That is accurate and expected, not a defect to configure away: both tiers list claude-opus-5/low, so the two floors coincide at the bottom and the tiers separate by their ceilings and by role assignment, not by their weakest allowed rung. Recorded here so the warning reads as a known shape rather than an unexplained alarm; changing it means removing a rung from a tier, which is a routing decision the user owns."
+tier_separation = "`validate` reports that support and judgment share a measured minimum of 52.46 as of 2026-08-14. That is accurate and expected, not a defect to configure away: both tiers list claude-opus/low, so the two floors coincide at the bottom and the tiers separate by their ceilings and by role assignment, not by their weakest allowed rung. Recorded here so the warning reads as a known shape rather than an unexplained alarm; changing it means removing a rung from a tier, which is a routing decision the user owns."
 
 # Findings `validate` has already been argued out of. Each quotes the warning
 # verbatim, so a rung added to a tier or a benchmark refresh that moves 52.46
@@ -237,14 +241,14 @@ tier_separation = "`validate` reports that support and judgment share a measured
 # that it was reached.
 [[quality_floor.acknowledged_coverage]]
 warning = "tiers support and judgment have the same measured minimum (52.46) - they do not separate on evidence"
-reason = "see quality_floor.notes.tier_separation: both tiers list claude-opus-5/low, so the floors coincide by construction and the tiers separate by ceiling and role assignment"
+reason = "see quality_floor.notes.tier_separation: both tiers list claude-opus/low, so the floors coincide by construction and the tiers separate by ceiling and role assignment"
 
 [[quality_floor.acknowledged_coverage]]
-warning = "tier support approves 2 route(s) with no per-rung score: claude-sonnet-5/low, claude-sonnet-5/medium"
+warning = "tier support approves 2 route(s) with no per-rung score: claude-sonnet/low, claude-sonnet/medium"
 reason = "AA publishes no per-rung index score for any Sonnet effort; these rungs are measured on Briefcase Elo instead, and the Sonnet floor is user-directed (see evidence_caveat and support_pin_evidence)"
 
 [[quality_floor.acknowledged_coverage]]
-warning = "tier judgment approves 4 route(s) with no per-rung score: claude-fable-5/high, claude-fable-5/medium, claude-fable-5/xhigh, claude-sonnet-5/medium"
+warning = "tier judgment approves 4 route(s) with no per-rung score: claude-fable/high, claude-fable/medium, claude-fable/xhigh, claude-sonnet/medium"
 reason = "AA publishes per-rung scores for neither Fable nor Sonnet; Fable clears the judgment floor on its aggregate and is main-session-only (see quality_floor.notes.judgment_fable)"
 
 [profiles.balanced]
@@ -256,37 +260,37 @@ effort = "user_selected"
 reason = "The user owns the main-session model and effort; H = Opus/high or Fable/low, X = Opus/high or Fable medium-xhigh. Opus 5 leads both profiles on 2026-07-25 measured data (higher index and Briefcase Elo at lower cost per task than Fable 5)."
 
 [profiles.balanced.roles.explore]
-model = "claude-sonnet-5"
+model = "claude-sonnet"
 effort = "low"
 reason = "User-directed Sonnet floor for reconnaissance quality; low effort because findings are re-judged in main."
 
 [profiles.balanced.roles.mech-executor]
-model = "claude-sonnet-5"
+model = "claude-sonnet"
 effort = "medium"
 reason = "User-directed: medium effort raises pattern fidelity on mechanical work."
 
 [profiles.balanced.roles.executor]
-model = "claude-opus-5"
+model = "claude-opus"
 effort = "medium"
 reason = "User-directed 2026-07-23: sonnet/high left the effort-curve Pareto frontier (BrowseComp prior + AA reasoning-token telemetry); opus/medium is cheaper and stronger there. Escalate to high on the pin's first quality miss."
 
 [profiles.balanced.roles.plan-verifier]
-model = "claude-opus-5"
+model = "claude-opus"
 effort = "medium"
 reason = "User-directed: Opus/medium default challenge depth; quality_guarded restores high."
 
 [profiles.balanced.roles.verifier]
-model = "claude-opus-5"
+model = "claude-opus"
 effort = "high"
 reason = "Independent adversarial verification keeps a high reasoning floor by default."
 
 [profiles.balanced.roles.security-reviewer]
-model = "claude-opus-5"
+model = "claude-opus"
 effort = "high"
 reason = "Security review is a trust-boundary task."
 
 [profiles.balanced.roles.security-executor]
-model = "claude-opus-5"
+model = "claude-opus"
 effort = "high"
 reason = "Security implementation preserves the approved high-reasoning floor."
 
@@ -294,37 +298,37 @@ reason = "Security implementation preserves the approved high-reasoning floor."
 description = "Fastest route among combinations that meet each role's quality floor."
 
 [profiles.fast.roles.explore]
-model = "claude-sonnet-5"
+model = "claude-sonnet"
 effort = "low"
 reason = "Fastest eligible route at the user-directed Sonnet floor."
 
 [profiles.fast.roles.mech-executor]
-model = "claude-sonnet-5"
+model = "claude-sonnet"
 effort = "low"
 reason = "Low effort is the fast route when the spec is complete; promote to medium on first correction."
 
 [profiles.fast.roles.executor]
-model = "claude-opus-5"
+model = "claude-opus"
 effort = "low"
 reason = "User-directed: Opus capability at low effort trades reasoning depth for wall-clock."
 
 [profiles.fast.roles.plan-verifier]
-model = "claude-opus-5"
+model = "claude-opus"
 effort = "medium"
 reason = "User-directed: medium challenge depth under time pressure."
 
 [profiles.fast.roles.verifier]
-model = "claude-opus-5"
+model = "claude-opus"
 effort = "medium"
 reason = "User-directed: medium keeps the gate independent while shortening verification wall-clock."
 
 [profiles.fast.roles.security-reviewer]
-model = "claude-opus-5"
+model = "claude-opus"
 effort = "high"
 reason = "Speed preference does not lower security review depth."
 
 [profiles.fast.roles.security-executor]
-model = "claude-opus-5"
+model = "claude-opus"
 effort = "high"
 reason = "Speed preference does not lower security implementation depth."
 
@@ -337,37 +341,37 @@ effort = "user_selected"
 reason = "Recommend profile X (Opus/high, or Fable up to xhigh); the user still owns the switch."
 
 [profiles.quality_guarded.roles.explore]
-model = "claude-sonnet-5"
+model = "claude-sonnet"
 effort = "medium"
 reason = "User-directed: deeper evidence coverage for high-stakes work; exploration still cannot decide or implement."
 
 [profiles.quality_guarded.roles.mech-executor]
-model = "claude-sonnet-5"
+model = "claude-sonnet"
 effort = "medium"
 reason = "A complete specification and stop-on-exception contract provide the quality guard."
 
 [profiles.quality_guarded.roles.executor]
-model = "claude-opus-5"
+model = "claude-opus"
 effort = "high"
 reason = "User-directed 2026-07-23: opus/high is a cheap upgrade over medium on the effort curve and keeps the fast/balanced/quality_guarded executor ladder monotone (low/medium/high)."
 
 [profiles.quality_guarded.roles.plan-verifier]
-model = "claude-opus-5"
+model = "claude-opus"
 effort = "high"
 reason = "Material plans receive adversarial high-effort review."
 
 [profiles.quality_guarded.roles.verifier]
-model = "claude-opus-5"
+model = "claude-opus"
 effort = "high"
 reason = "Independent verification remains high effort."
 
 [profiles.quality_guarded.roles.security-reviewer]
-model = "claude-opus-5"
+model = "claude-opus"
 effort = "high"
 reason = "Security review remains high effort."
 
 [profiles.quality_guarded.roles.security-executor]
-model = "claude-opus-5"
+model = "claude-opus"
 effort = "high"
 reason = "Security implementation remains high effort."
 

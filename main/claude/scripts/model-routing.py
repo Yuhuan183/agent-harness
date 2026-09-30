@@ -48,20 +48,19 @@ LEAF_ROLES = {
 }
 REQUIRED_ROLES = LEAF_ROLES | {"main"}
 EFFORTS = {"low", "medium", "high", "xhigh"}
-# Frontmatter pins name a tier alias and the CLI resolves it to whatever the
-# current generation of that tier is; this repo never sends a concrete id to an
-# API. The map below is therefore an *assertion* about the CLI's choice, kept
-# only so routes and the experience ledger can name a generation. Nothing here
-# makes the assertion true — `check-aliases` is what tests it against the
-# concrete ids that actually appear in leaf transcripts.
+# Frontmatter pins name a family alias and the CLI resolves it to whatever the
+# current generation of that family is; this repo never sends a concrete id to
+# an API. Routes therefore name the family too (2026-09-30): the map below is
+# fixed by the alias names themselves, not an assertion about the CLI's choice
+# that goes stale when a new generation ships. Which generation actually ran is
+# read from transcripts (`check-aliases`, and the ledger's `observed_model`).
 MODEL_ALIASES = {
-    "haiku": "claude-haiku-4-5",
-    "sonnet": "claude-sonnet-5",
-    "opus": "claude-opus-5",
-    "fable": "claude-fable-5",
+    "haiku": "claude-haiku",
+    "sonnet": "claude-sonnet",
+    "opus": "claude-opus",
+    "fable": "claude-fable",
 }
 MODEL_NAMES = {model: alias for alias, model in MODEL_ALIASES.items()}
-TIER_PATTERN = re.compile(r"\Aclaude-(opus|sonnet|haiku|fable)(?:-|\Z)")
 USAGE_REPORT = Path(__file__).resolve().parent / "usage-report"
 TRANSCRIPT_ROOT = Path("~/.claude/projects").expanduser()
 AVAILABILITY_SCHEMA = {
@@ -272,22 +271,15 @@ def command_check_pins(
     return 0
 
 
-def model_tier(model: str) -> str | None:
-    """Return the tier alias a concrete model id belongs to, if recognizable."""
-    match = TIER_PATTERN.match(model)
-    return match.group(1) if match else None
+def same_generation(observed: str, measured: str) -> bool:
+    """True when an observed id is the measured one or a dated snapshot of it.
 
-
-def is_same_generation(observed: str, declared: str) -> bool:
-    """True when an observed id is the declared model or a dated snapshot of it.
-
-    The CLI reports `claude-haiku-4-5-20251001` where the config declares the
-    undated `claude-haiku-4-5`. That is one model, not drift. A different
-    generation (`claude-opus-4-8` vs `claude-opus-5`) is drift, and so is a
-    point release, which is why only a trailing 8-digit date is absorbed.
+    The CLI reports `claude-haiku-4-5-20251001` for the model the benchmark
+    rows call `claude-haiku-4-5`; only a trailing 8-digit date is absorbed, so
+    a point release reads as the different model it is.
     """
-    return observed == declared or bool(
-        re.fullmatch(re.escape(declared) + r"-\d{8}", observed)
+    return observed == measured or bool(
+        re.fullmatch(re.escape(measured) + r"-\d{8}", observed)
     )
 
 
@@ -310,14 +302,14 @@ def load_usage_module():
 
 
 def command_check_aliases(config: dict, root: Path, max_days: float) -> int:
-    """Test the alias->generation assertion against what leaf runs actually used.
+    """Report which generation each routed family actually ran.
 
-    A frontmatter pin buys whatever the CLI currently calls `opus`. When that
-    moves and this config does not, nothing breaks loudly — but `experience-log`
-    seeds the ledger's model field from the route, so every dispatch is filed
-    under a generation that did not run. Only observations after `as_of` count:
-    the config claims to be current as of that date, so older transcripts are
-    history, and the check clears itself once a stale generation ages out.
+    A frontmatter pin buys whatever the CLI currently calls `opus`, and routes
+    name the family, so a generation move changes nothing in routing or the
+    ledger and is not drift. It is still worth seeing: the benchmark rows
+    behind the quality floors describe the generation they were measured on,
+    and a family now running a newer one is a reason to re-read those priors
+    (`prior_review`). Only observations after `as_of` count.
     """
     as_of = config.get("as_of")
     try:
@@ -336,43 +328,33 @@ def command_check_aliases(config: dict, root: Path, max_days: float) -> int:
               "alias observation check not run", file=sys.stderr)
         return 2
 
-    routed = {}
-    for profile in config.get("profiles", {}).values():
-        for route in profile.get("roles", {}).values():
-            alias = MODEL_NAMES.get(route.get("model"))
-            if alias is not None:
-                routed[alias] = MODEL_ALIASES[alias]
+    models = config.get("models", {})
+    routed = {
+        route.get("model")
+        for profile in config.get("profiles", {}).values()
+        for route in profile.get("roles", {}).values()
+    } & set(MODEL_NAMES)
 
     observed: dict[str, int] = {}
     for event in usage.load_events(root, cutoff):
         if event.source == "subagent":
             observed[event.model] = observed.get(event.model, 0) + 1
 
-    problems: list[str] = []
-    confirmed: list[str] = []
+    lines: list[str] = []
     for model, turns in sorted(observed.items()):
-        declared = routed.get(model_tier(model) or "")
-        if declared is None:
-            continue  # tier is not pinned by any profile here
-        if is_same_generation(model, declared):
-            confirmed.append(f"{MODEL_NAMES[declared]}={model} ({turns} turns)")
-        else:
-            problems.append(
-                f"{MODEL_NAMES[declared]}: config declares {declared}, but leaf "
-                f"transcripts since {as_of} ran {model} ({turns} turns). The CLI "
-                f"alias moved generation — update MODEL_ALIASES and the models "
-                f"table, or the ledger keeps filing these runs under {declared}"
-            )
-    if problems:
-        for problem in problems:
-            print(f"DRIFT: {problem}", file=sys.stderr)
-        return 1
-    if not confirmed:
-        print(f"alias map unverified: no leaf transcripts since as_of {as_of}; "
-              f"{len(routed)} routed tiers await first observation")
+        family = core.model_family(model)
+        if family not in routed:
+            continue  # no profile here routes that family
+        line = f"{family} ran {model} ({turns} turns)"
+        measured = models.get(family, {}).get("measured_generation")
+        if measured and not same_generation(model, measured):
+            line += f"; its benchmark evidence measured on {measured}"
+        lines.append(line)
+    if not lines:
+        print(f"no leaf transcripts since as_of {as_of}; "
+              f"{len(routed)} routed families await first observation")
         return 0
-    print(f"alias map matches leaf transcripts since {as_of}: "
-          + ", ".join(confirmed))
+    print(f"leaf generations since {as_of}: " + "; ".join(lines))
     return 0
 
 
