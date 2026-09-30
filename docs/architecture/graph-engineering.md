@@ -34,10 +34,8 @@ QC 把一件事制度化: **報告是一組待證主張, 不是證據.** 每次�
   說謊的報告可以全身而退. 另一格取證顯示, opus 檔位的 leaf 有約四成整行漏發修改依據, 十次
   裡有四次宣稱「沒有同型 bug」而其實有 —— 後者連格式稽核都看不出來, 因為那行格式完全
   正確, 只是內容是假的.
-- **launcher 死了不等於派工死了.** bridge 的 job 比 launcher 長命, 重啟前不對帳就會對同一
-  個 prompt 雙寫.
-- **派工者說的 route 不等於實際跑的 route.** 所以 bridge 的路由改由 provider 自己的
-  rollout 背書, 而不是由派的人自己宣稱.
+- **派工者說的 route 不等於實際跑的 route.** 所以 ledger 的 route 由 transcript 記下的
+  model 背書, 而不是由派的人自己宣稱; 對不上的派工拒記, 當成路由違規回報.
 
 **要動它得先拿出什麼.** 換 model 或 effort pin 要同 role, 同 task class, 同 route cell 的
 本機 ledger 結果, 樣本不足就先探索; 外部排行榜只做先驗. 改部署映射要 manifest 列,
@@ -105,7 +103,7 @@ main 把派工與 QC 結果**獨立成固定紀錄**, 不混在一般說明裡, 
 遙測才對得上:
 
 ```text
-[LEAF_DISPATCH] dispatch_id=review-01|task=semantic seam review|role=explore|class=review|request_source=claude-code|route=balanced/claude/claude-sonnet-5/low|reason=context-protection
+[LEAF_DISPATCH] dispatch_id=review-01|task=semantic seam review|role=explore|class=review|request_source=claude-code|route=balanced/claude/claude-sonnet/low|reason=context-protection
 [LEAF_RESULT] dispatch_id=review-01|task=semantic seam review|outcome=accepted|qc=full|ledger=logged
 ```
 

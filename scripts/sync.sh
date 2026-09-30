@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Read: its own output, every deploy; nothing else reads it for you
-# Syncs config from the agent-harness project back to global (~/.claude, ~/.codex, ~/.agents).
-# Only overwrites portable contract files; machine state (Codex config.toml, Claude Code ~/.claude.json MCP entries, auth, sessions, cache) is never touched.
+# Syncs config from the agent-harness project back to global (~/.claude, ~/.agents).
+# Only overwrites portable contract files; machine state (Claude Code ~/.claude.json MCP entries, auth, sessions, cache) is never touched.
 # Usage:
 #   scripts/sync.sh          # dry-run, only lists the actions that would happen
 #   scripts/sync.sh --apply  # actually run it
