@@ -2094,6 +2094,28 @@ class TrapGraderIntegrityTests(unittest.TestCase):
                                 capture_output=True, text=True, timeout=60)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_the_selection_trap_surface_unquotes_a_quoted_description(self) -> None:
+        """The surface is what Claude Code reads, not the YAML that spells it.
+
+        A description holding `: ` has to be quoted to parse at all, and Claude
+        Code shows the scalar without its quotes. Copying the raw line put a
+        stray `'` at both ends of two descriptions in every arm (2026-09-30).
+        """
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "s10_build", ROOT / "evals/traps/s10-skill-recall/build.py")
+        build = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(build)
+        with tempfile.TemporaryDirectory() as tmp:
+            skill_md = Path(tmp) / "SKILL.md"
+            skill_md.write_text(
+                "---\nname: probe\n"
+                "description: 'Stop at the root cause. In zh-TW: it''s 壞了.'\n"
+                "---\n\nbody\n", encoding="utf-8")
+            self.assertEqual(build.description_block(skill_md),
+                             "Stop at the root cause. In zh-TW: it's 壞了.")
+
     TRAP = "evals/traps/s10-skill-recall"
     # What each arm removes, and what it must therefore still carry. One lever
     # per arm except `d`, which is the combination — B and C each came back

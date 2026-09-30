@@ -94,7 +94,12 @@ def description_block(skill_md: Path) -> str:
     inline = re.search(r"^description: (.+)$", frontmatter, re.MULTILINE)
     if not inline:
         raise SystemExit(f"{skill_md}: no description")
-    return inline.group(1).strip()
+    value = inline.group(1).strip()
+    # A single-quoted scalar is how a description holding `: ` parses at all,
+    # and Claude Code shows it unquoted, with `''` read back as `'`.
+    if len(value) >= 2 and value[0] == value[-1] == "'":
+        return value[1:-1].replace("''", "'")
+    return value
 
 
 def render() -> str:
