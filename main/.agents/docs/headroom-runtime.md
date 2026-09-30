@@ -100,19 +100,20 @@ Claude App 使用 OAuth 直連, 不經 proxy, 只能透過 MCP 做手動文字�
 - **Claude**: 需要 Headroom 時使用 `hclaude`; Auto Mode 使用 `hclaude-auto`. 底層是 `headroom wrap claude --1m`, 2026-08-21 起**預設就是 1M context**, 見下面兩條.
 - **`--1m`**: 自訂 `ANTHROPIC_BASE_URL` 之下, Claude Code 的 `/model` 選擇不會傳到 API,
   只有帶 `[1m]` 後綴的 model id 才會送出 `context-1m` beta header; 不加 `--1m` 就是 200k.
-  wrapper 端沒設 `ANTHROPIC_MODEL` 時會退到內建預設 `claude-opus-5`, 可用
-  `HEADROOM_1M_MODEL` 逐 shell 覆寫; 已設的 `ANTHROPIC_MODEL` 只會被補上後綴, 而且是冪等的.
+  wrapper 端沒設 `ANTHROPIC_MODEL` 時先看 `HEADROOM_1M_MODEL`, 再退到內建預設; 已設的
+  `ANTHROPIC_MODEL` 只會被補上後綴, 而且是冪等的.
   proxy 端會把 `[1m]` 算進 context budget 再計價.
 - **旗標位置是關鍵, 不要「整理」它.** `--` 之後的東西全部歸 `claude_args`, 所以 `--1m` 必須
   在 `--` 之前. 對真正的 command object 實測: `['--1m', ...]` 得到 `context_1m=True`, 而
   `['--', '--1m', ...]` 得到 `False`, 並把旗標原樣交給 `claude` 執行檔 —— session 靜靜地停在
   200k, 沒有任何錯誤訊息. 2026-08-21 之前 `hclaude` 正是後者.
 
-  代價是沒設過 `ANTHROPIC_MODEL` 時, session 會被釘在 Headroom 的預設 `claude-opus-5`, 要換
-  就用 `HEADROOM_1M_MODEL`. 另一條路是在 `~/.zshrc` 設
-  `ANTHROPIC_MODEL="claude-opus-5[1m]"` (wrap 用 `os.environ.copy()`, 所以會生效), 但那會
-  釘死每一個 session 並讓 `/model` 選單失效 —— upstream #2983 明講這是它要取代的 workaround,
-  不建議.
+  Headroom 的內建預設是寫死的世代 `claude-opus-5` (0.39.1 與 main 都還是), 所以
+  `hclaude` 在使用者沒設時帶 `HEADROOM_1M_MODEL=opus`: 只指定家族, 世代由 CLI 的別名決定.
+  2026-09-30 實測 `opus[1m]` 經 proxy 跑成 `claude-opus-5-5[1m]`, context window 1,000,000.
+  要換家族就設 `HEADROOM_1M_MODEL` (例如 `sonnet`), 同樣只寫家族. 不要在 `~/.zshrc` 寫
+  世代 id, 也不要全域設 `ANTHROPIC_MODEL` —— 前者下一代出來就過期, 後者會釘死每一個
+  session 並蓋掉 `/model` 選單, upstream #2983 明講這是它要取代的 workaround.
 - **沒有 1M→200k 的降級階梯.** release note 的 “make `--1m` fallback model configurable” 指的是「未指定 model 時要用哪個 model」, 不是 context 大小的 fallback. `[1m]` 是向 Anthropic 請求 1M tier, 有沒有資格是帳號層級的事; 沒資格就是 API 報錯, 不會自動退回 200k.
 - **on-demand tool loading (`--tool-search`)**: 自訂 `ANTHROPIC_BASE_URL` 會讓 Claude Code
   關閉 tool deferral, 改成一次載入所有 tool schema, 吃掉數十 K 的 local context

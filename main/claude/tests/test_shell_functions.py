@@ -15,7 +15,8 @@ class AgentLaunchFunctionTests(unittest.TestCase):
         ).stdout
 
     def run_function(
-        self, invocation: str, *, agy_supported: bool = True
+        self, invocation: str, *, agy_supported: bool = True,
+        model_env: dict[str, str] | None = None,
     ) -> tuple[subprocess.CompletedProcess[str], list[str]]:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)
@@ -39,6 +40,7 @@ fi
   for arg in "$@"; do printf '\\t%s' "$arg"; done
   printf '\\n'
 } >> "$CALL_LOG"
+printf '%s\\n' "${HEADROOM_1M_MODEL-<unset>}" >> "$MODEL_LOG"
 """,
                 encoding="utf-8",
             )
@@ -58,11 +60,17 @@ fi
                 )
                 agent.chmod(0o755)
 
+            model_log = temp / "models.txt"
             env = os.environ.copy()
+            # The caller's shell may carry either knob; each case states its own.
+            env.pop("HEADROOM_1M_MODEL", None)
+            env.pop("ANTHROPIC_MODEL", None)
+            env.update(model_env or {})
             env.update(
                 {
                     "PATH": f"{bin_dir}{os.pathsep}{env['PATH']}",
                     "CALL_LOG": str(call_log),
+                    "MODEL_LOG": str(model_log),
                     "FUNCTION_BLOCK": str(block),
                     "HEADROOM_AGY_SUPPORTED": "1" if agy_supported else "0",
                 }
@@ -74,6 +82,8 @@ fi
                 env=env,
             )
             calls = call_log.read_text(encoding="utf-8").splitlines() if call_log.exists() else []
+            self.models_seen = (model_log.read_text(encoding="utf-8").splitlines()
+                                if model_log.exists() else [])
             return result, calls
 
     def test_print_block_is_the_single_complete_function_source(self) -> None:
@@ -181,6 +191,27 @@ fi
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(len(calls), 1)
                 self.assertEqual(calls[0].split("\t"), expected)
+
+    def test_hclaude_names_a_family_not_a_generation(self) -> None:
+        # `--1m` makes Headroom set ANTHROPIC_MODEL, falling back to
+        # HEADROOM_1M_MODEL and then to a built-in generation id
+        # (`claude-opus-5`, still so in Headroom 0.39.1). That pinned every
+        # hclaude session to one generation. The family alias lets the CLI pick
+        # the current one: `opus[1m]` ran as claude-opus-5-5[1m] with a 1M
+        # window behind the proxy on 2026-09-30.
+        for invocation in ("hclaude 'two words'", "hclaude-auto 'two words'"):
+            with self.subTest(invocation=invocation):
+                result, _ = self.run_function(invocation)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.models_seen, ["opus"])
+        # A preference the user set is theirs. An ANTHROPIC_MODEL they set
+        # outranks both inside Headroom itself (`_resolve_1m_model`), which a
+        # stub cannot show, so it is not asserted here.
+        result, _ = self.run_function("hclaude", model_env={"HEADROOM_1M_MODEL": "sonnet"})
+        self.assertEqual(self.models_seen, ["sonnet"])
+        # hcodex has no 1M flag and gets nothing.
+        result, _ = self.run_function("hcodex")
+        self.assertEqual(self.models_seen, ["<unset>"])
 
     def test_hagy_fails_closed_when_headroom_has_no_agy_adapter(self) -> None:
         result, calls = self.run_function("hagy --print hello", agy_supported=False)
