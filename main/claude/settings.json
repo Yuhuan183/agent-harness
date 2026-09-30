@@ -40,7 +40,7 @@
           },
           {
             "type": "command",
-            "command": "j=$(cat); case \"$j\" in *push*) printf %s \"$j\" | python3 \"$HOME/.claude/hooks/push-consent-gate.py\";; esac",
+            "command": "j=$(cat); case \"$(printf %s \"$j\" | tr -d '\"'\"'\"'\\\\n')\" in *push*|*'$'*|*'`'*) printf %s \"$j\" | python3 \"$HOME/.claude/hooks/push-consent-gate.py\";; esac",
             "timeout": 10
           }
         ]

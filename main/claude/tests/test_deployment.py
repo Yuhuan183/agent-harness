@@ -1654,6 +1654,43 @@ class MachineStateHygieneTests(unittest.TestCase):
                 self.assertEqual(run_gate(ordinary).returncode, 0)
                 self.assertFalse(marker.exists(), ordinary)
 
+    def test_push_gate_command_hands_every_push_spelling_to_the_hook(self) -> None:
+        # The push gate's prefilter matched `*push*` on the raw payload, so a
+        # push split by quotes, an escape or an expansion never reached a hook
+        # that could have read it (reproduced 2026-09-30 through the deployed
+        # chain). Same normalization as the commit gate's prefilter above.
+        settings = json.loads(read(".claude/settings.json"))
+        pre = [h["command"] for g in settings["hooks"]["PreToolUse"] for h in g["hooks"]]
+        command = next(c for c in pre if "push-consent-gate.py" in c)
+        with tempfile.TemporaryDirectory() as temp_home:
+            hooks_dir = Path(temp_home) / ".claude" / "hooks"
+            hooks_dir.mkdir(parents=True)
+            marker = Path(temp_home) / "ran"
+            (hooks_dir / "push-consent-gate.py").write_text(
+                "import pathlib\n"
+                f"pathlib.Path({str(marker)!r}).write_text('x')\n",
+                encoding="utf-8",
+            )
+            env = {**os.environ, "HOME": temp_home}
+
+            def run_gate(command_text: str) -> None:
+                payload = json.dumps({"tool_input": {"command": command_text}})
+                subprocess.run(["sh", "-c", command], input=payload,
+                               capture_output=True, text=True, env=env)
+
+            for spelling in ("git push origin main", "git pu''sh origin main",
+                             "git pu\\sh origin main", "git pu\\\nsh origin main",
+                             "E=; git pu${E}sh origin main", "git $P origin main",
+                             "`printf git` push"):
+                marker.unlink(missing_ok=True)
+                run_gate(spelling)
+                self.assertTrue(marker.exists(),
+                                f"prefilter dropped a push before the hook: {spelling!r}")
+            for ordinary in ("ls -la", "python3 -m unittest", "echo hello"):
+                marker.unlink(missing_ok=True)
+                run_gate(ordinary)
+                self.assertFalse(marker.exists(), ordinary)
+
 
 
 class HookEnvDocumentationTests(unittest.TestCase):

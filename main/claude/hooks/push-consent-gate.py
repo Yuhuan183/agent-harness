@@ -15,9 +15,17 @@ second push needs a second arming. The sentinel expires after ARMED_TTL_S so a
 forgotten arming cannot leak into a later session, and a stale one is removed
 when found rather than left to be read as consent.
 
-What the gate refuses. Any Bash command that contains a `git push` invocation
-in any segment - `/usr/bin/git push`, `git -C repo push`, `cd x && git push`,
-`GIT_DIR=.. git push`, force pushes, dry runs - when no fresh sentinel exists.
+What the gate refuses. Any Bash command that runs a `git push` anywhere the
+shell would - `/usr/bin/git push`, `git -C repo push`, `cd x && git push`,
+`GIT_DIR=.. git push`, force pushes, dry runs, and the spellings that only
+become a push once the shell has read them: a subshell or substitution glued to
+`git`, a push handed to `sh -c` or `eval`, a subcommand split by quotes or an
+escape, or one that comes out of an expansion - when no fresh sentinel exists.
+A subcommand the shell alone can resolve (`git $C`) is refused the same way,
+with its own reason. What stays out of reach needs the argv boundary rather
+than the text: a git alias (`git -c alias.p=push p`), a wrapper script, a PATH
+shadow. The settings prefilter normalizes quotes and escapes and hands over
+any expansion, for the same reason the commit gate's prefilter does.
 And any Bash command that names the sentinel at all: arming is the user's move,
 and a gate the gated party can arm is not a gate. Everything else passes, and
 so does unparseable input, because the hook cannot establish that it is a Bash
@@ -32,7 +40,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import shlex
 import sys
 import time
 from pathlib import Path
@@ -50,46 +57,168 @@ def sentinel_path() -> Path:
     return Path.home() / ".claude" / "telemetry" / SENTINEL_NAME
 
 
-# Segments end where the shell would start another command. Redirections are
-# left inside a segment: `git push 2>&1 | tail` splits on the pipe only.
-SEGMENT_SPLIT = re.compile(r"\|\||&&|;|\||\n")
+# Characters that end a word and start another command, outside quotes.
+SEPARATOR_CHARS = ";&|()\n"
+# A marker for text only the shell will produce. No command line contains it,
+# so it cannot be typed into place to fake or hide one.
+RUNTIME = "\x00"
+GIT_VALUE_OPTIONS = ("-C", "-c", "--git-dir", "--work-tree", "--namespace",
+                     "--exec-path", "--super-prefix", "--config-env")
+# Programs whose job is to run a command handed to them as text.
+SHELL_RUNNERS = ("sh", "bash", "zsh", "dash", "ksh")
+ASSIGNMENT = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)=(.*)", re.DOTALL)
+EXPANSION = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)")
+MAX_DEPTH = 5
 
 
-def _words(segment: str) -> list[str]:
-    try:
-        return shlex.split(segment, posix=True)
-    except ValueError:
-        return segment.split()
+def _substitution(command: str, start: int, closer: str) -> tuple[str, int]:
+    """The body of a `$(...)` or backtick substitution, and where it ends."""
+    depth, index = 1, start
+    while index < len(command):
+        char = command[index]
+        if char == "\\":
+            index += 2
+            continue
+        if closer == ")" and char == "(":
+            depth += 1
+        elif char == closer:
+            depth -= 1
+            if depth == 0:
+                return command[start:index], index + 1
+        index += 1
+    return command[start:], index
 
 
-def is_git_push(command: str) -> bool:
-    """True when any segment invokes git's `push` subcommand.
+def _scan(command: str) -> tuple[list[str], list[str]]:
+    """Words and separators the way the shell reads them, plus every body it runs.
 
-    Word-based rather than one regex: `echo push`, `git stash push` and a
-    commit message that mentions pushing are not pushes, while `git -C repo
-    push`, `/usr/bin/git push` and `VAR=x git push` are.
+    `shlex` gets the quotes right but forgets which ones they were, and the
+    difference decides this gate: a backtick inside single quotes is text, the
+    same backtick inside double quotes runs a command. So a small scanner keeps
+    that one distinction: single-quoted text is inert, and a `$(...)` or
+    backtick outside it is both a body to read and a word only the shell knows.
     """
-    for segment in SEGMENT_SPLIT.split(command):
-        words = _words(segment)
-        for index, word in enumerate(words):
-            if os.path.basename(word) != "git":
-                continue
-            rest = words[index + 1:]
-            skip = 0
-            for token in rest:
-                if skip:
-                    skip -= 1
-                    continue
-                if token in ("-C", "-c", "--git-dir", "--work-tree", "--namespace",
-                             "--exec-path", "--super-prefix", "--config-env"):
-                    skip = 1
-                    continue
-                if token.startswith("-"):
-                    continue
-                if token == "push":
-                    return True
+    tokens: list[str] = []
+    bodies: list[str] = []
+    word: list[str] = []
+    started = False
+    quote = ""
+    index = 0
+
+    def end_word() -> None:
+        nonlocal word, started
+        if started:
+            tokens.append("".join(word))
+        word, started = [], False
+
+    while index < len(command):
+        char = command[index]
+        if quote == "'":
+            if char == "'":
+                quote = ""
+            else:
+                word.append(char)
+            index += 1
+            continue
+        if char == "\\" and index + 1 < len(command):
+            word.append(command[index + 1])
+            started = True
+            index += 2
+            continue
+        if char == "`" or command.startswith("$(", index):
+            closer, skip = ("`", 1) if char == "`" else (")", 2)
+            body, index = _substitution(command, index + skip, closer)
+            bodies.append(body)
+            word.append(RUNTIME)
+            started = True
+            continue
+        if quote == '"':
+            if char == '"':
+                quote = ""
+            else:
+                word.append(char)
+            index += 1
+            continue
+        if char in "'\"":
+            quote, started = char, True
+        elif char in SEPARATOR_CHARS:
+            end_word()
+            tokens.append(char)
+        elif char.isspace():
+            end_word()
+        else:
+            word.append(char)
+            started = True
+        index += 1
+    end_word()
+    return tokens, bodies
+
+
+def _is_runtime(token: str) -> bool:
+    return RUNTIME in token or "$" in token
+
+
+def git_push_kind(command: str, depth: int = 0) -> str | None:
+    """`"push"` when some command runs git's push, `"runtime"` when the shell decides.
+
+    Read word by word rather than by one regex: `echo push`, `git stash push`
+    and a commit message that mentions pushing are not pushes, while `git -C
+    repo push`, `/usr/bin/git push`, `(git push)`, `bash -c 'git push'`,
+    `git pu''sh` and `E=; git pu${E}sh` are. A subcommand that only exists once
+    the shell expands it (`git $C`) cannot be read at all, and a gate that
+    allowed what it could not read would be the bypass (2026-09-30 review).
+    """
+    if depth > MAX_DEPTH:
+        return "runtime"
+    tokens, bodies = _scan(command.replace("\\\n", ""))
+    for body in bodies:
+        kind = git_push_kind(body, depth + 1)
+        if kind:
+            return kind
+    values = dict(os.environ)
+    for token in tokens:
+        match = ASSIGNMENT.fullmatch(token)
+        if match and not _is_runtime(match.group(2)):
+            values[match.group(1)] = match.group(2)
+    tokens = [EXPANSION.sub(lambda m: values.get(m.group(1) or m.group(2), m.group(0)), t)
+              for t in tokens]
+    for index, token in enumerate(tokens):
+        rest = tokens[index + 1:]
+        segment = []
+        for item in rest:
+            if item in SEPARATOR_CHARS:
                 break
-    return False
+            segment.append(item)
+        name = os.path.basename(token)
+        if name in SHELL_RUNNERS:
+            for position, flag in enumerate(segment[:-1]):
+                if flag.startswith("-") and not flag.startswith("--") and "c" in flag:
+                    kind = git_push_kind(segment[position + 1], depth + 1)
+                    if kind:
+                        return kind
+                    break
+        elif name == "eval":
+            kind = git_push_kind(" ".join(segment), depth + 1)
+            if kind:
+                return kind
+        elif name == "git":
+            skip = False
+            for item in segment:
+                if skip:
+                    skip = False
+                elif item in GIT_VALUE_OPTIONS:
+                    skip = True
+                elif item.startswith("-"):
+                    continue
+                elif item == "push":
+                    return "push"
+                elif _is_runtime(item):
+                    return "runtime"
+                else:
+                    break
+        elif _is_runtime(token) and segment[:1] == ["push"]:
+            return "runtime"
+    return None
 
 
 def names_sentinel(command: str) -> bool:
@@ -128,7 +257,8 @@ def main() -> int:
         return deny("assistant-tried-to-arm", payload,
                     "the command names the consent sentinel; only the user arms a push.",
                     command)
-    if not is_git_push(command):
+    kind = git_push_kind(command)
+    if kind is None:
         return 0
 
     sentinel = sentinel_path()
@@ -144,6 +274,10 @@ def main() -> int:
                     f"the consent sentinel was {int(age // 60)} minutes old (limit "
                     f"{ARMED_TTL_S // 60}); it has been removed and this push was not made.",
                     command)
+    if kind == "runtime":
+        return deny("push-subcommand-at-runtime", payload,
+                    "a git subcommand the shell only resolves when it runs, with no "
+                    "armed consent; spell the subcommand literally.", command)
     return deny("push-without-consent", payload,
                 "a git push with no armed consent.", command)
 

@@ -3500,6 +3500,48 @@ class PushConsentGateTests(unittest.TestCase):
                     done = self._run(command, home)
                     self.assertEqual(done.returncode, 0, done.stderr)
 
+    def test_shell_spellings_that_still_run_a_push_are_blocked(self) -> None:
+        # Each of these runs a real `git push` in bash, and each was allowed on
+        # 2026-09-30 while the commit gate beside this one already refused the
+        # same shapes: a subshell or substitution glued to `git`, a push handed
+        # to a shell as data, a subcommand split by quotes or an escape, and
+        # one assembled from an expansion.
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            for command in (
+                "(git push origin main)",
+                "echo $(git push origin main)",
+                "echo \"$(git push origin main)\"",
+                "echo `git push origin main`",
+                "bash -c 'git push origin main'",
+                "sh -lc \"cd /repo && git push\"",
+                "eval git push origin main",
+                "git pu''sh origin main",
+                "git pu\\sh origin main",
+                "E=; git pu${E}sh origin main",
+                "P=push; git $P origin main",
+                "git $SUBCOMMAND origin main",
+            ):
+                with self.subTest(command=command):
+                    done = self._run(command, home)
+                    self.assertEqual(done.returncode, 2, done.stderr)
+
+    def test_a_push_named_only_inside_data_still_passes(self) -> None:
+        # The other direction of the same change: text that mentions a push but
+        # does not run one must not start costing a consent prompt.
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            for command in (
+                "git commit -m \"docs: explain the git push consent flow\"",
+                "git commit -m 'fix (git push) wording'",
+                "echo 'git push is gated'",
+                "git log --grep='git push' --oneline",
+                "echo \"$(date) before any push\"",
+            ):
+                with self.subTest(command=command):
+                    done = self._run(command, home)
+                    self.assertEqual(done.returncode, 0, done.stderr)
+
     def test_a_fresh_sentinel_allows_exactly_one_push(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             home = Path(temp)
