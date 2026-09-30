@@ -49,7 +49,11 @@ import sys
 # and denials.jsonl recorded `caller=general-purpose` (07:22:21Z, session
 # 72160e37). The field still travels, twenty releases on. Same procedure as
 # 2.1.241; it stays the only way to tell a quiet fleet from a dead gate.
-CARRIER_VALIDATED_ON = (2, 1, 261)
+#
+# 2.1.285 (2026-09-30): same procedure, asked for by weekly-integrity. A
+# `general-purpose` leaf on haiku made one Agent call; the gate refused it and
+# denials.jsonl recorded `caller=general-purpose` (03:44:04Z, session 440580c0).
+CARRIER_VALIDATED_ON = (2, 1, 285)
 
 try:  # Observability must never be able to break the boundary it observes.
     import denial_log
