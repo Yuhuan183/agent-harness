@@ -18,6 +18,28 @@
 本檔 2026-09 起, [`landing-log-2026-08.md`](landing-log-2026-08.md) 是 08-20 至 08-31,
 [`landing-log-earlier.md`](landing-log-earlier.md) 是 08-04 至 08-14.
 
+#### 2026-09-30 收斂: 等不到的等待結案, 六個來源停追, 一個永遠算不出來的欄位退場
+
+同日的上游重查 (`a5c7bfa`) 與索引整理 (`98c7cf6`) 之後, 把研究層與[等待清單](../plans/pending-evidence.md)一起收斂. 每一項都照它事先寫好的條件執行.
+
+**到期的兩項.**
+- `avg_total_secs`: 08-31 登記「三十天後審查與返工時間仍是 0/N, 就從報告移除」. 當時 `review_secs` 3/164, `rework_secs` 0/164; 今天 3/181, 0/181, 三十天新增的 17 筆沒有一筆帶時間. 這一欄要三個時間都有才算, 所以從來沒算出過. 已從 `experience-report` 移除; 兩個旗標保留, 因為舊列要能改; skill 裡「QC 後補記」那句拿掉.
+- 三十天內的同形缺席誤讀: 觀察期今天結束, 本檔 2026-09 沒有這類記錄. 這是自報, 沒有記錄不等於沒發生, 但也沒有證據要求往上升級, 所以不建 `evidence-check.py` 的機械檢查, 停在措辭那一級.
+
+**等不到的兩項** (照等待清單的入場檢查, 發生不了的條件不算等待).
+- 十個新戳章: 08-31 換成第三代格式之後只累積 3 個 (replay 09-01 一個, 09-06 兩個). 其中至少一次讀數靠組 digest 指名了動的是哪一組 (09-06 修 grader 之後「`contract` 組」), 正是分組要買的東西; 但離十個還遠, 不判.
+- 再 30 個 trap run: 最後一次 trap 結果列是 08-28.
+
+兩項都要靠新的 eval 批次, 而最後一批是 09-15 的 `c3`, 之後沒有排程. 兩項都結案並維持現狀: 分組 digest 不花成本, 退回單一雜湊反而要改 `trap-surface.py`; `gate_lines.distance` 也不動.
+
+**改掛與合併.** twin-guard 那一項改盯專案層那對雙生 (`test_both_templates_ask_the_same_facts`), 原本的 Claude/Codex 契約樹已不在. rebelytics 血緣併進 12-29 的 task-observer 退役檢討: 它只在還要從 rebelytics 採規則時才有意義, 而今天重查 12 條 0 採用.
+
+**六個來源停追**, 移到研究 README 的「不再追」表: pilotfish-codex, OpenAI prompting guidance (都只對應已退場的 Codex 面), eli5 (09-14 結案), Deep Agents (沒有待辦在等它), ecc, Trellis. 最後一個 commit 寫成「停在」而不是 `pin`, `upstream-pin-report.py` 就不再拿它們比 head; `test_reporters.py` 反向突變過: 把 ecc 那格改回 `pin` 就紅. ecc 與 Trellis 上午的重查刻意不推進 pin, 下午改成停追, 兩件事不矛盾: 不推進是讓報告繼續顯示 MOVED, 逼人做「讀完或停追」的決定; 兩份勘查都已結案 (ecc 十三項 09-10, Trellis 三項 09-11), 沒有東西等著那 383 個 commit, 所以選停追.
+
+**第 9 條換儀器.** 「下一筆證據花在 gate 層」三週沒有 eval 投入, 攔截紀錄卻累積到 61 筆 (09-30 單日 10 筆, 其中有真實使用中的誤攔). 儀器從「另建 eval」改成 `denial-report.py`, 第一步是逐筆分「該擋」與「誤攔」; 這一步還沒做, 所以不報誤攔率.
+
+**兩支專案 skill 的 Codex 殘留.** 09-14 的寬刀只掃了 `main/`, 漏了根目錄 `.agents/`: `harness-review` 的探針有五條指向不存在的 `main/codex/`, review 矩陣有兩條要求比較 Claude 與 Codex; `upstream-distillation` 還要求「規則落在一個 provider 就要落到它的雙生」. 三處都已拿掉.
+
 #### 2026-09-15 `c3` 跑掉 $208, 而它買到的是「這條線該收了」
 
 第三份考卷把前兩份的病因都修掉了: 合規改成**集合包含關係**而不是表面寫法, 所以列舉合規寫法再反向

@@ -645,7 +645,11 @@ class SharedSkillTests(unittest.TestCase):
         codex = report["by_cohort_provider"]["executor/impl/codex"]
         self.assertEqual(claude["AR"], 100.0)
         self.assertEqual(claude["avg_secs"], 300.0)
-        self.assertEqual(claude["avg_total_secs"], 330.0)
+        # `--review-secs` / `--rework-secs` are still accepted, and nothing is
+        # computed from them: after thirty days they stood at 3/181 and 0/181,
+        # so the end-to-end mean they fed had never once been computable
+        # (retired 2026-09-30, docs/plans/pending-evidence.md).
+        self.assertNotIn("avg_total_secs", claude)
         self.assertEqual(claude["avg_total_tokens"], 200.0)
         self.assertEqual(claude["avg_api_cost_usd"], 0.25)
         self.assertEqual(claude["request_sources"], {"claude-code": 10})
@@ -1210,11 +1214,9 @@ class SharedSkillTests(unittest.TestCase):
         self.assertEqual(row["avg_tokens_out"], 20.0)
         self.assertEqual(row["avg_total_tokens"], 200.0)
         self.assertEqual(row["avg_secs"], 5.0)
-        self.assertEqual(row["avg_total_secs"], 6.0)
         self.assertEqual(row["avg_api_cost_usd"], 0.25)
         self.assertEqual(row["coverage"], {
-            "tokens_out": 1, "total_tokens": 1, "secs": 1,
-            "total_secs": 1, "api_cost_usd": 1,
+            "tokens_out": 1, "total_tokens": 1, "secs": 1, "api_cost_usd": 1,
         })
 
     def test_experience_report_renders_all_legacy_cohorts(self) -> None:

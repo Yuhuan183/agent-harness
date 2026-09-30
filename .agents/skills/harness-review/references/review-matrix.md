@@ -30,8 +30,6 @@ makes the promise true?
   non-finite, duplicated, stale, and unsupported values where applicable.
 - Trace defaults from declaration through parsing, override precedence,
   resolution, and observable output.
-- Compare Claude and Codex only where they implement the same portable
-  contract; distinguish intentional platform differences from drift.
 - Verify a preflight reads repository-owned source rather than the installed
   target it is supposed to validate.
 - Check that warnings are not described as blockers and advisory hooks are not
@@ -205,8 +203,6 @@ paid only where it changes behavior?
   cached input, and one-time deployment work.
 - Measure bytes, words, tokens, lines, calls, or latency according to the
   claimed budget; do not substitute a convenient proxy silently.
-- Compare equivalent Claude and Codex behavior only after accounting for
-  platform loading differences.
 - Move detailed examples, historical incidents, and variant-specific guidance
   behind progressive disclosure when they are not needed on every run.
 - Verify caches have an invalidation key and that probes are not repeated

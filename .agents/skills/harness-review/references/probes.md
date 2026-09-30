@@ -60,7 +60,7 @@ state, or live state before drawing conclusions.
 rtk rg -n 'block|reject|refuse|prevent|enforce|guard|fail.closed|fail.open' README.md docs main
 rtk rg -n 'sys\.exit|parser\.error|raise|returncode|exit [1-9]' main scripts
 rtk rg -n 'request_source|origin_provider|fallback_hops|dispatch_id|rollout_id' main docs
-rtk rg -n 'provider|model|priority|fallback|quota|unavailable' main/claude main/codex
+rtk rg -n 'provider|model|priority|fallback|quota|unavailable' main/claude main/.agents
 ```
 
 For each strong policy verb, locate the carrier, executable gate, failure
@@ -83,7 +83,7 @@ present in scope. Identify the owner and stop condition at every edge.
 
 ```sh
 rtk rg -n '后|软件|信息|通过|优化|数据' README.md docs main
-rtk rg -n '[，。；：]' main/claude/CLAUDE.contract.md main/codex/AGENTS.contract.md
+rtk rg -n '[，。；：]' main/claude/CLAUDE.contract.md
 rtk rg -n '\b[A-Z]{2,}\b' README.md docs main
 rtk rg -n 'exactly one|at most one|one or more|stack|single|唯一|至多|至少' README.md docs main
 ```
@@ -96,9 +96,9 @@ not automatic defects.
 ## Modularity, sharing, and deployment ownership
 
 ```sh
-rtk rg -n 'expanduser|HOME|CODEX_HOME|CLAUDE_HOME' main scripts
+rtk rg -n 'expanduser|HOME|CLAUDE_HOME' main scripts
 rtk git ls-files | rtk rg '(^|/)(settings\.local|\.skill-lock|telemetry|session|credentials)'
-rtk rg -n 'CLAUDE\.contract|AGENTS\.contract|deployment-manifest|sync\.sh' main scripts docs
+rtk rg -n 'CLAUDE\.contract|deployment-manifest|sync\.sh' main scripts docs
 rtk scripts/sync.sh
 ```
 
@@ -110,8 +110,8 @@ copy, and mirrored contracts have an explicit source or parity gate. Treat
 ## Fixed context overhead
 
 ```sh
-rtk wc -l -w -c main/claude/CLAUDE.contract.md main/codex/AGENTS.contract.md
-rtk wc -l -w -c main/claude/agents/*.md main/codex/agents/*.toml
+rtk wc -l -w -c main/claude/CLAUDE.contract.md
+rtk wc -l -w -c main/claude/agents/*.md
 rtk main/.agents/scripts/python3-run scripts/prompt-surface-census.py --check docs/research/prompt-surface-census.json
 rtk rg -n 'load|resident|always.loaded|budget|limit|cache|probe' README.md docs main
 ```
@@ -125,7 +125,6 @@ conditional content can evade it.
 ```sh
 rtk main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests -v
 rtk main/claude/scripts/model-routing validate
-rtk main/codex/scripts/model-routing validate
 rtk main/claude/scripts/model-routing check-pins
 rtk main/claude/scripts/model-routing check-aliases
 rtk scripts/sync.sh

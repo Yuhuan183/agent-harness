@@ -6,25 +6,20 @@
 
 ## 一, 已定推翻條件在等的
 
-| 等什麼 | 觸發 | 到了怎麼判 |
-|---|---|---|
-| 十個**新**戳章累積 | 任何 suite 的新結果列蓋到第十個新格式戳章 | 若沒有任何一個「只有一組動」的讀數, 分組連同組 digest 退回單一雜湊. 條文在 [cross-upstream-synthesis](../research/cross-upstream-synthesis.md) 發現一的第三代戳章節 |
-| 再 30 個 run | 下一批 trap 批次跑完累積到 +30 | 若 ≤2 個 partial, `gate_lines.distance` 從文件層也移除. 條文在 [wording-effect-scale](../research/wording-effect-scale.md) 尺的最終帳 |
+目前沒有. 原有兩項 (十個新戳章, 再 30 個 trap run) 都要靠新的 eval 批次才會前進, 而 09-15 之後沒有排程, 照入場檢查的「發生不了」2026-09-30 結案, 維持現狀; 讀數在 [landing-log](../research/landing-log.md#2026-09-30-收斂-等不到的等待結案-六個來源停追-一個永遠算不出來的欄位退場).
 
 ## 二, 等一次觀察的 (發生了才動工, 不排程)
 
 | 等什麼 | 觸發 | 到了怎麼判 |
 |---|---|---|
 | No-ops 例行掃描的第一個真實命中 | 任何一次檢討發現「規則存在但整段期間零觸發」 | 照 [ledger 的 No-ops 節](../research/upstream-distillation-ledger.md#no-ops-我們量過-但沒有在掃)決定是否建掃描 |
-| twin-guard 的一次真實漂移 | 雙生斷言在真實變更上抓到或漏掉一次 | 補真漂移測試, 案例記進 landing-log |
-| skill 效用的第一批 task-observer 觀察 | **2026-09-30 結案, 改道.** | 08-17 起 57 個真實 session 裡, 明確的不滿用語出現 5 次 (3 個 session), task-observer 事後被叫起 0 次, 帳本檔從未建立; 同期糾正是靠 memory 留下並當場修掉. 所以 task-observer 改成只能用 `/task-observer` 手動叫 (`disable-model-invocation: true`, 說明不再常駐), `evidence-debugging` 與 `test-first-change` 的效用改看 `skillUsage` 次數與 replay eval. **2026-12-29 回頭看**: 若 `/task-observer` 這段期間一次都沒被叫, 討論整個退役 |
+| twin-guard 的一次真實漂移 | 雙生斷言在真實變更上抓到或漏掉一次. 2026-09-30 起只剩一對雙生: 專案層的 `CLAUDE.project.md` 與 `AGENTS.project.md`, 由 `test_project_layer.py` 的 `test_both_templates_ask_the_same_facts` 盯槽位對齊 (原本那對 Claude/Codex 契約樹隨 09-14 Codex 退場消失) | 補真漂移測試, 案例記進 landing-log |
+| skill 效用的第一批 task-observer 觀察 | **2026-09-30 結案, 改道.** | 08-17 起 57 個真實 session 裡, 明確的不滿用語出現 5 次 (3 個 session), task-observer 事後被叫起 0 次, 帳本檔從未建立; 同期糾正是靠 memory 留下並當場修掉. 所以 task-observer 改成只能用 `/task-observer` 手動叫 (`disable-model-invocation: true`, 說明不再常駐), `evidence-debugging` 與 `test-first-change` 的效用改看 `skillUsage` 次數與 replay eval. **2026-12-29 回頭看**: 若 `/task-observer` 這段期間一次都沒被叫, 討論整個退役; 原本獨立一列的 rebelytics 血緣查證 (09-06 起 3.1 的票計獨立, 3.0 同形維持佐證) 09-30 併進這一次, 因為它只在還要從 rebelytics 採規則時有意義, 而 09-30 重查 12 條 0 採用 |
 | route cell 達樣本門檻 | 任一 role × task-class 格內有兩個 `model/effort` 都累積到 `min_samples = 10` | 2026-09-14 起比較軸從 provider 換成 tier (Codex 退場); 達標的格由 `revision_policy` 接手, 其餘維持探索 |
-| 三十天內的下一次同形缺席誤讀 | 任何一次「探針覆蓋不足而結論已寫下」 | 2026-08-31 一天六次同形誤讀的處置停在措辭那一級 (`evidence-ladder` 加陽性對照與「一行式就是儀器」); 再發生就表示措辭這一級無效, 改問「哪些缺席宣稱可以被機械檢查」—— 候選是讓 `evidence-check.py` 對研究文裡的零/沒有/不存在句要求附一行探針指令. 檢討在 [landing-log](../research/landing-log.md) 08-31 節 |
-| rebelytics 血緣 | 3.0 的儲存模型與改名同形出現可對回的第三方 issue, 或任一回報者被查明與本 repo 有關 | 09-06 探針: 公開引用查無, 3.1 儀器守則各對得到第三方 issue. 3.1 的票從 09-06 起計獨立; 3.0 同形維持佐證; 任一回報者被查明有關就全部退回. 見 [task-observer-upstream](../research/task-observer-upstream.md#血緣探針-2026-09-06-公開引用查無-而-31-的儀器守則各有自己的-issue) |
 
 ## 三之六, 成本儀器剩下的接線: 卡在歸因, 不是計算 (2026-08-31)
 
-[landing-readiness](../research/landing-readiness.md) 的建議四寫「缺的不是框架也不是欄位定義, 是接線」. 接的時候發現只對了一半: **框架是完整的, 但它餓的是輸入, 而輸入拿不到**. `experience-report` 每個 cohort 已在算 `avg_api_cost_usd`, `avg_tokens_out`, `avg_total_tokens`, `avg_total_secs`, 口徑在 `model-evidence`; 沒有東西要新建. 輸入側, 164 筆帳本實測:
+[landing-readiness](../research/landing-readiness.md) 的建議四寫「缺的不是框架也不是欄位定義, 是接線」. 接的時候發現只對了一半: **框架是完整的, 但它餓的是輸入, 而輸入拿不到**. `experience-report` 每個 cohort 已在算 `avg_api_cost_usd`, `avg_tokens_out`, `avg_total_tokens` (當時還有 `avg_total_secs`, 09-30 移除), 口徑在 `model-evidence`; 沒有東西要新建. 輸入側, 164 筆帳本實測:
 
 ```text
 api_cost_usd     1/164     ← 幾乎沒有
@@ -41,8 +36,7 @@ token_scope full 90/164
 | 項目 | 下一步 | 通過條件 |
 |---|---|---|
 | 成本歸因 | 查 Headroom 有沒有辦法讓 PERF 行帶 session id (`x-headroom-session-id` 標頭要控制 Claude Code 送出的標頭, 我方目前做不到), 或讓 `/stats` 逐 session 分列 | 有: 接一支批次前後取差值的腳本; 沒有: 記「本 repo 量不到逐批成本」, 並停止在文件裡承諾成本數字 |
-| `review_secs` / `rework_secs` | 不自動導出. 要嘛人工記, 要嘛承認這兩項永遠是空的 | 若三十天後仍是 0/N, 把 `avg_total_secs` 從報告移除 —— 一個永遠算不出來的欄位是雜訊 |
 
 ## 四, 蒸餾重查節奏
 
-上游重查由 [research README 的時效性基準](../research/README.md#時效性基準)與 `scripts/upstream-pin-report.py` 驅動; 後者從 ATTRIBUTION 與那張表的 `pin` 句推導, sepia 與 ECC 這種還沒有 ATTRIBUTION 的來源靠表裡那一列被盯住. 下次重查時間到, 順帶讀 StoryScope 論文本文, 一趟做完. 跨上游整合已跑四輪, 計票與結論在 [synthesis](../research/cross-upstream-synthesis.md#第四輪整合-2026-09-06-開題與計票).
+上游重查由 [research README 的時效性基準](../research/README.md#時效性基準)與 `scripts/upstream-pin-report.py` 驅動; 後者從 ATTRIBUTION 與那張表的 `pin` 句推導, sepia 這種還沒有 ATTRIBUTION 的來源靠表裡那一列被盯住; ECC 與 Trellis 2026-09-30 移到[不再追](../research/README.md#不再追的來源-2026-09-30-停), 報告不再拿它們比 head. 下次重查時間到, 順帶讀 StoryScope 論文本文, 一趟做完. 跨上游整合已跑四輪, 計票與結論在 [synthesis](../research/cross-upstream-synthesis.md#第四輪整合-2026-09-06-開題與計票).

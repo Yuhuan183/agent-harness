@@ -23,7 +23,7 @@
 | `route_source` | automatic | `rollout-verified` \| `transcript-verified` \| `resolver-assumed` \| `explicit` | How well the route is attested, strongest first. `rollout-verified`: model and effort both matched Codex's applied thread settings. `transcript-verified`: the model Claude recorded on its own assistant turns matched the resolved pin (a dated snapshot of the same generation counts); Claude records no effort, so that half rests on `check-pins`. `resolver-assumed`: inferred by the resolver from an alias, and false the moment the alias is upgraded. `explicit`: passed by the dispatcher with nothing to check it against — a claim, not evidence. **Decision gate**: only the provider-attested tiers (`rollout-verified`, `transcript-verified`) may drive routing decisions; the rest are counted and shown as `ineligible_n` but never enter a cohort. `experience-report` and `experience-revise` share this rule through `core.DECISION_ROUTE_SOURCES`. A claimed route that contradicts the provider's record is refused at log time, not recorded |
 | `origin_provider` / `parent_dispatch_id` / `fallback_hops` | on fallback | | Origin, failed dispatch, and hop count for a cross-provider fallback; the logger rejects hops > 1 |
 | `secs` | should be recorded | float | **Execution-time proxy**: SubagentStart to SubagentStop; excludes subsequent main-session correction and integration |
-| `review_secs` / `rework_secs` | should be recorded | float | Main session's quality-check and correction/integration time |
+| `review_secs` / `rework_secs` | optional, not aggregated | float | Main session's quality-check and correction/integration time. Still accepted so old rows stay editable; nothing is computed from them since 2026-09-30, when thirty days of recording left them at 3/181 and 0/181 |
 | `api_cost_usd` | optional | float | Provider-verifiable actual API cost for this dispatch; leave blank for subscription plans |
 | `note` | | short sentence | Noteworthy surprises worth remembering |
 
@@ -40,7 +40,6 @@ Outcome definitions: `accepted` = passed on the first try, integrated as-is; `co
 | `avg_tokens_out` | mean output tokens | Compute-cost proxy; cannot be converted to USD without input/cache tokens and unit price |
 | `avg_total_tokens` | mean of all four token categories combined | Only included when all four categories are present |
 | `avg_secs` | mean subagent wall-clock time | **Execution-time proxy**: lower is better at the same AR; excludes main-session rework |
-| `avg_total_secs` | mean of subagent + review + rework time | Included only when all three time fields are present; closer to end-to-end |
 | `avg_api_cost_usd` | mean verifiable API cost | Compare only within the same pricing scope; not interchangeable with subscription allowances |
 
 Coverage and averages ignore malformed legacy telemetry, including negative values, non-finite floats, out-of-range quality scores, and Boolean values masquerading as integers. The record remains visible in `observed_n`; only the invalid metric is excluded.

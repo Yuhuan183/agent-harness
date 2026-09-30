@@ -48,8 +48,8 @@ and session automatically; a native Claude dispatch then only needs its outcome:
   (re-dispatched) / `failed` (dropped or fell back). `weekly-integrity`
   reports staged dispatches the ledger never answered.
 - Hooks record `request_source` (`claude-code`), dispatch id, input/output/
-  cache tokens, and `secs` when available. After QC add `--review-secs` /
-  `--rework-secs`; add `--api-cost-usd` only from a reliable billing value.
+  cache tokens, and `secs` when available. Add `--api-cost-usd` only from a
+  reliable billing value.
   The hop fields (`--origin-provider`, `--parent-dispatch-id`,
   `--fallback-hops`) stay enforced — the logger rejects hops > 1 — though no
   live route produces one.

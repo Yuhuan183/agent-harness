@@ -139,9 +139,6 @@ same bar as any other change here, and write the plan before the edit:
   it will police and record three numbers beside it: hits today, true defects
   among them, and the normalisation needed to remove the rest. A guard with an
   unmeasured false-positive rate is a proposal to make people ignore a test.
-- **A rule landing on one provider lands on its twin**, in that side's idiom,
-  and names anything the other side already had so the two do not read as
-  alternatives.
 - **Budgeted files need displacement or a deliberate raise** carrying the
   measurement and the reason beside the number.
 - **Touching the prompt surface means rewriting the census**; a changed contract

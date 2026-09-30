@@ -363,21 +363,29 @@ class UpstreamPinReportTests(unittest.TestCase):
                 encoding="utf-8")
             self.assertEqual([], module.collect(root, index))
 
-    def test_the_real_index_tracks_the_peer_it_pinned_and_not_the_one_it_did_not(self) -> None:
+    def test_the_real_index_tracks_what_it_pins_and_drops_what_it_retired(self) -> None:
         """The fixture above proves the rule; this proves it is switched on.
 
-        Both rows are 同業. One is in because it pins a head, the other is out
-        because its SHA is a path commit - and if the two ever swap places
-        without this failing, the rule stopped being enforced on the tree it
-        was written for.
+        `Nanako0129/sepia` is in because its row pins a commit and nothing else
+        does. `affaan-m/ecc` and `mindfold-ai/Trellis` are out because on
+        2026-09-30 they left the watch: both surveys were closed, and a held
+        pin would have read MOVED on every report with nobody left to read the
+        diff - an alarm that is always on trains the reader to skip the real
+        one. Their rows moved to the retired table and spell the last commit
+        `停在`, which this report does not read. eli5's row went with them and
+        was a path commit before that. If a retired row is ever respelled
+        `pin`, it is watched again, and this fails.
         """
         module = self._module()
         found = {e["repo"] for e in module.parse_research_index(
             ROOT / "docs/research/README.md")}
-        self.assertIn("affaan-m/ecc", found,
-                      "the peer whose row pins a head is not being watched")
-        self.assertNotIn("anthropics/claude-plugins-community", found,
-                         "a path commit must not be compared against a whole repo")
+        self.assertIn("Nanako0129/sepia", found,
+                      "an upstream pinned only in the index is not being watched")
+        for retired in ("affaan-m/ecc", "mindfold-ai/Trellis",
+                        "anthropics/claude-plugins-community"):
+            with self.subTest(retired=retired):
+                self.assertNotIn(retired, found,
+                                 "a retired source is still compared against its head")
 
     def test_a_move_says_where_it_moved(self) -> None:
         """A commit count cannot separate a rule change from a regenerated chart.

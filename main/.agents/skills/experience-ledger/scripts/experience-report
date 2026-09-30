@@ -209,7 +209,7 @@ def summarize(records: list[dict], now: datetime, half_life: float,
         "observed_n": 0, "ineligible_n": 0,
         "n": 0, "w": 0.0, "accepted": 0.0, "corrected": 0.0,
         "rebriefed": 0.0, "failed": 0.0, "quality": [],
-        "tokens_out": [], "total_tokens": [], "secs": [], "total_secs": [],
+        "tokens_out": [], "total_tokens": [], "secs": [],
         "api_cost_usd": [], "sources": Counter(),
     })
     for record in records:
@@ -251,12 +251,9 @@ def summarize(records: list[dict], now: datetime, half_life: float,
             ))
         if valid_metric(record.get("secs")):
             group["secs"].append((record["secs"], weight))
-        if all(valid_metric(record.get(field))
-               for field in ("secs", "review_secs", "rework_secs")):
-            group["total_secs"].append((
-                record["secs"] + record["review_secs"] + record["rework_secs"],
-                weight,
-            ))
+        # `review_secs` / `rework_secs` are still accepted and never summed:
+        # after thirty days they stood at 3/181 and 0/181, so the end-to-end
+        # mean they fed had never once been computable (retired 2026-09-30).
         if valid_metric(record.get("api_cost_usd")):
             group["api_cost_usd"].append((record["api_cost_usd"], weight))
 
@@ -279,13 +276,11 @@ def summarize(records: list[dict], now: datetime, half_life: float,
             "avg_tokens_out": None,
             "avg_total_tokens": None,
             "avg_secs": None,
-            "avg_total_secs": None,
             "avg_api_cost_usd": None,
             "coverage": {
                 "tokens_out": len(group["tokens_out"]),
                 "total_tokens": len(group["total_tokens"]),
                 "secs": len(group["secs"]),
-                "total_secs": len(group["total_secs"]),
                 "api_cost_usd": len(group["api_cost_usd"]),
             },
             "request_sources": dict(sorted(group["sources"].items())),
@@ -297,7 +292,6 @@ def summarize(records: list[dict], now: datetime, half_life: float,
             ("avg_tokens_out", group["tokens_out"], 0),
             ("avg_total_tokens", group["total_tokens"], 0),
             ("avg_secs", group["secs"], 1),
-            ("avg_total_secs", group["total_secs"], 1),
             ("avg_api_cost_usd", group["api_cost_usd"], 4),
         ):
             value = weighted_mean(values)
@@ -321,7 +315,6 @@ def comparable_cost(rows: dict[str, dict], min_samples: int) -> list[str]:
     """Return tie-break evidence only when every candidate has the same scope."""
     evidence = []
     for field, coverage, label, unit in (
-        ("avg_total_secs", "total_secs", "end-to-end", "s"),
         ("avg_secs", "secs", "runtime", "s"),
         ("avg_api_cost_usd", "api_cost_usd", "API cost", "USD"),
     ):
@@ -331,8 +324,6 @@ def comparable_cost(rows: dict[str, dict], min_samples: int) -> list[str]:
         value = row[field]
         rendered = f"${value}" if unit == "USD" else f"{value}{unit}"
         evidence.append(f"{best} lower {label} at {rendered}")
-        if field in ("avg_total_secs", "avg_api_cost_usd"):
-            break
     if all(row["coverage"]["total_tokens"] >= min_samples for row in rows.values()):
         best, row = min(rows.items(), key=lambda item: item[1]["avg_total_tokens"])
         evidence.append(f"{best} lower total tokens at {row['avg_total_tokens']}tok")
@@ -518,15 +509,13 @@ def main() -> int:
     for (role, task_class, provider), row in sorted(public.items()):
         sources = ",".join(f"{key}:{value}"
                            for key, value in row["request_sources"].items())
-        elapsed = (row["avg_total_secs"] if row["avg_total_secs"] is not None
-                   else row["avg_secs"])
         print(f"{role:<18}{task_class:<10}{provider:<8}{row['observed_n']:>5}"
               f"{row['n']:>4}"
               f"{render(row['AR']):>7}{render(row['CR']):>7}"
               f"{render(row['RB']):>7}{render(row['FR']):>7}"
               f"{render(row['avg_tokens_out']):>10}"
               f"{render(row['avg_total_tokens']):>10}"
-              f"{render(elapsed):>9}  {sources}")
+              f"{render(row['avg_secs']):>9}  {sources}")
     print()
     for cohort, hint in decisions.items():
         print(f"hint: {cohort:<28} {hint}")
