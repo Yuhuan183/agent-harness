@@ -29,9 +29,7 @@ rtk's own installer. Keep it that way:
   `lean-ctx-redirect` and `lean-ctx hook`, none of which is a substring of
   `rtk hook claude`). No version is named on purpose: this repo tracks current
   Headroom, so the claim is about what was installed when it was read, and an
-  older Headroom is the operator's own arrangement. What that check has looked
-  like over time, and one round where it went wrong, is in
-  `docs/research/landing-log.md`.
+  older Headroom is the operator's own arrangement.
 - `rtk gain` ends with `[warn] No hook installed — run rtk init -g`. Expected here;
   it only means rtk did not install the hook itself. Do not act on it.
 - The contract carries no rtk prefix instruction because `rtk hook claude` does the
@@ -68,6 +66,12 @@ Use normal commands such as `git status`; the hook handles supported rewrites.
 `\( -o \)`, `-not`, and `-exec`. Rerun with an absolute path (`/usr/bin/find`,
 `/usr/bin/grep`) to bypass the rewrite.
 
+Output rtk does not reject can still be shortened: repeated lines collapse into
+`... (repeated N times)` and long output ends in `[+N hidden: rtk recall <id>]`
+or `[full output: rtk recall <id>]`. A count, or a "not listed", read from that
+output is as ambiguous as an empty result: write the output to a file, or
+re-run with an absolute path, before concluding from it.
+
 A rejected flag can surface in two ways, and the second is the dangerous one:
 
 - an `rtk:` message, which is unmistakable. `rtk find … -not` fails this way; or
@@ -85,10 +89,9 @@ after upgrading, and the difference is real:
 | 0.42.4 | `rtk grep` → BSD `grep` | `unrecognized option --glob`, then `0 matches`, **exit 0**, while two files matched |
 | 0.45.0 | `rtk rg` → real ripgrep | `--glob` honoured, one correct match, and a genuine no-match returns empty output with **exit 1** |
 
-So the fabricated count is fixed — but it is fixed *per machine*, on a version
-that has to actually be installed. An earlier 0.45.0 claim here came from
-`brew info rtk`, which reports the formula's version next to `Not installed`.
-Check `rtk --version`, never the package index.
+The fabricated count is fixed only where 0.45.0 is actually installed. Read the
+version from `rtk --version`; a package index such as `brew info rtk` reports
+the formula's version even when it is not installed.
 
 `rtk rg` on 0.45.0 **shells out to real ripgrep**. Without it the rewrite fails
 with `rtk: search failed: … (os error 2)` and exit 1 — loud, so no conclusion is
@@ -99,6 +102,6 @@ conclusion from a rewritten command.** If a negative result is load-bearing,
 re-run it with an absolute path and compare. A non-empty result needs no such
 confirmation — only the empty one is ambiguous.
 
-Bare `find` and `grep` are not `rtk`: Claude Code shadows them with its embedded
-`bfs` and `ugrep`, which take the usual flags. Reach for the absolute path only
-after an `rtk:` message actually appears.
+Claude Code shadows bare `find` and `grep` with its embedded `bfs` and `ugrep`,
+which take the usual flags, but the hook can still rewrite them (`grep -rn`
+above), so the no-hits rule applies to them as well.

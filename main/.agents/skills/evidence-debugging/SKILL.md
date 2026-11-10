@@ -11,8 +11,8 @@ one move: naming a cause you have not watched happen.
 Derived from Matt Pocock's [`diagnosing-bugs`](https://github.com/mattpocock/skills);
 see `ATTRIBUTION.md` for the reviewed commit, licence, and what was changed.
 Local defaults, authority rules and reporting shape are in
-`references/tuning.md`. This skill never creates a context document; repo
-structure lives in `AGENTS.md`.
+`references/tuning.md`. For repo structure read the project's instruction
+files (`CLAUDE.md`, `AGENTS.md`); this skill never creates a context document.
 
 ## Authority, first
 

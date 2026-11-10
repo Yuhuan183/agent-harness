@@ -50,9 +50,6 @@ and session automatically; a native Claude dispatch then only needs its outcome:
 - Hooks record `request_source` (`claude-code`), dispatch id, input/output/
   cache tokens, and `secs` when available. Add `--api-cost-usd` only from a
   reliable billing value.
-  The hop fields (`--origin-provider`, `--parent-dispatch-id`,
-  `--fallback-hops`) stay enforced — the logger rejects hops > 1 — though no
-  live route produces one.
 - `--task` is a short neutral label — no secrets, no verbatim content;
   surprises go in `--note`.
 - Use `--class recon` for locating/inventory work and `--class review` for
