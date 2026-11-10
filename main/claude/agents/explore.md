@@ -1,7 +1,7 @@
 ---
-name: explore
+name: Explore
 description: Broad read-only search; returns conclusions with file:line evidence. Not for one known symbol or path — look those up directly.
-model: sonnet
+model: haiku
 effort: low
 tools: Read, Glob, Grep
 ---

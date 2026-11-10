@@ -3,18 +3,9 @@ as_of = "2026-08-14"
 prior_review_days = 90
 prior_review = "Re-fetch and re-audit these AA priors when any routed model ships a new generation or effort rung, or 90 days after as_of, whichever comes first; a review that finds no change updates as_of and this note rather than letting the prior silently age. This is the benchmark-prior cadence - local ledger evidence still moves routes under revision_policy on its own schedule."
 benchmark = "Artificial Analysis Intelligence Index v4.1.1"
-secondary_benchmark = "AA-Briefcase Elo (agentic knowledge-work benchmark). Recorded per model because it discriminates far harder than the text index on exactly the work this harness dispatches: claude-opus-5 1715 / claude-fable-5 1574 / claude-sonnet-5 1383 / claude-opus-4-8 1340 / claude-haiku-4-5 612. The 8-point text-index gap between Opus 5 and Sonnet 5 is a 332-Elo gap here. Per effort rung: opus 1225/1469/1606/1690/1715 and sonnet 931/1057/1193/1292/1383 across low/medium/high/xhigh/max. The two ladders interleave - claude-opus-5/low (1225) outranks claude-sonnet-5/high (1193) - see effort_curve for what that does and does not license. Briefcase sits outside the Intelligence Index, so unlike every score in this file it stays comparable across the v4.1 to v4.1.1 change: no rung moved more than 6 Elo between 2026-07-26 and 2026-08-14, which is why the index shift is read as a scale change rather than a model change."
 metric_scope = "English text benchmark prior; not local coding-agent success rate"
-context_window_note = "Measured 2026-08-06 from proxy beta headers, not inferred: a leaf pinned to the `opus` alias already runs on the 1M window, and one pinned to `sonnet` runs on 200k. `claude-sonnet-5[1m]` is accepted in frontmatter and does take effect, so moving the support pins up is possible - it is just not needed, since usage-report puts the sonnet subagent per-turn prompt at p50 5.4% / p95 16.3% of a 1M window, which is 27% / 81.5% of the 200k the pin actually gets. The ledger comparison that used to be the second half of this sentence was withdrawn on 2026-08-31: its figure did not reproduce, the rows it called Claude Code's built-in agents were this repo's own under a legacy spelling, and cumulative cache_read never measured window occupancy in the first place. docs/research/model-evidence.md has the method, the truth table and the withdrawal."
 availability_scope = "Per-surface status; benchmark data is retained even when a dispatch override is unverified"
 availability_semantics = "configured means router-permitted, not necessarily smoke-tested; evidence records verification level"
-evidence_caveat = "English-text benchmark prior, not a local coding-agent success rate; local ledger evidence needs n>=10 in a role/task_class before it moves a route. Coverage as of 2026-08-14: the Opus ladder is fully measured on the text index, low through max. Sonnet still has no per-rung index score - every Sonnet rung stays bounded above by 55.26 on that axis - but it does have per-rung Briefcase Elo, so support pins are no longer evidence-free: they are measured on the agentic axis and unmeasured on the text axis. New with v4.1.1: three of the nine evaluations in the index (HLE, AA-LCR, AA-Omniscience) are graded by GPT-5.6 Luna (medium), so the text index is no longer independent of a vendor that also appears in it."
-effort_curve = "claude-opus-5 measured per-effort index (AA v4.1.1, 2026-08-14): low 52.46 @ $0.425/task, medium 58.64 @ $0.724, high 61.48 @ $1.227, xhigh 62.52 @ $1.801, max 63.05 @ $2.337. Three consequences drive the routes below. (1) opus/medium (58.64) exceeds the previous generation's ceiling, claude-opus-4-8/max (57.33), at about a third of the cost, and exceeds claude-sonnet-5/max (55.26) at under half the cost, so no Sonnet rung can outrank opus/medium on capability. (2) The ladder is monotone but its steps are very unequal - low to medium buys 6.18 index points for $0.30, xhigh to max buys 0.53 for $0.54, a 21x difference in cost per point - which is why no profile pins max. (3) Carried forward from 2026-07-26 and still deliberately not acted on: per-rung Briefcase Elo puts claude-opus-5/low (1225) above claude-sonnet-5/high (1193), so the support pins sonnet/low (931) and sonnet/medium (1057) sit 294 and 168 Elo below a rung the support tier already allows. That is a candidate, not a verdict - AA still publishes no per-rung cost for any Sonnet effort, so the price of the swap stays unquantified while Sonnet's token price is 2.5x lower ($2/$10 vs $5/$25), and the Sonnet floor is user-directed. Local sampling on 2026-08-04 and 2026-08-06, 6 claude-opus-5/low against 6 claude-sonnet-5/low, did not transfer the gap; see support_pin_evidence."
-superseded_prior = "The BrowseComp agentic-search curve (community-shared chart, 2026-07) that previously justified the executor ladder is retired: it was measured on claude-opus-4-8 and claude-sonnet-5, and AA's own per-effort index now covers the Opus ladder directly. Retained in docs/research/model-evidence.md as history, not as an active prior."
-generation_note = "2026-07-25: the opus frontmatter alias resolves to claude-opus-5. Leaf pins kept their effort rungs across the generation move; the per-effort data since retrieved confirms the move was strictly favourable (opus/medium now outranks opus-4-8/max at a third of the cost). Sonnet support pins remain untouched - as of 2026-07-26 that is no longer for want of data but for want of a priced comparison; see effort_curve and support_pin_evidence."
-support_pin_evidence = "What decides the support pins. Restated 2026-08-06 after the cell was finally sampled; the 2026-08-04 version of this note was right that no *profile* path samples it and wrong that no path does. (1) The deciding reasons were the user-directed Sonnet floor and the missing per-rung Sonnet price. (2) revision_policy's n>=10 was never reachable through route_application: every leaf role is pinned by frontmatter and no profile lists claude-opus-5/low for a support role. (3) But the Claude Agent tool takes a per-dispatch `model` override that outranks the frontmatter pin, so the cell is samplable after all - effort is not overridable this way, which is why this samples the model axis only. Logging one needs an explicit `experience-log --model`: the route guard compares the pin against the hook-recorded observed_model and refuses the record as a routing violation otherwise. (4) Measured 2026-08-06 on the s10 fixture, 6 samples at claude-opus-5/low against 6 at claude-sonnet-5/low, route confirmed per dispatch from observed_model: arm A 3/3 clean on both rungs (ceiling, separates nothing); arm D 3/3 clean on sonnet/low and 2/3 on opus/low, the third raising R2-overtriggered-critical x3. opus/low was also slower (arm D median 37.1s vs 30.6s). The 294-Elo per-rung gap therefore did not transfer to this task at n=6, and the one observed failure sits on the higher rung. (5) Standing decision: support pins stay on Sonnet. This is now a measured hold rather than an unevidenced one, but n=6 is below the floor and one fixture is not the role - treat it as a refuted expectation, not a proven ranking. (6) What would overturn it: a support-role failure in real recon work, or a per-rung Sonnet price that makes the comparison decidable on cost."
-unsampled_role_evidence = "Three pins are held by contract, not by data, and that is accepted rather than pending (user-directed 2026-08-06). Measured over the 30 days to that date, delegation-report counted 286 subagent launches: executor 98, explore 33, verifier 23, mech-executor 20 - and plan-verifier 0, security-reviewer 0, security-executor 1. At that rate revision_policy's n>=10 is not reachable for the last three in any horizon the 90-day window covers, so waiting for it would leave them permanently marked as unevidenced gaps in every review. What justifies them instead: the role has to exist with the right authority and tool set at the moment a trigger fires, and its effort comes from quality_floor's critical tier, which is a floor argument rather than an outcome claim. Read a zero here as 'never needed yet', not as 'never measured'. What would move them: a sustained dispatch rate that makes the cohort samplable, or a single failure in one of the rare real dispatches, which at n=1 would be worth more than the silence is."
-data_verification = "Re-retrieved 2026-08-14 by parsing each variant page's application/ld+json Dataset blocks and unioning across all fetched pages, because a single page truncates every chart to its top rows. Cost per index task is the sum of the five published components (input, cacheHit, cacheWrite, reasoning, answer); AA publishes both the components and its own total on only two cells this round, claude-opus-5/medium and /low, and the two agree exactly there - every other cell carries AA's published total unverified. One extraction hazard found and worked around: AA gives both Haiku 4.5 variants the label 'Claude 4.5 Haiku', so a page union silently overwrites one with the other across a 5.75-point gap; that row is taken from each slug's own line instead, and its score_note says which figure came from which variant. This refresh crosses an index version: AA moved v4.1 to v4.1.1 (tau3-Banking rebased on upstream tau2-bench v1.0.1; HLE, AA-LCR and AA-Omniscience regraded by GPT-5.6 Luna (medium)), so every score, cost and token count here was recomputed by AA and must not be compared with the 2026-07-26 values it replaces. Briefcase Elo sits outside the index and moved at most 6 Elo on any rung, which is the reason to read the index shift as a scale change. Three values could not be refreshed because AA no longer publishes those cells, and remain v4.1-era: claude-opus-4-8 total_eval_cost_usd and output_tokens_per_index_task, and claude-sonnet-5 output_tokens_per_index_task."
 
 [selection]
 default = "balanced"
@@ -55,7 +46,6 @@ decode_minutes_per_index_task = 5.77
 reasoning_tokens_per_index_task = 26666.6
 answer_tokens_per_index_task = 8898.7
 output_tokens_per_index_task = 35565.3
-score_note = "AA labels the row 'with fallback' - it includes a claude-opus-4-8 fallback, so it is not a standalone Fable measurement. Even so claude-opus-5/max dominates it on three of the four published axes: index 63.05 vs 62.07, cost per task 2.337 vs 3.140, Briefcase Elo 1714.59 vs 1573.78. On output tokens the comparable rung is opus/xhigh, 31184.9 vs 35565.3; opus/max itself emits more, 40249.5."
 
 [models."claude-opus"]
 source = "https://artificialanalysis.ai/models/claude-opus-5"
@@ -68,7 +58,6 @@ role_frontmatter_override = "configured"
 
 [models."claude-opus".evidence]
 role_frontmatter = "the opus alias resolves here from 2026-07-25; active pins are defined by selection.default and verified by check-pins. Smoke-test history (plan-verifier/verifier/security-*/executor) was accumulated on the predecessor claude-opus-4-8 and does not transfer as evidence about this generation."
-aggregate_status = "Retrieved from AA 2026-07-26. Per-effort index scores are now published for every rung, low through max. Pricing 5.00/25.00 USD per M input/output, 0.50 cache hit - identical to claude-opus-4-8, so the whole generational gain is capability per token, not price."
 
 [models."claude-opus".aggregate]
 score_max_effort = 63.05
@@ -79,8 +68,7 @@ output_tokens_per_index_task = 40249.5
 output_tokens_per_sec = 52.75
 context_window_tokens = 1000000
 
-# Per-effort economics, same schema as the Codex resolver's models.*.efforts so
-# both providers' routes can be justified against comparable measured rungs.
+# Per-effort economics; route_score reads `score` from these rungs.
 [models."claude-opus".efforts.low]
 score = 52.46
 cost_usd_per_index_task = 0.425
@@ -130,26 +118,6 @@ output_tokens_per_index_task = 40249.5
 briefcase_elo = 1714.59
 omniscience_index = 37.07
 
-[benchmark_archive."claude-opus-4-8"]
-source = "https://artificialanalysis.ai/models/claude-opus-4-8"
-
-[benchmark_archive."claude-opus-4-8".availability]
-subscription = "documented"
-main_selector = "configured"
-role_frontmatter_override = "not_routed"
-
-[benchmark_archive."claude-opus-4-8".evidence]
-main_selector = "still selectable and in recent use as a main-session model; superseding it for leaf pins does not withdraw it from the session selector"
-role_frontmatter = "superseded by claude-opus-5 on 2026-07-25: no profile routes it to a leaf role. Retained as the benchmark row the effort_curve_prior and the 2026-07-23 executor calibration were actually measured on"
-
-[benchmark_archive."claude-opus-4-8".aggregate]
-score_max_effort = 57.33
-cost_usd_per_index_task = 2.032
-briefcase_elo = 1340.38
-omniscience_index = 28.75
-total_eval_cost_usd = 3752.55
-output_tokens_per_index_task = 41000
-
 [models."claude-sonnet"]
 source = "https://artificialanalysis.ai/models/claude-sonnet-5"
 measured_generation = "claude-sonnet-5"
@@ -160,7 +128,7 @@ main_selector = "configured"
 role_frontmatter_override = "configured"
 
 [models."claude-sonnet".evidence]
-role_frontmatter = "smoke-tested in named roles: Explore/mech-executor/executor used the sonnet alias; active pins are defined by selection.default and verified by check-pins"
+role_frontmatter = "no balanced-profile role pins the sonnet alias since 2026-11-10; quality_guarded keeps Explore on sonnet/medium"
 
 [models."claude-sonnet".aggregate]
 score_max_effort = 55.26
@@ -170,7 +138,6 @@ omniscience_index = 16.45
 output_tokens_per_sec = 65.50
 output_tokens_per_index_task = 69000
 score_non_reasoning = 42.57
-effort_coverage = "The text index is still published at max effort only as of 2026-07-26, so every Sonnet rung is bounded above by 53.35 on that axis. Briefcase Elo is now published per rung and is recorded below; the routed support rungs are therefore measured on the agentic axis and unmeasured on the text one. No per-rung cost is published for any Sonnet effort, which is what stops the comparison against the Opus ladder from being decidable on price."
 
 # Per-rung Briefcase Elo only. Deliberately no `score` key on any rung: the
 # resolver would read one as a measured text-index score, and AA publishes none.
@@ -199,7 +166,7 @@ main_selector = "configured"
 role_frontmatter_override = "configured"
 
 [models."claude-haiku".evidence]
-role_frontmatter = "benchmark comparison row; no current profile routes Haiku (user-directed 2026-07-22: Sonnet floor for Explore)"
+role_frontmatter = "Explore pins the haiku alias from 2026-11-10 (user-directed once the Sonnet-floor priors were declared stale); this aggregate row is a claude-haiku-4-5 benchmark with no per-rung score"
 
 [models."claude-haiku".aggregate]
 score_non_reasoning = 24.14
@@ -207,7 +174,6 @@ briefcase_elo = 611.50
 omniscience_index = -7.57
 output_tokens_per_sec = 88.38
 cost_usd_per_index_task = 0.217
-score_note = "AA labels both Haiku 4.5 variants 'Claude 4.5 Haiku', so this row is assembled from two slugs: score_non_reasoning (24.14), omniscience_index (-7.57) and output_tokens_per_sec (88.38) come from claude-4-5-haiku, while cost_usd_per_index_task (0.217), briefcase_elo (611.50) and the token and decode figures come from claude-4-5-haiku-reasoning, whose own index score is 29.89. Briefcase Elo 611.50 is roughly 1100 below claude-opus-5 and 770 below claude-sonnet-5 on the agentic benchmark, which is what corroborates the user-directed Sonnet floor for support roles rather than merely asserting it. The 2026-07-26 note that Haiku had dropped off the Briefcase chart no longer applies: it was measured directly on 2026-08-14, consistent with the carried-forward 611.83."
 
 [quality_floor]
 policy = "Meet the role quality tier first; optimize the selected secondary objective only within approved routes. `approved_routes` is a curated list, not a measured threshold: the validator tests membership and can never test magnitude, so a rung listed here is approved, not proven above a floor. It was named `allowed` until 2026-07-29, which read as a threshold the code does not implement. `model-routing validate` reports, as warnings, how much of each tier is actually backed by per-rung scores."
@@ -223,7 +189,7 @@ security-reviewer = "critical"
 security-executor = "critical"
 
 [quality_floor.approved_routes]
-support = ["claude-sonnet/low", "claude-sonnet/medium", "claude-opus/low"]
+support = ["claude-haiku/low", "claude-sonnet/low", "claude-sonnet/medium", "claude-opus/low"]
 judgment = ["claude-sonnet/medium", "claude-opus/low", "claude-opus/medium", "claude-opus/high", "claude-fable/medium", "claude-fable/high", "claude-fable/xhigh"]
 critical = ["claude-opus/medium", "claude-opus/high"]
 
@@ -244,8 +210,8 @@ warning = "tiers support and judgment have the same measured minimum (52.46) - t
 reason = "see quality_floor.notes.tier_separation: both tiers list claude-opus/low, so the floors coincide by construction and the tiers separate by ceiling and role assignment"
 
 [[quality_floor.acknowledged_coverage]]
-warning = "tier support approves 2 route(s) with no per-rung score: claude-sonnet/low, claude-sonnet/medium"
-reason = "AA publishes no per-rung index score for any Sonnet effort; these rungs are measured on Briefcase Elo instead, and the Sonnet floor is user-directed (see evidence_caveat and support_pin_evidence)"
+warning = "tier support approves 3 route(s) with no per-rung score: claude-haiku/low, claude-sonnet/low, claude-sonnet/medium"
+reason = "No per-rung index score is published for these Haiku and Sonnet rungs; the support tier is user-directed (2026-11-10: research priors declared stale, support routes are judged by ledger outcomes)"
 
 [[quality_floor.acknowledged_coverage]]
 warning = "tier judgment approves 4 route(s) with no per-rung score: claude-fable/high, claude-fable/medium, claude-fable/xhigh, claude-sonnet/medium"
@@ -260,14 +226,14 @@ effort = "user_selected"
 reason = "The user owns the main-session model and effort; H = Opus/high or Fable/low, X = Opus/high or Fable medium-xhigh. Opus 5 leads both profiles on 2026-07-25 measured data (higher index and Briefcase Elo at lower cost per task than Fable 5)."
 
 [profiles.balanced.roles.explore]
-model = "claude-sonnet"
+model = "claude-haiku"
 effort = "low"
-reason = "User-directed Sonnet floor for reconnaissance quality; low effort because findings are re-judged in main."
+reason = "User-directed 2026-11-10: Haiku for reconnaissance once the Sonnet-floor priors were declared stale; findings are re-judged in main and the ledger measures the route."
 
 [profiles.balanced.roles.mech-executor]
-model = "claude-sonnet"
-effort = "medium"
-reason = "User-directed: medium effort raises pattern fidelity on mechanical work."
+model = "claude-opus"
+effort = "low"
+reason = "User-directed 2026-11-10: Opus at low effort for mechanical work from a complete spec; the stop-on-exception contract carries the quality guard."
 
 [profiles.balanced.roles.executor]
 model = "claude-opus"
@@ -298,14 +264,14 @@ reason = "Security implementation preserves the approved high-reasoning floor."
 description = "Fastest route among combinations that meet each role's quality floor."
 
 [profiles.fast.roles.explore]
-model = "claude-sonnet"
+model = "claude-haiku"
 effort = "low"
-reason = "Fastest eligible route at the user-directed Sonnet floor."
+reason = "Fastest eligible route; Haiku since 2026-11-10."
 
 [profiles.fast.roles.mech-executor]
-model = "claude-sonnet"
+model = "claude-opus"
 effort = "low"
-reason = "Low effort is the fast route when the spec is complete; promote to medium on first correction."
+reason = "User-directed 2026-11-10: Opus at low effort for mechanical work from a complete spec; the stop-on-exception contract carries the quality guard."
 
 [profiles.fast.roles.executor]
 model = "claude-opus"
@@ -346,9 +312,9 @@ effort = "medium"
 reason = "User-directed: deeper evidence coverage for high-stakes work; exploration still cannot decide or implement."
 
 [profiles.quality_guarded.roles.mech-executor]
-model = "claude-sonnet"
-effort = "medium"
-reason = "A complete specification and stop-on-exception contract provide the quality guard."
+model = "claude-opus"
+effort = "low"
+reason = "User-directed 2026-11-10: Opus at low effort for mechanical work from a complete spec; the stop-on-exception contract carries the quality guard. opus/low is the support tier's highest approved route."
 
 [profiles.quality_guarded.roles.executor]
 model = "claude-opus"

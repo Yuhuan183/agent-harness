@@ -56,6 +56,10 @@ ROLES = ROUTED_ROLES + DIAGNOSTIC_ROLES
 # neither `request_source` nor `route_source`, so no decision cohort can reach
 # them in any case. Checked 2026-08-06 after this comment's absence produced
 # exactly that false alarm.
+#
+# From 2026-11-10 the harness definition is named `Explore` again so that it
+# replaces the built-in; new dispatches arrive capitalized and the alias keeps
+# them in the same `explore` cohort as the rows above.
 LEGACY_ROLE_ALIASES = {"Explore": "explore"}
 PROVIDERS = ("claude", "codex")
 # `unjudged` is written by the session-end sweep, never by a person, and it is

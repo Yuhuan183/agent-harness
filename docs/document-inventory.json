@@ -8,7 +8,6 @@
     "docs/*.md",
     "docs/architecture/*.md",
     "docs/plans/*.md",
-    "docs/research/README.md",
     "main/claude/*.md",
     "main/claude/agents/*.md",
     "main/claude/prompts/*.md",

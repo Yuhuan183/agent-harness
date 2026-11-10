@@ -2,6 +2,7 @@
 name: upstream-distillation
 description: |
   Read an upstream this repo distils from, classify every rule it carries, plan the landing against this repo's own development rules, and synthesise findings across upstreams into guidance. Use when rechecking a pinned upstream, surveying a new one, advancing a pin, asking whether an upstream change is already covered here, or asking what several research reports add up to. Trigger on "重查上游", "蒸餾", "溯源", "upstream 有沒有更新", "這條我們有沒有", "研究報告整合", or a new peer project worth surveying. Do not use for reviewing this repo's own design (harness-review), for establishing a claim in general (evidence-ladder), or for reading a changelog you do not intend to act on. Repo-root dev-only; never add it to the deployment manifest.
+disable-model-invocation: true
 ---
 
 # Upstream Distillation

@@ -774,7 +774,10 @@ try:
                         continue
                 elif row.get("event") != "SubagentStop":
                     continue
-                loggable = (agent_type in loggable_roles
+                # `Explore` is the recon role's spelling from 2026-11-10;
+                # experience-log canonicalizes it the same way.
+                canonical_role = {"Explore": "explore"}.get(agent_type, agent_type)
+                loggable = (canonical_role in loggable_roles
                             or "codex" in agent_type)
                 # A stub with no dispatch id predates the field and cannot be
                 # reconciled by any command this finding recommends, all of

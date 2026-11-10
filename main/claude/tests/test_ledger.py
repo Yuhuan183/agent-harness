@@ -1445,14 +1445,14 @@ class ClaudeRouteEvidenceTests(unittest.TestCase):
     def test_transcript_attested_route_may_drive_decisions(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)
-            self._stage(temp, ["claude-sonnet-5"])
+            self._stage(temp, ["claude-haiku-5-5"])
             result = self._log()
             self.assertEqual(result.returncode, 0, result.stderr)
             record = self._record(temp)
             # The route names the family the pin buys; the transcript says which
             # generation of it ran, and the record keeps both.
-            self.assertEqual(record["model"], "claude-sonnet")
-            self.assertEqual(record["observed_model"], "claude-sonnet-5")
+            self.assertEqual(record["model"], "claude-haiku")
+            self.assertEqual(record["observed_model"], "claude-haiku-5-5")
             self.assertEqual(record["route_source"], "transcript-verified")
             self.assertIn(record["route_source"], DECISION_ROUTE_SOURCES)
 
@@ -1467,34 +1467,34 @@ class ClaudeRouteEvidenceTests(unittest.TestCase):
                           result.stderr)
 
     def test_a_dated_snapshot_attests_the_family_it_belongs_to(self) -> None:
-        """`claude-sonnet-5-20260601` is a sonnet, so it attests a sonnet route.
+        """`claude-haiku-5-5-20261001` is a haiku, so it attests a haiku route.
 
         Recording the dated id as the model would split its cohort away from
         the config's name for the same route.
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)
-            self._stage(temp, ["claude-sonnet-5-20260601"])
+            self._stage(temp, ["claude-haiku-5-5-20261001"])
             result = self._log()
             self.assertEqual(result.returncode, 0, result.stderr)
             record = self._record(temp)
-            self.assertEqual(record["model"], "claude-sonnet")
+            self.assertEqual(record["model"], "claude-haiku")
             self.assertEqual(record["route_source"], "transcript-verified")
 
     def test_a_generation_move_is_logged_under_the_family(self) -> None:
-        # The CLI moved `sonnet` to a newer generation under an unchanged pin.
+        # The CLI moved `haiku` to a newer generation under an unchanged pin.
         # Routes name families and the generation is the CLI's choice
-        # (2026-09-30), so this is an ordinary sonnet dispatch: refusing it
+        # (2026-09-30), so this is an ordinary haiku dispatch: refusing it
         # stopped every explore log the day the alias moved, and filing it
         # under the old generation would name a model that did not run.
         with tempfile.TemporaryDirectory() as temp_dir:
             temp = Path(temp_dir)
-            self._stage(temp, ["claude-sonnet-6"])
+            self._stage(temp, ["claude-haiku-6"])
             result = self._log()
             self.assertEqual(result.returncode, 0, result.stderr)
             record = self._record(temp)
-            self.assertEqual(record["model"], "claude-sonnet")
-            self.assertEqual(record["observed_model"], "claude-sonnet-6")
+            self.assertEqual(record["model"], "claude-haiku")
+            self.assertEqual(record["observed_model"], "claude-haiku-6")
 
     def test_the_logger_and_the_reports_read_one_family(self) -> None:
         # experience-log carries its own copy of model_family because it runs

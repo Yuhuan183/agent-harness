@@ -22,7 +22,7 @@ Own model/role selection and verifier eligibility. Do not choose dispatch shape 
 
 | Role | Use only when |
 |---|---|
-| `explore` | Broad or bulky read-only search; known-target lookup stays direct |
+| `Explore` | Broad or bulky read-only search; known-target lookup stays direct |
 | `mech-executor` | A complete spec makes the work mechanical |
 | `executor` | Isolation or preserved main context repays reconstruction cost |
 | `plan-verifier` | A material Plan warrants a fresh Opus challenge |

@@ -17,13 +17,13 @@ A high-tier pinned agent (Opus/high) costs about as much as the main session —
 1. **Parallelism** — two or more genuinely independent workstreams where wall-clock matters.
 2. **Context protection** — bulky reads or noisy output would pollute the main window that later judgment still needs.
 3. **Fresh-context independence** — the value *is* the separate context (`verifier`, `plan-verifier`, `security-reviewer`).
-4. **Cheaper tier** — a pinned low role (`explore`, `mech-executor`) genuinely covers the task.
+4. **Cheaper tier** — a pinned low role (`Explore`, `mech-executor`) genuinely covers the task.
 
 A single sequential task with none of these stays in main. When the payoff is marginal or uncertain, work directly — a wrong direct call costs one task; habitual marginal dispatch taxes every task.
 
 ## Dispatch shape
 
-Keep small or tightly coupled work in main; use one `explore` for broad discovery or one review lens, bounded parallel agents for independent surfaces, and isolated workspaces for competing writes. Repetition must prove one sample before batching, and `Workflow` still requires user opt-in. Never map request bullets directly to agents.
+Keep small or tightly coupled work in main; use one `Explore` for broad discovery or one review lens, bounded parallel agents for independent surfaces, and isolated workspaces for competing writes. Repetition must prove one sample before batching, and `Workflow` still requires user opt-in. Never map request bullets directly to agents.
 
 ## Recurrence and batching
 
@@ -65,7 +65,7 @@ Before the first readiness review of a security-sensitive unit, complete `securi
 [LEAF_RESULT] dispatch_id=<id>|task=<label>|outcome=<accepted|corrected|rebriefed|failed>|qc=<spot|full>|ledger=<logged|skipped(reason)>
 ```
 
-A finished agent's final response is its deliverable — the harness returns it on completion. Collect it from the finished task; never relaunch or ask a read-only recon agent (`explore`, `plan-verifier`, `security-reviewer`) to relay, restate, or report back a result it already produced. Use the resume channel only for genuinely new or redirected work. A dispatch returning nothing usable is not a result: re-brief once, then stop dispatching it — work directly or report it unverified. An absent verifier is never a pass, so nothing gated on it may be claimed: readiness, verification, credentials, or any outward write. A lost agent is not a user decision; do not hand it over as one. Treat a single load-bearing recon fact as an unverified input: sanity-check or re-run it in main, since the `verifier` gate covers executor output, not reconnaissance.
+A finished agent's final response is its deliverable — the harness returns it on completion. Collect it from the finished task; never relaunch or ask a read-only recon agent (`Explore`, `plan-verifier`, `security-reviewer`) to relay, restate, or report back a result it already produced. Use the resume channel only for genuinely new or redirected work. A dispatch returning nothing usable is not a result: re-brief once, then stop dispatching it — work directly or report it unverified. An absent verifier is never a pass, so nothing gated on it may be claimed: readiness, verification, credentials, or any outward write. A lost agent is not a user decision; do not hand it over as one. Treat a single load-bearing recon fact as an unverified input: sanity-check or re-run it in main, since the `verifier` gate covers executor output, not reconnaissance.
 
 Report the launch and the post-QC outcome as separate fixed records, never buried in prose, in exactly the two shapes above — `dispatch_id` included, since it is what ties the record to the pending stub and the ledger. Use actual active/resolved route values, with request_source `claude-code`. After QC, load `experience-ledger` and log the same neutral task label, task class, route, request source, and outcome; never claim `logged` before the command succeeds.
 

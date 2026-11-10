@@ -45,7 +45,10 @@ class AgentRosterTests(unittest.TestCase):
         for role in ROLES:
             meta = frontmatter(f".claude/agents/{role}.md")
             body = read(f".claude/agents/{role}.md")
-            self.assertIn(f"name: {role}\n", meta)
+            # Explore keeps the built-in's spelling so this definition replaces
+            # it (2026-11-10); the ledger still keys the cohort as `explore`.
+            name = "Explore" if role == "explore" else role
+            self.assertIn(f"name: {name}\n", meta)
             self.assertRegex(meta, r"(?m)^model:\s*\S+\s*$")
             # Words, not lines: a line budget is raised by writing longer
             # lines, and these role bodies already pack several independent
@@ -94,15 +97,18 @@ class AgentRosterTests(unittest.TestCase):
                 "the compression left the sentences their subjects")
 
     def test_model_tiers_are_pinned(self) -> None:
-        self.assertIn("model: sonnet", frontmatter(".claude/agents/explore.md"))
-        self.assertIn("model: sonnet", frontmatter(".claude/agents/mech-executor.md"))
+        # User-directed 2026-11-10: reconnaissance moved to haiku once the
+        # Sonnet-floor priors were declared stale.
+        self.assertIn("model: haiku", frontmatter(".claude/agents/explore.md"))
+        # User-directed 2026-11-10: mechanical work moved to opus/low.
+        self.assertIn("model: opus", frontmatter(".claude/agents/mech-executor.md"))
         # User-directed 2026-07-23: sonnet/high left the effort-curve Pareto
         # frontier, so executor joined the Opus tier.
         for role in ("executor", "plan-verifier", "verifier",
                      "security-reviewer", "security-executor"):
             self.assertIn("model: opus", frontmatter(f".claude/agents/{role}.md"), role)
 
-    PINNED_EFFORTS = {"explore": "low", "mech-executor": "medium",
+    PINNED_EFFORTS = {"explore": "low", "mech-executor": "low",
                       "executor": "medium", "plan-verifier": "medium",
                       "verifier": "high", "security-reviewer": "high",
                       "security-executor": "high"}

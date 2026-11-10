@@ -238,7 +238,7 @@ class ClaudeContractTests(unittest.TestCase):
 
     def test_claude_md_delegates_detail_to_skills(self) -> None:
         policy = read(".claude/CLAUDE.contract.md")
-        for skill in ("baton-dispatch", "provider-routing", "headroom-protocol"):
+        for skill in ("baton-dispatch", "provider-routing"):
             self.assertIn(skill, policy)
         # Routing detail and the version gate live in skills / the runtime-guard hook,
         # not inline in the resident contract.

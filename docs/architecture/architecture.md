@@ -460,7 +460,7 @@ trap 量得到行為卻量不到成本. 所以一個跨層的主張需要跨層�
 |---|---|
 | [數據研究](../research/README.md) | 各 model/effort 的 benchmark 與成本口徑, 選擇理由, 以及還沒本機驗證的缺口 |
 | [Fable 5 安全 fallback](../research/fable-5-fallback.md) | 用 Fable 5 時怎麼避免被切到 Opus (把觸發內容派給 Opus leaf, 保持 main context 乾淨), 以及可行性邊界 |
-| 資料來源與驗證 | benchmark 快照怎麼抓, 如何交叉驗證, 與前一版差異 — 見[研究摘要](../research/model-evidence.md) 的快照章節, 逐格驗證口徑在 [routing toml](../../main/claude/model-routing.toml) 的 `data_verification` 欄位 |
+| 資料來源與驗證 | benchmark 快照怎麼抓, 如何交叉驗證, 與前一版差異 — 見[研究摘要](../research/model-evidence.md) 的快照章節 (2026-11-10 起視為過期) |
 | [context 收束規範](../contract-slimming.md) | 常駐契約放什麼/不放什麼, 預算怎麼算, 怎麼驗收; 大型唯讀輸入的壓縮見 [headroom-runtime](../../main/.agents/docs/headroom-runtime.md) |
 | [hook 案例規範](../hook-system.md) | hook 怎麼建, 怎麼 pipe-test, 失敗訊息怎麼回到模型 |
 | [測試案例規範](../engineering-playbook.md#5-驗證迴路) | 行為 trap 怎麼設計, grader 為何不信報告, covenant「無失敗 trap 即修剪」 |

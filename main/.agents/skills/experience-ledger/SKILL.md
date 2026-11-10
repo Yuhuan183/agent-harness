@@ -54,7 +54,7 @@ and session automatically; a native Claude dispatch then only needs its outcome:
   surprises go in `--note`.
 - Use `--class recon` for locating/inventory work and `--class review` for
   adversarial repository review with a named lens (defaults to full QC). Never
-  merge the two cohorts just because both ran on `explore`.
+  merge the two cohorts just because both ran on `Explore`.
 - Deviating from a report hint requires a `--note` with the reason.
 
 ## Reporting (when a route choice is uncertain; weekly routine)

@@ -13,7 +13,7 @@
 | 理解整體架構與資料流 | [根 README](../README.md) | [Harness Engineering Playbook](engineering-playbook.md) |
 | 安裝, 同步或回滾 | [配置與部署](setup.md) | [Claude README](../main/claude/README.md) |
 | 修改 leaf role 或派工契約 | [Playbook: Leaf 分派](engineering-playbook.md#leaf-分派的三層契約) | [Briefs](../main/claude/skills/baton-dispatch/references/briefs-and-stops.md) |
-| 評估 model 與 effort | [研究總結](research/README.md) | [Claude routing](../main/claude/model-routing.toml) |
+| 評估 model 與 effort | [Claude routing](../main/claude/model-routing.toml) 與 `experience-report` | [研究總結](research/README.md) (歷史紀錄) |
 | 用 Fable 5 時避免被切到 Opus | [Fable 5 安全 fallback](research/fable-5-fallback.md) | [provider-routing](../main/claude/skills/provider-routing/SKILL.md) |
 | 查 experience-ledger 指標 | [Metrics](../main/.agents/skills/experience-ledger/references/metrics.md) | [skill 本體](../main/.agents/skills/experience-ledger/SKILL.md) |
 | 驗證派工狀態與路由證據 | [派工生命週期](dispatch-lifecycle.md) | [route_source 強度](../main/.agents/skills/experience-ledger/references/metrics.md) |
@@ -24,7 +24,7 @@
 | 跑多回合 lifecycle replay | [evals/replay/](../evals/replay/) | [存活判準](research/lifecycle-replay.md) |
 | 深度審查本 repo 設計 | [harness-review](../.agents/skills/harness-review/SKILL.md) (dev-only) | [orchestration 不變量](plans/orchestration-state.md) |
 | 重查上游或蒸餾一個新的 | [upstream-distillation](../.agents/skills/upstream-distillation/SKILL.md) (dev-only) | [時效性基準](research/README.md#時效性基準), [peer-harnesses](research/peer-harnesses.md) |
-| 決定下一步做什麼 | [待辦方向](research/README.md#待辦方向) | [等證據的項目](plans/pending-evidence.md) |
+| 決定下一步做什麼 | [等證據的項目](plans/pending-evidence.md) | [待辦方向](research/README.md#待辦方向) (歷史紀錄) |
 | 給另一個 repo 一份專案層 | [`main/project/`](../main/project/README.md) — 誰該裝, 誰不該裝 | [Trellis 勘查](research/trellis-survey.md), [Playbook 第 9 節](engineering-playbook.md#9-enforcement-層級與-bootstrap) |
 
 ## 文件責任
@@ -49,7 +49,7 @@
 | Graph | [QC 白話說明](qc-explainer.md) | 為什麼需要 QC, 四個步驟各吃什麼, 白話的取證說明 | 有約束力的 QC 規則字面 (在兩份派工 skill) |
 | Graph | [派工生命週期](dispatch-lifecycle.md) | 派工五個狀態的承載物, 不成立的推論, 驗證清單 | 派工形狀與 QC (baton-dispatch), provider 選擇 (provider-routing) |
 | Graph | [Fable 5 安全 fallback](research/fable-5-fallback.md) | 用 Fable 5 時怎麼避免被切到 Opus, 以及可行性邊界 | 本 repo 的跨 provider fallback 規則 (在 provider-routing) |
-| 跨層 · 證據 | [研究總結](research/README.md) | 九個現行結論, 來源衝突與裁決, 時效性基準, 待辦方向, 驗證缺口; `research/` 底下唯一的現行結論來源 | runtime 強制規則, 現行 route pins, 逐次查核的原始紀錄 (在 [landing-log](research/landing-log.md)) |
+| 跨層 · 證據 | [研究總結](research/README.md) | 九個現行結論, 來源衝突與裁決, 時效性基準, 待辦方向, 驗證缺口; 2026-11-10 起與 `research/` 其他文件一樣是歷史紀錄 | runtime 強制規則, 現行 route pins, 逐次查核的原始紀錄 (在 [landing-log](research/landing-log.md)) |
 | 跨層 · 證據 | [Matt Pocock skills 導入研究](research/mattpocock-skills-integration.md) | 上游快照, 工作流比較, 相容性, 採用與拒絕理由 | 實作進度, runtime skill 本體 |
 | 跨層 · 部署 | [配置與部署](setup.md) | bootstrap, apply, 驗收與回滾步驟 | 模型選擇理由 |
 | 跨層 · 清單 | [Orchestration 不變量](plans/orchestration-state.md) | 八條必須成立的性質, 各自指向擁有者; 改動前後逐條檢查用 | 每條的論證與實作 (在四份層文件) |
@@ -73,10 +73,12 @@
    的實例: `model-routing.toml` 連向 `model-evidence.md` 又重述了它的理由, 當天那個比較被撤回,
    抄過去的那句活了下來).
 2. README 說明全貌與入口, 不承載會頻繁變動的 model 數值或完整操作細節.
-3. benchmark, effort, 日期與成本口徑只放研究總結或 routing data, 不寫成永久能力宣稱.
+3. benchmark, effort, 日期與成本口徑只放 routing data, 不寫成永久能力宣稱.
 4. 已落地的 runtime 規則從 plan 移出; 結案的計畫退場, 結果記進 landing-log, 全文由 Git 保存.
-   `docs/research/` 底下**只有 [`research/README.md`](research/README.md) 是現行指引**, 其餘是紀錄:
-   它們刻意保留被後來證據推翻的段落, 所以不進「指引是否還對」的稽核範圍. 分界寫在
+   `docs/research/` 整層 (包括 [`research/README.md`](research/README.md)) 自 2026-11-10 起是
+   **歷史紀錄**, 不是現行指引, 不能拿來當保留或拒絕變更的理由. 現行依據是 runtime 檔案,
+   routing data 與 ledger 實測. 紀錄刻意保留被後來證據推翻的段落, 所以不進「指引是否還對」的
+   稽核範圍. 分界寫在
    [`document-inventory.json`](document-inventory.json), 由 `test_document_inventory.py` 盯住,
    由 [`scripts/docs-size-report.py`](../scripts/docs-size-report.py) 分層回報.
 5. 文件改動仍需通過 contract tests, 連結檢查, `git diff --check` 與部署 dry-run.
@@ -99,7 +101,7 @@
    | 層 | 涵蓋 | 寫法 |
    |---|---|---|
    | 給模型讀 | contracts, roles, skills, script 註解的操作本體 | 英文, 見規則 6 |
-   | 說明與研究 | [架構總覽](architecture/architecture.md), [context](architecture/context-engineering.md), [harness](architecture/harness-engineering.md), [loop](architecture/loop-engineering.md), [graph](architecture/graph-engineering.md), [QC 白話說明](qc-explainer.md), [研究總結](research/README.md) | 讀者不必先懂本 repo 的內部詞彙. 核心概念先給圖, 數據對比先給表, 結論條列; 散文只用來講圖表講不了的因果. **內部代號** (`s11`, `p1b` 這類 trap 與 replay 情境編號) 第一次出現時, 同一句裡要有東西說它問的是什麼. 研究日誌不在這一層: 它們寫給跑過那批實驗的人看 |
+   | 說明 | [架構總覽](architecture/architecture.md), [context](architecture/context-engineering.md), [harness](architecture/harness-engineering.md), [loop](architecture/loop-engineering.md), [graph](architecture/graph-engineering.md), [QC 白話說明](qc-explainer.md) | 讀者不必先懂本 repo 的內部詞彙. 核心概念先給圖, 數據對比先給表, 結論條列; 散文只用來講圖表講不了的因果. **內部代號** (`s11`, `p1b` 這類 trap 與 replay 情境編號) 第一次出現時, 同一句裡要有東西說它問的是什麼. `docs/research/` 不在這一層: 那是歷史紀錄 (規則 4) |
    | 操作與規範 | [setup](setup.md), [hook-system](hook-system.md), [dispatch-lifecycle](dispatch-lifecycle.md), [contract-slimming](contract-slimming.md), 兩份 README | 直白精簡, 不為了淺顯加篇幅 |
 
    **`docs/**` 沒有字數預算.** 字數上限量的是 push 成本 (每回合或每次派工都要付的位元組), 而

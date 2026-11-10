@@ -44,7 +44,7 @@ Main 不是派工器而已: 它負責需求定義, 歧義, 架構, 風險, 切�
 
 | Role | 使用時機 | 權限邊界 |
 |---|---|---|
-| `explore` | 大範圍定位, 或具明確 lens 的有界專案 review | 唯讀; 不設計, 不實作, 不做最終判斷 |
+| `Explore` | 大範圍定位, 或具明確 lens 的有界專案 review | 唯讀; 不設計, 不實作, 不做最終判斷 |
 | `mech-executor` | pattern 與完成條件已完整 | 只做機械套用; 遇到例外就停止 |
 | `executor` | 封閉範圍內仍需要局部判斷的實作 | 可寫入; 不擴大產品或架構範圍 |
 | `plan-verifier` | material Plan 需要 fresh-context 挑戰 | 唯讀; 只回 `READY`/`REVISE` |

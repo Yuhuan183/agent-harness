@@ -2,6 +2,7 @@
 name: harness-review
 description: |
   Perform an evidence-first, read-only design review of agent-harness across contract enforcement, control flow, language policy, wording precision, modular ownership, and fixed context overhead. Use for full-repository reviews, bounded path or diff reviews, post-remediation verification, and pre-release audits of routing, dispatch, deployment, hooks, skills, tests, or resident agent contracts. Trigger on requests such as "harness review", "深度 review", "審一下這個 repo 的設計", "全面檢查 agent-harness", or "驗證前次 finding 是否修好". Do not use for other repositories, quick single-file explanations, routine test runs, or implementing fixes. This is a repo-root dev-only skill and must not be added to the deployment manifest.
+disable-model-invocation: true
 ---
 
 # Harness Review

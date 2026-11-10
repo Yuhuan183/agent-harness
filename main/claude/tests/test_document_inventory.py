@@ -123,7 +123,10 @@ class DocumentInventoryTests(unittest.TestCase):
             self.assertTrue(covers_any(evidence, journal), journal)
             self.assertFalse(covers_any(guidance, journal), journal)
 
-        self.assertIn("docs/research/README.md", guidance)
+        # 2026-11-10: the whole research tree, its README included, is a
+        # historical record rather than current guidance.
+        self.assertNotIn("docs/research/README.md", guidance)
+        self.assertTrue(covers_any(evidence, "docs/research/README.md"))
 
         # And no recursive `docs` rule may come back: it is what let that tree
         # grow six-fold inside the envelope without anyone deciding it should.
