@@ -1,0 +1,8 @@
+# Approved term<TAB>rejected variants separated by |
+# Read by main/.agents/skills/technical-writing/scripts/writing-lint.
+# Seeded 2026-11-10 from the dominant spelling in README.md and docs/:
+# 派工 109 vs 分派 6; leaf 61 vs 子代理 1; 真相源 17 vs 單一來源 1.
+派工	分派|派發
+leaf	子代理
+真相源	真實來源|單一來源
+部署	佈署

@@ -107,7 +107,11 @@ ROLE_BODY_BUDGET = 400
 # single ceiling should equalise. Widest measurements on 2026-08-04: `executor`
 # at 21 rules, `mech-executor` at 123.4 bytes/rule and 0.291 filler,
 # `plan-verifier` (codex) at 0.196 filler. See the metric definitions below.
-ROLE_RULE_BUDGET = 24
+# 24 -> 28 on 2026-11-10: the technical-writing (ASD-STE100) rewrite splits a
+# compound sentence into one instruction per sentence, and rule_units counts
+# sentences. `executor` went 21 -> 26 with its word count flat (394 of 400), so
+# the obligations did not grow; ROLE_BODY_BUDGET still bounds content.
+ROLE_RULE_BUDGET = 28
 ROLE_BYTES_PER_RULE = 135
 ROLE_FILLER_RANGE = (0.17, 0.32)
 # Every role pins model and effort from the active deployment preset (user-directed

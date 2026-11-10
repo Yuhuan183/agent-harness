@@ -24,6 +24,7 @@
 | `skills/evidence-debugging/` | 共用 skill 本體: 以已跑過的重現做診斷, 診斷與修復是兩種授權 (蒸餾自上游, 見其 `ATTRIBUTION.md`); 同以 symlink 雙端引用 |
 | `skills/test-first-change/` | 共用 skill 本體: 先寫會紅的檢查再改行為, seam 必須抵達可觀察結果 (蒸餾自上游, 見其 `ATTRIBUTION.md`); 同以 symlink 雙端引用 |
 | `skills/evidence-ladder/` | 共用 skill 本體: 為一個主張挑最便宜而足夠的證據層級, 並擋掉循環論證, 未校準的儀器與換了環境的數字 (使用者自撰, `ATTRIBUTION.md` 記為自有); 同以 symlink 雙端引用 |
+| `skills/technical-writing/` | 共用 skill 本體: 非創意文字的受控語言規則, 參照 ASD-STE100 的概念 (英文直接套用, 繁中改寫), 含術語表格式, 圖表選型與只回報的 `writing-lint`; 自有, 同以 symlink 雙端引用 |
 | `skills/INSTALLED.txt` | 本專案擁有並部署的共用 skill 清單; 同時界定 merge 時的管理範圍 |
 | `scripts/` | 跨端共用腳本: gate-line 正則的單一來源 (`gate_lines.py`, 供部署版 `qc-gate-lines` 稽核與 repo 內 trap graders 共用) |
 | `docs/headroom-runtime.md` | Headroom runtime 的跨 agent 架構與操作邊界 (Claude 與 Codex 流量共用同一 proxy, 故置於此, 不各留一份) |

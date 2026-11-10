@@ -22,3 +22,4 @@
 .claude/skills/experience-ledger	2026-09-10	claude 2.1.267	listed with its description in the session's skill list through the symlink into ~/.agents/skills
 .claude/skills/task-observer	2026-09-10	claude 2.1.267	listed with its description in the session's skill list (the thin wrapper's frontmatter, shared body via shared-instructions.md)
 .claude/skills/evidence-ladder	2026-09-10	claude 2.1.267	listed with its description in the session's skill list through the symlink into ~/.agents/skills
+.claude/skills/technical-writing	2026-11-10	claude 2.1.319	listed with its description in a fresh claude -p session's skill list, and in the running session, through the symlink into ~/.agents/skills

@@ -1,0 +1,8 @@
+interface:
+  display_name: "Technical Writing"
+  short_description: "Controlled-language rules for non-creative text, after ASD-STE100"
+  default_prompt: "Use $technical-writing to write or review this non-creative text by the house rules."
+policy:
+  # Explicit-only on this surface, like the other shared skills: nothing here
+  # has measured how another agent platform resolves it.
+  allow_implicit_invocation: false

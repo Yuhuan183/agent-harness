@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""Report controlled-language findings in Markdown or plain-text files.
+
+The checks follow the `technical-writing` skill. They are heuristics, so the
+script only reports. Exit status is 0 unless `--strict` is given and a finding
+exists, or an input cannot be read.
+
+Checks:
+  long-sentence     English sentence over --max-en-words words, or zh-TW
+                    sentence over --max-zh-units units (one per CJK character,
+                    one per other word).
+  passive           English "be + past participle" pattern. Likely, not sure.
+  chained-de        zh-TW sentence with three or more 的.
+  term              A variant that the glossary rejects.
+
+Skipped text: YAML front matter, fenced code, inline code, URLs, HTML tags,
+headings, and table rows.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
+
+CJK = re.compile(r"[一-鿿]")
+UNIT = re.compile(r"[一-鿿]|[^\s一-鿿]+")
+SENTENCE_END = re.compile(r"(?<=[.!?])\s+|(?<=[。！？])")
+PASSIVE = re.compile(
+    r"\b(?:is|are|was|were|be|been|being)\s+(?:\w+ly\s+)?(\w+(?:ed|en))\b",
+    re.IGNORECASE)
+# Words that end in -ed/-en but are adjectives or nouns far more often.
+PASSIVE_IGNORE = {"open", "often", "given", "hidden", "even", "seen", "token",
+                  "broken", "written", "chosen", "known", "own", "green",
+                  "between", "listen", "garden", "kitchen", "children"}
+LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+")
+
+
+def strip_inline(text: str) -> str:
+    text = re.sub(r"`[^`]*`", "", text)
+    text = re.sub(r"\]\([^)]*\)", "]", text)
+    text = re.sub(r"https?://\S+", "", text)
+    return re.sub(r"<[^>]+>", "", text)
+
+
+def blocks(lines: list[str]):
+    """Yield (line_number, text) for each prose block."""
+    in_fence = False
+    in_front = bool(lines) and lines[0].strip() == "---"
+    buf: list[str] = []
+    start = 0
+    for number, raw in enumerate(lines, 1):
+        line = raw.rstrip("\n")
+        if in_front:
+            if number > 1 and line.strip() == "---":
+                in_front = False
+            continue
+        if line.lstrip().startswith(("```", "~~~")):
+            in_fence = not in_fence
+            if buf:
+                yield start, " ".join(buf)
+                buf = []
+            continue
+        if in_fence or not line.strip() or line.lstrip().startswith(("#", "|")):
+            if buf:
+                yield start, " ".join(buf)
+                buf = []
+            continue
+        if LIST_ITEM.match(line) and buf:
+            yield start, " ".join(buf)
+            buf = []
+        if not buf:
+            start = number
+        buf.append(LIST_ITEM.sub("", line).strip())
+    if buf:
+        yield start, " ".join(buf)
+
+
+def load_glossary(path: Path | None) -> list[tuple[str, str]]:
+    pairs: list[tuple[str, str]] = []
+    if path is None:
+        return pairs
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip() or line.startswith("#"):
+            continue
+        approved, _, variants = line.partition("\t")
+        for variant in variants.split("|"):
+            if variant.strip():
+                pairs.append((variant.strip(), approved.strip()))
+    return pairs
+
+
+def check(path: Path, args, glossary) -> list[dict]:
+    findings: list[dict] = []
+    lines = path.read_text(encoding="utf-8").splitlines()
+    for line_no, block in blocks(lines):
+        text = strip_inline(block)
+        for sentence in SENTENCE_END.split(text):
+            sentence = sentence.strip()
+            if not sentence:
+                continue
+            cjk = len(CJK.findall(sentence))
+            units = len(UNIT.findall(sentence))
+            zh = cjk > 0 and cjk * 2 >= units
+            excerpt = sentence if len(sentence) <= 80 else sentence[:77] + "..."
+
+            def add(rule: str, message: str) -> None:
+                findings.append({"file": str(path), "line": line_no, "rule": rule,
+                                 "message": message, "text": excerpt})
+
+            if zh and units > args.max_zh_units:
+                add("long-sentence", f"{units} units > {args.max_zh_units}")
+            if not zh and units > args.max_en_words:
+                add("long-sentence", f"{units} words > {args.max_en_words}")
+            if not zh:
+                for match in PASSIVE.finditer(sentence):
+                    participle = match.group(1).lower()
+                    # un- participles (untrusted, unchanged) are adjectives.
+                    if participle not in PASSIVE_IGNORE and not participle.startswith("un"):
+                        add("passive", f"likely passive: '{match.group(0)}'")
+                        break
+            if zh and sentence.count("的") >= 3:
+                add("chained-de", f"{sentence.count('的')} x 的")
+            for variant, approved in glossary:
+                if variant in sentence:
+                    add("term", f"'{variant}' -> use '{approved}'")
+    return findings
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("paths", nargs="+", type=Path)
+    parser.add_argument("--glossary", type=Path)
+    parser.add_argument("--max-en-words", type=int, default=25)
+    parser.add_argument("--max-zh-units", type=int, default=60)
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--strict", action="store_true",
+                        help="exit 1 when any finding exists")
+    args = parser.parse_args()
+    try:
+        glossary = load_glossary(args.glossary)
+    except OSError as error:
+        print(f"ERROR: glossary: {error}", file=sys.stderr)
+        return 2
+    findings: list[dict] = []
+    for path in args.paths:
+        try:
+            findings += check(path, args, glossary)
+        except (OSError, UnicodeDecodeError) as error:
+            print(f"ERROR: {path}: {error}", file=sys.stderr)
+            return 2
+    if args.json:
+        print(json.dumps(findings, ensure_ascii=False, indent=2))
+    else:
+        for item in findings:
+            print(f"{item['file']}:{item['line']}: {item['rule']}: "
+                  f"{item['message']} | {item['text']}")
+        counts: dict[str, int] = {}
+        for item in findings:
+            counts[item["rule"]] = counts.get(item["rule"], 0) + 1
+        summary = ", ".join(f"{rule} {n}" for rule, n in sorted(counts.items()))
+        print(f"{len(findings)} findings" + (f" ({summary})" if summary else ""))
+    return 1 if args.strict and findings else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

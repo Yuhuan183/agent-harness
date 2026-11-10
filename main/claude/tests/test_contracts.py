@@ -1170,6 +1170,9 @@ class DocumentationBudgetTests(unittest.TestCase):
             # sentence that makes it reachable, since a reference no section
             # names is a file nobody opens.
             ".claude/skills/evidence-ladder/SKILL.md": 1315,
+            # Added 2026-11-10: the house rules after ASD-STE100. Measured
+            # 637 + ~2%.
+            ".claude/skills/technical-writing/SKILL.md": 650,
             # The two wrapper-backed bodies. Each was budgeted through the Codex
             # bundle's copy of the same file - one source, two deployed surfaces,
             # one ceiling written on the surface that has since left. These are

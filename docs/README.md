@@ -95,7 +95,8 @@
    - 程式裡拿全形當資料比對的字面值 (regex class, 對前四類的逐字斷言).
 
    引號 (「」『』《》〈〉) 與破折號沒有半形對應, 照舊. `docs/**` 與根 README 這層由測試盯住.
-8. 讀者分層與呈現. 全域底線是短句: 一句一義, 拆掉嵌套修飾, 但術語照留 —— 換成白話近義詞會把
+8. 讀者分層與呈現. 全域底線是短句: 一句一義, 拆掉嵌套修飾 (句子層規則見
+   [`technical-writing`](../main/.agents/skills/technical-writing/SKILL.md)), 但術語照留 —— 換成白話近義詞會把
    精確性一起換掉. 在此之上分三層, 依讀者分而不依主題分:
 
    | 層 | 涵蓋 | 寫法 |
@@ -116,3 +117,12 @@
    **內容指紋**: trap 在 `surface.tsv` 宣告量測面, [`evals/scripts/trap-surface.py`](../evals/scripts/trap-surface.py)
    算出 sha256, 結果列記 `[surface <short>]`. 指紋由位元組算出, rebase, 搬檔, 改名都不影響. 現況由
    [`scripts/evidence-check.py`](../scripts/evidence-check.py) 只報不擋.
+
+10. 圖. 人讀文件可以用圖輔助: 流程圖, 狀態圖, 時序圖, 樹狀圖, UML 類別圖與一般圖檔.
+
+    - 優先寫成 Markdown 裡的 Mermaid 區塊, GitHub 直接顯示. 圖型怎麼選見
+      [diagrams](../main/.agents/skills/technical-writing/references/diagrams.md).
+    - 每張圖後面接一段文字, 給出和圖一樣的結論, 沒看圖的人不會漏掉東西.
+    - 圖檔放 `docs/assets/<文件名>/`, 優先用 SVG, 原始檔放在旁邊並用同一個檔名.
+    - [`scripts/render-diagrams.py`](../scripts/render-diagrams.py) `check` 檢查每個 Mermaid 區塊畫得出來,
+      `export` 把 `.mmd` 匯出成 SVG. 術語一致性用 [`docs/glossary.tsv`](glossary.tsv) 與 `writing-lint` 檢查.

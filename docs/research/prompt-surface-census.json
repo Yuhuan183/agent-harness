@@ -67,13 +67,13 @@
           "words": 575
         },
         {
-          "bytes": 7010,
-          "file_bytes": 7926,
-          "file_sha256": "e6769204e2c1ba4ee00c18d6e788b434a43695eb277a381688d8b7b5595181b9",
+          "bytes": 7071,
+          "file_bytes": 7987,
+          "file_sha256": "51959174df06a9c8728fdd7967a92b167e6a9ac2a23ff1ea7e76de761a5afe37",
           "kind": "skill-body",
           "path": "main/claude/skills/readable-zh-tw/SKILL.md",
-          "sha256": "f3f60ad612863fa2c243029a030e075a198b192d15c1836c7851275d637d16f6",
-          "words": 1883
+          "sha256": "100b673b358476e8f25bf4f773295922cb4c3d1d8a6dd7ae410a1d73c005db64",
+          "words": 1906
         },
         {
           "bytes": 243,
@@ -83,6 +83,15 @@
           "path": "main/claude/skills/task-observer/SKILL.md",
           "sha256": "62f5af6d49332221cb96c107455fe30be116f014655cb0aca7c1771f2ad245bf",
           "words": 29
+        },
+        {
+          "bytes": 3073,
+          "file_bytes": 3564,
+          "file_sha256": "ac7d868f938bdcab323b7a678cac58bc714222bd6a4eb182b8766c0fae6c2815",
+          "kind": "skill-body",
+          "path": "main/claude/skills/technical-writing/SKILL.md",
+          "sha256": "9b9496d36a8df903e661b866aff042bde64216f7dbe1457fd967dc9ba8080273",
+          "words": 538
         },
         {
           "bytes": 5198,
@@ -96,10 +105,10 @@
       ],
       "resident": [
         {
-          "bytes": 3356,
+          "bytes": 3492,
           "path": "main/claude/CLAUDE.contract.md",
-          "sha256": "961b3b6cf7c5126e940a8f58b6992a0e3b42a90d8168464e40bc20168150c931",
-          "words": 513
+          "sha256": "472bb0090a85561f3d71669ad4c4dc526faa880b7aa92c30c8d0b12a3621f844",
+          "words": 525
         },
         {
           "bytes": 427,
@@ -157,12 +166,21 @@
         },
         {
           "bytes": 864,
-          "file_bytes": 7926,
-          "file_sha256": "e6769204e2c1ba4ee00c18d6e788b434a43695eb277a381688d8b7b5595181b9",
+          "file_bytes": 7987,
+          "file_sha256": "51959174df06a9c8728fdd7967a92b167e6a9ac2a23ff1ea7e76de761a5afe37",
           "kind": "skill-metadata",
           "path": "main/claude/skills/readable-zh-tw/SKILL.md",
           "sha256": "65234bafacfdf132ef5e65011e91cef89e9119a2c38a5f3c659c3645b5107a31",
           "words": 209
+        },
+        {
+          "bytes": 454,
+          "file_bytes": 3564,
+          "file_sha256": "ac7d868f938bdcab323b7a678cac58bc714222bd6a4eb182b8766c0fae6c2815",
+          "kind": "skill-metadata",
+          "path": "main/claude/skills/technical-writing/SKILL.md",
+          "sha256": "aaebc6345f6adb9765266b0b126004a47c3014023f540430803688657dcc08a1",
+          "words": 94
         },
         {
           "bytes": 511,
@@ -175,8 +193,8 @@
         },
         {
           "bytes": 137,
-          "file_bytes": 1109,
-          "file_sha256": "ea86513cec7b1c487dbc270926d85b9bf6eb0fa023dc9554bc848fffd97fcdb2",
+          "file_bytes": 1115,
+          "file_sha256": "06a359abc653cd04d9eaba90a52b4c946f15b6726dec38cbc8963cd0eed8eeec",
           "kind": "role-metadata",
           "path": "main/claude/agents/explore.md",
           "sha256": "bf12b74325337b92730291a4611a0e1b9f1b0f5c81350b1954d39207cda61875",
@@ -202,8 +220,8 @@
         },
         {
           "bytes": 158,
-          "file_bytes": 1725,
-          "file_sha256": "210e1c3ddceea0821f58dbbef7bf10065eb900bc0ead2ee04f67422d0398bc7e",
+          "file_bytes": 1752,
+          "file_sha256": "966751138d31f638539a6e1a401286ee2a0c197d376b892a79bb5be8e57de1c5",
           "kind": "role-metadata",
           "path": "main/claude/agents/mech-executor.md",
           "sha256": "b8e65c9a7d5903d566564549f5c9cc044b5e2037f27e49bdc134983c6650950d",
@@ -211,8 +229,8 @@
         },
         {
           "bytes": 178,
-          "file_bytes": 2790,
-          "file_sha256": "9b84b5d171559edfd58882e8a95772e7944164ddf43c9fad9ac3b17f47e78329",
+          "file_bytes": 2806,
+          "file_sha256": "a1f5e8653d400c7f70b3ef01b795571c116621d7f624c69cdfd36780df882e8e",
           "kind": "role-metadata",
           "path": "main/claude/agents/executor.md",
           "sha256": "8259a015f76fb5b9b8523e66c141c453f4453a80d4c9808e84550aaf34e1177a",
@@ -221,7 +239,7 @@
         {
           "bytes": 146,
           "file_bytes": 1970,
-          "file_sha256": "6149fb2089aa765791dd62e20c06309732c9f736b4bd4219bc76ba78fbc7207a",
+          "file_sha256": "8c1f4b11e6aef539e598ddddcd30bc36f9341165586350b177f9228a539c2b91",
           "kind": "role-metadata",
           "path": "main/claude/agents/verifier.md",
           "sha256": "9a2c5e284480c714e4c71665476ea086e656ebaa1b19bb4457eee0173bff80a5",
@@ -229,8 +247,8 @@
         },
         {
           "bytes": 111,
-          "file_bytes": 2390,
-          "file_sha256": "46dd5f6be58caac1305d8469a5acc83e54c569b30ec75d151e56a4794b2e2a75",
+          "file_bytes": 2409,
+          "file_sha256": "9901549e60565cf4c05e3c48727d1e7245f2cfcc216320d0ba15d8cbe782ba4d",
           "kind": "role-metadata",
           "path": "main/claude/agents/security-executor.md",
           "sha256": "2f0d3f9e045e28d17b0e205c3efe39abb2eba4405429545139f1b3cd7aa41a76",
@@ -239,12 +257,12 @@
       ],
       "roles": [
         {
-          "bytes": 894,
-          "file_bytes": 1109,
-          "file_sha256": "ea86513cec7b1c487dbc270926d85b9bf6eb0fa023dc9554bc848fffd97fcdb2",
+          "bytes": 900,
+          "file_bytes": 1115,
+          "file_sha256": "06a359abc653cd04d9eaba90a52b4c946f15b6726dec38cbc8963cd0eed8eeec",
           "path": "main/claude/agents/explore.md",
-          "sha256": "6dd524bc998b976696f6a9d4d7ea1ee697ae12a08af373814f6f695de7ebc7d8",
-          "words": 135
+          "sha256": "75fb87b2e78e5b9efc968d72bf417de2d8fc772be2cc05875ce8761d4ce1783a",
+          "words": 137
         },
         {
           "bytes": 1169,
@@ -263,36 +281,36 @@
           "words": 85
         },
         {
-          "bytes": 1479,
-          "file_bytes": 1725,
-          "file_sha256": "210e1c3ddceea0821f58dbbef7bf10065eb900bc0ead2ee04f67422d0398bc7e",
+          "bytes": 1506,
+          "file_bytes": 1752,
+          "file_sha256": "966751138d31f638539a6e1a401286ee2a0c197d376b892a79bb5be8e57de1c5",
           "path": "main/claude/agents/mech-executor.md",
-          "sha256": "8cd9e2598c512531f14a2fb0d9af98a067d0ada19da4798d9fcc633e2e0c6d83",
-          "words": 233
+          "sha256": "c8cbe07b2f45845b686171e51d04d8c594ed2450b4ae9f308484ed88155965c3",
+          "words": 238
         },
         {
-          "bytes": 2523,
-          "file_bytes": 2790,
-          "file_sha256": "9b84b5d171559edfd58882e8a95772e7944164ddf43c9fad9ac3b17f47e78329",
+          "bytes": 2539,
+          "file_bytes": 2806,
+          "file_sha256": "a1f5e8653d400c7f70b3ef01b795571c116621d7f624c69cdfd36780df882e8e",
           "path": "main/claude/agents/executor.md",
-          "sha256": "bb5bdfdb20ca958c48a39b8bc42361a9cd57b1f55fce2d9b2ae9f3287e913e20",
-          "words": 391
+          "sha256": "ed4ab9688370c7fb2cc0f512e7f98b54cf2a5c3cb9dba44aaf4d74ab7e2816db",
+          "words": 394
         },
         {
           "bytes": 1725,
           "file_bytes": 1970,
-          "file_sha256": "6149fb2089aa765791dd62e20c06309732c9f736b4bd4219bc76ba78fbc7207a",
+          "file_sha256": "8c1f4b11e6aef539e598ddddcd30bc36f9341165586350b177f9228a539c2b91",
           "path": "main/claude/agents/verifier.md",
-          "sha256": "6b6d58283e0a835d8aa920d25985adbffb9df9e4ef87117a42d5a97c007b9dc3",
-          "words": 249
+          "sha256": "f12941c6e8ecc5074eddcd49b284499ff22f6d4a62e9e33b7e126bca4166f651",
+          "words": 253
         },
         {
-          "bytes": 2192,
-          "file_bytes": 2390,
-          "file_sha256": "46dd5f6be58caac1305d8469a5acc83e54c569b30ec75d151e56a4794b2e2a75",
+          "bytes": 2211,
+          "file_bytes": 2409,
+          "file_sha256": "9901549e60565cf4c05e3c48727d1e7245f2cfcc216320d0ba15d8cbe782ba4d",
           "path": "main/claude/agents/security-executor.md",
-          "sha256": "eaadf1937674949df1568242823748cb69e63702bce7cc0d1fb463e887d26d42",
-          "words": 332
+          "sha256": "c00f0d4371358c548571ff4f9bb94887489d18021ce22b5647a8c66c09fb87f0",
+          "words": 336
         }
       ]
     }
@@ -301,19 +319,19 @@
   "totals": {
     "claude": {
       "dispatch": {
-        "bytes": 43248,
-        "payload_sha256": "4a0ce13ad698b7bf0d17593625a0eccfa036942084c2109224a887c52cb1984b",
-        "words": 7452
+        "bytes": 46382,
+        "payload_sha256": "ee7cb3c3f8463511e32bf15c0f9979c13644a4367b0823330ffc2aec3e64d34e",
+        "words": 8013
       },
       "resident": {
-        "bytes": 8478,
-        "payload_sha256": "940007b442fcdf0fb242acdb9b6618ea0a63af811196fd3ad70d70277137ff55",
-        "words": 1488
+        "bytes": 9068,
+        "payload_sha256": "fa621e1a4e1e954682b6f15dd4a2201cd88884f17f31de267c3380225b85d85d",
+        "words": 1594
       },
       "roles": {
-        "bytes": 10646,
-        "payload_sha256": "ca6643f559ae0d502eadc0ceab03758b9c37bfb2ee4ff8acf8b373fa99dde2c0",
-        "words": 1586
+        "bytes": 10714,
+        "payload_sha256": "3f5fc40b05810ef459eb1aa8ef3f148707978e7d663575cf69a235679d9e7cc6",
+        "words": 1604
       }
     }
   },

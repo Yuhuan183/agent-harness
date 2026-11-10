@@ -200,6 +200,7 @@ class SharedSkillTests(unittest.TestCase):
                 "headroom-protocol",
                 "readable-zh-tw",
                 "task-observer",
+                "technical-writing",
                 "test-first-change",
             ],
         )

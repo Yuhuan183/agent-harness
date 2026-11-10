@@ -51,6 +51,7 @@ main/claude/skills/task-observer/SKILL.md
 main/claude/skills/evidence-debugging/SKILL.md
 main/claude/skills/test-first-change/SKILL.md
 main/claude/skills/evidence-ladder/SKILL.md
+main/claude/skills/technical-writing/SKILL.md
 
 [contract]
 main/claude/hooks/experience-pending.py
