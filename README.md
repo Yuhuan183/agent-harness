@@ -1,7 +1,7 @@
 # agent-harness
 
-`agent-harness` 把原本散落在 `~/.claude`, `~/.codex`, `~/.agents` 的手寫契約, leaf roles,
-skills, routing 與監控機制納入 Git —— 讓全域 agent 配置可以 review, 測試, 部署, 回滾, 而
+`agent-harness` 把原本散落在 `~/.claude` 與 `~/.agents` 的手寫契約, leaf roles, skills,
+routing 與監控機制納入 Git. 全域 agent 配置因此可以 review, 測試, 部署, 回滾, 而且
 **不會覆蓋憑證, session 或其他機器狀態**.
 
 它解決四件事:
@@ -137,7 +137,7 @@ git diff --check
 scripts/sync.sh
 ```
 
-五支只報不擋的工具, 不在上面的驗收鏈裡, 因為它們回答的是「現在長什麼樣」而不是「這次改動對不對」:
+五支只報不擋的工具不在上面的驗收鏈裡. 它們回答「現在長什麼樣」, 不回答「這次改動對不對」:
 
 ```bash
 scripts/evidence-check.py         # SHA 引用是否還解得開; trap 結果列的量測面指紋是否還是出貨版本
@@ -147,9 +147,10 @@ scripts/denial-report.py          # 這些閘實際擋了多少次, 擋在什麼
 scripts/upstream-pin-report.py    # 蒸餾來源的上游有沒有動過我們記下的那個 pin
 ```
 
-`machine-state-check.py` 也只報不擋, 答的是「跑完這個指令, repo 以外變了什麼」, 要手動執行, 沒有流程會自動跑它; 六支一次性的
-分析報告 (codename gloss, zh-tw usage, context inflow, memory freshness, budget drift, mechanism index)
-2026-09-15 退場, 讀數留在引用它們的研究文裡, 程式由 Git 保存.
+`machine-state-check.py` 也只報不擋. 它回答「跑完這個指令, repo 以外變了什麼」, 要手動執行,
+沒有流程會自動跑它. 六支一次性分析報告在 2026-09-15 退場, 讀數留在引用它們的研究文裡, 程式由
+Git 保存. 它們是 codename gloss, zh-tw usage, context inflow, memory freshness, budget drift,
+mechanism index.
 
 `scripts/contract-operator-delta.py` 刻意不在這張表: 它是契約精簡流程裡的佐證步驟, 不是
 「現在長什麼樣」的儀器.
@@ -163,7 +164,7 @@ manifest 驗證失敗, 都會在寫入前停止.
 四層地圖與升級評估, 再指向每一層. 其餘依工作目的從 [docs/README.md](docs/README.md) 進入:
 
 - [Engineering playbook](docs/engineering-playbook.md): 可跨專案複用的設計與驗證方法, 以及每條通則的完整論證.
-- [研究摘要](docs/research/README.md): benchmark 快照, 成本模型, 本機實驗與證據限制.
+- [研究摘要](docs/research/README.md): benchmark 快照, 成本模型, 本機實驗與證據限制. 2026-11-10 起是歷史紀錄.
 - [配置與部署](docs/setup.md): bootstrap, dry-run, apply, 驗收與回滾.
 - [常駐契約瘦身規範](docs/contract-slimming.md): CLAUDE.md 與 AGENTS.md 的內容判定, 預算與驗收.
 - [Orchestration 不變量](docs/plans/orchestration-state.md): 八條必須成立的性質與各自的擁有者.
