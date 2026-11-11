@@ -547,7 +547,7 @@ try:
 
     # No generation check here. Routes name families since 2026-09-30, so the
     # CLI moving `opus` to a newer generation leaves routing and the ledger
-    # correct, and `model-routing check-aliases` reports it on request.
+    # correct; the ledger's `observed_model` records which one ran.
 
     # A second resolver was validated here until 2026-09-14, when the Codex
     # bundle stopped shipping. Nothing replaced it: the Claude resolver above is

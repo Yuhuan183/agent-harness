@@ -16,7 +16,6 @@ import math
 import re
 import sys
 import tomllib
-from datetime import date
 from pathlib import Path
 
 # Routes name a model family, never a generation (2026-09-30). A frontmatter pin
@@ -75,27 +74,6 @@ def is_finite_number(value: object) -> bool:
         and not isinstance(value, bool)
         and math.isfinite(value)
     )
-
-
-def check_model_metrics(models: dict) -> list[str]:
-    """Reject non-finite numerics anywhere under the model evidence tree."""
-    errors: list[str] = []
-
-    def visit(value: object, path: str) -> None:
-        if isinstance(value, dict):
-            for key, child in value.items():
-                visit(child, f"{path}.{key}")
-        elif isinstance(value, list):
-            for index, child in enumerate(value):
-                visit(child, f"{path}[{index}]")
-        elif isinstance(value, (int, float)) and (
-            isinstance(value, bool) or not math.isfinite(value)
-        ):
-            errors.append(f"{path} must be a finite number")
-
-    for model_name, model in models.items():
-        visit(model, f"models.{model_name}")
-    return errors
 
 
 def load_config(path: Path) -> dict:
@@ -165,25 +143,6 @@ def revision_policy(config: dict) -> dict:
     return config["revision_policy"]
 
 
-def check_as_of(config: dict) -> list[str]:
-    """Validate `as_of`, the date of the recorded benchmark values.
-
-    `check-aliases` counts only leaf transcripts after it. The re-audit
-    cadence (`prior_review`, `prior_review_days`, `check-priors`) was retired
-    on 2026-11-10, when the user declared the research priors stale.
-    """
-    errors = []
-    as_of = config.get("as_of")
-    if not isinstance(as_of, str):
-        errors.append("as_of must be an ISO date string")
-    else:
-        try:
-            date.fromisoformat(as_of)
-        except ValueError:
-            errors.append(f"as_of is not an ISO date: {as_of!r}")
-    return errors
-
-
 def check_availability(models: dict, schema: dict[str, set]) -> list[str]:
     errors = []
     for model_name, model in models.items():
@@ -251,118 +210,6 @@ def check_approved_routes(
     return errors
 
 
-TIER_ORDER = ("support", "judgment", "critical")
-
-
-def route_score(config: dict, model_name: str, effort: str):
-    """Published index score for one route, with its provenance.
-
-    Returns (score, provenance). `per-effort` is a measurement of this rung.
-    `upper-bound` means only the model's max-effort aggregate is published, so
-    the number caps the rung from above but does not measure it - the rung
-    could be anywhere below. Nothing published at all returns (None, "none").
-    """
-    model = config.get("models", {}).get(model_name, {})
-    per_effort = (model.get("efforts", {}).get(effort) or {}).get("score")
-    if is_finite_number(per_effort):
-        return per_effort, "per-effort"
-    aggregate = model.get("aggregate", {}).get("score_max_effort")
-    if is_finite_number(aggregate):
-        return aggregate, "per-effort" if effort == "max" else "upper-bound"
-    return None, "none"
-
-
-def floor_coverage(config: dict) -> dict:
-    """Report how much of quality_floor.approved_routes has measured scores.
-
-    `quality_floor` reads like a numeric threshold but is implemented as a
-    curated list: route_floor_error can only test membership, never magnitude.
-    This makes the gap visible - per tier, how many listed rungs have a real
-    per-rung score, and whether the tier minima actually separate.
-    """
-    approved = config.get("quality_floor", {}).get("approved_routes", {})
-    tiers: dict[str, dict] = {}
-    for tier, routes in approved.items():
-        measured, unmeasured, scores = [], [], []
-        for route_key in routes:
-            if "/" not in route_key:
-                continue
-            score, provenance = route_score(config, *route_key.rsplit("/", 1))
-            if provenance == "per-effort":
-                measured.append(route_key)
-                scores.append(score)
-            else:
-                unmeasured.append(route_key)
-        tiers[tier] = {
-            "measured": measured,
-            "unmeasured": unmeasured,
-            "min_measured": min(scores) if scores else None,
-        }
-    warnings = []
-    ladder = [t for t in TIER_ORDER if tiers.get(t, {}).get("min_measured") is not None]
-    for lower, higher in zip(ladder, ladder[1:]):
-        low, high = tiers[lower]["min_measured"], tiers[higher]["min_measured"]
-        if high < low:
-            warnings.append(
-                f"tier {higher} admits a weaker measured route ({high:.2f}) than "
-                f"tier {lower} ({low:.2f}) - the floors are inverted"
-            )
-        elif high == low:
-            warnings.append(
-                f"tiers {lower} and {higher} have the same measured minimum "
-                f"({high:.2f}) - they do not separate on evidence"
-            )
-    for tier, data in tiers.items():
-        if data["unmeasured"]:
-            warnings.append(
-                f"tier {tier} approves {len(data['unmeasured'])} route(s) with no "
-                f"per-rung score: {', '.join(sorted(data['unmeasured']))}"
-            )
-    acknowledged, malformed = acknowledged_coverage(config)
-    return {
-        "tiers": tiers,
-        "warnings": [w for w in warnings if w not in acknowledged],
-        "notes": [(w, acknowledged[w]) for w in warnings if w in acknowledged],
-        "stale_acknowledgements": sorted(set(acknowledged) - set(warnings)),
-        "malformed_acknowledgements": malformed,
-    }
-
-
-def acknowledged_coverage(config: dict) -> tuple[dict[str, str], list[str]]:
-    """Return adjudicated coverage findings, and any malformed entries.
-
-    A warning nobody can act on is worse than no warning. All three findings
-    this file emits today are permanent and already argued out in
-    `quality_floor.notes` - the tiers coincide at the bottom because both list
-    `claude-opus/low`, and the unscored rungs are unscored because AA
-    publishes no per-rung index for Sonnet or Fable. `validate` runs on every
-    sync and in the weekly check, so leaving three standing alarms trains the
-    reader to skip exactly the line a new finding would arrive on.
-
-    An acknowledgement quotes the warning verbatim, numbers included, so it
-    covers only the finding actually adjudicated: add a rung to a tier, or let
-    a benchmark refresh move 52.46, and the text stops matching and the warning
-    comes back by itself. The converse is an error rather than a warning - an
-    acknowledgement matching nothing is the routing file asserting a decision
-    about a finding that no longer exists, which is the single failure this
-    mechanism could introduce and so the one it has to be loud about.
-    """
-    entries = config.get("quality_floor", {}).get("acknowledged_coverage", [])
-    acknowledged: dict[str, str] = {}
-    malformed: list[str] = []
-    for index, entry in enumerate(entries):
-        warning = entry.get("warning") if isinstance(entry, dict) else None
-        reason = entry.get("reason") if isinstance(entry, dict) else None
-        if not warning or not reason:
-            malformed.append(
-                f"quality_floor.acknowledged_coverage[{index}] needs both "
-                f"`warning` and `reason`"
-            )
-            continue
-        acknowledged[warning] = reason
-    return acknowledged, malformed
-
-
 def route_floor_error(
     config: dict, profile_name: str, role: str, model_name: str, effort: str,
     context: str = "",
@@ -427,35 +274,17 @@ def model_dispatchable(config: dict, model: str) -> bool:
 
 
 def report_validation(config: dict, errors: list[str]) -> int:
-    """Shared `validate` output for both provider resolvers.
+    """Shared `validate` output: errors fail the command.
 
-    Errors fail the command; floor-coverage findings print as warnings and do
-    not. That split is deliberate: coverage gaps describe how well the
-    published evidence backs the declared floors, and turning them into
-    failures would force a routing-semantics change to make the check pass.
-
-    A coverage finding the routing file has adjudicated prints as a NOTE
-    instead, and a claim to have adjudicated one that no longer exists is an
-    error - see `acknowledged_coverage` for why that asymmetry is the point.
+    The routing file holds policy only since 2026-11-10, so there is no
+    benchmark coverage to report beside the errors.
     """
-    coverage = floor_coverage(config)
-    errors = [
-        *errors,
-        *coverage["malformed_acknowledgements"],
-        *(f"acknowledged coverage finding no longer occurs, so the "
-          f"acknowledgement is stale: {stale}"
-          for stale in coverage["stale_acknowledgements"]),
-    ]
     if errors:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)
         return 1
     print(
         f"valid: {len(config['profiles'])} profiles, "
-        f"{len(config['models'])} benchmark models"
+        f"{len(config['models'])} models"
     )
-    for warning in coverage["warnings"]:
-        print(f"WARNING: {warning}")
-    for warning, reason in coverage["notes"]:
-        print(f"NOTE (acknowledged): {warning} - {reason}")
     return 0

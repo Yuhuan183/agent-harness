@@ -93,8 +93,8 @@ flowchart TD
 | Main session | 使用者在 task/session 開始前選擇; 專案不會在執行中偷換模型 |
 | Claude named roles | deployment preset; 一次原子更新全部 frontmatter pins, 重新部署並開新 session |
 
-實際的 pin, effort 與 availability 證據在 `main/claude/model-routing.toml`; 選擇理由與數據口徑在
-[研究摘要](../research/README.md).
+實際的 pin, effort 與各模型 availability 在 `main/claude/model-routing.toml`. 過去的選擇理由與
+數據口徑在 [研究摘要](../research/README.md), 2026-11-10 起是歷史紀錄.
 
 ## 派工紀錄長什麼樣
 

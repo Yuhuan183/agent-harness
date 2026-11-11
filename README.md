@@ -7,7 +7,7 @@ skills, routing 與監控機制納入 Git —— 讓全域 agent 配置可以 re
 它解決四件事:
 
 - **品質優先的派工**: main 保留架構與最終判斷; leaf 只處理有界, 可驗收的工作.
-- **可調整但不漂移的 routing**: benchmark 只是先驗, 真正修正選擇的是本機經過 review 的派工結果.
+- **可調整但不漂移的 routing**: 依本機經過 review 的派工結果修正選擇.
 - **角色契約自足**: 每個 leaf role 自帶權限, 停止條件與品質標準, 不必再去讀別的文件.
 - **可恢復的全域部署**: source checkout 是真相源; 同步前先驗證, 套用後比對; 回滾靠 git 重新部署.
 
@@ -103,7 +103,6 @@ main/claude/scripts/model-routing resolve --priority quality-guarded --role veri
 | 機制 | 解決的問題 | 真相源 |
 |---|---|---|
 | Routing validator/pin check | 阻止不完整 profile, 品質門檻以下 route 與 Claude pin 漂移 | `main/claude/scripts/model-routing` |
-| Alias generation report | 路由只寫家族, `opus` 指向哪個世代由 CLI 決定; `check-aliases` 以 leaf transcript 的真實 model id 回報各家族跑了哪一代, 與基準數據量測的世代不同時標出來. 只回報, 不會失敗 | [model-routing.py](main/claude/scripts/model-routing.py) |
 | Runtime guard | 需要新版能力的 reviewer 在版本過舊或未知時停止 | [runtime-guard.py](main/claude/hooks/runtime-guard.py) |
 | Capability-aware verifier | Claude 的 no-write role 不提供 Bash; 需要執行命令的驗證由 leaf 回報缺哪一項檢查, 改由 main 執行並當作中間證據 | [provider-routing](main/claude/skills/provider-routing/SKILL.md) |
 | Verifier 額度 | 同一個 prompt 內的第二個 Claude `verifier` 直接擋; 跨 prompt 不計, 那段仍屬判斷 | [verifier-quota.py](main/claude/hooks/verifier-quota.py), [dispatch-lifecycle](docs/dispatch-lifecycle.md) |
@@ -134,7 +133,6 @@ main/claude/scripts/model-routing resolve --priority quality-guarded --role veri
 main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests -v
 main/claude/scripts/model-routing validate
 main/claude/scripts/model-routing check-pins
-main/claude/scripts/model-routing check-aliases   # 只回報, 不會失敗
 git diff --check
 scripts/sync.sh
 ```

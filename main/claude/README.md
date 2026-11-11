@@ -40,13 +40,12 @@
 ## 路由
 
 主模型與 effort 由使用者選擇; H/X 是建議組合, 不會自動切換. Role routing 與 verifier 觸發條件收斂在
-`skills/provider-routing/`, 按需載入. Claude 三個 profile 是 session/deployment preset, 不是 per-dispatch override; 以
-在 source checkout 用 `scripts/model-routing activate-profile --profile <name>` 一次更新全部
-frontmatter pins, review 後透過根目錄 `scripts/sync.sh --apply` 部署, 再開新 session. 該工具另
-提供 `validate`/`resolve`/`check-pins`/`check-aliases` (每週 integrity 會自動比對部署與
-source 漂移). 路由只寫模型家族 (`claude-opus`), 世代由 CLI 的別名決定; `check-aliases`
-只回報 leaf transcript 實際跑了哪個世代, 不把世代更替當成漂移;
-資料來源只有一份.
+`skills/provider-routing/`, 按需載入. Claude 三個 profile 是 session/deployment preset, 不是
+per-dispatch override. 要切換時, 在 source checkout 用
+`scripts/model-routing activate-profile --profile <name>` 一次更新全部 frontmatter pins, review 後
+透過根目錄 `scripts/sync.sh --apply` 部署, 再開新 session. 該工具另提供 `validate`/`resolve`/
+`check-pins`; 每週 integrity 會自動比對部署與 source 漂移. 路由只寫模型家族 (`claude-opus`), 世代
+由 CLI 的別名決定, 世代更替不算漂移. 實際跑的 id 記在 ledger 的 `observed_model`, 資料來源只有一份.
 
 ## 初始設定
 

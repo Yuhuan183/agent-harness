@@ -183,28 +183,6 @@ install_git_hooks() {
   fi
 }
 
-# `validate` fails the command on an error and reports, non-fatally, a quality
-# floor whose approved routes have no measured score or whose tier minima do
-# not separate. Non-fatal is deliberate - making them fail would let an aging
-# benchmark stop a deployment, and the predictable response is to weaken the
-# floor until it stops complaining. Discarding stdout made them invisible
-# instead, which is the other way to ignore them (2026-07-30 review).
-#
-# Both severities are forwarded. A finding the routing file has adjudicated
-# prints as `NOTE (acknowledged)` rather than `WARNING` (2026-09-14); that is
-# meant to lower its volume on a command that runs every sync, not to drop it
-# out of the one gate every routing change passes. Filtering to WARNING here
-# would rebuild the 2026-07-30 defect under a quieter name.
-report_routing_warnings() { # $1 = label  $2 = resolver
-  local output line
-  output="$("$2" validate)"
-  while IFS= read -r line; do
-    [[ -n "$line" ]] || continue
-    log "$1 routing: $line"
-  done < <(printf '%s\n' "$output" \
-    | grep -E '^(WARNING: |NOTE \(acknowledged\): )' || true)
-}
-
 preflight() {
   log "== preflight =="
   # Use the same portable Python 3.11+ selector as deployed routing entrypoints.
@@ -218,7 +196,9 @@ preflight() {
   "$PYTHON_RUN" -m json.tool "$REPO/main/claude/examples/headroom-mcp.legacy.json" >/dev/null
   bash -n "$REPO/scripts/sync.sh" "$REPO/main/claude/sh/statusline.sh"
   validate_manifest
-  report_routing_warnings Claude "$REPO/main/claude/scripts/model-routing"
+  # validate prints only errors since 2026-11-10, when the routing file stopped
+  # carrying benchmark data; there are no coverage warnings left to relay.
+  "$REPO/main/claude/scripts/model-routing" validate >/dev/null
   "$REPO/main/claude/scripts/model-routing" check-pins >/dev/null
   git -C "$REPO" diff --check
   # Tests exercise sync.sh itself. The sentinel prevents recursive suites while

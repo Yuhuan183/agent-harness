@@ -116,8 +116,7 @@ flowchart TB
 
 1. **品質優先的派工**: main 保留架構與最終判斷, leaf 只做有界, 可驗收的工作. 直接執行是
    預設, 只有平行性, context 保護, fresh-context 獨立性或較低成本角色明顯值得開銷時才派工.
-2. **可調整但不漂移的 routing**: benchmark 只是外部先驗. 真正修正選擇的, 是本機經過 review
-   的派工結果. 改 preset 一定經人核准, 不在執行中偷換.
+2. **可調整但不漂移的 routing**: 依本機經過 review 的派工結果修正選擇. 改 preset 一定經人核准, 不在執行中偷換.
 3. **角色語意一致**: 每個 leaf role 的權限與品質語意由一份契約決定, 不隨叫用方式漂移.
 4. **可恢復的部署**: source 是真相源, 同步前 preflight, 套用後 parity, 回滾靠 git 重新部署.
 

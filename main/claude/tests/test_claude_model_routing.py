@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-import contextlib
 import importlib.util
-import io
 import json
 import os
-import re
 import shutil
 import subprocess
 import tempfile
 import tomllib
 import unittest
-from datetime import date, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -32,60 +28,24 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("valid: 3 profiles", result.stdout)
 
-    def test_prior_review_cadence_is_retired(self) -> None:
-        # Retired 2026-11-10: the user declared the research priors stale, so
-        # a "re-fetch the priors" cadence would ask for work that no longer
-        # decides a route. as_of stays, because check-aliases reads it.
-        text = (ROOT / "main/claude/model-routing.toml").read_text(encoding="utf-8")
-        self.assertNotIn("prior_review", text)
-        self.assertRegex(text, r'(?m)^as_of = "\d{4}-\d{2}-\d{2}"$')
-        result = run("check-priors")
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("invalid choice", result.stderr)
-
-    def test_stale_priors_cannot_fail_validate(self) -> None:
-        """An aging prior must alarm, never abort a deployment.
-
-        `scripts/sync.sh` runs `validate` under `set -euo pipefail`, so routing
-        the staleness check through validation would make the 91st day after
-        as_of break sync — and the cheapest way out of a broken sync is to
-        raise the number until it stops complaining, which is how a cadence
-        stops meaning anything.
-        """
-        for script in (SCRIPT,):
-            source = (script.parent.parent / "model-routing.toml").read_text(
-                encoding="utf-8"
-            )
-            with tempfile.TemporaryDirectory() as tmp:
-                aged = Path(tmp) / "model-routing.toml"
-                aged.write_text(
-                    re.sub(r'(?m)^as_of = ".*"$', 'as_of = "2000-01-01"', source),
-                    encoding="utf-8",
-                )
-                self.assertIn('as_of = "2000-01-01"', aged.read_text(encoding="utf-8"))
-                result = subprocess.run(
-                    [str(script), "--config", str(aged), "validate"],
-                    capture_output=True, text=True,
-                )
-                self.assertEqual(result.returncode, 0, f"{script}: {result.stderr}")
-
-    def test_validate_rejects_a_malformed_as_of(self) -> None:
-        for script in (SCRIPT,):
-            source = (script.parent.parent / "model-routing.toml").read_text(
-                encoding="utf-8"
-            )
-            for bad in ('as_of = "14 Aug 2026"', "as_of = 20260814"):
-                with tempfile.TemporaryDirectory() as tmp:
-                    broken = Path(tmp) / "model-routing.toml"
-                    broken.write_text(
-                        re.sub(r'(?m)^as_of = ".*"$', bad, source), encoding="utf-8"
-                    )
-                    self.assertIn(bad, broken.read_text(encoding="utf-8"))
-                    result = subprocess.run(
-                        [str(script), "--config", str(broken), "validate"],
-                        capture_output=True, text=True,
-                    )
-                    self.assertEqual(result.returncode, 1, f"{script}: {bad}")
+    def test_routing_file_holds_policy_not_benchmark_data(self) -> None:
+        # Retired 2026-11-10: the user declared the research stale, so the
+        # benchmark rows, the coverage report built on them, the generation
+        # check against them, and the re-audit cadence all left together. The
+        # quality floor stays: it was always a curated list, never a score.
+        config = tomllib.loads(
+            (ROOT / "main/claude/model-routing.toml").read_text(encoding="utf-8"))
+        for key in ("as_of", "prior_review", "prior_review_days", "benchmark",
+                    "benchmark_archive"):
+            self.assertNotIn(key, config, key)
+        for name, model in config["models"].items():
+            self.assertEqual(set(model), {"availability"}, name)
+        self.assertNotIn("acknowledged_coverage", config["quality_floor"])
+        self.assertTrue(config["quality_floor"]["approved_routes"])
+        for retired in ("check-aliases", "check-priors"):
+            result = run(retired)
+            self.assertNotEqual(result.returncode, 0, retired)
+            self.assertIn("invalid choice", result.stderr, retired)
 
     def test_validate_rejects_nonfinite_revision_policy_values(self) -> None:
         for script in (SCRIPT,):
@@ -100,34 +60,6 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
                             source.replace(
                                 "half_life_days = 45.0",
                                 f"half_life_days = {value}",
-                                1,
-                            ),
-                            encoding="utf-8",
-                        )
-                        result = subprocess.run(
-                            [str(script), "--config", str(broken), "validate"],
-                            capture_output=True,
-                            text=True,
-                        )
-                    self.assertEqual(result.returncode, 1, f"{script}: {result.stderr}")
-                    self.assertIn("finite", result.stderr)
-
-    def test_validate_rejects_nonfinite_model_metrics(self) -> None:
-        score_lines = {
-            SCRIPT: "score = 52.46",
-        }
-        for script, score_line in score_lines.items():
-            source = (script.parent.parent / "model-routing.toml").read_text(
-                encoding="utf-8"
-            )
-            for value in ("nan", "inf", "-inf"):
-                with self.subTest(script=script, value=value):
-                    with tempfile.TemporaryDirectory() as tmp:
-                        broken = Path(tmp) / "model-routing.toml"
-                        broken.write_text(
-                            source.replace(
-                                score_line,
-                                f"score = {value}",
                                 1,
                             ),
                             encoding="utf-8",
@@ -243,185 +175,6 @@ class ClaudeModelRoutingCLI(unittest.TestCase):
             path.name: path.read_text(encoding="utf-8")
             for path in AGENTS_DIR.glob("*.md")
         })
-
-    def _transcript_root(self, temp_dir: str, model: str, timestamp: str) -> str:
-        subagents = Path(temp_dir) / "project" / "subagents"
-        subagents.mkdir(parents=True, exist_ok=True)
-        (subagents / "session.jsonl").write_text(
-            json.dumps({
-                "type": "assistant", "timestamp": timestamp,
-                "message": {"model": model, "usage": {"output_tokens": 1}},
-            }) + "\n",
-            encoding="utf-8",
-        )
-        return temp_dir
-
-    def test_check_aliases_reports_a_generation_move_without_calling_it_drift(self) -> None:
-        # Routes name families and the CLI picks the generation (2026-09-30).
-        # A move is still worth seeing - the benchmark rows describe the
-        # generation they were measured on - but it is information, not drift:
-        # nothing in routing or the ledger is wrong when it happens.
-        # Relative to today, never a fixed date: the scan is capped at
-        # `--max-days`, so a fixed stamp ages out of the window (2026-09-14).
-        after = f"{date.today() - timedelta(days=1)}T00:00:00Z"
-
-        def check(model: str, timestamp: str = after) -> subprocess.CompletedProcess:
-            with tempfile.TemporaryDirectory() as temp_dir:
-                root = self._transcript_root(temp_dir, model, timestamp)
-                return run("check-aliases", "--root", root)
-
-        moved = check("claude-opus-6")
-        self.assertEqual(moved.returncode, 0, moved.stderr)
-        self.assertIn("claude-opus ran claude-opus-6", moved.stdout)
-        self.assertIn("evidence measured on claude-opus-5", moved.stdout)
-
-        # The generation the evidence describes, dated or not, reads as current.
-        current = check("claude-sonnet-5-20260101")
-        self.assertEqual(current.returncode, 0, current.stderr)
-        self.assertNotIn("evidence measured on", current.stdout)
-
-        # An unrouted family is not this config's claim to make.
-        self.assertEqual(check("claude-haiku-4-5-20251001").returncode, 0)
-
-    def test_check_aliases_ignores_main_session_transcripts(self) -> None:
-        # Only leaf runs are pinned by this config; the user owns the main
-        # session's model, so a Fable or older-Opus main session is not drift.
-        with tempfile.TemporaryDirectory() as temp_dir:
-            main_dir = Path(temp_dir) / "project"
-            main_dir.mkdir(parents=True)
-            (main_dir / "session.jsonl").write_text(
-                json.dumps({
-                    "type": "assistant", "timestamp": "2026-07-26T00:00:00Z",
-                    "message": {"model": "claude-opus-4-8",
-                                "usage": {"output_tokens": 1}},
-                }) + "\n",
-                encoding="utf-8",
-            )
-            result = run("check-aliases", "--root", temp_dir)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("await first observation", result.stdout)
-
-    def test_validate_reports_floor_score_coverage(self) -> None:
-        # quality_floor reads like a numeric threshold but is a curated list:
-        # route_floor_error can only test membership. The shared reporter makes
-        # that gap visible instead of leaving it implied — coverage findings are
-        # warnings, never failures, so reporting them cannot force a routing
-        # change just to go green.
-        #
-        # All three findings this config produces are argued out in
-        # quality_floor.notes and acknowledged there, so they print as NOTEs.
-        # The finding's own text still has to appear: acknowledging one lowers
-        # its volume and must never edit what it says.
-        result = run("validate")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("valid:", result.stdout)
-        self.assertIn("no per-rung score", result.stdout)
-        # Sonnet is the known unmeasured cell: AA publishes max effort only.
-        self.assertIn("claude-sonnet/medium", result.stdout)
-        self.assertIn("NOTE (acknowledged):", result.stdout)
-        # Nothing is left shouting. Three permanent alarms on a command that
-        # runs every sync is what teaches the reader to skip the line a new
-        # finding would arrive on.
-        self.assertNotIn("WARNING:", result.stdout)
-
-
-    def test_floor_coverage_detects_an_inverted_tier(self) -> None:
-        # Behavioral proof with a planted inversion: a stronger tier whose
-        # weakest measured route is below a weaker tier's must be reported.
-        # Load by path rather than mutating sys.path, which would leak into
-        # every test that runs after this one.
-        spec = importlib.util.spec_from_file_location(
-            "routing_core_probe", ROOT / "main/.agents/scripts/routing_core.py"
-        )
-        routing_core = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(routing_core)
-
-        config = {
-            "models": {
-                "m": {"efforts": {"low": {"score": 40.0}, "high": {"score": 60.0}}},
-            },
-            "quality_floor": {"approved_routes": {
-                "support": ["m/high"],
-                "judgment": ["m/low"],
-            }},
-        }
-        warnings = routing_core.floor_coverage(config)["warnings"]
-        self.assertTrue(any("inverted" in w for w in warnings), warnings)
-        # An upper-bound-only rung is not counted as measured.
-        bound = {
-            "models": {"m": {"aggregate": {"score_max_effort": 53.0}}},
-            "quality_floor": {"approved_routes": {"support": ["m/medium"]}},
-        }
-        self.assertEqual(
-            routing_core.route_score(bound, "m", "medium"), (53.0, "upper-bound")
-        )
-        self.assertEqual(
-            routing_core.route_score(bound, "m", "max"), (53.0, "per-effort")
-        )
-
-    def test_an_acknowledgement_covers_only_the_finding_it_quotes(self) -> None:
-        """Silencing is the risk this mechanism adds, so pin its boundary.
-
-        A routing file that can mark a finding "known" can mark a real one
-        known by accident. Three readings bound that: the quoted finding goes
-        quiet, a finding whose text has moved on comes back by itself, and an
-        acknowledgement matching nothing is an error rather than a warning -
-        a config asserting a decision about a finding that no longer exists is
-        misreporting its own evidence, which is worse than the alarm was.
-        """
-        spec = importlib.util.spec_from_file_location(
-            "routing_core_ack", ROOT / "main/.agents/scripts/routing_core.py"
-        )
-        routing_core = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(routing_core)
-
-        def config_with(acknowledgements, routes):
-            return {
-                "models": {"m": {"efforts": {"low": {"score": 40.0}}}},
-                "quality_floor": {
-                    "approved_routes": routes,
-                    "acknowledged_coverage": acknowledgements,
-                },
-            }
-
-        routes = {"support": ["m/low", "m/high"]}
-        bare = routing_core.floor_coverage(config_with([], routes))
-        self.assertEqual(len(bare["warnings"]), 1, bare)
-        finding = bare["warnings"][0]
-        self.assertIn("m/high", finding)
-
-        # 1. The quoted finding stops being a warning, and keeps its wording.
-        entry = [{"warning": finding, "reason": "adjudicated in notes"}]
-        acked = routing_core.floor_coverage(config_with(entry, routes))
-        self.assertEqual(acked["warnings"], [])
-        self.assertEqual(acked["notes"], [(finding, "adjudicated in notes")])
-        self.assertEqual(acked["stale_acknowledgements"], [])
-
-        # 2. Approve another unscored rung: the finding's text changes, so the
-        #    acknowledgement stops covering it and the alarm returns on its own.
-        widened = routing_core.floor_coverage(
-            config_with(entry, {"support": ["m/low", "m/high", "m/xhigh"]})
-        )
-        self.assertEqual(len(widened["warnings"]), 1, widened)
-        self.assertIn("m/xhigh", widened["warnings"][0])
-        self.assertEqual(widened["stale_acknowledgements"], [finding])
-
-        # 3. An entry missing either half is reported, not quietly ignored -
-        #    a typo in `warning` would otherwise acknowledge nothing and look
-        #    exactly like a working acknowledgement.
-        malformed = routing_core.floor_coverage(
-            config_with([{"reason": "quotes no finding"}], routes)
-        )
-        self.assertEqual(len(malformed["malformed_acknowledgements"]), 1)
-
-        # 4. Both failures fail the command rather than printing and passing.
-        #    stderr is captured: a passing test that prints ERROR lines is the
-        #    same alarm fatigue this mechanism exists to remove.
-        for bad in (config_with(entry, {"support": ["m/low"]}),
-                    config_with([{"reason": "quotes no finding"}], routes)):
-            with contextlib.redirect_stderr(io.StringIO()) as captured:
-                self.assertEqual(routing_core.report_validation(bad, []), 1)
-            self.assertIn("ERROR:", captured.getvalue())
 
     def test_a_floor_that_cannot_be_read_fails_instead_of_passing(self) -> None:
         """The rename's real risk is a config left on the old key.

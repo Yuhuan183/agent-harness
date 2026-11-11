@@ -1060,52 +1060,6 @@ class MachineStateHygieneTests(unittest.TestCase):
         # It has to stop in preflight, before anything is copied.
         self.assertNotIn("preflight: passed", refused.stdout)
 
-    def test_preflight_shows_the_routing_warnings_it_used_to_swallow(self) -> None:
-        """A non-fatal warning still has to reach somebody.
-
-        `validate` splits its output deliberately: errors fail the command,
-        while a quality floor whose approved routes have no measured score - or
-        whose tier minima do not separate - is a WARNING on stdout, because
-        making it fatal would let an aging benchmark stop a deployment and the
-        predictable response is to weaken the floor until it stops complaining.
-        Preflight then ran it as `validate >/dev/null`, which is the other way
-        to ignore it: the finding existed and no run anyone performs printed it
-        (2026-07-30 review).
-
-        Deploy time is the right surface, not the weekly hook: the state
-        changes only when a routing file changes, and this is the gate every
-        such change passes. The sibling assertion is
-        `test_weekly_integrity_says_nothing_about_a_correctly_deployed_system`,
-        which is why the warnings must *not* also become a weekly finding.
-        """
-        # The current Claude config has unmeasured approved routes, so a real
-        # dry-run is a live fixture. Assert that first, or a silently clean
-        # config would make this test pass by having nothing to show.
-        #
-        # Both severities count. Since 2026-09-14 a finding the routing file
-        # has adjudicated prints as `NOTE (acknowledged)` instead of `WARNING`,
-        # and all three of this config's findings are acknowledged. That is a
-        # volume control, not a mute: a finding that stops reaching the deploy
-        # gate is the same defect this test was written for.
-        validate = subprocess.run(
-            [str(ROOT / "main/claude/scripts/model-routing"), "validate"],
-            capture_output=True, text=True, timeout=60)
-        self.assertEqual(validate.returncode, 0, validate.stderr)
-        expected = [line for line in validate.stdout.splitlines()
-                    if line.startswith(("WARNING: ", "NOTE (acknowledged): "))]
-        self.assertTrue(
-            expected,
-            "no floor-coverage finding to surface; this test needs a fixture "
-            "config rather than the live one")
-
-        dry_run = subprocess.run(
-            ["bash", str(ROOT / "scripts/sync.sh")],
-            capture_output=True, text=True, timeout=600,
-            env={**os.environ, "AGENT_HARNESS_PREFLIGHT_ACTIVE": "1"})
-        self.assertEqual(dry_run.returncode, 0, dry_run.stdout + dry_run.stderr)
-        for warning in expected:
-            self.assertIn(f"Claude routing: {warning}", dry_run.stdout)
-
     def test_no_tracked_file_carries_a_machine_local_home_path(self) -> None:
         """A username is not evidence, and this repository is published.
 

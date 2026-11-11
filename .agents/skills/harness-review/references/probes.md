@@ -126,7 +126,6 @@ conditional content can evade it.
 rtk main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests -v
 rtk main/claude/scripts/model-routing validate
 rtk main/claude/scripts/model-routing check-pins
-rtk main/claude/scripts/model-routing check-aliases
 rtk scripts/sync.sh
 ```
 

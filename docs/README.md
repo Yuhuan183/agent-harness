@@ -73,7 +73,8 @@
    (2026-08-31): `model-routing.toml` 連向 `model-evidence.md`, 又重述了它的理由. 當天那個比較
    被撤回, 抄過去的那句卻活了下來.
 2. README 說明全貌與入口, 不承載會頻繁變動的 model 數值或完整操作細節.
-3. benchmark, effort, 日期與成本口徑只放 routing data, 不寫成永久能力宣稱.
+3. benchmark 數字與成本口徑不寫成永久能力宣稱. routing data 自 2026-11-10 起只放路由政策, 不再收
+   benchmark.
 4. 已落地的 runtime 規則從 plan 移出; 結案的計畫退場, 結果記進 landing-log, 全文由 Git 保存.
    `docs/research/` 整層 (包括 [`research/README.md`](research/README.md)) 自 2026-11-10 起是
    **歷史紀錄**, 不是現行指引, 不能拿來當保留或拒絕變更的理由. 現行依據是 runtime 檔案,

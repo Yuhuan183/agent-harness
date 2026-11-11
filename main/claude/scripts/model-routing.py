@@ -10,14 +10,11 @@ per-dispatch overrides; `activate-profile` updates every leaf pin together."""
 from __future__ import annotations
 
 import argparse
-import importlib.machinery
-import importlib.util
 import json
 import os
 import re
 import sys
 import tempfile
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 if sys.version_info < (3, 11):  # routing_core needs stdlib tomllib (3.11+)
@@ -53,7 +50,7 @@ EFFORTS = {"low", "medium", "high", "xhigh"}
 # an API. Routes therefore name the family too (2026-09-30): the map below is
 # fixed by the alias names themselves, not an assertion about the CLI's choice
 # that goes stale when a new generation ships. Which generation actually ran is
-# read from transcripts (`check-aliases`, and the ledger's `observed_model`).
+# read from transcripts into the ledger's `observed_model`.
 MODEL_ALIASES = {
     "haiku": "claude-haiku",
     "sonnet": "claude-sonnet",
@@ -61,8 +58,6 @@ MODEL_ALIASES = {
     "fable": "claude-fable",
 }
 MODEL_NAMES = {model: alias for alias, model in MODEL_ALIASES.items()}
-USAGE_REPORT = Path(__file__).resolve().parent / "usage-report"
-TRANSCRIPT_ROOT = Path("~/.claude/projects").expanduser()
 AVAILABILITY_SCHEMA = {
     "subscription": {"documented", "unverified"},
     "main_selector": {"configured", "unverified"},
@@ -87,8 +82,6 @@ def validation_errors(config: dict) -> list[str]:
 
     errors += core.check_selection(config)
     errors += core.check_revision_policy(config)
-    errors += core.check_as_of(config)
-    errors += core.check_model_metrics(models)
 
     normalized_roles = {role.replace("_", "-") for role in route_application}
     if normalized_roles != REQUIRED_ROLES:
@@ -271,93 +264,6 @@ def command_check_pins(
     return 0
 
 
-def same_generation(observed: str, measured: str) -> bool:
-    """True when an observed id is the measured one or a dated snapshot of it.
-
-    The CLI reports `claude-haiku-4-5-20251001` for the model the benchmark
-    rows call `claude-haiku-4-5`; only a trailing 8-digit date is absorbed, so
-    a point release reads as the different model it is.
-    """
-    return observed == measured or bool(
-        re.fullmatch(re.escape(measured) + r"-\d{8}", observed)
-    )
-
-
-def load_usage_module():
-    """Import the sibling transcript reader, which has no .py suffix."""
-    try:
-        loader = importlib.machinery.SourceFileLoader(
-            "usage_report", str(USAGE_REPORT)
-        )
-        spec = importlib.util.spec_from_loader("usage_report", loader)
-        module = importlib.util.module_from_spec(spec)
-        # `usage-report` defines a dataclass, and @dataclass resolves the
-        # defining module through sys.modules — register before exec, not after.
-        sys.modules["usage_report"] = module
-        loader.exec_module(module)
-    except (OSError, SyntaxError, ValueError):
-        sys.modules.pop("usage_report", None)
-        return None
-    return module
-
-
-def command_check_aliases(config: dict, root: Path, max_days: float) -> int:
-    """Report which generation each routed family actually ran.
-
-    A frontmatter pin buys whatever the CLI currently calls `opus`, and routes
-    name the family, so a generation move changes nothing in routing or the
-    ledger and is not drift. It is still worth seeing: the benchmark rows
-    behind the quality floors describe the generation they were measured on,
-    and a family now running a newer one means those rows describe an older
-    model. Only observations after `as_of` count.
-    """
-    as_of = config.get("as_of")
-    try:
-        cutoff = datetime.strptime(str(as_of), "%Y-%m-%d").replace(tzinfo=timezone.utc)
-    except (TypeError, ValueError):
-        print(f"ERROR: as_of must be YYYY-MM-DD, got {as_of!r}", file=sys.stderr)
-        return 2
-    # as_of only recedes, so an uncapped window would scan every transcript
-    # ever written from a hook with a 15s budget. Any run inside the cap that
-    # contradicts the declared generation is still drift, so the cap costs no
-    # detection — it only bounds the scan.
-    cutoff = max(cutoff, datetime.now(timezone.utc) - timedelta(days=max_days))
-    usage = load_usage_module()
-    if usage is None:
-        print(f"ERROR: transcript reader unavailable at {USAGE_REPORT}; "
-              "alias observation check not run", file=sys.stderr)
-        return 2
-
-    models = config.get("models", {})
-    routed = {
-        route.get("model")
-        for profile in config.get("profiles", {}).values()
-        for route in profile.get("roles", {}).values()
-    } & set(MODEL_NAMES)
-
-    observed: dict[str, int] = {}
-    for event in usage.load_events(root, cutoff):
-        if event.source == "subagent":
-            observed[event.model] = observed.get(event.model, 0) + 1
-
-    lines: list[str] = []
-    for model, turns in sorted(observed.items()):
-        family = core.model_family(model)
-        if family not in routed:
-            continue  # no profile here routes that family
-        line = f"{family} ran {model} ({turns} turns)"
-        measured = models.get(family, {}).get("measured_generation")
-        if measured and not same_generation(model, measured):
-            line += f"; its benchmark evidence measured on {measured}"
-        lines.append(line)
-    if not lines:
-        print(f"no leaf transcripts since as_of {as_of}; "
-              f"{len(routed)} routed families await first observation")
-        return 0
-    print(f"leaf generations since {as_of}: " + "; ".join(lines))
-    return 0
-
-
 def replace_frontmatter_pin(text: str, model: str, effort: str) -> str:
     """Return agent Markdown with only model/effort frontmatter changed."""
     match = re.match(r"\A---\n(.*?)\n---\n", text, re.DOTALL)
@@ -509,12 +415,6 @@ def parse_args() -> argparse.Namespace:
     check_source = check_parser.add_mutually_exclusive_group()
     check_source.add_argument("--profile")
     check_source.add_argument("--priority", choices=core.PRIORITY_CHOICES)
-    alias_parser = subparsers.add_parser(
-        "check-aliases",
-        help="test the alias->generation assertion against leaf transcripts",
-    )
-    alias_parser.add_argument("--root", type=Path, default=TRANSCRIPT_ROOT)
-    alias_parser.add_argument("--max-days", type=float, default=30)
     activate = subparsers.add_parser(
         "activate-profile",
         help="transactionally apply one Claude deployment preset to every leaf pin",
@@ -541,8 +441,6 @@ def main() -> int:
         return command_validate(config)
     if args.command == "list":
         return command_list(config, args.json)
-    if args.command == "check-aliases":
-        return command_check_aliases(config, args.root, args.max_days)
     if args.command == "check-pins":
         return command_check_pins(config, args.agents_dir, args.profile, args.priority)
     if args.command == "activate-profile":
