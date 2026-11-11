@@ -69,9 +69,9 @@
 ## 維護規則
 
 1. 同一規則只保留一個真相源; 其他文件用連結與短摘要指過去. **短摘要說連結那頭「決定了什麼」,
-   不說「憑什麼」** —— 理由是會過期的那一半, 被抄過來之後連結還對, 它卻已經錯了 (2026-08-31
-   的實例: `model-routing.toml` 連向 `model-evidence.md` 又重述了它的理由, 當天那個比較被撤回,
-   抄過去的那句活了下來).
+   不說「憑什麼」.** 理由是會過期的那一半: 抄過來之後, 連結還對, 內容卻已經錯了. 實例
+   (2026-08-31): `model-routing.toml` 連向 `model-evidence.md`, 又重述了它的理由. 當天那個比較
+   被撤回, 抄過去的那句卻活了下來.
 2. README 說明全貌與入口, 不承載會頻繁變動的 model 數值或完整操作細節.
 3. benchmark, effort, 日期與成本口徑只放 routing data, 不寫成永久能力宣稱.
 4. 已落地的 runtime 規則從 plan 移出; 結案的計畫退場, 結果記進 landing-log, 全文由 Git 保存.
@@ -105,12 +105,12 @@
    | 說明 | [架構總覽](architecture/architecture.md), [context](architecture/context-engineering.md), [harness](architecture/harness-engineering.md), [loop](architecture/loop-engineering.md), [graph](architecture/graph-engineering.md), [QC 白話說明](qc-explainer.md) | 讀者不必先懂本 repo 的內部詞彙. 核心概念先給圖, 數據對比先給表, 結論條列; 散文只用來講圖表講不了的因果. **內部代號** (`s11`, `p1b` 這類 trap 與 replay 情境編號) 第一次出現時, 同一句裡要有東西說它問的是什麼. `docs/research/` 不在這一層: 那是歷史紀錄 (規則 4) |
    | 操作與規範 | [setup](setup.md), [hook-system](hook-system.md), [dispatch-lifecycle](dispatch-lifecycle.md), [contract-slimming](contract-slimming.md), 兩份 README | 直白精簡, 不為了淺顯加篇幅 |
 
-   **`docs/**` 沒有字數預算.** 字數上限量的是 push 成本 (每回合或每次派工都要付的位元組), 而
-   manifest 部署的檔案沒有一份在 `docs/` 底下: 這一層是 pull 成本, 由打開它的人付一次, 而且可以
-   不看完. 這一層由兩件事看住: [`scripts/docs-size-report.py`](../scripts/docs-size-report.py) 只報
-   不擋, 另有一道 `DOC_SPRAWL_CEILING` 數量級鬆閘, 只抓「一份文件已經不是一份文件」. 逼近鬆閘的正解
-   是拆檔或搬回真正的 owner, 不是調高常數. 預算仍然嚴格生效在出貨層 (兩份契約, skill 與 role 的
-   `description`, 每一支出貨 skill 的本文), 規範見[契約瘦身](contract-slimming.md).
+**`docs/**` 沒有字數預算.** 字數上限量的是 push 成本, 也就是每回合或每次派工都要付的位元組.
+manifest 部署的檔案沒有一份在 `docs/` 底下. 這一層是 pull 成本: 打開它的人付一次, 而且可以
+不看完. 兩件事看住這一層. [`scripts/docs-size-report.py`](../scripts/docs-size-report.py) 只報
+不擋; 另有一道 `DOC_SPRAWL_CEILING` 數量級鬆閘, 只抓「一份文件已經不是一份文件」. 逼近鬆閘時,
+正解是拆檔或搬回真正的 owner, 不是調高常數. 預算仍然嚴格生效在出貨層: 兩份契約, skill 與
+role 的 `description`, 每一支出貨 skill 的本文. 規範見[契約瘦身](contract-slimming.md).
 
 9. 證據錨點: **不要用裸的 short SHA 指涉本 repo 的變更.** 分支在 merge 前會 rebase, rebase 會改寫
    每一個 SHA, 所以那種引用在被整合的當下就死了. 指外部 repo 就寫完整長度並帶連結; 指本 repo 就改用

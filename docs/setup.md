@@ -94,12 +94,12 @@ headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787
 或手寫進 shell profile; `headroom doctor` 看見 routed 只代表當下 machine-local CLI/shell
 狀態, 不能據此判斷 Codex App.
 
-這條通則有一個明文例外, 就是下面的 `headroom install apply --preset persistent-service`:
-該 preset 會由 Headroom 自己在 `~/.zshrc` 維護一段 marker-fenced 區塊寫入這些變數. 選用
-它是使用者的 machine-local 決定, 但要知道代價 — 上面「原生 session 直連」的分界就消失了,
-`claude` 與 `hclaude` 一樣走 proxy, `/remote-control` 在所有 Claude session 都不可用,
-而且 proxy 沒起來時每個 shell 的 agent 都連不出去. 想拿回 wrap-first 就
-`headroom install remove`, 它會一併撤掉自己寫的區塊.
+這條通則有一個明文例外, 就是下面的 `headroom install apply --preset persistent-service`.
+該 preset 由 Headroom 自己在 `~/.zshrc` 維護一段 marker-fenced 區塊, 把這些變數寫進去. 選用
+它是使用者的 machine-local 決定, 但要知道代價: 上面「原生 session 直連」的分界會消失.
+`claude` 與 `hclaude` 一樣走 proxy, `/remote-control` 在所有 Claude session 都不可用. 而且
+proxy 沒起來時, 每個 shell 裡的 agent 都連不出去. 想拿回 wrap-first, 就執行
+`headroom install remove`; 它會一併撤掉自己寫的區塊.
 
 Claude Code 在自訂 `ANTHROPIC_BASE_URL` 之下會關閉 on-demand tool loading, 改成一次載入
 全部 tool schema (upstream #746). `headroom wrap claude` 會設
@@ -154,12 +154,12 @@ contract tests; 任何一項失敗都在寫入前停止. 所有可攜的 source�
 `scripts/deployment-manifest.tsv`, `sync.sh` 與 weekly integrity 共讀這一份; 新增或改名部署
 成品時不得另建第二份清單.
 
-**`settings.json` 是合併部署, 不是覆蓋** (`merge-json`, manifest 第三欄), 因為它有三個寫入者: 本 repo, Claude Code 自己
-  (`/model`, `/effort`), 與第三方 hook 安裝程式. 合併看「所有權」而不是位置 —— 命令含
-  `$HOME/.claude/hooks/` 或 `rtk hook claude` 的 hook group 屬於本 repo, 整組替換 (所以過期
-  指令是被更新, 不會變成重複兩份); 其餘 group, repo 未定義的事件與 top-level key 一律原樣
-  保留, `permissions.allow` 取聯集. 每次執行都會列出保留了哪些項目, 因此不需要覆寫逃生口,
-  `--accept-settings-overwrite` 已移除.
+**`settings.json` 是合併部署, 不是覆蓋** (`merge-json`, manifest 第三欄). 原因是它有三個寫入者:
+  本 repo, Claude Code 自己 (`/model`, `/effort`), 與第三方 hook 安裝程式. 合併看「所有權」而
+  不是位置. 命令含 `$HOME/.claude/hooks/` 或 `rtk hook claude` 的 hook group 屬於本 repo, 整組
+  替換, 所以過期指令會更新, 不會變成重複兩份. 其餘 group, repo 未定義的事件與 top-level key
+  一律原樣保留, `permissions.allow` 取聯集. 每次執行都會列出保留了哪些項目, 因此不需要覆寫
+  逃生口; `--accept-settings-overwrite` 已移除.
 
 它的部署後校驗不是 byte 相等, 而是「重跑一次 merge 不再改變任何東西」, `sync.sh` 與
 weekly integrity 都會驗.
@@ -185,7 +185,7 @@ main/.agents/scripts/python3-run scripts/project-init.py <repo> --apply    # 第
 main/.agents/scripts/python3-run scripts/project-init.py <repo> --verify   # 0 一致, 1 區塊被改過, 4 沒裝
 ```
 
-事實只住一處, `<repo>/.agent-harness/facts.toml`; 兩個契約區塊 (repo 根目錄的 `CLAUDE.md` 與 `AGENTS.md`) 從它渲染, 以標記圍欄合併進去, 團隊原有的內容一字不動. 沒填完的事實不渲染 —— 填不出來的那一格就是這個 repo 還沒回答的問題. 不裝 hook, 不裝 git hook, 不對本 repo 或 HOME 執行 (會拒絕).
+事實只住一處: `<repo>/.agent-harness/facts.toml`. 兩個契約區塊 (repo 根目錄的 `CLAUDE.md` 與 `AGENTS.md`) 從它渲染, 再以標記圍欄合併進去; 團隊原有的內容一字不動. 沒填完的事實不渲染. 填不出來的那一格, 就是這個 repo 還沒回答的問題. 不裝 hook, 不裝 git hook, 不對本 repo 或 HOME 執行 (會拒絕).
 
 ## 驗收
 
@@ -194,10 +194,10 @@ main/.agents/scripts/python3-run scripts/project-init.py <repo> --verify   # 0 �
 - `headroom-protocol` 與 `task-observer` 是平台 wrapper, 其共用內文與資源分別連回
   `~/.agents/skills/<name>`.
 - 跑 2–3 個真實任務比對遵循度與 token (方法見 `contract-slimming.md` 的驗收段).
-- 「client 真的在讀這個目標」的觀察記在 `scripts/deployment-verification.tsv`: manifest 每個目標一列,
-  帶觀察日, client 版本與觀察到什麼 (skill 出現在 session 的清單, hook 回 exit 2, resolver 讀到
-  routing 檔). 這和 weekly integrity 的 parity 不同: 位元組一致不代表 client 還在讀那個路徑.
-  超過 90 天測試會紅, 處置是重新觀察並更新該列, 不是調高天數.
+- 「client 真的在讀這個目標」這項觀察記在 `scripts/deployment-verification.tsv`. manifest 每個
+  目標一列, 帶觀察日, client 版本與觀察結果 (skill 出現在 session 的清單, hook 回 exit 2,
+  resolver 讀到 routing 檔). 這和 weekly integrity 的 parity 不同: 位元組一致, 不代表 client
+  還在讀那個路徑. 超過 90 天測試會紅; 處置是重新觀察並更新該列, 不是調高天數.
 
 ## 回滾
 
@@ -210,10 +210,9 @@ scripts/sync.sh               # dry-run 確認影響面
 scripts/sync.sh --apply
 ```
 
-機器狀態不需要回滾 — `settings.json` 走 merge, 本來就不會被整份
-覆蓋; `~/.claude/CLAUDE.md` 若內容不曾出現在本 repo 歷史,
-apply 會直接停下而不是覆蓋. 唯一沒有還原路徑的是「手動改在 repo 全權擁有的目錄裡」
-的檔案 (例如自己往 `~/.claude/hooks/` 塞東西), 那些會被 `rsync --delete` 清掉 —
+機器狀態不需要回滾. `settings.json` 走 merge, 本來就不會整份覆蓋. `~/.claude/CLAUDE.md` 若
+內容不曾出現在本 repo 歷史, apply 會直接停下, 不會覆蓋. 只有一種情況無法還原: 手動修改 repo
+全權擁有的目錄, 例如自己往 `~/.claude/hooks/` 塞東西. `rsync --delete` 會清掉那些檔案, 所以
 這類本機偏好請放 `settings.local.json`.
 
 ## 修改流程 (日常)

@@ -9,7 +9,7 @@ Hook 是這個 harness 把「規則」變成「機制」的地方. 契約用文�
 
 ## 兩種 hook, 兩種失敗模式
 
-Hook 的「失敗模式」指的是它自己出錯時會怎樣, 這是設計時就選定的:
+Hook 的「失敗模式」是它自己出錯時會怎樣. 這在設計時就選定:
 
 - **Fail-open (診斷型)**: 本身故障時放行, 絕不阻塞正常工作. 它們只記錄與提醒, 不做
   攔截. 診斷工具壞掉不該讓你無法工作.
@@ -37,7 +37,7 @@ Hook 的「失敗模式」指的是它自己出錯時會怎樣, 這是設計時�
 | [managed-target-guard](../main/claude/hooks/managed-target-guard.py) | PreToolUse[Write\|Edit\|NotebookEdit] | 寫入 manifest **整份**託管的 HOME 檔案 (兩欄列), 或 `INSTALLED.txt` 點名的共用 skill. 字面路徑與 symlink 解析後的路徑都比對, 因為 `~/.claude/skills/<name>` 是指向 `~/.agents/skills/<name>` 的連結. 三欄的 merge 列**不擋** (`settings.json` 與 `.agents/skills` 其餘部分含機器狀態, 本來就該就地改). 讀不到 manifest 時放行並在 stderr 說明 —— 條件評估不了就不該代答 | 改 checkout 裡的來源, 再 `scripts/sync.sh --apply` |
 | [githooks/pre-commit](../main/claude/githooks/pre-commit) | Git pre-commit | 本 repo 走 git hook 路徑的 commit 且套件為紅 (或逾時). 這是 shell 的另一側: git 已經在動手了, 不必從文字推測目標, 所以 wrapper script, 名為 `git` 的 function, PATH 覆蓋都涵蓋 | `AGENT_SKIP_TEST_GATE=1`, `--no-verify` |
 
-commit 的兩道閘是互補而非取代: Bash gate 涵蓋「agent 在**任何** repo 的 commit, 執行前」, pre-commit 涵蓋「**這個** repo 走 git hook 路徑的 commit, 不管指令怎麼拼」. 判斷本體 (套件集合, 直譯器下限, 300 秒預算, 訊息措辭) 只有一份, 由 pre-commit 匯入 commit-test-gate 共用. 安裝方式是 repo-local 的 `core.hooksPath`, 由 `sync.sh` 呼叫 `scripts/install-git-hooks.sh` 設定, `git config --unset core.hooksPath` 即可還原. 已被別的工具 (husky 之類) 佔用時不覆寫, 改為報錯並讓 sync 以非零狀態結束 — git 只允許一個 hooks 目錄, 怎麼串要人決定. 其他 clone 沒跑過 sync 就沒有這道閘.
+commit 的兩道閘是互補而非取代. Bash gate 涵蓋「agent 在**任何** repo 的 commit, 執行前」; pre-commit 涵蓋「**這個** repo 走 git hook 路徑的 commit, 不管指令怎麼拼」. 判斷本體 (套件集合, 直譯器下限, 300 秒預算, 訊息措辭) 只有一份, 由 pre-commit 匯入 commit-test-gate 共用. 安裝方式是 repo-local 的 `core.hooksPath`: `sync.sh` 呼叫 `scripts/install-git-hooks.sh` 設定, `git config --unset core.hooksPath` 即可還原. 已被別的工具 (husky 之類) 佔用時不覆寫, 改為報錯, 並讓 sync 以非零狀態結束. git 只允許一個 hooks 目錄, 怎麼串要人決定. 其他 clone 沒跑過 sync, 就沒有這道閘.
 
 **client-side 關不掉的殘餘**: `--no-verify`, `-c core.hooksPath=…`, `commit-tree` 都能讓
 git 不跑 hook; 藏進 wrapper script 後外層指令看不出痕跡, Bash gate 也攔不到. 本機沒有機制能
@@ -48,9 +48,14 @@ pre-commit 的原因.
 
 Bash 側那一格判的不是字串相等, 所以拆開講. 兩個問題要分別答得出來.
 
-**這是不是 commit.** hook 比對四份副本: 原字串, 去引號與反斜線後的, 去掉展開段
-(`$VAR`, `${...}`, `$(...)`, 反引號) 的, 以及把讀得到的值代回去的那一份. 所以下面這幾種寫法
-都算命中:
+**這是不是 commit.** hook 比對四份副本:
+
+- 原字串;
+- 去掉引號與反斜線後的版本;
+- 去掉展開段 (`$VAR`, `${...}`, `$(...)`, 反引號) 後的版本;
+- 把讀得到的值代回去後的版本.
+
+所以下面這幾種寫法都算命中:
 
 - `g'i't com''mit`
 - 用續行把字拆開
@@ -59,7 +64,7 @@ Bash 側那一格判的不是字串相等, 所以拆開講. 兩個問題要分�
 
 子命令本身來自展開時 (`git $C`), 另以結構判定為疑似 commit, 與值讀不讀得到無關.
 
-**它 commit 到哪個 repo.** 目標同樣要指得出來. 算數的來源是 cwd, `git -C`, `--git-dir`,
+**它 commit 到哪個 repo.** 目標同樣要指得出來. 下列都算目標來源: cwd, `git -C`, `--git-dir`,
 `--work-tree`, `cd` 與 `pushd` 的運算元, 以及指令自己設的 `GIT_DIR=` 與 `GIT_WORK_TREE=`.
 解析規則三條:
 
@@ -98,8 +103,8 @@ settings 的前置過濾做不到上面這些判定, 所以改成「字串裡有
 問題不在文件而在它本來就沒有停止條件.
 
 由 `test_deployment.GateRefutationTests` 釘住條數與可觀察性 (不釘措辭). 教訓借自 ECC: 一個沒有測試讓它
-過期的 `last_verified_at` 欄位只是裝飾 (見 [ecc-survey](research/ecc-survey.md) 的 D3). 這裡最需要過期條件的
-是閘, 不是每週被機器驗的 manifest —— 閘每次匹配的工具呼叫都在收費.
+過期的 `last_verified_at` 欄位只是裝飾 (見 [ecc-survey](research/ecc-survey.md) 的 D3). 這裡最需要過期條件
+的是閘, 不是每週被機器驗的 manifest. 閘每次匹配的工具呼叫都在收費.
 
 - **commit-test-gate** — 連續 20 次 `git commit` 裡超過一半帶 `AGENT_SKIP_TEST_GATE=1` 前綴.
   那時它擋下的不是紅狀態而是流程, 逃生口已經變成正常路徑; 該問的是套件為什麼常紅.
@@ -117,25 +122,25 @@ settings 的前置過濾做不到上面這些判定, 所以改成「字串裡有
   門檻比其他六個低.
 - **managed-target-guard** — 部署改成不可寫 (唯讀掛載, 或 HOME 那一份是指回 checkout 的 symlink).
   寫入託管檔這條路本身消失, 閘就沒有邊界要守.
-- **githooks/pre-commit** — CI 覆蓋每一條 commit 路徑而且在 push 之前就跑完.
-  在那之前它守的是文字層看不到的那一段 (wrapper script, 名為 `git` 的 function, PATH 覆蓋),
-  而 `--no-verify` 與 `-c core.hooksPath=` 仍然繞得過去 —— 它從來不是無條件的.
+- **githooks/pre-commit** — CI 覆蓋每一條 commit 路徑, 而且在 push 之前就跑完.
+  在那之前, 它守住文字層看不到的那一段 (wrapper script, 名為 `git` 的 function, PATH 覆蓋).
+  而 `--no-verify` 與 `-c core.hooksPath=` 仍然繞得過去; 它從來不是無條件的.
 
 **五支 fail-open hook 不在這裡**, 因為它們不攔截: 沒有「誤擋」可觀察, 它們的停止條件是
 「沒有人讀它產生的東西」, 那是另一種量法.
 
 ### 什麼條件下這個閘等於沒有
 
-推翻條件說的是「什麼觀察會讓它該被拿掉」. 這一節說的是另一件事: **它還在, 但已經不做事了**,
-而且不會有人發現. 蒸餾自 ECC 對 Windows observer 的宣告 —— 那支背景觀察者在 Windows 上啟動,
-回報成功, 然後被 Job Object 殺掉, 所以「設定成開啟」在那個平台上等於沒有 (見
+推翻條件說的是「什麼觀察會讓它該被拿掉」. 這一節說另一件事: **它還在, 但已經不做事了**,
+而且不會有人發現. 這蒸餾自 ECC 對 Windows observer 的宣告. 那支背景觀察者在 Windows 上啟動,
+回報成功, 然後被 Job Object 殺掉. 所以「設定成開啟」在那個平台上等於沒有 (見
 [ecc-survey](research/ecc-survey.md) 的 C7).
 
 本 repo 沒有平台維度的等價物 (六個閘都是 Python, 都跑得起來), 但有一個更貼身的:
 
-**六個閘全部在 payload 解不開時靜默放行.** 那是刻意的 —— 「malformed input: never break
-unrelated tool calls」—— 但後果是: **client 改一次 payload 形狀, 六個閘同時變啞, 而套件不會
-變紅**, 因為 pipe-test 用的是我們自己寫的合成 payload, 它保持舊形狀.
+**六個閘全部在 payload 解不開時靜默放行.** 那是刻意的: 「malformed input: never break
+unrelated tool calls」. 但後果是 **client 改一次 payload 形狀, 六個閘同時變啞, 而套件不會
+變紅**. 因為 pipe-test 用的是我們自己寫的合成 payload, 它保持舊形狀.
 
 | 閘 | 什麼時候等於沒有 | 會不會有人知道 |
 |---|---|---|
@@ -181,8 +186,8 @@ unrelated tool calls」—— 但後果是: **client 改一次 payload 形狀, �
 | `AGENT_EXPERIENCE_LOG_BIN` | experience-pending | 寫入 ledger 的程式 | `~/.agents/skills/experience-ledger/scripts/experience-log` |
 | `AGENT_EXPERIENCE_SWEEP_REFUSALS` | experience-pending, [weekly-integrity](../main/claude/hooks/weekly-integrity.py) | session 結束補記被拒時的原因 | `~/.agents/telemetry/experience-sweep-refusals.jsonl` |
 
-後四個主要給套件與 replay 用, 但它們**照樣列在這裡**: 一個只在測試裡出現的覆寫仍然是這台
-機器上真的會被讀的東西, 而「它只有測試在用」是註解該說的話, 不是省略它的理由.
+後四個主要給套件與 replay 用, 但它們**照樣列在這裡**. 一個只在測試裡出現的覆寫, 仍然是這台
+機器上確實會被讀的東西. 「它只有測試在用」是註解該說的話, 不是省略它的理由.
 
 ## 為什麼 hook 值得信任: 三關驗證
 
@@ -210,9 +215,9 @@ Hook 建置規範 (真實目錄先證明可跑 → 合成 pipe-test → `jq` 驗
 三件刻意不做的事:
 
 - **不是 gate, 也不是門檻.** [denial-report](../scripts/denial-report.py) 會讀它, 但只報
-  不決定: 沒有門檻, 沒有非零 exit. 先前查過「連續三次就升級」這個想法, 實測發現跨過門檻的
-  幾乎都是 commit-test-gate 的紅套件重試, 那是機制在運作; 要不要有門檻, 得先有這份資料才
-  談得起 (見[研究摘要方向 5](research/README.md#待辦方向)).
+  不決定: 沒有門檻, 沒有非零 exit. 先前查過「連續三次就升級」這個想法. 實測發現, 跨過門檻
+  的幾乎都是 commit-test-gate 的紅套件重試, 那是機制在運作. 要不要有門檻, 得先有這份資料
+  才談得起 (見[研究摘要方向 5](research/README.md#待辦方向)).
 - **記錄失敗絕不影響攔截.** `record` 吞掉所有例外, 連 import 失敗也有 fallback; 測試直接
   把 telemetry 路徑佔成檔案, 斷言 gate 仍然回 exit 2. gate 對它的條件 fail-closed,
   對它的簿記 fail-open, 兩者不能對調.
@@ -225,15 +230,15 @@ Hook 建置規範 (真實目錄先證明可跑 → 合成 pipe-test → `jq` 驗
 
 同一個閘在同一 session 連續攔截時, 前三次發完整訊息, 之後改成單行並帶本 session 的序號.
 理由不是版面: **近乎相同的多行攔截區塊會在 context window 裡累積, 拉高模型掉進退化重複
-迴圈的機率** —— 這是 ECC #2142 的機轉描述 (勘查見 [ecc-survey](research/ecc-survey.md) 的 B4),
-形狀借用, 沒有借任何一個位元組, 也沒有借它的效果數字 (它沒發表).
+迴圈的機率.** 這是 ECC #2142 的機轉描述 (勘查見 [ecc-survey](research/ecc-survey.md) 的 B4).
+我們只借形狀, 沒有借任何一個位元組, 也沒有借它的效果數字 (它沒發表).
 
 **條件在落地前量過** (`scripts/denial-report.py`, 2026-09-08): 最長連續攔截是
 `commit-test-gate` 18 次, `managed-target-guard` 5 次.
 
-只有**訊息完全靜態**的閘會衰減. `commit-test-gate` 不衰減, 兩個理由各自成立:
-它的訊息帶著失敗套件的十五行尾巴, 套件變了訊息就變; 而它的 git 側那一半拿不到 payload,
-沒有 session 可以計數.
+只有**訊息完全靜態**的閘會衰減. `commit-test-gate` 不衰減, 兩個理由各自成立. 它的訊息帶著
+失敗套件的十五行尾巴, 套件變了, 訊息就變. 而它的 git 側那一半拿不到 payload, 沒有 session
+可以計數.
 
 序號由 `denial_log.record()` 回傳, 而**它算不出來時 (沒有 session, 或紀錄讀不到) 一律發完整
 訊息**. 簿記是 fail-open 的, 所以簿記壞掉只能讓訊息變吵, 不能讓它變安靜 —— 反過來就是拿
@@ -241,19 +246,19 @@ Hook 建置規範 (真實目錄先證明可跑 → 合成 pipe-test → `jq` 驗
 
 ### 沒人讀的儀器不會告訴你它壞了 (2026-08-20)
 
-這份紀錄蓋好後十二天沒人讀, 期間長到 35,856 列而只有 3 列是真的: 其餘是套件執行 fail-closed gate 時
-寫進開發者本機的. 修法不是讓 gate 判斷「我在測試中」—— fail-closed 的 hook 不該因自認在測試而走另一條
-分支 —— 而是環境變數 `AGENT_DENIAL_LOG`, 由 [`tests/support.py`](../main/claude/tests/support.py) 設一次:
-「套件不會寫到這台機器的紀錄」是整個套件的性質, 不是 40 個呼叫點各自要記得的事. 2026-08-20 之前的列是
-混的, `denial-report.py` 把它們單獨數出來而不是過濾掉.
+這份紀錄蓋好後十二天沒人讀, 期間長到 35,856 列, 只有 3 列是真的. 其餘是套件執行 fail-closed gate 時,
+寫進開發者本機的. 修法不是讓 gate 判斷「我在測試中」, 因為 fail-closed 的 hook 不該因自認在測試而走另一條
+分支. 修法是環境變數 `AGENT_DENIAL_LOG`, 由 [`tests/support.py`](../main/claude/tests/support.py) 設一次.
+「套件不寫這台機器的紀錄」是整個套件的性質, 不靠 40 個呼叫點各自記得. 2026-08-20 之前的列是混的;
+`denial-report.py` 把它們單獨數出來, 而不是過濾掉.
 
 ## 這套設計的邊界
 
-- Hook 只做**能機械判定**的事. 需要判斷的 (例如「這個平行派工是否踩到同一份可寫檔案」)
-  刻意不做成 gate, 因為關不起來的 gate 會誘人相信一個假保證 — 那正是[派工生命週期](dispatch-lifecycle.md)
+- Hook 只做**能機械判定**的事. 需要判斷的事, 例如「這個平行派工是否踩到同一份可寫檔案」, 刻意
+  不做成 gate. 關不起來的 gate 會誘人相信一個假保證; 那正是[派工生命週期](dispatch-lifecycle.md)
   裡「artifact 所有權仍屬判斷」的由來.
 - Hook 是本機單機防線. 重要規則不能只靠單機 hook, enforcement 分層是
   `Claude hook → pre-commit → CI → monitoring`, 攔截點依序變晚 ([playbook 第 9 節](engineering-playbook.md#9-enforcement-層級與-bootstrap)).
-- reviewer 的唯讀邊界是兩層合力: frontmatter **allowlist** (只放行列出的工具, 因此任何會變更狀態的
-  MCP 工具都不在其中), `runtime-guard` (版本不足就擋派工). 用 allowlist 而非 denylist
-  的理由就在這裡: denylist 對沒列到的 MCP 工具會預設放行.
+- reviewer 唯讀邊界是兩層合力: frontmatter **allowlist** (只放行列出的工具, 所以會變更狀態的
+  MCP 工具都不在其中), `runtime-guard` (版本不足就擋派工). 用 allowlist 而非 denylist 的理由
+  就在這裡: denylist 對沒列到的 MCP 工具會預設放行.

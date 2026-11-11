@@ -1,9 +1,9 @@
 # 派工生命週期與驗證
 
-派工的規則散在幾個地方各司其職: `baton-dispatch` 管形狀與 QC, `provider-routing`
-管路由與 fallback, `experience-ledger` 管記帳. 這份文件把它們串成一條可驗證的鏈:
-一次派工從解析路由到寫進 ledger, 中間每個狀態由哪個東西承載, 可以用什麼命令驗,
-以及哪些推論是不成立的.
+派工的規則散在幾個地方, 各司其職: `baton-dispatch` 管形狀與 QC, `provider-routing`
+管路由與 fallback, `experience-ledger` 管記帳. 這份文件把它們串成一條可驗證的鏈. 它涵蓋
+一次派工從解析路由到寫進 ledger 的過程: 中間每個狀態由哪個東西承載, 可以用什麼命令驗,
+以及哪些推論不成立.
 
 維護這個 harness 時, 這裡是「怎麼確認派工管理沒有破洞」的入口.
 
@@ -23,11 +23,10 @@
 
 ### 沒有 hook 的派工者自己寫承載物
 
-Claude 兩側的 stub 由 SubagentStart/Stop hook 落. 任何沒有這種 hook 的派工路徑, 它的
-launched 與 collected 就沒有承載物: 漏記的 outcome 沒進 ledger, 也沒有東西知道它
-存在過. 漏記不是隨機的 — 難做或失敗的派工最容易被放掉, cohort 會偏向成功樣本.
-這一節是為 2026-09-14 之前的 native Codex 寫的, 留著是因為它擋的是「有承載物沒有 hook」
-這個形狀, 不是某一個 provider.
+Claude 兩側的 stub 由 SubagentStart/Stop hook 落. 沒有這種 hook 的派工路徑, launched 與
+collected 就沒有承載物. 漏記的 outcome 沒進 ledger, 也沒有東西知道它存在過. 漏記不是隨機的:
+難做或失敗的派工最容易被放掉, 所以 cohort 會偏向成功樣本. 這一節原本為 2026-09-14 之前的
+native Codex 而寫. 留著它, 是因為它擋的是「有承載物沒有 hook」這個形狀, 不是某一個 provider.
 
 ```bash
 ~/.agents/skills/experience-ledger/scripts/experience-stage --start --role executor
@@ -51,13 +50,13 @@ id 會被拒絕. 沒跑起來的用 `--cancel` 退掉, 跑過的一律記帳 (�
   擁有者, rollback 與驗收方式; envelope 過了以後, 一次只審下一段.
 
 每個 readiness unit 都要有一個穩定的 ID. `plan-verifier` 回 `REVISE` 時必須附上 `Blocker`,
-`Evidence`, `Minimum revision` 與 `Acceptance check`; 同一個 ID 自動修訂兩次就停下, 把選項
-交還使用者, 不能把上限當成 `READY`. 涉及安全的單位在第一次 readiness review 之前要先做完
-唯讀的 security review, 並把每個 finding 與它的處置寫進 Plan.
+`Evidence`, `Minimum revision` 與 `Acceptance check`. 同一個 ID 自動修訂兩次就停下, 把選項
+交還使用者; 不能把上限當成 `READY`. 涉及安全的單位, 在第一次 readiness review 之前要先做完
+唯讀 security review. 每個 finding 與它的處置都要寫進 Plan.
 
-Readiness 的承載物是帶穩定 ID 的 Plan 或 brief, 加上那一次 `plan-verifier` 的輸出. 兩次修訂
-由 main 對同一個 ID 的輸出自己數, 不是 hook 的跨 prompt 額度. 沒有 ID, 只換一個 ID, 或是把
-一段拆成好看的兩段, 都不能把共用的 blocker 重設掉.
+Readiness 的承載物是帶穩定 ID 的 Plan 或 brief, 加上那一次 `plan-verifier` 輸出. 兩次修訂
+由 main 對同一個 ID 的輸出自己數, 不是 hook 的跨 prompt 額度. 沒有 ID, 只換一個 ID, 或把
+一段拆成好看的兩段, 都不能重設共用的 blocker.
 
 平行 discovery 在啟動前先劃分讀取範圍: 哪些歸 main, 哪些歸各個 agent. 一個 agent 正在讀的
 範圍暫時排他, 要重疊就得先取消或改派它. 同一批 agent 連續啟動, 全部收回來之後才做跨面向的
@@ -65,9 +64,9 @@ Readiness 的承載物是帶穩定 ID 的 Plan 或 brief, 加上那一次 `plan-
 
 ## 不成立的推論
 
-**派工者說的 route ≠ 實際跑的 route.** 手打的值會被記成 `route_source: explicit` — 那個詞
-描述的是「怎麼傳進來的」, 不是「有多可信」. Codex 自己會把套用的 thread settings 寫進
-rollout, 那才是 provider 記錄的證據: 機器可驗的遙測, 不是 agent 自述.
+**派工者說的 route ≠ 實際跑的 route.** 手打的值會記成 `route_source: explicit`. 那個詞描述
+「怎麼傳進來」, 不描述「有多可信」. Codex 自己會把套用的 thread settings 寫進 rollout. 那才是
+provider 記錄的證據, 也就是機器可驗的遙測, 不是 agent 自述.
 
 現在 `experience-log --from-pending` 會從該次派工的 rollout 讀出 model 與 effort:
 
@@ -78,37 +77,36 @@ rollout, 那才是 provider 記錄的證據: 機器可驗的遙測, 不是 agent
 
 `--profile` 仍然由呼叫端提供: 那是 harness 的標籤, provider 端沒有對應物.
 
-Claude 側跑同一條規則, 用自己的證據 (2026-07-29): subagent transcript 每個 assistant
-turn 都帶 `message.model`, pending hook 在算 token 的同一趟讀出來, `experience-log` 拿它
-對照 resolver 解出的 pin, 同一家族才記 `transcript-verified`: route 只寫家族 (`claude-sonnet`),
-哪一代由 CLI 決定, 實際跑的 id 另記在 `observed_model` (2026-09-30 起). 家族對不上就是路由
-違規, 照樣拒絕. 一份 transcript 出現兩個 model 就什麼都不背書.
-effort 在 Claude 沒有 provider 記錄, 由 `check-pins` 顧.
+Claude 側跑同一條規則, 用自己的證據 (2026-07-29). subagent transcript 每個 assistant turn
+都帶 `message.model`, pending hook 在算 token 的同一趟讀出它. `experience-log` 拿它對照
+resolver 解出的 pin; 同一家族才記 `transcript-verified`. route 只寫家族 (`claude-sonnet`),
+哪一代由 CLI 決定. 實際跑的 id 另記在 `observed_model` (2026-09-30 起). 家族對不上就是路由
+違規, 照樣拒絕. 一份 transcript 出現兩個 model, 就什麼都不背書. effort 在 Claude 沒有
+provider 記錄, 由 `check-pins` 顧.
 
 ## 兩條所有權規則, 一條擋得住, 一條擋不住
 
 **「每個 top-level task 至多一個 outcome verifier」現在有機制托底, 但托底的單位是
-prompt, 不是 task.** 承載欄位是 payload 的 `prompt_id`, 同一個 prompt 內第二次派
-`verifier` 直接 exit 2. top-level task 是判斷邊界, 不是欄位, `prompt_id` 只是最接近的
-代理, 所以**跨 prompt 的同一個任務會拿到新的額度** — 少擋, 不誤擋. 要真正 per-task 得有
-orchestrator 帶進 payload 的穩定 task id, runtime 目前沒有, 所以缺口攤開講. 真的是新任務就用
-`AGENT_ALLOW_SECOND_VERIFIER=1` 重派. payload 沒有 `prompt_id` 時放行並附註: 這是預算
-護欄, 不是安全邊界, 不該在讀不到承載欄位時盲目拒絕.
+prompt, 不是 task.** 承載欄位是 payload 的 `prompt_id`; 同一個 prompt 內第二次派 `verifier`
+直接 exit 2. top-level task 是判斷邊界, 不是欄位, 而 `prompt_id` 只是最接近的代理. 所以
+**跨 prompt 的同一個任務會拿到新的額度**: 少擋, 不誤擋. 要真正 per-task, 得有 orchestrator
+帶進 payload 的穩定 task id. runtime 目前沒有, 所以把缺口攤開講. 真的是新任務, 就用
+`AGENT_ALLOW_SECOND_VERIFIER=1` 重派. payload 沒有 `prompt_id` 時放行並附註. 這是預算護欄,
+不是安全邊界; 讀不到承載欄位時, 不該盲目拒絕.
 
 **「一個 writable artifact 一個 owner」仍然是判斷, 沒有機制.** 這是刻意的:
 `baton-dispatch` 本來就允許對不相交表面平行派工, 而 hook 無法可靠得知每個 leaf 的可寫
 範圍, 所以「同時有兩個 writer」不等於違規. 做成 gate 只會得到一個關不起來的機制 — 正是
 這個 repo 反覆抓到的那種缺陷. 請在派工前自己確認可寫範圍不相交.
 
-**第三條: `[LEAF_DISPATCH]` / `[LEAF_RESULT]` 兩行紀錄也沒有機制, 而這一條容易被誤讀.**
-契約寫的是「每次派工與 QC 之後各報一行固定格式的紀錄」, 語氣是 must; 但 tests 之外沒有任何
-hook 或腳本解析它們.
-**被檢查的是 ledger 那一列, 不是這兩行**: 契約同一句的後半「then log the outcome with
-`experience-ledger`」才是耐久載體, 而它有 schema, 有拒絕重複與拒絕早記的守衛.
+**第三條: `[LEAF_DISPATCH]` / `[LEAF_RESULT]` 兩行紀錄也沒有機制, 而這一條容易誤讀.**
+契約寫的是「每次派工與 QC 之後各報一行固定格式紀錄」, 語氣是 must. 但 tests 之外, 沒有任何
+hook 或腳本解析它們. **被檢查的是 ledger 那一列, 不是這兩行.** 契約同一句的後半「then log the
+outcome with `experience-ledger`」才是耐久載體; 它有 schema, 也有拒絕重複與拒絕早記的守衛.
 
-分清楚的實際差別: 兩行紀錄是寫給讀的人看的, 漏掉不會有東西變紅; ledger 漏掉會在
+分清楚的實際差別: 兩行紀錄寫給讀的人看, 漏掉不會有東西變紅. ledger 漏掉, 會在
 `weekly-integrity` 的對帳裡浮出來. 所以「沒發那兩行」是紀律問題, 「沒記 ledger」是可偵測的缺口.
-沒有任何文件宣稱前者有閘 —— 這一段存在只是為了讓 must 的語氣不被讀成「有東西在擋」.
+沒有任何文件宣稱前者有閘. 這一段只是為了讓 must 的語氣不被讀成「有東西在擋」.
 
 ## 四種 `route_source` 的強度
 
@@ -135,7 +133,7 @@ main/.agents/scripts/python3-run -m unittest discover -s main/claude/tests -k Cl
 
 `BridgeRouteEvidenceTests` 與 `ClaudeRouteEvidenceTests` 釘住兩側的路由證據鏈
 (含矛盾必須被拒, 未經證實的主張不得改變路由). 前者的名字留著 bridge 兩個字, 因為它釘的是
-讀 Codex rollout 那條證據路徑; 2026-09-14 收掉的是 Claude 走向 Codex 的派工路由, 不是這段遙測.
+讀 Codex rollout 那條證據路徑. 2026-09-14 收掉的是 Claude 走向 Codex 的派工路由, 不是這段遙測.
 
 ## 這份文件不管的事
 

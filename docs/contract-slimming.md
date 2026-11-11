@@ -11,13 +11,13 @@
 2. **規則競爭注意力.** 常駐檔越長, 單條遵循度越低 (IFScale/Context Rot 證據見
    [研究摘要](research/README.md)). 加一條的成本是其他每一條的稀釋.
 2b. **矛盾是獨立且更貴的失敗形態.** 稀釋讓規則被忽略. 矛盾讓模型花 reasoning 去調和兩條
-   互斥指令 — 更慢, 更貴, 還常常錯 (兩家 2026-07 官方指引同時點名, 見
-   [供應商官方指引](research/context-and-vendors.md#供應商官方指引-2026-07)). 三個推論:
-   (a) **契約牴觸供應商 system prompt 時是 bug**, 處置是刪契約那一行, 不是加字補強;
+   互斥指令: 更慢, 更貴, 還常常錯. 兩家 2026-07 官方指引同時點名這件事, 見
+   [供應商官方指引](research/context-and-vendors.md#供應商官方指引-2026-07). 三個推論:
+   (a) **契約牴觸供應商 system prompt 時是 bug.** 處置是刪契約那一行, 不是加字補強.
    (b) 重述 system prompt 已保證的行為是純注意力稅, **預設刪除**. 唯一例外是失效不可
    回復的安全條款, 例如破壞性動作的授權邊界. 供應商移除該保證時, 過度謹慎可回復,
    越權破壞不可回復; 尾部風險不對稱時就保留. 保留必須**具名**: 在契約旁註明, 並由一條
-   指名的 regression test 鎖住, 不得以「保險起見」概括豁免;
+   指名的 regression test 鎖住. 不得以「保險起見」概括豁免.
    (c) 同一條政策只能有一個真相源, 其他位置只放連結. 加規則前先找矛盾, 不是先找空位.
 3. **分層放置.** 按需流程放 skills (漸進揭露); 可機械判定的紀律交給 hooks 與
    contract tests (機制勝過提醒, 論證在 [playbook](engineering-playbook.md#3-四個原則)); 角色專屬規則放各 role 契約, 不進主契約.
@@ -47,79 +47,76 @@
 ## 預算與強制
 
 - **子句分三型** (2026-08-08 逐條盤點): **程序/權限** 23 條, **指標** 5 條, **環境陷阱**
-  3 條, 能力邊界宣告 1 條, 可由讀 repo 得知的事實 **0 條**. 判定順序是: 環境陷阱不可砍
-  (讀 repo 讀不出來, 且本 repo 唯一有事故背書的子句就在這格), 指標型是唯一的修剪候選
-  (已量到與 skill description 逐字重疊), repo 事實本來就不該進來. 外部消融
-  ([2607.27250](research/context-and-vendors.md)) 測的是最後那一格, 拿它的結論去砍
-  前兩格是誤用.
+  3 條, 能力邊界宣告 1 條, 可由讀 repo 得知的事實 **0 條**. 判定順序如下. 環境陷阱不可砍:
+  讀 repo 讀不出來, 而且本 repo 唯一有事故背書的子句就在這格. 指標型是唯一的修剪候選,
+  因為已量到它與 skill description 逐字重疊. repo 事實本來就不該進來. 外部消融
+  ([2607.27250](research/context-and-vendors.md)) 測的是最後那一格; 拿它的結論去砍前兩格
+  是誤用.
 - **預算只綁在出貨層** (2026-08-08 起): 判準是 `scripts/deployment-manifest.tsv`
   有沒有部署它, 不是路徑長什麼樣. 理由是字數上限量的是 push 成本 — 每回合 (常駐
   契約) 或每次派工 (skills) 都要付的位元組. 不部署的檔案沒有 session 在付,
   `docs/**` 因此改由「只報不擋的體積報告 + 數量級鬆閘」看住, 見
   [文件導覽規則 8](README.md#維護規則).
-- 預算以 `word_count` (CJK-aware, 每個 CJK 字元計一詞) 計, 行數不可作為預算單位
-  (長行可規避). 現行數值的唯一真相源是
-  [test_contracts.py](../main/claude/tests/test_contracts.py) 的 `DocumentationBudgetTests`;
-  本文不複製數字. **每一支出貨的 skill 都必須有預算**, 新增 skill 未登錄即測試失敗.
-  上限取當時實測值加約 2%. 它是棘輪, 不是研究導出的門檻 (研究導不出, 見
-  [context-and-vendors](research/context-and-vendors.md)). **每支 leaf role 的
-  `description` 同樣有預算**, 理由相同: 它與 skill description 一樣每個 session 都
-  載入, 若不設限, 把句子從 skill description 搬進 role description 就能繞過整道棘輪
-  而成本不變 (2026-08-01 review). **專案內的 dev-only skill (`.claude/skills/` 下的
-  symlink) 也吃同一個 per-skill 上限**: 它不出貨, 所以不進 census, 但在本 checkout 開的
-  每個 session 都常駐 — 棘輪只蓋出貨層時, 唯一在外面的那支正好常駐在最常開的 repo
-  (2026-08-02 review).
+- 預算以 `word_count` 計 (CJK-aware, 每個 CJK 字元計一詞). 行數不可作為預算單位, 因為長行
+  可規避. 現行數值的唯一真相源是 [test_contracts.py](../main/claude/tests/test_contracts.py)
+  裡的 `DocumentationBudgetTests`; 本文不複製數字. **每一支出貨 skill 都必須有預算**, 新增
+  skill 未登錄即測試失敗. 上限取當時實測值加約 2%. 它是棘輪, 不是研究導出的門檻 (研究導不出,
+  見 [context-and-vendors](research/context-and-vendors.md)). **每支 leaf role 的
+  `description` 同樣有預算**, 理由相同. 它與 skill description 一樣, 每個 session 都載入.
+  若不設限, 把句子從 skill description 搬進 role description, 就能繞過整道棘輪而成本不變
+  (2026-08-01 review). **專案內的 dev-only skill (`.claude/skills/` 下的 symlink) 也吃同一個
+  per-skill 上限.** 它不出貨, 所以不進 census. 原本它在本 checkout 開的每個 session 都常駐
+  (2026-08-02 review); 2026-11-10 起這兩支改成只能手動叫用, 不再常駐, 上限照舊保留.
 - 位元組另有天花板. word 是注意力代價的近似, 不是長度: 一份 520 word, 每詞 200 字元的
   檔案能同時通過 word 預算與不斷行上限, 卻是 104 KB. 真實常駐契約約 2.7 KB, 所以天花板
   訂在寬鬆但有限的每詞位元組比, 只擋掉數量級的偏離, 不干涉正常改寫 (2026-08-02 review).
 - 字數之外另有**密度指標**: 每條規則的位元組數, 規則條數, 虛詞比例 (上下限各一). 字數只管
-  檔案多大, 管不到那些字買到的是規則還是填充. 而在零 headroom 時它逼出來的是錯的句子, 不是
-  短的句子 — `.codex/AGENTS.md` 卡在 540/540, 一條條款為了塞進去弄丟主詞, `c143b72` 修掉.
-  三個一起用是因為彼此堵對方的漏洞: 灌水會被每條位元組數抓到, 把一條拆成六個 bullet 壓低
-  平均會被條數抓到, 一路刪連接詞刪到句子不成句會被虛詞下限抓到. 數值由 2026-08-04 實測兩份
-  契約與十四份 role 本體後加餘裕定出, **是換口徑不是收緊**; 定義在
+  檔案多大, 管不到那些字買到的是規則還是填充. 而在零 headroom 時, 它逼出來的是錯句子, 不是
+  短句子. `.codex/AGENTS.md` 卡在 540/540, 一條條款為了塞進去弄丟主詞, 後來由 `c143b72` 修掉.
+  三個一起用, 是因為彼此堵對方的漏洞. 灌水會被每條位元組數抓到. 把一條拆成六個 bullet 來壓低
+  平均, 會被條數抓到. 一路刪連接詞刪到句子不成句, 會被虛詞下限抓到. 數值是 2026-08-04 實測兩份
+  契約與十四份 role 本體後, 加餘裕定出; **是換口徑, 不是收緊**. 定義在
   [support.py](../main/claude/tests/support.py) 的 `rule_units`/`bytes_per_rule`/`filler_ratio`.
-- 密度指標是**加上去的, 不取代字數上限**: 要讓密度先綁定, codex 那份的字數上限得往上拉約
-  四分之一, 沒有證據支持把常駐層放大到那個程度 (2026-08-04). 但它換掉了調高字數上限的判準
-  — 三項密度都還在上限內的擴充, 買到的是更好的句子而不是更多字, 那才是可以動上限的情況.
-  它也是**檔案層級的聚合量, 不取代逐 commit 的語意附證**: 540/540 那個缺陷只動了一條條款裡
-  的十個字, 虛詞比例大約只動 0.005, 低於任何檔案聚合量分辨得出的幅度. 密度抓的是長期漂成
-  灌水/碎裂/電報體的持續性走樣, 單次改寫的語意變化由下方〈邏輯運算元的增減表〉負責.
+- 密度指標是**加上去的, 不取代字數上限**. 要讓密度先綁定, codex 那份的字數上限得往上拉約
+  四分之一; 沒有證據支持把常駐層放大到那個程度 (2026-08-04). 但它換掉了調高字數上限的判準.
+  如果擴充後三項密度都還在上限內, 它買到更好的句子, 不是更多字; 這種情況才可以動上限.
+  它也是**檔案層級的聚合量, 不取代逐 commit 的語意附證**. 540/540 那個缺陷只動了一條條款裡
+  的十個字, 虛詞比例大約只動 0.005. 這低於任何檔案聚合量分辨得出的幅度. 密度抓的是長期漂成
+  灌水/碎裂/電報體的持續性走樣. 單次改寫的語意變化由下方〈邏輯運算元的增減表〉負責.
 - 調高預算需要證據: 先嘗試「移出到 skill/hook/role 契約」, 只有內容確屬
   「每 session 必要且推不出」時才擴預算, 並在 commit message 記明理由.
 - 以「供應商已保證」為由刪任何一條, 必須對照**任何會載入該契約的 session 中最薄的
-  host prompt 變體**. 這條規則 2026-09-14 失去了唯一能執行它的方法: 它靠
-  `codex-prompt-census.py` 讀 Codex 寫進 rollout 的 host prompt, 而那個 bundle 已退場;
-  規則最後一句本來就寫明 Claude 側不記錄 system prompt, 無法用此法稽核. 保留的是教訓而非
-  程序 —— 2026-07-31 實測, **一次抽樣導致誤刪並已部署**. 在沒有新的量測方法之前,
+  host prompt 變體**. 這條規則 2026-09-14 失去了唯一能執行它的方法. 它靠
+  `codex-prompt-census.py` 讀 Codex 寫進 rollout 的 host prompt, 而那個 bundle 已退場.
+  規則最後一句本來就寫明, Claude 側不記錄 system prompt, 無法用此法稽核. 保留的是教訓而非
+  程序: 2026-07-31 實測, **一次抽樣導致誤刪, 而且已經部署**. 在沒有新的量測方法之前,
   「供應商已保證」不構成刪除理由.
 - 下修預算的證據路徑就是下方〈驗收〉那兩條 (真實任務回歸, trap A/B), 與上修同源;
   它們未自動化, 成本是每次 3–5 個真實任務. **成本高不等於不存在** — 不要把「還沒跑」
   說成「沒辦法」. 各層餘裕實測與槓桿盤點見
   [resident-context-options.md](research/resident-context-options.md).
 - 變更預算單位時, 必須以新單位重測所有受管檔案後再定數值.
-- **這道棘輪只蓋住出貨層, 而出貨層是實際常駐量的六分之一** (2026-08-18 實測): 一個
-  session 收到的 skill 清單包含機器上每一支已安裝的 skill, 本 repo 出貨的 8 支佔約
-  16%, 其餘四十幾支沒有任何機制. 那些不是本 repo 的檔案, 所以只量不擋, 由
+- **這道棘輪只蓋住出貨層, 而出貨層只佔實際常駐量的六分之一** (2026-08-18 實測). 一個
+  session 收到的 skill 清單包含機器上每一支已安裝的 skill. 本 repo 出貨的 8 支佔約 16%,
+  其餘四十幾支沒有任何機制. 那些不是本 repo 的檔案, 所以只量不擋, 由
   [`scripts/resident-pool-report.py`](../scripts/resident-pool-report.py) 報告.
-  **本節全部條文的作用域是本 repo 控制得了的那一份**; 全綠不等於「這台機器的常駐
-  注意力受控」, 完整討論見
-  [resident-context-options](research/resident-context-options.md).
+  **本節全部條文的作用域, 是本 repo 控制得了的那一份.** 全綠不等於「這台機器的常駐注意力
+  受控」; 完整討論見 [resident-context-options](research/resident-context-options.md).
 
 ## 驗收
 
-瘦身或增補後: 挑 3–5 個近期真實任務 (至少含一次跨 provider 交接, 一次高風險驗證),
-變更前後各跑一次, 比較鐵律有無遺漏, routing 是否仍正確觸發, 常駐 token 差異.
-格式紀律類規則另以 `evals/traps/` 的對應 trap 做 A/B (無失敗 trap 的規則是刪除候選).
-**動 skill description 前先跑 [s10-skill-recall](../evals/traps/s10-skill-recall/) 兩臂**:
+瘦身或增補後, 挑 3–5 個近期真實任務, 至少含一次高風險驗證. 變更前後各跑一次, 比較鐵律有無
+遺漏, routing 是否仍正確觸發, 常駐 token 差異. 格式紀律類規則另以 `evals/traps/` 的對應
+trap 做 A/B; 沒有失敗 trap 的規則是刪除候選.
+**動 skill description 前, 先跑 [s10-skill-recall](../evals/traps/s10-skill-recall/) 兩臂.**
 description 同時是常駐成本與唯一的 routing 面, 字數與鑑別度互相拉扯. 而鑑別度只有
-model-in-the-loop 量得到: 測試只能釘住觸發詞在不在, 量不出改了措辭之後還分不分得開.
-它量的是**鑑別度, 不是實際載入行為** (批次分類, 非 fresh session 觀測), 所以證據不對稱:
+model-in-the-loop 量得到. 測試只能釘住觸發詞在不在, 量不出改了措辭之後還分不分得開. 它量的是
+**鑑別度, 不是實際載入行為** (批次分類, 非 fresh session 觀測). 所以證據不對稱:
 **某一臂失敗是強證據** (連這種容易的條件都過不了), **某一臂通過是弱證據** (必要非充分).
 通過不等於可以砍; 只有失敗能直接否決一次修剪.
-`s10` 不保存 run 產物 ([為什麼](../evals/traps/README.md#狀態-已歸檔的結論-不是可重跑的儀器)),
-所以要引用這次重跑的數字, 就得自己留下 run 目錄, 條件與當時的 surface 指紋 —— 否則那個數字
-沒有東西可以覆核, 而本 repo 對自己引用的數字要求重算而非讀回.
+`s10` 不保存 run 產物 ([為什麼](../evals/traps/README.md#狀態-已歸檔的結論-不是可重跑的儀器)).
+所以要引用這次重跑的數字, 就得自己留下 run 目錄, 條件與當時的 surface 指紋. 否則那個數字
+沒有東西可以覆核; 本 repo 對自己引用的數字, 要求重算而非讀回.
 
 `main/.agents/scripts/python3-run scripts/prompt-surface-census.py --check docs/research/prompt-surface-census.json`
 另行鎖定 resident, dispatch-time skill
@@ -148,10 +145,10 @@ main/.agents/scripts/python3-run scripts/contract-operator-delta.py --staged
 - 涵蓋範圍是 session 真的會遵守的檔案: 常駐契約, 所有 role, 所有 skill 本體與
   references. 研究文件與測試不在內 — 那些是給人讀的, 不是給模型遵守的.
 
-矛盾稽核 (原則 2b) 另外做, 因為預算與 trap 都測不到它: 對照當期供應商 system prompt
-與常駐契約逐條比, 找重述與牴觸各一類; `/doctor` (Claude Code) 可先跑一次當粗篩,
-但它評的是肥瘦不是矛盾, 仍需人工對照. CLI 大版本更新後重跑 — system prompt 會變,
-昨天不重複的句子今天可能重複了.
+矛盾稽核 (原則 2b) 另外做, 因為預算與 trap 都測不到它. 做法是對照當期供應商 system prompt 與
+常駐契約逐條比, 找重述與牴觸兩類. `/doctor` (Claude Code) 可以先跑一次當粗篩, 但它評的是肥瘦,
+不是矛盾, 仍需人工對照. CLI 大版本更新後要重跑: system prompt 會變, 昨天不重複的句子今天可能
+重複了.
 
 ## 回寫流程
 

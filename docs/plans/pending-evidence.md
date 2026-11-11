@@ -2,11 +2,11 @@
 
 2026-08-31 起. 「等未來證據」的項目散在研究文的段落裡時沒有人負責看到期, 所以集中登記在這裡. 這裡只登記**等待本身** —— 條件原文與依據留在原地, link, don't repeat. 每項三欄: 等什麼, 什麼事件觸發判定, 判定後動作在哪寫著. 已經判定的項目移出這張表, 結果留在它指向的文件與 [landing-log](../research/landing-log.md).
 
-入場檢查 (蒸餾自 rebelytics 3.0 與 3.1): 寫下任何「later」之前, 指名**哪一個具體觀察會改變決定, 它何時可能到** —— 指不出來就表示證據已經足夠或等待買不到東西, 兩種都是現在動手. 觸發事件還要**發生得了**: 問誰或什麼得動它才會發生, 那一方有沒有理由做恰好相反的事; 發生不了的條件不是等待, 是比較貴的靜默丟棄. 那種項目就地用今天有的替代證據結案, 或改押在會發生的觸發上.
+入場檢查 (蒸餾自 rebelytics 3.0 與 3.1): 寫下任何「later」之前, 指名**哪一個具體觀察會改變決定, 它何時可能到**. 指不出來, 就表示證據已經足夠, 或等待買不到東西; 兩種都是現在動手. 觸發事件還要**發生得了**. 問清楚誰或什麼得動它才會發生, 以及那一方有沒有理由做恰好相反的事. 發生不了的條件不是等待, 是比較貴的靜默丟棄. 這種項目就地用今天有的替代證據結案, 或改押在會發生的觸發上.
 
 ## 一, 已定推翻條件在等的
 
-目前沒有. 原有兩項 (十個新戳章, 再 30 個 trap run) 都要靠新的 eval 批次才會前進, 而 09-15 之後沒有排程, 照入場檢查的「發生不了」2026-09-30 結案, 維持現狀; 讀數在 [landing-log](../research/landing-log.md#2026-09-30-收斂-等不到的等待結案-六個來源停追-一個永遠算不出來的欄位退場).
+目前沒有. 原有兩項 (十個新戳章, 再 30 個 trap run) 都要靠新的 eval 批次才會前進, 而 09-15 之後沒有排程. 所以依入場檢查的「發生不了」, 兩項在 2026-09-30 結案, 維持現狀. 讀數在 [landing-log](../research/landing-log.md#2026-09-30-收斂-等不到的等待結案-六個來源停追-一個永遠算不出來的欄位退場).
 
 ## 二, 等一次觀察的 (發生了才動工, 不排程)
 
@@ -19,7 +19,7 @@
 
 ## 三之六, 成本儀器剩下的接線: 卡在歸因, 不是計算 (2026-08-31)
 
-[landing-readiness](../research/landing-readiness.md) 的建議四寫「缺的不是框架也不是欄位定義, 是接線」. 接的時候發現只對了一半: **框架是完整的, 但它餓的是輸入, 而輸入拿不到**. `experience-report` 每個 cohort 已在算 `avg_api_cost_usd`, `avg_tokens_out`, `avg_total_tokens` (當時還有 `avg_total_secs`, 09-30 移除), 口徑在 `model-evidence`; 沒有東西要新建. 輸入側, 164 筆帳本實測:
+[landing-readiness](../research/landing-readiness.md) 的建議四寫「缺的不是框架也不是欄位定義, 是接線」. 接線時發現只對了一半: **框架完整, 但它缺輸入, 而輸入拿不到**. `experience-report` 每個 cohort 已在算 `avg_api_cost_usd`, `avg_tokens_out`, `avg_total_tokens` (當時還有 `avg_total_secs`, 09-30 移除), 口徑在 `model-evidence`; 沒有東西要新建. 輸入側, 164 筆帳本實測:
 
 ```text
 api_cost_usd     1/164     ← 幾乎沒有
@@ -39,4 +39,4 @@ token_scope full 90/164
 
 ## 四, 蒸餾重查節奏
 
-上游重查由 [research README 的時效性基準](../research/README.md#時效性基準)與 `scripts/upstream-pin-report.py` 驅動; 後者從 ATTRIBUTION 與那張表的 `pin` 句推導, sepia 這種還沒有 ATTRIBUTION 的來源靠表裡那一列被盯住; ECC 與 Trellis 2026-09-30 移到[不再追](../research/README.md#不再追的來源-2026-09-30-停), 報告不再拿它們比 head. 下次重查時間到, 順帶讀 StoryScope 論文本文, 一趟做完. 跨上游整合已跑四輪, 計票與結論在 [synthesis](../research/cross-upstream-synthesis.md#第四輪整合-2026-09-06-開題與計票).
+上游重查由 [research README 的時效性基準](../research/README.md#時效性基準) 與 `scripts/upstream-pin-report.py` 驅動. 後者從 ATTRIBUTION 與那張表的 `pin` 句推導; sepia 這種還沒有 ATTRIBUTION 的來源, 靠表裡那一列盯住. ECC 與 Trellis 在 2026-09-30 移到[不再追](../research/README.md#不再追的來源-2026-09-30-停), 報告不再拿它們比 head. 下次重查時間到, 順帶讀 StoryScope 論文本文, 一趟做完. 跨上游整合已跑四輪, 計票與結論在 [synthesis](../research/cross-upstream-synthesis.md#第四輪整合-2026-09-06-開題與計票).
