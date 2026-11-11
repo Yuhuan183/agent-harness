@@ -11,7 +11,7 @@ description: |
 Use this only as a direct compression path outside transparent proxy routing,
 whether selected automatically or explicitly.
 
-1. Confirm `headroom_compress` exists and proxy routing is absent. Run `headroom doctor` only when proxy or client-routing state is uncertain; a live proxy alone does not prove that the current client is routed through it.
+1. Confirm `headroom_compress` exists and proxy routing is absent. Run `headroom doctor` only when proxy or client-routing state is uncertain; a live proxy alone does not prove that the current client routes through it.
 2. Compress disposable read-only analysis input, typically over 200 lines or several KB.
 3. Keep the hash; use `headroom_retrieve` when exact text is later needed.
 4. Reopen the exact source before editing, quoting, or byte comparison.

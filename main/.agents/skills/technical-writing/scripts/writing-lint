@@ -26,7 +26,8 @@ from pathlib import Path
 
 CJK = re.compile(r"[一-鿿]")
 UNIT = re.compile(r"[一-鿿]|[^\s一-鿿]+")
-SENTENCE_END = re.compile(r"(?<=[.!?])\s+|(?<=[。！？])")
+# A sentence also ends after closing markup: `fail?* If` and `L3.** If`.
+SENTENCE_END = re.compile(r"(?<=[.!?])[*_\"')\]]*\s+|(?<=[。！？])")
 PASSIVE = re.compile(
     r"\b(?:is|are|was|were|be|been|being)\s+(?:\w+ly\s+)?(\w+(?:ed|en))\b",
     re.IGNORECASE)

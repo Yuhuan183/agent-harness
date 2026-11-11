@@ -125,4 +125,5 @@
     - 每張圖後面接一段文字, 給出和圖一樣的結論, 沒看圖的人不會漏掉東西.
     - 圖檔放 `docs/assets/<文件名>/`, 優先用 SVG, 原始檔放在旁邊並用同一個檔名.
     - [`scripts/render-diagrams.py`](../scripts/render-diagrams.py) `check` 檢查每個 Mermaid 區塊畫得出來,
-      `export` 把 `.mmd` 匯出成 SVG. 術語一致性用 [`docs/glossary.tsv`](glossary.tsv) 與 `writing-lint` 檢查.
+      `export` 把 `.mmd` 匯出成 SVG. 術語一致性用 [`docs/glossary.tsv`](glossary.tsv) 與
+      [`writing-lint`](../main/.agents/skills/technical-writing/scripts/writing-lint) 檢查.

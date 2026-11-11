@@ -7,7 +7,7 @@ description: Capture and review reusable skill-improvement observations. Invoke 
 
 Capture qualitative skill feedback without turning every session into background
 telemetry. Proposing feedback may be proactive, but persistence remains opt-in:
-user authority is required before writing an observation or changing a skill.
+write an observation or change a skill only with the user's authority.
 
 This adaptation derives from Eoghan Henn's
 [task-observer](https://github.com/rebelytics/one-skill-to-rule-them-all)
@@ -37,8 +37,8 @@ methodology. See `ATTRIBUTION.md` for licence and modification details.
 1. Handle the requested correction or rework first. Do not interrupt recovery
    with a feedback question.
 2. Treat explicit dissatisfaction or a requested correction after skill-assisted
-   work as a signal. Chinese and English examples in the description are
-   illustrative, not an exact keyword match; require context linking the
+   work as a signal. The Chinese and English examples in the description are
+   illustrative, not an exact keyword match. Require context that links the
    friction to a reusable skill or workflow behaviour.
 3. After presenting the corrected outcome, ask once in the user's language:
    - Chinese: `這次調整可能反映 skill 或工作流程可以改進。要把它記錄成改善觀察嗎？`
@@ -84,7 +84,7 @@ These commands are read-only:
 ~/.agents/skills/task-observer/scripts/observation-log review
 ```
 
-Use `--json` with `list` when structured data is needed. Listing a missing
+Use `--json` with `list` when you need structured data. Listing a missing
 ledger must not create it.
 
 Resolve an observation only after the user approves the disposition:

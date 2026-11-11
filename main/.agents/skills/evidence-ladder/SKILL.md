@@ -8,12 +8,12 @@ description: |
 
 # Evidence Ladder
 
-A claim is only as good as the level of evidence under it. This skill picks that level deliberately,
-then guards the three ways evidence silently fails: it is circular, the instrument is uncalibrated, or
-it was gathered somewhere the claim does not apply.
+A claim is only as good as the level of evidence under it. This skill picks that level deliberately.
+Then it guards the three ways evidence fails silently: circular proof, an uncalibrated instrument, or
+a source where the claim does not apply.
 
-Use it when you are about to **assert something as true** — in a reply, a code comment, a doc, or a
-commit message — and being wrong would cost real work.
+Use it when you are about to **assert something as true** and being wrong would cost real work. The
+assertion can be in a reply, a code comment, a doc, or a commit message.
 
 ## 1. The ladder
 
@@ -31,8 +31,8 @@ Two rules read straight off the table:
 - **Never state an engine/library *semantic* on L2 alone.** A mock replays the model you wrote into it,
   so it agrees with you by construction. L2 is for *your* arithmetic, never for *their* behaviour.
 - **L1 is not a substitute for L3, but it often replaces repeated L3.** If the source has no branch on
-  a variable, you do not need to measure every value of that variable — read once, then pin the
-  behaviour with one L3 probe as a sentinel.
+  a variable, you need not measure every value of that variable. Read once, then pin the behaviour
+  with one L3 probe as a sentinel.
 
 ## 2. Choosing the level
 
@@ -52,9 +52,9 @@ Pick by what a wrong answer costs, not by what is convenient:
 
 ### Non-circular reference frame
 
-Measure against something that does not depend on the thing under test. If you are testing how
-`anchor` positions content, do not express results relative to a box derived from `anchor` — the
-effect cancels out and everything looks correct. Pick an input you set directly.
+Measure against something that does not depend on the thing under test. If you test how `anchor`
+positions content, do not express results relative to a box derived from `anchor`. The effect
+cancels out and everything looks correct. Pick an input you set directly.
 
 Ask before every measurement: *if the mechanism under test were broken, would this number change?*
 If not, the measurement is decorative.
@@ -72,7 +72,7 @@ new instrument are surprising, suspect the instrument before the system.
 ### An absence claim is worth what the probe covered
 
 Both checks above guard a false positive. An absence claim -- "no hits", "not
-present", "it never fires" -- fails the other way: a probe that cannot reach
+present", "it never fires" -- fails the other way. A probe that cannot reach
 the answer goes silent for the same reason a clean subject does. Run the
 **positive control** first, against a case that must hit.
 
@@ -99,9 +99,9 @@ Before promoting one into a durable claim, reproduce it where the users are, or 
 assertions on **differences between configurations sharing one environment** over absolute values;
 differences survive environment shifts, absolutes do not.
 
-Reproducing is often cheaper than it looks. Check what reaches a real environment from here before
-concluding you cannot: browser automation tools, a local app, a device, or simply asking the user to
-paste one measurement. A single query in the real runtime can invert a conclusion that a whole
+Reproducing is often cheaper than it looks. Before you conclude that you cannot, check what reaches a
+real environment from here. Options: browser automation, a local app, a device, or one measurement
+that the user pastes. A single query in the real runtime can invert a conclusion that a whole
 afternoon of headless measurement supported.
 
 ## 4. Recording the conclusion
@@ -121,8 +121,8 @@ Match durability to the evidence level, and say what the evidence was:
 This is the expected outcome of climbing, not a failure. Handle it in this order:
 
 1. **Stop propagating** — do not build further work on the retracted claim.
-2. **Find where it already leaked**: replies are cheap, but code comments, docs, memory files and
-   shipped artifacts all need correcting, and shipped ones matter most because someone downstream may
+2. **Find where it already leaked**. Replies are cheap, but code comments, docs, memory files and
+   shipped artifacts all need correcting. Shipped ones matter most, because someone downstream may
    act on them.
 3. **Correct the claim and record the mechanism**, not just the correction — the reason the earlier
    level misled you is the reusable part.
@@ -135,9 +135,9 @@ Designing a probe that measures real runtime behaviour — shape, isolation, ref
 calibration cases, and the disposal traps — is in
 [references/instrument-design.md](references/instrument-design.md).
 
-That file is the judgment half. Mechanics belong to whichever project owns the runtime: if it
-documents its own probe or harness pattern, follow that for how to wire one up, and this for whether
-its readings can be believed.
+That file is the judgment half. Mechanics belong to whichever project owns the runtime. If it
+documents its own probe or harness pattern, follow that to wire one up. Follow this to decide
+whether to believe its readings.
 
 How much of a set the evidence has to cover — and who decides — is in
 [references/coverage.md](references/coverage.md).

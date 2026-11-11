@@ -27,7 +27,12 @@
 | `api_cost_usd` | optional | float | Provider-verifiable actual API cost for this dispatch; leave blank for subscription plans |
 | `note` | | short sentence | Noteworthy surprises worth remembering |
 
-Outcome definitions: `accepted` = passed on the first try, integrated as-is; `corrected` = main session fixed it before integrating; `rebriefed` = needed a redispatch; `failed` = output discarded (rows from before 2026-09-14 also used it for a provider fallback).
+Outcome definitions:
+
+- `accepted`: passed on the first try and went in as-is.
+- `corrected`: the main session fixed it before integration.
+- `rebriefed`: it needed a redispatch.
+- `failed`: the main session discarded the output. Rows from before 2026-09-14 also use it for a provider fallback.
 
 ## Metrics (report output, grouped by role x task class x provider)
 
@@ -42,31 +47,31 @@ Outcome definitions: `accepted` = passed on the first try, integrated as-is; `co
 | `avg_secs` | mean subagent wall-clock time | **Execution-time proxy**: lower is better at the same AR; excludes main-session rework |
 | `avg_api_cost_usd` | mean verifiable API cost | Compare only within the same pricing scope; not interchangeable with subscription allowances |
 
-Coverage and averages ignore malformed legacy telemetry, including negative values, non-finite floats, out-of-range quality scores, and Boolean values masquerading as integers. The record remains visible in `observed_n`; only the invalid metric is excluded.
+Coverage and averages ignore malformed legacy telemetry: negative values, non-finite floats, out-of-range quality scores, and Boolean values that pose as integers. The record stays visible in `observed_n`; the report excludes only the invalid metric.
 
-One exception: a row the reader cannot turn into a record at all — unparseable JSON, a non-object line, a wrongly typed keyed field, a timezone-naive `ts` — has no cohort to be visible in, so `observed_n` cannot hold it. Those rows are counted instead: `experience-report` and `experience-revise` both emit `unusable_rows` in JSON and a `warning:` line in text output. A non-zero count means the ledger has damage, not that the window was quiet.
+One exception is a row that the reader cannot turn into a record at all. Examples are unparseable JSON, a non-object line, a wrongly typed keyed field, and a timezone-naive `ts`. Such a row has no cohort, so `observed_n` cannot hold it. The reports count these rows instead: `experience-report` and `experience-revise` both emit `unusable_rows` in JSON and a `warning:` line in text output. A non-zero count means that the ledger has damage, not that the window was quiet.
 
 ## Decision rules (ranking model/effort tiers)
 
-1. **Time decay**: each record is weighted `0.5^(age_days / half_life)` (current half-life: 45 days); AR/CR/RB/FR/QS/averages are all weighted values, so old evidence naturally fades as models are upgraded. Window, sample size, half-life, and preference probability are read only from the routing file's `revision_policy`; a missing or invalid field halts the process.
-2. Only schema-v3 production records with a valid `request_source`, `profile`, `model`, and `effort` count toward decisions; legacy or incomplete records remain in `observed_n` and source coverage for diagnostics only. `smoke`/`other` must never produce a hint.
-3. A hint ranks `model/effort` tiers inside one role × task-class cohort (with `--profile`, only that profile's rows). A tier takes part only when its own raw sample reaches `min_samples` (currently 10) and its route clears the profile's quality floor; samples from other profiles, models or efforts are never pooled to reach the threshold. With fewer than two such tiers the result is **explore a second tier**.
-4. With two or more, the top two by AR are compared: a Beta-posterior `P(win)` reaching the configured threshold (currently 0.90) yields **prefer**; otherwise **either**. Cost tie-breaks are compared only when both tiers meet the sample threshold on the same field, and total/output tokens must never be mixed.
+1. **Time decay**: each record has the weight `0.5^(age_days / half_life)`, with a current half-life of 45 days. AR, CR, RB, FR, QS, and the averages are all weighted, so old evidence fades as models change. The tools read the window, sample size, half-life, and preference probability only from the routing file's `revision_policy`. A missing or invalid field stops the process.
+2. Only schema-v3 production records with a valid `request_source`, `profile`, `model`, and `effort` count toward decisions. Legacy or incomplete records stay in `observed_n` and in source coverage, for diagnostics only. `smoke`/`other` must never produce a hint.
+3. A hint ranks `model/effort` tiers inside one role × task-class cohort (with `--profile`, only that profile's rows). A tier takes part only when its own raw sample reaches `min_samples` (currently 10) and its route clears the profile's quality floor. The tools never pool samples from other profiles, models, or efforts to reach the threshold. With fewer than two such tiers, the result is **explore a second tier**.
+4. With two or more, the tools compare the top two by AR. A Beta-posterior `P(win)` that reaches the configured threshold (currently 0.90) yields **prefer**; otherwise the result is **either**. The tools compare cost tie-breaks only when both tiers meet the sample threshold on the same field. Total and output tokens must never mix.
 5. Rules produce a **hint, not a verdict**; when deviating from the hint, record the reason in `note`.
 
 ## Honesty boundaries
 
-- **Counterfactual gap**: the ledger only records dispatches that happened, not a control group of "what if it had been done directly"; dispatch frequency and nested violations are covered separately (and complementarily, without duplication) by the existing `delegation.jsonl` (`delegation-report`).
-- **Quality score is subjective**: QS is the main session's judgment and may drift over time; AR/RB/FR are behaviorally defined and therefore more stable.
-- **Small samples and task conflation**: every role x task-class x provider cohort is in an exploratory phase until it reaches the policy threshold; even once it does, unpaired tasks still require main-session judgment of difficulty differences.
-- **Scenario is not a new role**: role determines permissions; task class determines the comparable cohort; scenario/review lens stays only in the neutral `task` label or the brief. `recon` and `review` under the same role must not be merged for decision purposes.
-- **Source is not an interchangeable sample**: the report shows the `request_sources` distribution. Rows from the retired Codex bundle ran under different context, queueing, and main-session review conditions than `claude-code` rows on the same route, so source composition is a confounder even when the route matches. When it differs noticeably, do not treat aggregated cost as a clean comparison — sample the same brief separately instead.
+- **Counterfactual gap**: the ledger records only dispatches that happened. It has no control group for "what if main had done it directly". `delegation.jsonl` (`delegation-report`) covers dispatch frequency and nesting violations separately, without overlap.
+- **Quality score is subjective**: QS is the main session's judgment and may drift over time. AR, RB, and FR come from behavior, so they are more stable.
+- **Small samples and task conflation**: every role x task-class x provider cohort stays exploratory until it reaches the policy threshold. Even then, unpaired tasks still need the main session to judge differences in difficulty.
+- **Scenario is not a new role**: role sets permissions, and task class sets the comparable cohort. The scenario or review lens stays only in the neutral `task` label or in the brief. Never merge `recon` and `review` under the same role for decisions.
+- **Source is not an interchangeable sample**: the report shows the `request_sources` distribution. Rows from the retired Codex bundle ran under different context, queueing, and review conditions than `claude-code` rows on the same route. So source composition is a confounder even when the route matches. When it differs noticeably, do not treat aggregated cost as a clean comparison. Sample the same brief separately instead.
 - **Time contains noise**: `secs` mixes in queueing, approval waits, and human delays; compare mean trends across providers, not single outliers.
-- **Cost readings are not comparable across `context_proxy` values**: a compressing proxy rewrites the request, and a defective one can move the numbers a long way — Headroom `#2085` (parallel subagents sharing a fallback session id, so the frozen prefix churns and cache reads become cache writes) was reported at ~4.4x cache-creation inflation. Rows with no `context_proxy` field predate 2026-08-31 and cannot be classified at all; the 2026-08-28 trap batches are known to have crossed a proxy carrying that defect. Do not pool them with later rows, and do not read their absence of a field as evidence they were clean.
-- **Cost scope may be incomplete**: legacy records or some providers may lack input/cache tokens, API cost, or human time; the report shows the full proxy only when all fields are present. Subscription plans, latency value, and failure cost still require separate interpretation.
+- **Cost readings are not comparable across `context_proxy` values**: a compressing proxy rewrites the request, and a defective one can move the numbers far. One example is Headroom `#2085`. There, parallel subagents shared a fallback session id, so the frozen prefix churned and cache reads became cache writes. The issue reported about 4.4x cache-creation inflation. Rows with no `context_proxy` field predate 2026-08-31, and nobody can classify them. The 2026-08-28 trap batches crossed a proxy with that defect. Do not pool them with later rows. Do not read the missing field as evidence that they were clean.
+- **Cost scope may be incomplete**: legacy records or some providers may lack input/cache tokens, API cost, or human time. The report shows the full proxy only when all fields exist. Subscription plans, latency value, and failure cost still need separate interpretation.
 - The ledger is machine-local telemetry and **never enters the database**; the `task` and `note` fields must not contain secrets.
-- The pending hook and the outcome logger serialize append/consume through the same lock; overlapping completions still need `dispatch_id` for exact pairing. After validation, the logger cleans up using the first complete stop stub it reads, so a mid-flight new completion does not change the target; but ledger append and pending rewrite are two separate files, so a crash between them can still leave an already-logged stub behind, requiring manual dedup by `dispatch_id`. Cleanup keys on the dispatch id, not on `--from-pending`: a record logged entirely with explicit flags clears its stub too, and only a record logged without any dispatch id leaves one behind for `weekly-integrity` to report.
-- `experience-report --json` separates the two kinds of hint: `hints` holds one line per cohort, `hints_insufficient` names the cohorts whose line only says "collect more". Unattended consumers report the difference — a cohort exists per role × task class, so an insufficient-data hint would never clear and an alarm that is always on trains the reader to skip the real one.
+- The pending hook and the outcome logger serialize append and consume through the same lock. Overlapping completions still need `dispatch_id` for exact pairing. After validation, the logger cleans up the first complete stop stub that it reads, so a new completion in flight does not change the target. But the ledger append and the pending rewrite touch two separate files. So a crash between them can leave an already-logged stub behind; remove the duplicate by `dispatch_id` by hand. Cleanup keys on the dispatch id, not on `--from-pending`. A record logged entirely with explicit flags clears its stub too. Only a record logged without any dispatch id leaves a stub behind, and `weekly-integrity` reports it.
+- `experience-report --json` separates the two kinds of hint: `hints` holds one line per cohort, and `hints_insufficient` names the cohorts whose line only says "collect more". Unattended consumers report the difference. A cohort exists for each role × task class, so an insufficient-data hint would never clear. An alarm that is always on trains the reader to skip the real one.
 
 ## Context-pressure diagnostics
 
@@ -79,10 +84,10 @@ Context pressure and account quota are separate signals:
 - Claude `usage-report` sums uncached input, cache creation, and cache read for
   each assistant turn, then reports P50/P95 by source/model and optionally by
   session. It does not add output tokens to the prompt-context proxy.
-- Windows are mapped by model family (opus, sonnet and fable at 1M), so a new
+- The tools map windows by model family (opus, sonnet and fable at 1M), so a new
   generation keeps its family's window. Haiku and unknown ids use a
-  conservative 200k fallback; pass `--context-window` when the runtime's actual
-  limit is known.
+  conservative 200k fallback. Pass `--context-window` when you know the
+  runtime's actual limit.
 
 Both commands expose the same repository operations policy: `<30%` low,
 `30–<50%` watch, `50–<65%` checkpoint, and `>=65%` compact or start a new
@@ -93,46 +98,50 @@ thresholds.
 
 ## Sampling a second rung on Claude
 
-Native Claude records normally omit `--profile/--model/--effort`, because the
-resolver fills them from the role's frontmatter pin and the transcript confirms
-the model. A dispatch that overrode the pin through the Agent tool's `model`
-argument breaks that assumption: the resolver still fills in the pin, its fill
-contradicts the hook-recorded `observed_model`, and the record is refused as a
-routing violation — quoting a `--model` the caller never passed, which reads as
-a tooling bug until you know the shape. Pass the model that actually ran. The
-tag stays `route_source: transcript-verified`, because an explicit value that
-agrees with the provider's own record is evidence, not a hand-typed route, so
-these samples do enter their cohort.
+Native Claude records normally omit `--profile/--model/--effort`. The resolver
+fills them from the role's frontmatter pin, and the transcript confirms the
+model. A dispatch that overrode the pin through the Agent tool's `model`
+argument breaks that assumption. The resolver still fills in the pin, the fill
+contradicts the hook-recorded `observed_model`, and the logger refuses the
+record as a routing violation. The error quotes a `--model` that the caller
+never passed, which looks like a tooling bug until you know the shape. Pass the
+model that actually ran. The tag stays `route_source: transcript-verified`.
+An explicit value that agrees with the provider's own record is evidence, not a
+hand-typed route, so these samples do enter their cohort.
 
-The Agent tool overrides `model` only. Effort still comes from frontmatter, so
-a dispatch samples the model axis of a role and never its effort ladder. For
-the effort axis, or for any sample that must not touch deployed state, use
-`evals/scripts/rung-run.py`: it runs the repo's contract in its own
-`claude --print` process with `--model` and `--effort` on the command line, so
-there is no pin to restore afterwards. Those runs are sessions rather than
-subagents, so no hook stages a stub and their records are `explicit` — they
-compare rungs, they do not fill cohorts. Measured example: the 2026-08-06
-`explore` rung comparison in `evals/traps/s10-skill-recall/README.md`.
+The Agent tool overrides `model` only. Effort still comes from frontmatter, so a
+dispatch samples the model axis of a role and never its effort ladder. For the
+effort axis, or for any sample that must not touch deployed state, use
+`evals/scripts/rung-run.py`. It runs the repo's contract in its own
+`claude --print` process, with `--model` and `--effort` on the command line, so
+no pin needs a restore afterwards. Those runs are sessions, not subagents. So no
+hook stages a stub, and their records are `explicit`: they compare rungs, they
+do not fill cohorts. Measured example: the 2026-08-06 `explore` rung comparison
+in `evals/traps/s10-skill-recall/README.md`.
 
 ## Closing a dispatch nobody can still judge
 
-`--cancel` retires a launch whose leaf never ran, and anything that ran is
-logged — `failed` included. Neither covers a dispatch that ran and whose
-outcome went unjudged long enough that no reviewer is left: inventing an
-outcome corrupts the cohort, and hand-editing the pending file removes the
-carrier the weekly reconciliation depends on. That case is closed with
+`--cancel` retires a launch whose leaf never ran. You log anything that ran,
+`failed` included. Neither covers a dispatch that ran and whose outcome went
+unjudged until no reviewer is left. An invented outcome corrupts the cohort, and
+a hand edit of the pending file removes the carrier that the weekly
+reconciliation depends on. Close that case with
 
     experience-stage --abandon --dispatch-id <id> --reason "<why>"
 
-which is deliberately a poor escape hatch. It refuses a dispatch under a day
-old, so nobody can use it to skip QC; it refuses a launch that never ran and
-points at `--cancel`; it requires a reason, because an unexplained abandonment
-looks exactly like a forgotten one; and it writes to
-`experience-abandoned.jsonl` beside the ledger rather than into it, so no
-metric is ever computed from a judgement nobody made. Precedent: 23 stubs from
-a single 2026-07-27 session, abandoned on 2026-08-06 with the pending file
-edited by hand because this path did not exist yet.
+which is deliberately a poor escape hatch:
+
+- It refuses a dispatch under a day old, so nobody can use it to skip QC.
+- It refuses a launch that never ran, and points at `--cancel`.
+- It requires a reason, because an unexplained abandonment looks exactly like a
+  forgotten one.
+- It writes to `experience-abandoned.jsonl` beside the ledger, not into it, so
+  no metric ever comes from a judgement that nobody made.
+
+Precedent: on 2026-08-06, someone abandoned 23 stubs from a single 2026-07-27
+session. They edited the pending file by hand, because this path did not exist
+yet.
 
 ## Evolution cadence
 
-Run `experience-report` weekly (can pair with the existing weekly-integrity cadence) and compare against `delegation-report`: when a hint changes, update the preference note in `provider-routing`; for roles with persistently high RB, revisit the brief template or cost-test criteria. `experience-revise` also uses only the route cells within the current deployment profile, to avoid mixing the different risk distributions of fast and quality-guarded routes. Policy adjustments change only the routing file's `revision_policy`, never an ad hoc CLI override.
+Run `experience-report` weekly, together with the weekly-integrity cadence, and compare it against `delegation-report`. When a hint changes, update the preference note in `provider-routing`. For roles with persistently high RB, revisit the brief template or the cost-test criteria. `experience-revise` also uses only the route cells of the current deployment profile, so it does not mix the risk distributions of the fast and quality-guarded routes. Policy changes go only into the routing file's `revision_policy`, never into an ad hoc CLI override.

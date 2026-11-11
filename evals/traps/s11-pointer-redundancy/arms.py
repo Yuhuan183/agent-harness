@@ -65,11 +65,14 @@ POINTER = {
     # punctuation directly. The control is unaffected - it is still the language
     # switch nobody doubts - but arm B now removes that punctuation rule too,
     # which the residual note below records.
+    #
+    # Re-recorded 2026-11-10: the technical-writing rewrite split the briefs
+    # sentence in two. The meaning and the control role are unchanged.
     "language": (
         "- Respond in Traditional Chinese (Taiwan usage). Keep code, "
         "identifiers, commands, comments, and commit messages in English. "
-        "Thinking and agent-to-agent briefs stay in precise, concise English; "
-        "only user-facing replies switch to Traditional Chinese, and those "
+        "Keep thinking and agent-to-agent briefs in precise, concise English. "
+        "Only user-facing replies switch to Traditional Chinese, and those "
         "answer to `readable-zh-tw`'s standard for prose a person reads. "
         "Punctuate those replies half-width, one space after each.\n"
     ),

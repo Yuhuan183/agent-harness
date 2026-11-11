@@ -12,7 +12,7 @@ Apply the resident dispatch brake, then choose the smallest reliable shape. This
 
 ## Cost test
 
-A high-tier pinned agent (Opus/high) costs about as much as the main session — delegation saves no compute, and briefing, context reconstruction, collection, and quality-check are pure overhead in both tokens and wall-clock. Delegate only when at least one payoff clearly exceeds that overhead:
+A high-tier pinned agent (Opus/high) costs about as much as the main session, so delegation saves no compute. Briefing, context reconstruction, collection, and quality-check are pure overhead in both tokens and wall-clock. Delegate only when at least one payoff clearly exceeds that overhead:
 
 1. **Parallelism** — two or more genuinely independent workstreams where wall-clock matters.
 2. **Context protection** — bulky reads or noisy output would pollute the main window that later judgment still needs.
@@ -23,11 +23,11 @@ A single sequential task with none of these stays in main. When the payoff is ma
 
 ## Dispatch shape
 
-Keep small or tightly coupled work in main; use one `Explore` for broad discovery or one review lens, bounded parallel agents for independent surfaces, and isolated workspaces for competing writes. Repetition must prove one sample before batching, and `Workflow` still requires user opt-in. Never map request bullets directly to agents.
+Keep small or tightly coupled work in main. Use one `Explore` for broad discovery or one review lens. Use bounded parallel agents for independent surfaces and isolated workspaces for competing writes. Repetition must prove one sample before batching, and `Workflow` still requires user opt-in. Never map request bullets directly to agents.
 
 ## Recurrence and batching
 
-Do not use an item-count threshold to decide that repeated work should move out of main. Batch only when one stable one-shot brief completely states the goal, constraints, done criteria, ownership, and per-item acceptance, and every remaining item is independent and the same shape. Keep triage, exceptions, integration, and final acceptance in main; work that still depends on main's evolving evidence is not a batch.
+Do not use an item-count threshold to decide that repeated work should move out of main. Batch only when one stable one-shot brief completely states the goal, constraints, done criteria, ownership, and per-item acceptance. Every remaining item must also be independent and the same shape. Keep triage, exceptions, integration, and final acceptance in main; work that still depends on main's evolving evidence is not a batch.
 
 An already-diagnosed review finding with a known root cause and remedy is execution work, not unknown-bug discovery. It may join other independent same-shape findings only when the stable-brief, ownership, acceptance, and cost tests all pass; delegation remains optional.
 
@@ -41,17 +41,17 @@ An already-diagnosed review finding with a known root cause and remedy is execut
 
 An active agent-owned read scope is temporarily exclusive: main must not read or analyze it until collection unless it first cancels or redirects that agent. Launch every selected agent in one independent batch back-to-back, collect all required results, then begin cross-surface synthesis.
 
-Keep the three routing dimensions separate: **role** defines authority and tools; **task class** forms the ledger cohort; **scenario/lens** focuses the brief without creating another role. Use `review` rather than `recon` for adversarial repository review. Do not change a model route merely because a new scenario label was added; collect comparable outcomes first.
+Keep the three routing dimensions separate: **role** defines authority and tools; **task class** forms the ledger cohort; **scenario/lens** focuses the brief without creating another role. Use `review` rather than `recon` for adversarial repository review. Do not change a model route only for a new scenario label; collect comparable outcomes first.
 
 The approved Plan or release slice is a hard boundary. Agents may report adjacent opportunities but must stop before adding a domain, table, API, service, deployment responsibility, or materially larger file/schema surface.
 
-Claude no-write roles cannot execute Bash, so independent verification that depends on running something has no leaf route: the leaf names the missing check and main runs it as intermediate evidence.
+Claude no-write roles cannot execute Bash. So independent verification that depends on running something has no leaf route. The leaf names the missing check, and main runs it as intermediate evidence.
 
 ## Gate placement and Plan convergence
 
-Use focused tests, builds, and static checks as intermediate evidence while iterating. `provider-routing` owns verifier eligibility; this skill owns placement. Place a triggered verifier at the smallest coherent integration boundary where the complete acceptance claim can be refuted; do not re-verify every small fix.
+Use focused tests, builds, and static checks as intermediate evidence while iterating. `provider-routing` owns verifier eligibility; this skill owns placement. Place a triggered verifier at the smallest coherent integration boundary where it can refute the complete acceptance claim; do not re-verify every small fix.
 
-Cap a target at five verification passes, counted across top-level tasks. The cap does not widen the one-verifier quota: that quota is one outcome verifier per top-level task, so a later pass on the same target belongs to a later task, only a changed candidate earns one, and an unchanged candidate is not re-verified at all. Every pass after the first names what changed since the previous one. At the cap, stop and surface the open findings instead of dispatching again.
+Cap a target at five verification passes, counted across top-level tasks. The cap does not widen the one-verifier quota, which is one outcome verifier per top-level task. A later pass on the same target belongs to a later task. Only a changed candidate earns a pass, and an unchanged candidate is not re-verified. Every pass after the first names what changed since the previous one. At the cap, stop and surface the open findings instead of dispatching again.
 
 For large work, define a program envelope for shared constraints and independently approvable execution slices. Give each readiness unit a stable ID; each slice names its ready envelope, prerequisites, owner, rollback, and acceptance. Review the envelope first, then only the next executable slice. Unrelated downstream slices do not block approval; shared blockers cannot be hidden by cosmetic splitting. Finishing a slice is a checkpoint, not authority to dispatch the next phase.
 
@@ -65,9 +65,9 @@ Before the first readiness review of a security-sensitive unit, complete `securi
 [LEAF_RESULT] dispatch_id=<id>|task=<label>|outcome=<accepted|corrected|rebriefed|failed>|qc=<spot|full>|ledger=<logged|skipped(reason)>
 ```
 
-A finished agent's final response is its deliverable — the harness returns it on completion. Collect it from the finished task; never relaunch or ask a read-only recon agent (`Explore`, `plan-verifier`, `security-reviewer`) to relay, restate, or report back a result it already produced. Use the resume channel only for genuinely new or redirected work. A dispatch returning nothing usable is not a result: re-brief once, then stop dispatching it — work directly or report it unverified. An absent verifier is never a pass, so nothing gated on it may be claimed: readiness, verification, credentials, or any outward write. A lost agent is not a user decision; do not hand it over as one. Treat a single load-bearing recon fact as an unverified input: sanity-check or re-run it in main, since the `verifier` gate covers executor output, not reconnaissance.
+A finished agent's final response is its deliverable — the harness returns it on completion. Collect it from the finished task; never relaunch a read-only recon agent (`Explore`, `plan-verifier`, `security-reviewer`). Do not ask it to relay, restate, or report back a result that it already produced. Use the resume channel only for genuinely new or redirected work. A dispatch returning nothing usable is not a result: re-brief once, then stop dispatching it — work directly or report it unverified. An absent verifier is never a pass. Do not claim anything that it gates: readiness, verification, credentials, or any outward write. A lost agent is not a user decision; do not hand it over as one. Treat a single load-bearing recon fact as an unverified input: sanity-check or re-run it in main, since the `verifier` gate covers executor output, not reconnaissance.
 
-Report the launch and the post-QC outcome as separate fixed records, never buried in prose, in exactly the two shapes above — `dispatch_id` included, since it is what ties the record to the pending stub and the ledger. Use actual active/resolved route values, with request_source `claude-code`. After QC, load `experience-ledger` and log the same neutral task label, task class, route, request source, and outcome; never claim `logged` before the command succeeds.
+Report the launch and the post-QC outcome as separate fixed records, in exactly the two shapes above. Never bury them in prose. Include `dispatch_id`, because it ties the record to the pending stub and the ledger. Use actual active/resolved route values, with request_source `claude-code`. After QC, load `experience-ledger` and log the same neutral task label, task class, route, request source, and outcome; never claim `logged` before the command succeeds.
 
-Use spot QC for mechanical work from a complete spec; use full QC for judgment-heavy or verification work. Both tiers hunt false-completion frauds: weakened or bypassed checks, fixtures fabricated to satisfy a check, undeclared out-of-scope changes, missing owed `INTENT:`/`TWINS:`/`AUTH:` lines, and leftover leaf-created scratch files (pre-existing dirty-worktree files are not debris). Audit owed lines with `~/.claude/scripts/qc-gate-lines <report> --diff <diff-file> [--defect-fixed] [--outward-taken]`, setting flags from the diff and evidence, never from the report's claims. Never accept a `found 0/none` TWINS claim on the report's word: re-run the search yourself — grep the fixed construct across the scope — before accepting (`qc-gate-lines` flags these claims).
+Use spot QC for mechanical work from a complete spec; use full QC for judgment-heavy or verification work. Both tiers hunt false-completion frauds. They include weakened or bypassed checks, fixtures fabricated to satisfy a check, undeclared out-of-scope changes, missing owed `INTENT:`/`TWINS:`/`AUTH:` lines, and leftover leaf-created scratch files. In contrast, pre-existing dirty-worktree files are not debris. Audit owed lines with `~/.claude/scripts/qc-gate-lines <report> --diff <diff-file> [--defect-fixed] [--outward-taken]`. Set the flags from the diff and the evidence, never from the report's claims. Never accept a `found 0/none` TWINS claim on the report's word. Re-run the search yourself before you accept it: grep the fixed construct across the scope. `qc-gate-lines` flags these claims.
 Read [references/briefs-and-stops.md](references/briefs-and-stops.md) only when writing a brief, ownership map, or batch stop rule.

@@ -215,7 +215,7 @@ class ClaudeContractTests(unittest.TestCase):
         self.assertIn("[LEAF_DISPATCH]", policy)
         self.assertIn("[LEAF_RESULT]", policy)
         self.assertIn("Never brief a subagent to delegate further", policy)
-        self.assertIn("agent-to-agent briefs stay in precise, concise English", policy)
+        self.assertIn("agent-to-agent briefs in precise, concise English", policy)
         skill = read(".claude/skills/baton-dispatch/SKILL.md")
         self.assertIn("dispatch_id=<id>", skill)
         for field in ("task=<label>", "role=<role>", "class=<class>",

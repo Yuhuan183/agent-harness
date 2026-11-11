@@ -27,22 +27,23 @@ and session automatically; a native Claude dispatch then only needs its outcome:
   Any run that names a `--dispatch-id` clears that dispatch's staged stub, so a
   fully explicit record reconciles the pending file the same way.
 - **One record per dispatch, and none while its staged launch is open — both
-  enforced, not intended.** A second log for an id already in the ledger is
-  refused; that refusal still clears any staged stub, which is how a retry
-  after a failed cleanup ends. A log for an id whose staged launch has no
-  recorded completion is refused too: its outcome is not knowable yet, and
-  writing one seals the id against the real one. That guard reads the pending
-  file, so a never-staged id still logs — ordering is a dispatcher contract
-  wherever no carrier exists. To correct a wrong outcome, edit the ledger: the
-  metrics count rows, so a second row is another sample, not a fix.
-- **Route flags are not yours to type.** Omit `--profile/--model/--effort`:
-  the model comes from the dispatch's own transcript and the rest from the
-  resolver, tagged `route_source: transcript-verified`. Only provider-attested
-  tiers may drive a route change, so typing the route in cannot make a record
-  count — with no staged evidence the resolver's fill is tagged
-  `resolver-assumed` and a hand-typed route is tagged `explicit`, and neither
-  enters a cohort. A `--model/--effort` contradicting the provider's record is
-  rejected as a routing violation rather than logged.
+  enforced, not intended.** The logger refuses a second log for an id already
+  in the ledger. That refusal still clears any staged stub, which is how a
+  retry after a failed cleanup ends. The logger also refuses a log for an id
+  whose staged launch has no recorded completion. Its outcome is not knowable
+  yet, and a record now would seal the id against the real one. That guard
+  reads the pending file, so a never-staged id still logs; ordering is a
+  dispatcher contract wherever no carrier exists. To correct a wrong outcome,
+  edit the ledger. The metrics count rows, so a second row is another sample,
+  not a fix.
+- **Route flags are not yours to type.** Omit `--profile/--model/--effort`.
+  The model comes from the dispatch's own transcript and the rest from the
+  resolver, with the tag `route_source: transcript-verified`. Only
+  provider-attested tiers may drive a route change, so a typed route cannot
+  make a record count. With no staged evidence, the resolver's fill carries
+  `resolver-assumed` and a hand-typed route carries `explicit`; neither enters
+  a cohort. The logger rejects a `--model/--effort` that contradicts the
+  provider's record as a routing violation, and does not log it.
 - Log **every** dispatch. Outcome is the main session's quality verdict:
   `accepted` (clean) / `corrected` (fixed before integration) / `rebriefed`
   (re-dispatched) / `failed` (dropped or fell back). `weekly-integrity`
@@ -75,10 +76,10 @@ fields are missing. `smoke`/`other` never produce hints; costs compare only
 when both tiers have sufficient records in the same scope. **A hint is a
 direction, not a verdict.**
 
-Profile revision: `scripts/experience-revise` reads `revision_policy`,
-compares route cells only within the same role/task class
-of the current deployment profile, filters candidates by quality floor **and
-leaf-override availability**, and reports unsampled/insufficient/keep/consider.
+Profile revision: `scripts/experience-revise` reads `revision_policy` and
+compares route cells only within the same role/task class of the current
+deployment profile. It filters candidates by quality floor **and leaf-override
+availability**, and reports unsampled/insufficient/keep/consider.
 It only suggests — role-wide changes remain a main-session decision across
 cohorts.
 

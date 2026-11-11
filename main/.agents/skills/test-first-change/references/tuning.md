@@ -1,9 +1,9 @@
 # test-first-change — agent-harness tuning
 
-Owned by this repo. `SKILL.md` holds what is true of test-first work anywhere;
-this holds what is true *here*, including every worked example — upstream's are
-TypeScript and Jest, and this repo has neither. Upstream rechecks may change
-`SKILL.md`; they may not change this file.
+Owned by this repo. `SKILL.md` holds what is true of test-first work anywhere.
+This file holds what is true *here*, including every worked example. Upstream's
+examples are TypeScript and Jest, and this repo has neither. Upstream rechecks
+may change `SKILL.md`; they may not change this file.
 
 This layer does not outrank a system or developer instruction, the current
 request, or the global contract. It records defaults this project has found hold
@@ -22,8 +22,8 @@ repeatedly, and stop conditions it has paid for.
 - An unexplained defect is [evidence-debugging](../../evidence-debugging/SKILL.md)'s
   work, not this skill's. Come back once the cause is known.
 - Refactoring is not part of the red-green loop. Tidying inside the change is
-  fine; touching code outside the approved slice is a separate scope with its own
-  reason, even when the checks stay green.
+  fine. Code outside the approved slice is a separate scope with its own reason,
+  even when the checks stay green.
 
 ## This repo's three verification surfaces
 
@@ -76,7 +76,7 @@ for command in commands_in(doc):
 
 ## Ratchets, the local idiom
 
-Budgets and counts in this repo are measured then frozen: `metadata_budgets`,
+This repo measures its budgets and counts, then freezes them: `metadata_budgets`,
 per-document body budgets, the unstamped-row ceiling. Two rules come with them.
 
 - Set the number from what you **measured**, not what you forecast. A ceiling
@@ -90,18 +90,19 @@ per-document body budgets, the unstamped-row ceiling. Two rules come with them.
   suite available.
 - **A seam must reach the observable result, not only the action you control.**
   When a check establishes "the request was sent" but not "the effect happened",
-  write the second down as uncovered. Local rule, from a 2026-08-17 incident
-  where a passing test asserted a launcher exported a variable while the setting
-  it was meant to change stayed on, recorded in `docs/research/landing-log.md`.
-  Named, not linked — this file is deployed outside the repo, where no relative
-  path reaches that tree.
+  write the second down as uncovered. This is a local rule from a 2026-08-17
+  incident. A passing test asserted that a launcher exported a variable, while the
+  setting that the variable should change stayed on.
+  `docs/research/landing-log.md` records it. This file names that path instead of
+  linking it, because the file deploys outside the repo, where no relative path
+  reaches that tree.
 - A green test that bypasses the real failing path — the actual parser, file
   system, shell, provider or proxy — cannot close the claim. Say which path
   stayed unexercised.
 - Non-deterministic behaviour needs a measured rate quoted before and after, not
   "seems better".
-- Every reach-marker mistake in `evals/replay/` was caught by running the gate,
-  never by reading the grader. Run it.
+- Running the gate caught every reach-marker mistake in `evals/replay/`; reading
+  the grader caught none. Run it.
 
 ## Reporting
 
@@ -124,5 +125,5 @@ uncertainty only where it could change the conclusion.
 an explicit `$test-first-change`. Claude has no equivalent switch — it decides
 from the `description`, so implicit invocation stays live there. The two
 providers therefore differ in how this skill starts, deliberately and only until
-description discrimination has been measured. Do not describe the first release
+someone measures description discrimination. Do not describe the first release
 as explicit-only without naming which provider.

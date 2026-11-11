@@ -18,10 +18,10 @@ observation-log target --skill "<skill>" --json
   Determine whether the installed path is a personal source, installer output,
   plugin cache, or another project's deployment, then obtain authority for that
   actual source.
-- A plugin-scoped name (`codex:rescue`; the colon is part of the name) answers
-  `scope: plugin` and `local-or-third-party` with no path: the plugin's own
-  source owns it, and nothing in this checkout or deployment is editable for
-  it. `new-skill:<name>` is a candidate, not a target.
+- A plugin-scoped name, such as `codex:rescue`, answers `scope: plugin` and
+  `local-or-third-party` with no path. The colon is part of the name. The plugin's
+  own source owns it, and nothing in this checkout or deployment can edit it.
+  `new-skill:<name>` is a candidate, not a target.
 - Resolution failure is a stop condition. Supply `--checkout <path>` or
   `AGENT_HARNESS_CHECKOUT` after locating the checkout; never fall back to the
   deployed copy.
@@ -66,8 +66,8 @@ Do not apply changes until the user explicitly approves the proposal.
    - `git diff --check`
 7. Present the diff and verification evidence. Do not deploy, commit, push, or
    publish unless separately authorised.
-8. Only after the change is accepted, append an `actioned` resolution event.
-   If the user rejects the proposal, append `declined` with the reason.
+8. Only after the user accepts the change, append an `actioned` resolution
+   event. If the user rejects the proposal, append `declined` with the reason.
 
 ## Cross-cutting principles
 
@@ -84,5 +84,5 @@ principles file; the event ledger remains the evidence source.
 
 Do not create a new skill during backlog review without explicit approval of its
 name, triggers, scope, writable surfaces, and acceptance checks. A repeated
-workflow is evidence for a skill only when it cannot be handled more simply by
-existing instructions, scripts, or ordinary model capability.
+workflow is evidence for a skill only when existing instructions, scripts, or
+ordinary model capability cannot handle it more simply.

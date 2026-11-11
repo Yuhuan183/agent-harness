@@ -71,7 +71,7 @@ document uses.
 
 ## Check
 
-Run `scripts/writing-lint <files>` with `--glossary docs/glossary.tsv` when the
-project has one. The lint reports long sentences, likely passive voice,
-chained 的 modifiers, and rejected terms. It only reports; it does not block.
+Run `~/.agents/skills/technical-writing/scripts/writing-lint <files>`, with
+`--glossary docs/glossary.tsv` when the project has one. The lint reports long
+sentences, likely passive voice, chained 的 modifiers, and rejected terms. It only reports; it does not block.
 Treat each finding as a question for the writer, not as a verdict.

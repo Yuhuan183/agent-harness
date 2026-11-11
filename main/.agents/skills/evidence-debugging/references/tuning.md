@@ -36,18 +36,19 @@ repeatedly, and stop conditions it has paid for.
   stayed unexercised.
 - **A seam must reach the observable result, not only the action you control.**
   When a check can establish "the request was sent" but not "the effect
-  happened", write the second down as uncovered. This rule is local: it came from
-  a 2026-08-17 incident where a passing test asserted a launcher exported a
-  variable while the setting it was meant to change stayed on, recorded in
-  `docs/research/landing-log.md`. Named, not linked — this file is deployed
-  outside the repo, where no relative path reaches that tree.
+  happened", write the second down as uncovered. This rule is local. It came from
+  a 2026-08-17 incident. A passing test asserted that a launcher exported a
+  variable, while the setting that the variable should change stayed on.
+  `docs/research/landing-log.md` records it. This file names that path instead
+  of linking it, because the file deploys outside the repo, where no relative
+  path reaches that tree.
 - Non-deterministic defects need a measured reproduction rate quoted before and
   after, not "seems better".
 
 ## After a repair: which level should have caught it
 
 A fix that only fixes the instance is half a finding. Before closing, name the
-level where this defect could have been stopped, and why it was not:
+level that could have stopped this defect, and say why it did not:
 
 | Level | Stops it by | Here that means |
 |---|---|---|
@@ -59,15 +60,15 @@ level where this defect could have been stopped, and why it was not:
 | Review | a second reader with authority to stop | QC, `verifier`, `plan-verifier` |
 
 Two rules, both paid for here. **Name the level even when the answer is
-"documentation", and especially then** — that is the answer that predicts a
-repeat, because prose carries weight rather than enforcement. And **this is not
-the evidence ladder**: that one ranks how strongly a claim is established, this
-one ranks where a defect gets stopped. A mechanism has a coordinate on both and
-they rarely agree — a commit gate is a gate on the first and runtime on the
-second; a test-first rule is prose on the first and test on the second.
+"documentation", and especially then.** That answer predicts a repeat, because
+prose carries weight rather than enforcement. And **this is not the evidence
+ladder**. The ladder ranks how strongly a claim stands; this list ranks where a
+defect gets stopped. A mechanism has a coordinate on both, and they rarely agree.
+A commit gate is a gate on the first and runtime on the second. A test-first rule
+is prose on the first and test on the second.
 
-This is a preference, not a gate: nothing checks that the level was named, and
-nothing could without a carrier field to check.
+This is a preference, not a gate: nothing checks that the report names the level,
+and nothing could without a carrier field to check.
 
 ## Reporting
 
@@ -76,9 +77,9 @@ commands and any instruction that will be read by another agent.
 
 Lead with the outcome. Then, and only what applies:
 
-- the exact reproduction, or the attempt that failed and what was tried;
-- evidence, including the hypotheses that were refuted;
-- the change and its verification — only when repair was authorised;
+- the exact reproduction, or the attempt that failed and what you tried;
+- evidence, including the refuted hypotheses;
+- the change and its verification — only when the request authorised repair;
 - what remains unverified, and the next observation that would settle it.
 
 Mark a choice the request did not specify as `DECISION: <what and why>`. Mark
@@ -87,9 +88,9 @@ uncertainty only where it could change the conclusion.
 ## Optional tooling
 
 `debug-issue`, the code-review graph, AST search and a browser all accelerate
-navigation and none of them are evidence. Without any of them this skill still
-works from source, tests, logs and the smallest probe — and correctness never
-depends on one being installed.
+navigation, and none of them is evidence. Without any of them this skill still
+works from source, tests, logs and the smallest probe. Correctness never depends
+on any of them.
 
 ## Known asymmetry, first release
 
@@ -97,5 +98,5 @@ depends on one being installed.
 an explicit `$evidence-debugging`. Claude has no equivalent switch — it decides
 from the `description`, so on that side implicit invocation stays live. The two
 providers therefore differ in how this skill starts, deliberately and only until
-description discrimination has been measured. Do not describe the first release
+someone measures description discrimination. Do not describe the first release
 as explicit-only without naming which provider.

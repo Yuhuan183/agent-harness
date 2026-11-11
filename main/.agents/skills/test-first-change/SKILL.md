@@ -9,7 +9,7 @@ A check written after the code is a check shaped to pass. This skill exists to
 stop one move: shipping an assertion that could not have failed.
 
 Derived from Matt Pocock's [`tdd`](https://github.com/mattpocock/skills); see
-`ATTRIBUTION.md` for the reviewed commit, licence, and what was changed. This
+`ATTRIBUTION.md` for the reviewed commit, licence, and what changed. This
 repo's verification surfaces, worked good and bad examples, authority rules and
 reporting shape are in `references/tuning.md`. For repo structure read the
 project's instruction files (`CLAUDE.md`, `AGENTS.md`) and its architecture
@@ -18,9 +18,9 @@ docs — this skill never creates a new context document.
 ## Seam, defined here
 
 A **seam** is a boundary a check can call without reaching inside the thing
-under test: a public signature, a CLI invocation, an HTTP request, a file the
-code writes, an exit status. Not a seam: a private helper, an internal variable,
-a mocked collaborator, a log line.
+under test. Seams: a public signature, a CLI invocation, an HTTP request, a file
+the code writes, an exit status. Not a seam: a private helper, an internal
+variable, a mocked collaborator, a log line.
 
 Two properties decide whether it is the right seam.
 
@@ -34,7 +34,7 @@ fast; go deeper only when the outer one cannot tell the change apart.
 
 Derive the seam from the code and the repo's existing test layout. Ask only when
 two candidates would produce materially different checks and nothing on disk
-decides between them — then name both and say which you will use if no answer
+decides between them. Then name both and say which you will use if no answer
 arrives.
 
 ## The gate
@@ -48,9 +48,9 @@ Quote the failure. Two things make it the right failure:
   not exist yet is a compile error wearing a test's name.
 
 It then has to pass on the real implementation, not on a stub shaped to satisfy
-it. No observed failure, no implementation. If the behaviour cannot be made to fail
+it. No observed failure, no implementation. If you cannot make the behaviour fail
 on demand, say so, name the seam you tried, and ask for what would make it
-reachable — do not write the code and add a check afterwards to cover the gap.
+reachable. Do not write the code and add a check afterwards to cover the gap.
 
 ## Four ways an assertion cannot fail
 
@@ -62,8 +62,8 @@ reachable — do not write the code and add a check afterwards to cover the gap.
 3. **Reaches your action, not the outcome** — it proves the request was sent,
    the flag was set, the file was written. Whether the effect landed stays
    uncovered; write that down rather than letting green speak for it.
-4. **Never seen red** — the behaviour was never produced on demand, so passing
-   says only that nothing was observed.
+4. **Never seen red** — nothing produced the behaviour on demand, so a pass
+   shows only that nobody observed it.
 
 One question catches all four: *what would I change to make this fail?* If
 nothing in the code answers, the check describes the code instead of
@@ -72,29 +72,29 @@ constraining it.
 ## Mocking
 
 Mock what you neither own nor can run: a paid API, a clock, a remote host. Never
-mock the thing under test, and never mock the layer where the defect would live
-— the real parser, filesystem, shell, provider or proxy is the point. If a seam
-is only testable with the failing path mocked out, that absence is the finding:
-report it instead of a green that bypassed the code.
+mock the thing under test. Never mock the layer where the defect would live: the
+real parser, filesystem, shell, provider or proxy is the point. If a seam is
+testable only with the failing path mocked out, that absence is the finding.
+Report it instead of a green that bypassed the code.
 
 ## Then
 
 1. **Write the check.** One behaviour, named after it. Assert the observable
-   result, not the sequence of calls that produced it, and take the expected
-   value from a source independent of the code — a known literal, a worked
-   example, the spec.
+   result, not the sequence of calls that produced it. Take the expected value
+   from a source independent of the code: a known literal, a worked example, the
+   spec.
 2. **Watch it fail**, against the gate above.
 3. **Implement the smallest change that turns it green.** Not the general
    version — the next check earns that. One check, one implementation, then
-   repeat: each slice is a tracer bullet that answers what the last one taught,
-   and a slice that delivers no observable behaviour is half a layer, not a slice.
+   repeat. Each slice is a tracer bullet that answers what the last one taught. A
+   slice that delivers no observable behaviour is half a layer, not a slice.
 4. **Re-run the narrow suite**, then the wider one this change could reach.
 5. **Keep the check**, in the repo's existing conventions rather than a parallel
    style of your own.
 
-A change is finished when the check fails without it and passes with it,
-existing checks still pass, temporary fixtures are gone, and any behaviour left
-uncovered is written down as uncovered rather than quietly omitted.
+A change is done when the check fails without it and passes with it, and
+existing checks still pass. Remove temporary fixtures. Write down any behaviour
+left uncovered as uncovered; do not omit it quietly.
 
 ## Never
 

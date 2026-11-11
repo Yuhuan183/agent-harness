@@ -3,7 +3,7 @@
 Dispatch at most one outcome `verifier` per top-level task, only when at least one holds:
 
 - Failure could affect a security/trust boundary, money, destructive data, migrations, concurrency, public APIs, or cross-repo compatibility.
-- Judgment-heavy integration cannot be proven mechanically.
+- No mechanical check can prove a judgment-heavy integration.
 - Acceptance depends on adversarial state or boundary behavior.
 - Evidence conflicts, or reproduction fails.
 - The user requests it.
@@ -12,10 +12,10 @@ Do not dispatch for docs-only changes, trivial config, decisive mechanical check
 
 ## What a verdict proves
 
-Independence is the point of the role, so a `verifier` never grades the context that produced the claim: it starts from the claim and the diff in a fresh context, with no memory of the reasoning that reached them.
+Independence is the point of the role, so a `verifier` never grades the context that produced the claim. It starts from the claim and the diff in a fresh context, with no memory of the reasoning that reached them.
 
 A fresh context on the same model removes the producer's working state, not its model family's blind spots. Treat a verdict as evidence that the claim survives re-derivation, and no more.
 
-A verifier verdict never satisfies a security trigger on its own: pair it with the `security-reviewer` findings and their dispositions, and with the executable checks the main session ran.
+A verifier verdict never satisfies a security trigger on its own. Pair it with the `security-reviewer` findings and their dispositions, and with the executable checks the main session ran.
 
-Place the verifier at the smallest coherent integration boundary where the complete acceptance claim can be independently refuted. Focused tests, builds, and static checks remain intermediate evidence during iteration. Verify earlier for security, cross-language or FFI, serialization or pre-aggregation, irreversible-operation, and integration-blocking boundaries; this changes timing, not the one-verifier limit.
+Place the verifier at the smallest coherent integration boundary where it can independently refute the complete acceptance claim. Focused tests, builds, and static checks remain intermediate evidence during iteration. Verify earlier for security, cross-language or FFI, serialization or pre-aggregation, irreversible-operation, and integration-blocking boundaries; this changes timing, not the one-verifier limit.

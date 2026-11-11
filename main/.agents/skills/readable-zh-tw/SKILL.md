@@ -10,10 +10,10 @@ license: MIT
 
 # readable-zh-tw：讓寫給人看的中文好讀
 
-> Runtime skills are written in English; this one is the documented exception
+> Runtime skills use English; this one is the documented exception
 > (see `docs/README.md`). Its subject matter is Traditional Chinese prose, so
-> the rules and the examples they govern cannot be separated without losing
-> both. Chinese anywhere else in a runtime file is drift, not precedent.
+> splitting the rules from the examples they govern would lose both. Chinese
+> anywhere else in a runtime file is drift, not precedent.
 
 核心順序：**先保事實，再減廢話，最後才管版面。**
 
@@ -35,7 +35,7 @@ license: MIT
 ## 直出：一次寫對
 
 非創意文字（規格、文件、工作文件、技術回覆、註解）的結構與句子規則以 `technical-writing`
-為準；本 skill 在那之上管台灣用語、標點與去 AI 痕跡，技術文檔另見
+為準。本 skill 在那之上管台灣用語、標點與去 AI 痕跡，技術文檔另見
 [technical-docs.md](references/technical-docs.md)。創意文案的結構照下面各節。
 
 ### 1. 結論先行
