@@ -85,13 +85,13 @@
           "words": 29
         },
         {
-          "bytes": 3109,
-          "file_bytes": 3600,
-          "file_sha256": "57b12f6d9a51f1e74463cbcd476985da7a4c0c59aa50bdab99b785bdd3dfef88",
+          "bytes": 3192,
+          "file_bytes": 3683,
+          "file_sha256": "0945ec39297e1238da4abcee41e84cdc1dad509967b54ac5440e340908ca6045",
           "kind": "skill-body",
           "path": "main/claude/skills/technical-writing/SKILL.md",
-          "sha256": "146ce992fb41b79280e3c5f4b23d44c160cbcfdf920c8d36549f0763851eb5ef",
-          "words": 538
+          "sha256": "16df0d6f30b8c4b5f076ca7165875486e7e5c44f0f40aa87e9b6a9b3167d7496",
+          "words": 548
         },
         {
           "bytes": 5156,
@@ -175,8 +175,8 @@
         },
         {
           "bytes": 454,
-          "file_bytes": 3600,
-          "file_sha256": "57b12f6d9a51f1e74463cbcd476985da7a4c0c59aa50bdab99b785bdd3dfef88",
+          "file_bytes": 3683,
+          "file_sha256": "0945ec39297e1238da4abcee41e84cdc1dad509967b54ac5440e340908ca6045",
           "kind": "skill-metadata",
           "path": "main/claude/skills/technical-writing/SKILL.md",
           "sha256": "aaebc6345f6adb9765266b0b126004a47c3014023f540430803688657dcc08a1",
@@ -319,9 +319,9 @@
   "totals": {
     "claude": {
       "dispatch": {
-        "bytes": 46359,
-        "payload_sha256": "e330adff8a5d4c576d90101a316580c2ed7119e8dfaa7130a5e859ec880f3586",
-        "words": 8004
+        "bytes": 46442,
+        "payload_sha256": "daa451282361858d96a54cbbe9861e167a89739b6f0b7405731ce72e0c94d8b8",
+        "words": 8014
       },
       "resident": {
         "bytes": 9107,

@@ -20,6 +20,7 @@
 | 診斷 context 或工具輸出 | [Headroom runtime](../main/.agents/docs/headroom-runtime.md) | [RTK](../main/claude/RTK.md) |
 | 理解 QC 怎麼把關 | [QC 白話說明](qc-explainer.md) | [baton-dispatch](../main/claude/skills/baton-dispatch/SKILL.md) |
 | 理解 hook 系統怎麼運作 | [Hook 系統](hook-system.md) | [settings.json](../main/claude/settings.json) |
+| 寫或審一份文件 (規格, 設計, 操作) | [文件方針](documentation-policy.md) | [technical-writing](../main/.agents/skills/technical-writing/SKILL.md) |
 | 跑行為 trap eval | [evals/traps/](../evals/traps/) 各 README | [QC 說明](qc-explainer.md) 取證段 |
 | 跑多回合 lifecycle replay | [evals/replay/](../evals/replay/) | [存活判準](research/lifecycle-replay.md) |
 | 深度審查本 repo 設計 | [harness-review](../.agents/skills/harness-review/SKILL.md) (dev-only) | [orchestration 不變量](plans/orchestration-state.md) |
@@ -52,6 +53,7 @@
 | 跨層 · 證據 | [研究總結](research/README.md) | 九個現行結論, 來源衝突與裁決, 時效性基準, 待辦方向, 驗證缺口; 2026-11-10 起與 `research/` 其他文件一樣是歷史紀錄 | runtime 強制規則, 現行 route pins, 逐次查核的原始紀錄 (在 [landing-log](research/landing-log.md)) |
 | 跨層 · 證據 | [Matt Pocock skills 導入研究](research/mattpocock-skills-integration.md) | 上游快照, 工作流比較, 相容性, 採用與拒絕理由 | 實作進度, runtime skill 本體 |
 | 跨層 · 部署 | [配置與部署](setup.md) | bootstrap, apply, 驗收與回滾步驟 | 模型選擇理由 |
+| 跨層 · 寫作 | [文件方針](documentation-policy.md) | 寫作規則的分層, 每層的擁有者, 寫一份文件的順序 | 規則原文 (在 technical-writing 與 readable-zh-tw), 文件維護規則 (在本頁) |
 | 跨層 · 清單 | [Orchestration 不變量](plans/orchestration-state.md) | 八條必須成立的性質, 各自指向擁有者; 改動前後逐條檢查用 | 每條的論證與實作 (在四份層文件) |
 | 跨層 · 紀錄 | [Orchestration 決策歷程](research/orchestration-history.md) | append-only, 依時間序; 保留原始措辭; 2026-09-15 從 plans 移到 research, 因為它是紀錄不是計畫 | 當前狀態 (在不變量表) |
 | 跨層 · 證據 | [全語料盤點](research/landing-readiness.md) | 21 份研究文的落地就緒度: 覆蓋率, 發現, 建議與明確不做 | 各文件的原始論證 (在原地) |
@@ -98,7 +100,7 @@
    引號 (「」『』《》〈〉) 與破折號沒有半形對應, 照舊. `docs/**` 與根 README 這層由測試盯住.
 8. 讀者分層與呈現. 全域底線是短句: 一句一義, 拆掉嵌套修飾 (句子層規則見
    [`technical-writing`](../main/.agents/skills/technical-writing/SKILL.md)), 但術語照留 —— 換成白話近義詞會把
-   精確性一起換掉. 在此之上分三層, 依讀者分而不依主題分:
+   精確性一起換掉. 各層規則的分工見[文件方針](documentation-policy.md). 在此之上分三層, 依讀者分而不依主題分:
 
    | 層 | 涵蓋 | 寫法 |
    |---|---|---|

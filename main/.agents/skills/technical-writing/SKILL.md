@@ -15,6 +15,7 @@ social posts, is out of scope: use `readable-zh-tw` for it.
 
 ## Structure
 
+- Pick the document type first. `references/document-types.md` gives its sections.
 - Put the result, the rule, or the decision first. Put the background after it.
 - Write one topic in each section and in each paragraph. Keep a paragraph to six
   sentences or fewer.
