@@ -510,9 +510,6 @@ for path in "${PRUNED[@]:-}"; do
   log "retired (repo no longer ships it): ${path#$HOME/}"
 done
 
-# Machine state remains deliberately outside the manifest.
-log "note: Claude Code MCP state lives in ~/.claude.json and is not auto-overwritten; add Headroom with 'headroom mcp install --agent claude --proxy-url http://127.0.0.1:8787'."
-
 # --- Verification ---
 if [[ $APPLY -eq 1 ]]; then
   # Shared skill symlinks and platform wrappers resolve to SKILL.md.
