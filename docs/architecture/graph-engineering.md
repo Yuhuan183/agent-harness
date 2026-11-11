@@ -102,7 +102,7 @@ main 把派工與 QC 結果**獨立成固定紀錄**, 不混在一般說明裡, 
 遙測才對得上:
 
 ```text
-[LEAF_DISPATCH] dispatch_id=review-01|task=semantic seam review|role=explore|class=review|request_source=claude-code|route=balanced/claude/claude-sonnet/low|reason=context-protection
+[LEAF_DISPATCH] dispatch_id=review-01|task=semantic seam review|role=Explore|class=review|request_source=claude-code|route=balanced/claude/claude-haiku/low|reason=context-protection
 [LEAF_RESULT] dispatch_id=review-01|task=semantic seam review|outcome=accepted|qc=full|ledger=logged
 ```
 

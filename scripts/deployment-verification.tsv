@@ -8,7 +8,7 @@
 .claude/RTK.md	2026-09-10	claude 2.1.267	named by the contract's RTK clause and opened on demand; no automatic consumer; parity only
 .claude/settings.json	2026-09-10	claude 2.1.267	hook groups registered and firing: commit-test-gate blocked a Bash call this session (denials.jsonl 2026-09-10T07:18:42Z); statusLine command points at ~/.claude/sh/statusline.sh
 .claude/model-routing.toml	2026-09-10	claude 2.1.267	~/.claude/scripts/model-routing check-pins read it: pins match profile balanced, 7 roles checked
-.claude/agents	2026-09-10	claude 2.1.267	the Agent tool's role list in the session names executor, explore, mech-executor, plan-verifier, security-executor, security-reviewer and verifier with their frontmatter descriptions
+.claude/agents	2026-11-11	claude 2.1.319	the Agent tool's role list in a fresh claude -p session names executor, Explore, mech-executor, plan-verifier, security-executor, security-reviewer and verifier with their frontmatter descriptions; Explore appears once, with the harness description and tools Read, Glob, Grep, so it replaces the built-in
 .claude/hooks	2026-09-10	claude 2.1.267	commit-test-gate returned exit 2 on a real Bash call this session; weekly-integrity's stamp advanced on 2026-09-07; leaf-redispatch carrier re-observed 2026-09-05 (CARRIER_VALIDATED_ON)
 .claude/prompts	2026-09-10	claude 2.1.267	manual paste into Claude App and Cowork settings; no machine consumer on this host; parity only
 .claude/scripts	2026-09-10	claude 2.1.267	model-routing check-pins and prompt-bundle-report ran from ~/.claude/scripts; qc-gate-lines is the QC step's tool

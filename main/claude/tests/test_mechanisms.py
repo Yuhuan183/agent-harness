@@ -966,6 +966,31 @@ class MechanismTests(unittest.TestCase):
                      if line.startswith("sess:quiet"))
         self.assertEqual("sess:quiet", quiet.strip())
 
+    def test_a_capitalized_explore_stub_gets_the_log_remedy(self) -> None:
+        """The recon role is deployed as `Explore` from 2026-11-10.
+
+        experience-log canonicalizes that spelling to the `explore` cohort, so
+        an unanswered stub must get the log remedy. Without the same mapping
+        here, the report would tell the operator to abandon a dispatch that
+        the logger would accept.
+        """
+        hook = ROOT / "main/claude/hooks/weekly-integrity.py"
+        with tempfile.TemporaryDirectory() as temp_home:
+            telemetry = Path(temp_home) / ".agents/telemetry"
+            telemetry.mkdir(parents=True)
+            (telemetry / "experience-pending.jsonl").write_text(json.dumps({
+                "event": "SubagentStop", "agent_type": "Explore",
+                "ts": "2020-01-01T00:00:00+00:00",
+                "dispatch_id": "sess:explore"}) + "\n", encoding="utf-8")
+            (telemetry / "experience.jsonl").write_text("", encoding="utf-8")
+            output = subprocess.run(
+                [sys.executable, str(hook)],
+                env={**os.environ, "HOME": temp_home,
+                     "AGENT_HARNESS_REPO": str(Path(temp_home) / "repo")},
+                check=True, capture_output=True, text=True).stdout
+        self.assertIn("sess:explore", output)
+        self.assertNotIn("this harness routes no role for", output)
+
     def test_a_staged_native_codex_launch_is_reconciled_too(self) -> None:
         """Native Codex has no completion hook, so the launch is the carrier.
 
@@ -1837,6 +1862,13 @@ class MechanismTests(unittest.TestCase):
             with self.subTest(model=model):
                 self.assertEqual(usage.context_window(model), 1_000_000)
         self.assertEqual(usage.context_window("claude-haiku-4-5-20251001"), 200_000)
+        # Haiku moved to 1M with generation 5; Explore pins the haiku alias
+        # from 2026-11-10, so a 200k default would overstate its occupancy 5x.
+        for model in ("claude-haiku-5-5", "claude-haiku-6", "claude-haiku",
+                      "haiku", "claude-haiku-5-5-20261001"):
+            with self.subTest(model=model):
+                self.assertEqual(usage.context_window(model), 1_000_000)
+        self.assertEqual(usage.context_window("claude-haiku-3-5"), 200_000)
         self.assertEqual(usage.context_window("claude-sonnet-5-5", 1000), 1000)
 
     def test_usage_report_exposes_attention_percentiles_and_policy(self) -> None:

@@ -19,14 +19,19 @@ FIELDS = (
 )
 ATTENTION_THRESHOLDS = (30.0, 50.0, 65.0)
 # By family, not generation: a table of generation ids sent every turn of a
-# newly shipped one to the 200k default (2026-09-30). Haiku stays on the default.
+# newly shipped one to the 200k default (2026-09-30). Haiku is the one family
+# whose window changed with a generation: 4.x and older have 200k, 5 and later
+# have 1M. A bare `haiku` alias names the current generation.
 CURRENT_CONTEXT_WINDOWS = {
     "claude-fable": 1_000_000,
+    "claude-haiku": 1_000_000,
     "claude-opus": 1_000_000,
     "claude-sonnet": 1_000_000,
 }
 DEFAULT_CONTEXT_WINDOW = 200_000
-FAMILY_PATTERN = re.compile(r"\A(?:claude-)?(opus|sonnet|haiku|fable)(?=[-\[]|\Z)")
+HAIKU_1M_FROM_GENERATION = 5
+FAMILY_PATTERN = re.compile(
+    r"\A(?:claude-)?(opus|sonnet|haiku|fable)(?:-(\d+))?(?=[-\[]|\Z)")
 
 
 @dataclass(frozen=True)
@@ -135,6 +140,10 @@ def context_window(model: str, override: int | None = None) -> int:
         return override
     match = FAMILY_PATTERN.match(model or "")
     family = f"claude-{match.group(1)}" if match else model
+    generation = match.group(2) if match else None
+    if (family == "claude-haiku" and generation is not None
+            and int(generation) < HAIKU_1M_FROM_GENERATION):
+        return DEFAULT_CONTEXT_WINDOW
     return CURRENT_CONTEXT_WINDOWS.get(family, DEFAULT_CONTEXT_WINDOW)
 
 

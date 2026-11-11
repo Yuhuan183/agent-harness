@@ -84,9 +84,9 @@ Context pressure and account quota are separate signals:
 - Claude `usage-report` sums uncached input, cache creation, and cache read for
   each assistant turn, then reports P50/P95 by source/model and optionally by
   session. It does not add output tokens to the prompt-context proxy.
-- The tools map windows by model family (opus, sonnet and fable at 1M), so a new
-  generation keeps its family's window. Haiku and unknown ids use a
-  conservative 200k fallback. Pass `--context-window` when you know the
+- The tools map windows by model family (opus, sonnet, fable, and haiku 5 or
+  later at 1M), so a new generation keeps its family's window. Haiku 4.x and
+  unknown ids use a conservative 200k fallback. Pass `--context-window` when you know the
   runtime's actual limit.
 
 Both commands expose the same repository operations policy: `<30%` low,

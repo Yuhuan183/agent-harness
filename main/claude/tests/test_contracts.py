@@ -452,7 +452,9 @@ class ClaudeContractTests(unittest.TestCase):
             self.assertNotIn(
                 "Bash", tools,
                 f"{role} gained a command surface; this test's premise is gone")
-        role_named = re.compile("`(?:" + "|".join(no_write) + ")`")
+        # `Explore` is the deployed spelling of the recon role (2026-11-10);
+        # the file path stays explore.md, so match both in prose.
+        role_named = re.compile("`(?:" + "|".join((*no_write, "Explore")) + ")`")
         # Read only what follows the role name: "re-run it in main, since the
         # `verifier` gate covers..." describes the caller, not the leaf.
         capability = re.compile(
