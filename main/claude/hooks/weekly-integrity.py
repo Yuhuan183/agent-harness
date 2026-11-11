@@ -2,7 +2,7 @@
 """Weekly-throttled integrity check, run from SessionStart.
 
 Deterministic checks only: manifest parity between the source checkout and every
-deployed HOME target, routing pin/alias/prior freshness, delegation alarms, and
+deployed HOME target, routing pin/alias freshness, delegation alarms, and
 ledger reconciliation. A git-managed ~/.claude additionally reports uncommitted
 changes, which is a supplement to parity and never a substitute for it.
 Findings and check failures are printed to stdout for the active session.
@@ -554,34 +554,10 @@ try:
     # now the only one this repo deploys, and checking a path no manifest row
     # produces would report its own absence every week.
     #
-    # `prior_review` says to re-audit the benchmark priors 90 days after as_of,
-    # but a cadence stated only in prose, inside the config it governs, is a
-    # note nobody is scheduled to read: as_of ages silently while the routes go
-    # on citing it as current evidence. This is that scheduled reader. It
-    # alarms without withholding the stamp, like pin drift — the finding
-    # recurs weekly until someone re-audits and moves as_of.
-    for label, resolver in (("Claude", routing_script),):
-        try:
-            if not os.access(resolver, os.X_OK):
-                continue  # an unavailable resolver is already a finding above
-            priors = subprocess.run(
-                [resolver, "check-priors"], capture_output=True, text=True, timeout=budget(10)
-            )
-            if priors.returncode == 1:
-                findings.append(
-                    "benchmark priors overdue:\n"
-                    + (priors.stderr or priors.stdout).rstrip()
-                )
-            elif priors.returncode != 0:
-                checks_completed = False
-                detail = (priors.stderr or priors.stdout).rstrip()
-                findings.append(
-                    f"{label} prior-review check failed "
-                    f"(exit {priors.returncode}):\n{detail}"
-                )
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            checks_completed = False
-            findings.append(f"{label} prior-review check failed: {exc}")
+    # The benchmark-prior cadence (`check-priors`) was read here until
+    # 2026-11-10. The user declared the research priors stale that day, so a
+    # weekly "re-fetch the priors" finding would only ask for work that no
+    # longer decides anything.
 
     # Informational only for what the reader *finds*: hints and the missing-data
     # warning never block the throttle. A reader that cannot run is the other

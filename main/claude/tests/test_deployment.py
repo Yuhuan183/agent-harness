@@ -2167,9 +2167,9 @@ class EditResidueTests(unittest.TestCase):
 
 
 VERIFICATION = "scripts/deployment-verification.tsv"
-#: Days a consumption observation stays current. Chosen to match the
-#: benchmark-prior cadence both routing files already use (`prior_review`:
-#: 90 days), not weekly-integrity's seven: parity is checked weekly by the
+#: Days a consumption observation stays current: 90, not weekly-integrity's
+#: seven. (90 first matched the benchmark-prior cadence, retired 2026-11-10.)
+#: Parity is checked weekly by the
 #: hook, and this file records the other, dearer thing - that a client was
 #: seen consuming the target - which needs a session per row to re-observe.
 VERIFICATION_TTL_DAYS = 90

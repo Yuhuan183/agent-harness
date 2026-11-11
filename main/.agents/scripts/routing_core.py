@@ -165,16 +165,12 @@ def revision_policy(config: dict) -> dict:
     return config["revision_policy"]
 
 
-def check_prior_review(config: dict) -> list[str]:
-    """Validate the benchmark-prior review cadence — its shape, not its age.
+def check_as_of(config: dict) -> list[str]:
+    """Validate `as_of`, the date of the recorded benchmark values.
 
-    `prior_review` states the cadence for a human; `prior_review_days` is the
-    same number in the form a scheduled check can read. Only well-formedness is
-    checked here. An *expired* cadence is reported by `check-priors` and never
-    by `validate`, because `scripts/sync.sh` runs `validate` under
-    `set -euo pipefail`: routing that made deployment fail on the 91st day
-    would turn an aging benchmark note into an outage, and the predictable
-    response would be to raise the number until it stopped complaining.
+    `check-aliases` counts only leaf transcripts after it. The re-audit
+    cadence (`prior_review`, `prior_review_days`, `check-priors`) was retired
+    on 2026-11-10, when the user declared the research priors stale.
     """
     errors = []
     as_of = config.get("as_of")
@@ -185,32 +181,7 @@ def check_prior_review(config: dict) -> list[str]:
             date.fromisoformat(as_of)
         except ValueError:
             errors.append(f"as_of is not an ISO date: {as_of!r}")
-    if not isinstance(config.get("prior_review"), str):
-        errors.append("prior_review must state the re-audit trigger in prose")
-    days = config.get("prior_review_days")
-    if not isinstance(days, int) or isinstance(days, bool) or days <= 0:
-        errors.append("prior_review_days must be a positive integer")
     return errors
-
-
-def prior_review_age(config: dict, today: date) -> tuple[int, int]:
-    """Return (days since as_of, the configured cadence). Validate first."""
-    return (today - date.fromisoformat(config["as_of"])).days, config["prior_review_days"]
-
-
-def report_prior_review(config: dict, today: date, label: str) -> int:
-    """Shared `check-priors` output. Exit 1 = stale, matching check-pins."""
-    age, limit = prior_review_age(config, today)
-    if age > limit:
-        print(
-            f"{label} benchmark priors are {age} days old (cadence {limit}); "
-            f"re-fetch and re-audit, then update as_of. A review that finds no "
-            f"change still updates as_of - see prior_review.",
-            file=sys.stderr,
-        )
-        return 1
-    print(f"{label} priors fresh: {age}/{limit} days since {config['as_of']}")
-    return 0
 
 
 def check_availability(models: dict, schema: dict[str, set]) -> list[str]:

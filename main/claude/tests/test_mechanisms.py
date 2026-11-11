@@ -835,17 +835,11 @@ class MechanismTests(unittest.TestCase):
         self.assertNotIn("alias moved generation", result.stdout)
         self.assertNotIn("alias check failed", result.stdout)
 
-    def test_weekly_integrity_surfaces_overdue_benchmark_priors(self) -> None:
-        """`prior_review` needs a scheduled reader or it is only a note.
+    def test_weekly_integrity_no_longer_asks_for_benchmark_priors(self) -> None:
+        """The prior-review cadence was retired on 2026-11-10.
 
-        The routing file says to re-audit the AA priors 90 days after as_of.
-        That sentence lives inside the config it governs, so nothing was ever
-        going to read it on the 91st day: as_of would age quietly while the
-        routes went on citing it as current evidence. This hook is the reader.
-
-        Ran over both bundles' resolvers until 2026-09-14. The hook stopped
-        reading the second one when it stopped being deployed, so an arm for it
-        here would assert a finding nothing can now produce.
+        A resolver that would still answer `check-priors` with "overdue" must
+        not produce a finding: the hook no longer asks.
         """
         hook = ROOT / "main/claude/hooks/weekly-integrity.py"
         stub = (
@@ -855,23 +849,21 @@ class MechanismTests(unittest.TestCase):
             "  *) exit 0;;\n"
             "esac\n"
         )
-        for provider in (".claude",):
-            with tempfile.TemporaryDirectory() as temp_home:
-                scripts_dir = Path(temp_home) / provider / "scripts"
-                scripts_dir.mkdir(parents=True)
-                routing = scripts_dir / "model-routing"
-                routing.write_text(stub, encoding="utf-8")
-                routing.chmod(0o755)
-                result = subprocess.run(
-                    [sys.executable, str(hook)],
-                    env={**os.environ, "HOME": temp_home,
-                         "AGENT_HARNESS_REPO": str(Path(temp_home) / "repo")},
-                    check=True, capture_output=True, text=True,
-                )
-            self.assertIn("benchmark priors overdue", result.stdout, provider)
-            self.assertIn("120 days old", result.stdout, provider)
-            # Overdue is a finding to relay, not a broken resolver.
-            self.assertNotIn("prior-review check failed", result.stdout, provider)
+        with tempfile.TemporaryDirectory() as temp_home:
+            scripts_dir = Path(temp_home) / ".claude" / "scripts"
+            scripts_dir.mkdir(parents=True)
+            routing = scripts_dir / "model-routing"
+            routing.write_text(stub, encoding="utf-8")
+            routing.chmod(0o755)
+            result = subprocess.run(
+                [sys.executable, str(hook)],
+                env={**os.environ, "HOME": temp_home,
+                     "AGENT_HARNESS_REPO": str(Path(temp_home) / "repo")},
+                check=True, capture_output=True, text=True,
+            )
+        self.assertNotIn("benchmark priors overdue", result.stdout)
+        self.assertNotIn("120 days old", result.stdout)
+        self.assertNotIn("prior-review check failed", result.stdout)
 
     def test_un_reconciled_dispatches_are_judged_against_the_ledger(self) -> None:
         """Only a stub the ledger has no record of counts as un-reconciled.

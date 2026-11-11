@@ -17,7 +17,7 @@ import os
 import re
 import sys
 import tempfile
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 if sys.version_info < (3, 11):  # routing_core needs stdlib tomllib (3.11+)
@@ -87,7 +87,7 @@ def validation_errors(config: dict) -> list[str]:
 
     errors += core.check_selection(config)
     errors += core.check_revision_policy(config)
-    errors += core.check_prior_review(config)
+    errors += core.check_as_of(config)
     errors += core.check_model_metrics(models)
 
     normalized_roles = {role.replace("_", "-") for role in route_application}
@@ -308,8 +308,8 @@ def command_check_aliases(config: dict, root: Path, max_days: float) -> int:
     name the family, so a generation move changes nothing in routing or the
     ledger and is not drift. It is still worth seeing: the benchmark rows
     behind the quality floors describe the generation they were measured on,
-    and a family now running a newer one is a reason to re-read those priors
-    (`prior_review`). Only observations after `as_of` count.
+    and a family now running a newer one means those rows describe an older
+    model. Only observations after `as_of` count.
     """
     as_of = config.get("as_of")
     try:
@@ -515,13 +515,6 @@ def parse_args() -> argparse.Namespace:
     )
     alias_parser.add_argument("--root", type=Path, default=TRANSCRIPT_ROOT)
     alias_parser.add_argument("--max-days", type=float, default=30)
-    priors = subparsers.add_parser(
-        "check-priors", help="report benchmark priors older than their review cadence"
-    )
-    priors.add_argument(
-        "--today", default=None,
-        help="ISO date to age against (testing; defaults to the system date)",
-    )
     activate = subparsers.add_parser(
         "activate-profile",
         help="transactionally apply one Claude deployment preset to every leaf pin",
@@ -550,9 +543,6 @@ def main() -> int:
         return command_list(config, args.json)
     if args.command == "check-aliases":
         return command_check_aliases(config, args.root, args.max_days)
-    if args.command == "check-priors":
-        today = date.fromisoformat(args.today) if args.today else date.today()
-        return core.report_prior_review(config, today, "Claude")
     if args.command == "check-pins":
         return command_check_pins(config, args.agents_dir, args.profile, args.priority)
     if args.command == "activate-profile":
